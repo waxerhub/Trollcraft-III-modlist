@@ -8,60 +8,48 @@ so this list assumes default recipes. If the pack changes recipes, the guides
 will need to be checked in-game with JEI.
 
 Every summary below has been checked against the mod's recipes and advancements in
-the pack's jars and against its official docs. Links, in-game guidebooks and
-step-by-step detail with sources are in **[CROSS_REFERENCE.md](CROSS_REFERENCE.md)**.
+the pack's jars and against its official docs.
+
+| File | What it has |
+|------|-------------|
+| This file | The progression mods split into **Tier 1 (early–mid game)** and **Tier 2 (end game)** |
+| [MOD_TIERS.md](MOD_TIERS.md) | Each mod's own early, mid and end game stages |
+| [STARTING_MODS.md](STARTING_MODS.md) | Which mods to start with, and which to hold off on |
+| [CROSS_REFERENCE.md](CROSS_REFERENCE.md) | Official docs, in-game guides and sourced step-by-step detail for every mod |
+
+**How the tiers are split:** a mod is **Tier 1** if you can start it in the first sessions with Overworld
+materials, or after a first Nether trip, and most of its content comes before the big bosses. A mod is **Tier 2** if
+its main content needs a boss kill, huge power or the end game of other mods, or would skip other mods'
+progression if started early. Several Tier 1 mods carry on into the end game; that's listed in their
+**End-game content** column and in the Tier 2 section.
 
 ---
 
-## Tier 1 — Main progression mods (one guide each)
+## Tier 1 — Early–mid game progression
 
-These have a clear multi-step tier ladder and are where most of a playthrough's
-time goes.
+### Major mods (one guide each)
 
-### Tech
+| # | Mod | Version | Addons in the pack | Progression in brief | End-game content |
+|---|-----|---------|--------------------|----------------------|------------------|
+| 1 | **Tinkers' Construct** | 3.11.2 | Tinkers' Levelling Addon, TCIntegrations, TconEmc | Part Builder and Tinker Station (modifiers work from the first tool) → Grout → Seared Melter → smeltery (copper-cast controller) → alloys and Tinker's Anvil → slime islands → **Nether cobalt** → Nether Grout, Scorched Alloyer and foundry (byproducts, no alloying) | **Blazing Blood** → Manyullyn, Hepatizon, Queen's Slime → Plate Armor |
+| 2 | **Create** | 6.0.8 | Crafts & Additions, Aquatic Ambitions, Big Cannons, Slice & Dice, Applied Kinetics, Radars, Sabers, Bells & Whistles, Deco | Andesite Alloy → kinetics, press and fans → mixer + **Blaze Burner** (catch a blaze in the Nether) → copper, fluids and steam engines → brass → Precision Mechanism (sequenced assembly) → crushing wheels and mechanical crafting. Crafts & Additions bridges rotation and FE power | **Sturdy Sheet** → trains; Create 6.0 package logistics (Packager, Stock Ticker, Frogport) |
+| 3 | **Mekanism** | 10.4.16 | Generators, Tools, Weaponry, Curios, Applied Mekanistics, Just Enough Mekanism Multiblocks | Osmium → Heat Generator and Metallurgic Infuser (steel, alloys, circuits) → ore processing 2x → 3x → 4x → 5x, gated by Basic → Ultimate Control Circuits and Refined Obsidian. The 2x–5x figures are for silk-touched ore blocks; raw ore gives about 1.33x–3.33x | **Fission reactor** → Polonium/Plutonium Pellets → MekaSuit, Meka-Tool, QIO, fusion reactor → SPS antimatter (top MekaSuit modules, Nucleosynthesizer) |
+| 4 | **Immersive Engineering** | 10.2.0 | — | Engineer's Manual and Hammer → Coke Oven → treated wood and Engineer's Workbench → early power (Windmill, Kinetic Dynamo, LV wire) → Blast Bricks (**Nether Brick + Magma Block**) → steel → Crusher, Metal Press, Improved Blast Furnace → blueprints (aluminum) | Arc Furnace (Graphite Electrodes), Refinery → Diesel Generator, Excavator |
+| 5 | **Thermal Series** | Foundation 11.0.6, Expansion 11.0.1 | Dynamics, Innovation, Integration, Redstone Arsenal | Thermal ores and fire-charge alloys → Stirling Dynamo → Machine Frame and first machines (Pulverizer, Induction Smelter) → Tinker's Workbench → Signalum, Lumium and Enderium → **Hardened → Reinforced Integral Components**. Redstone Arsenal's flux gear is a mid-game side branch. Thermal Dynamics has no item ducts in 1.20 | Resonant Integral Components (fully upgraded machines) |
+| 6 | **Ender IO** | 6.2.18-beta | — | **Grains of Infinity** (light a fire on Overworld bedrock) → Primitive Alloy Smelter → Dark Steel → Void Chassis + Basic Capacitor (every machine needs one) → Stirling Generator, Alloy Smelter, SAG Mill → alloys and conduits → Double-Layer Capacitor → Soularium (Nether) → Slice'N'Splice | Octadic Capacitor, Soul Binder, Powered Spawner, End Steel |
+| 7 | **Applied Energistics 2** | 15.4.11 | Advanced AE, AE Additions, AE2WTLib, AE2 Insert/Export Card, AE2 Crafting Tree, Applied Botanics, AppliedE, Applied Cooking, Polymorphic Energistics | Meteorite (Meteorite Compass) → Mysterious Cube presses (mine without Silk Touch) → Charger and budding certus (no certus ore in 15.x) → Fluix → Inscriber and processors → ME Drive, storage cells, Controller → autocrafting | Singularity → Quantum Bridge, P2P, Spatial IO; Advanced AE quantum tier; AppliedE (needs ProjectE's end game) |
+| 8 | **Botania** | 1.20.1-456 | — | Lexica Botania and Petal Apothecary → Pure Daisy (livingwood/livingrock) → Endoflames, Mana Spreader and Mana Pool → mana infusion → Runic Altar → **Terrasteel** (Terrestrial Agglomeration Plate) → Alfheim portal (trade-only, built from Terrasteel) → Elementium and Pixie Dust | Gaia Guardian (needs a Beacon) → Gaia Guardian II (Dice of Fate relics), Flügel Tiara |
+| 9 | **Mystical Agriculture** | 7.0.24 | — | Inferium and Prosperity ores → Inferium Seeds → **Infusion Crystal** (upgrades essence on a crafting table: Inferium → Prudentium → Tertium → Imperium) → **Infusion Altar + 8 pedestals** for resource seeds → Soulium (Nether) and Soul Jars for mob seeds → Growth Accelerators and gear | Supremium → Cognizant Dust (Wither or Dragon kill) → Awakening Altar → Awakened Supremium. No Mystical Agradditions, so no Insanium or cruxes |
+| 10 | **EvilCraft** | 1.3.3 | — | Dark Gems → Dark Temple's Environmental Accumulator (found, not crafted) + Weather Containers → Blood Extractor → Dark Power Gem → Blood Infuser (tiers via Promises of Tenacity) → Box of Eternal Closure → Spirit Furnace | **Garmonbozia** → Sanguinary Environmental Accumulator, Mace of Destruction |
+| 11 | **Extreme Reactors 2** | 2.0.97 | (Zero CORE 2 library) | Yellorite ore → Yellorium + Graphite Bars → Basic reactor → **Cyanite** (reactor waste, needed for turbines) → actively cooled reactor + turbine → Reinforced variants (steel) | Reprocessor → Blutonium → Ludicrite/Ridiculite/Inanite turbine coils |
+| 12 | **Modular Powersuits** | 2.3.13 | (Numina library) | Needs steel to start. Tinker Table → power armor and Power Fist from Numina Wiring → **battery module** (Basic needs steel) → Numina components (solenoid, servo, control circuit, computer chip, field emitter) → armor, tool and utility modules | Ion Thruster and Ultimate Battery (electrum) → Jetpack, Flight Control, Plasma Cannon, Netherite Plating |
+| 13 | **Alex's Caves** | 2.0.2 | — | Underground Cabin (maps from cartographers or mineshaft chests) → Cave Tablets → Spelunkery Table → Cave Codex → **Cave Biome Map** → 6 cave biomes (Magnetic, Primordial, Toxic, Abyssal Chasm, Forlorn Hollows, Candy Cavity), each with major threats and unique gear | Luxtructosaurus (the one true boss), Hullbreaker, Nuclear Bomb, a tamed Tremorzilla |
+| 14 | **RFTools: Utility and Builder** | Base 5.0.7, Utility 6.0.7, Builder 6.0.10 | — | Dimensional Shards (ore) → Machine Frame/Base → crafters and screens → teleporters (Matter Transmitter, Dialing Device) → Builder and quarry card | RFTools Dimensions (Tier 2) |
 
-| # | Mod | Version | Addons in the pack | Progression in brief |
-|---|-----|---------|--------------------|----------------------|
-| 1 | **Create** | 6.0.8 | Crafts & Additions, Aquatic Ambitions, Big Cannons, Slice & Dice, Applied Kinetics, Radars, Sabers, Bells & Whistles, Deco | Andesite Alloy → kinetics, press and fans → mixer + **Blaze Burner** (catch a blaze in the Nether) → copper, fluids and steam engines → brass → Precision Mechanism (sequenced assembly) → crushing wheels and mechanical crafting → **Sturdy Sheet** → trains. Create 6.0 adds package logistics (Packager, Stock Ticker, Frogport). Crafts & Additions bridges rotation and FE power |
-| 2 | **Mekanism** | 10.4.16 | Generators, Tools, Weaponry, Curios, Applied Mekanistics, Just Enough Mekanism Multiblocks | Osmium → Metallurgic Infuser (steel, alloys, circuits) → ore processing 2x → 3x → 4x → 5x, gated by Basic → Ultimate Control Circuits and Refined Obsidian → **fission reactor** → Polonium/Plutonium Pellets → MekaSuit, Meka-Tool, QIO and the fusion reactor → SPS antimatter (only for top MekaSuit modules and the Nucleosynthesizer). The 2x–5x figures are for silk-touched ore blocks; raw ore gives about 1.33x–3.33x |
-| 3 | **Thermal Series** | Foundation 11.0.6, Expansion 11.0.1 | Dynamics, Innovation, Integration, Redstone Arsenal | Thermal ores and fire-charge alloys → Stirling Dynamo → Machine Frame and first machines (Pulverizer, Induction Smelter) → Tinker's Workbench → Signalum, Lumium and Enderium → **Hardened → Reinforced → Resonant Integral Components** (machine upgrades). Redstone Arsenal's flux gear is a mid-game side branch. Thermal Dynamics has no item ducts in 1.20 |
-| 4 | **Immersive Engineering** | 10.2.0 | — | Engineer's Manual and Hammer → Coke Oven → treated wood and Engineer's Workbench → early power (Windmill, Kinetic Dynamo, LV wire) → Blast Bricks (**Nether Brick + Magma Block**) → steel → Crusher, Metal Press, Improved Blast Furnace → blueprints (aluminum) → Arc Furnace (Graphite Electrodes) → Squeezer, Fermenter and Refinery → Diesel Generator; Excavator for ore veins |
-| 5 | **Ender IO** | 6.2.18-beta | — | **Grains of Infinity** (light a fire on Overworld bedrock) → Primitive Alloy Smelter → Dark Steel → Void Chassis + Basic Capacitor (every machine needs one) → Stirling Generator, Alloy Smelter, SAG Mill → alloys and conduits → Double-Layer and Octadic Capacitors → Soularium (Nether) → Slice'N'Splice → Soul Binder → Powered Spawner |
-| 6 | **Applied Energistics 2** | 15.4.11 | Advanced AE, AE Additions, AE2WTLib, AE2 Insert/Export Card, AE2 Crafting Tree, Applied Botanics, AppliedE, Applied Cooking, Polymorphic Energistics | Meteorite (Meteorite Compass) → Mysterious Cube presses (mine without Silk Touch) → Charger and budding certus (no certus ore in 15.x) → Fluix → Inscriber and processors → ME Drive, storage cells, Controller → autocrafting → Singularity, Quantum Bridge, P2P → Advanced AE quantum tier |
-| 7 | **RFTools** | Base 5.0.7, Utility 6.0.7, Builder 6.0.10, Dimensions 11.0.11 | — | Dimensional Shards (ore) → Machine Frame/Base → crafters, teleporters, screens → Builder and quarry card → Lost Knowledge (loot) → Researcher, Knowledge Holder, Dimlet Workbench → Enscriber (dimension tab) → Dimension Builder, kept powered and chunkloaded |
-| 8 | **Extreme Reactors 2** | 2.0.97 | (Zero CORE 2 library) | Yellorite ore → Yellorium + Graphite Bars → Basic reactor → **Cyanite** (reactor waste, needed for turbines) → actively cooled reactor + turbine → Reinforced variants (steel) → Reprocessor → Blutonium → Ludicrite/Ridiculite/Inanite turbine coils |
-| 9 | **Draconic Evolution** | 3.1.2 | (Brandon's Core library) | Draconium ore (deep Overworld, Nether, End) → Draconium Core and fusion crafting → **Wither (Nether Star)** → Wyvern tier and Energy Core → **Ender Dragon (Dragon Heart)** → Awakened Draconium → Draconic tier → **Chaos Guardian** (chaos shards) + Dragon Egg → Chaotic tier → Draconic Reactor. The pack's endgame |
-| 10 | **Modular Powersuits** | 2.3.13 | (Numina library) | Tinker Table → power armor and Power Fist from Numina Wiring → **battery module** (Basic needs steel, Ultimate needs electrum) → Numina components (solenoid, servo, control circuit, computer chip, field emitter, ion thruster) → modules → jetpack, flight, plasma cannon, Netherite Plating |
+### Smaller mods (short guide or a section)
 
-### Magic
-
-| # | Mod | Version | Progression in brief |
-|---|-----|---------|----------------------|
-| 11 | **Botania** | 1.20.1-456 | Lexica Botania and Petal Apothecary → Pure Daisy (livingwood/livingrock) → generating flower, Mana Spreader and Mana Pool → mana infusion → Runic Altar → **Terrasteel** (Terrestrial Agglomeration Plate) → Alfheim portal (trade-only, built from Terrasteel) → Elementium and Pixie Dust → Gaia Guardian → harder Gaia Guardian II (Dice of Fate relics) |
-| 12 | **ProjectE** | PE1.0.1 | Philosopher's Stone → Transmutation Table and EMC → fuels (Alchemical Coal → Mobius → Aeternalis) → Alchemical Chest → Energy Condenser, Energy Collector MK1, relays → Dark Matter → Red Matter (Collector/Relay MK3, Condenser MK2 — there is no MK3 condenser) → Transmutation Tablet. **AppliedE** (late game: needs Red Matter and an AE2 Singularity) and **TconEmc** tie it to AE2 and Tinkers |
-| 13 | **EvilCraft** | 1.3.3 | Dark Gems → Dark Temple's Environmental Accumulator (found, not crafted) + Weather Containers → Blood Extractor → Dark Power Gem → Blood Infuser (tiers via Promises of Tenacity) → Box of Eternal Closure → Spirit Furnace → **Garmonbozia** → Sanguinary Environmental Accumulator and Mace of Destruction |
-
-### Resources and tools
-
-| # | Mod | Version | Progression in brief |
-|---|-----|---------|----------------------|
-| 14 | **Mystical Agriculture** | 7.0.24 | Inferium and Prosperity ores → Inferium Seeds → **Infusion Crystal** (upgrades essence on a crafting table: Inferium → Prudentium → Tertium → Imperium → Supremium) → **Infusion Altar + 8 pedestals** for resource seeds → Soulium (Nether) and Soul Jars for mob seeds → Growth Accelerators and gear → Cognizant Dust (Wither or Dragon kill) → Awakening Altar → Awakened Supremium. No Mystical Agradditions, so no Insanium or cruxes |
-| 15 | **Tinkers' Construct** | 3.11.2 | Part Builder and Tinker Station (modifiers work from the first tool) → Grout → Seared Melter → smeltery (copper-cast controller) → alloys and Tinker's Anvil → slime islands → **Nether cobalt** → Nether Grout, Scorched Alloyer and foundry (byproducts, no alloying) → **Blazing Blood** fuel → Manyullyn, Hepatizon, Queen's Slime → Plate Armor. **Tinkers' Levelling Addon** adds bonus slots as tools level and **TCIntegrations** adds materials from other mods |
-
-### Adventure
-
-| # | Mod | Version | Progression in brief |
-|---|-----|---------|----------------------|
-| 16 | **Alex's Caves** | 2.0.2 | Underground Cabin (maps from cartographers or mineshaft chests) → Cave Tablets → Spelunkery Table → Cave Codex → **Cave Biome Map** → 6 cave biomes (Magnetic, Primordial, Toxic, Abyssal Chasm, Forlorn Hollows, Candy Cavity), each with major threats and unique gear. The Luxtructosaurus is the one true boss. A tamed Tremorzilla is the cross-biome capstone |
-
----
-
-## Tier 2 — Smaller progression mods (short guide or a section)
-
-These have progression but are short, loot-driven, or support the Tier 1 mods.
-
-| Mod | Version | Why it is Tier 2 |
-|-----|---------|------------------|
+| Mod | Version | Progression in brief |
+|-----|---------|----------------------|
 | **Hexerei** | 0.4.2.3 | One short ladder: Mixing Cauldron → Bottle of Blood → Willow (gold), Witch Hazel (diamond) and Mahogany (netherite) brooms → Broom Netherite Tip. The Book of Shadows covers it in-game |
 | **Reliquary** | 2.0.65 | A flat mob-drop grind (player kills, about 2–3% per drop) into relics, the handgun, the Apothecary potion system and the Tome of Alkahestry. Best as a drops and relics table |
 | **AgriCraft** | 4.0.6 | Six crop stats (Gain, Growth, Strength, Resistance, Fertility, Mutativity) plus a resource-crop mutation tree (Ferranium → … → Diamahlia → Nethereed) that needs ore blocks under the soil. No irrigation or greenhouses in this build |
@@ -70,15 +58,49 @@ These have progression but are short, loot-driven, or support the Tier 1 mods.
 | **Alex's Mobs** | 1.22.9 | Mob drops feed gear (e.g. Tarantula Hawk Elytra, which needs an existing Elytra). Optional boss: Void Worm (Mosquito Larva → Capsid → Mysterious Worm → End void) for the Dimensional Carver |
 | **Iron Chests / Ender Storage / Tool Belt / Waystones** | — | Small gated upgrades (chest tiers, ender pouches, belt upgrades, warp items) that fit as notes inside other guides |
 
+---
+
+## Tier 2 — End game progression
+
+### Major mods (one guide each)
+
+| # | Mod | Version | Why it's end game | Progression in brief |
+|---|-----|---------|-------------------|----------------------|
+| 1 | **Draconic Evolution** | 3.1.2 (Brandon's Core library) | Every tier past the first needs a boss: the Wither, the Ender Dragon, then the Chaos Guardian | Draconium ore (deep Overworld, Nether, End) → Draconium Core and fusion crafting → **Wither (Nether Star)** → Wyvern tier and Energy Core → **Ender Dragon (Dragon Heart)** → Awakened Draconium → Draconic tier → **Chaos Guardian** (chaos shards) + Dragon Egg → Chaotic tier → Draconic Reactor. The pack's endgame |
+| 2 | **ProjectE** | PE1.0.1 | Can start on day one, but EMC skips other mods' progression and the pack doesn't rebalance it, so it's held for the end game on purpose | Philosopher's Stone → Transmutation Table and EMC → fuels (Alchemical Coal → Mobius → Aeternalis) → Alchemical Chest → Energy Condenser, Energy Collector MK1, relays → Dark Matter → Red Matter (Collector/Relay MK3, Condenser MK2; there is no MK3 condenser) → Transmutation Tablet. **AppliedE** links it to AE2 |
+| 3 | **RFTools Dimensions** | 11.0.11 | Needs a large, steady power supply and loot from across the world | Lost Knowledge (loot) → Researcher, Knowledge Holder, Dimlet Workbench → dimlets → Enscriber (dimension tab) → Dimension Builder, kept powered and chunkloaded |
+
+### End-game stages of Tier 1 mods
+
+Guides for these Tier 1 mods should include an end-game section covering:
+
+- **Mekanism:** fission reactor → MekaSuit, Meka-Tool and QIO → fusion reactor → SPS antimatter
+- **Applied Energistics 2:** Quantum Network Bridge, Spatial IO, the Advanced AE quantum tier, AppliedE
+- **Botania:** Gaia Guardian I and II, Relics of the Aesir
+- **Mystical Agriculture:** Supremium, Cognizant Dust, Awakened Supremium
+- **Tinkers' Construct:** Blazing Blood alloys and Plate Armor
+- **Ender IO:** Soul Binder, Powered Spawner, End Steel
+- **Immersive Engineering:** Arc Furnace, Refinery and Diesel Generator, Excavator
+- **Extreme Reactors 2:** Reprocessor fuels and top turbine coils
+- **Modular Powersuits:** Jetpack, Flight Control, Plasma Cannon
+- **EvilCraft:** Garmonbozia gear
+- **Alex's Caves:** Luxtructosaurus and Tremorzilla
+- **Alex's Mobs:** the Void Worm
+- **Extra Utilities Reborn:** Ender Quarry and Rainbow Generator
+
 **Blue Power** (0.10.323-alpha) was dropped from the guides: in this alpha build only 2 of its 23 logic gates can be crafted, and red alloy wire, tubes and the sorting machine have no recipes.
+
+---
+
+## Notes for the guides
 
 ### Boss and dimension milestones the guides depend on
 
 - **Nether**: Create (a blaze for the Blaze Burner, needed for brass), Immersive Engineering (Blast Bricks, needed
   for steel), Tinkers' Construct (cobalt, Nether Grout, Blazing Blood), Ender IO (Soularium), Mystical Agriculture
   (Soulium). **Nether Ores Plus+** adds extra ore variants there.
-- **Wither (Nether Star)**: Draconic Evolution's Wyvern and Draconic cores, Mystical Agriculture's Cognizant Dust
-  (Wither or Dragon), Extra Utilities Reborn's endgame items.
+- **Wither (Nether Star)**: Draconic Evolution's Wyvern and Draconic cores, Botania's Gaia Guardian (fought at a
+  Beacon), Mystical Agriculture's Cognizant Dust (Wither or Dragon), Extra Utilities Reborn's endgame items.
 - **The End / Ender Dragon**: Draconic Evolution's Dragon Heart (one per kill, **floating above the exit portal**)
   and Dragon Egg, the Chaos Guardian on End islands, Alex's Mobs' Void Worm, Ender IO's End Steel.
   **YUNG's Better End Island** and **dragonfight** change the fight, so warn players and check in-game that the
@@ -97,12 +119,14 @@ These have progression but are short, loot-driven, or support the Tier 1 mods.
 
 ---
 
-## Suggested overall order (for sequencing the guides)
+## Pack-wide order (for sequencing the guides)
 
-1. **Early game:** Tinkers' Construct (tools and smeltery), Create (andesite age), Botania (Pure Daisy and mana), Mystical Agriculture (Inferium seeds), Mekanism (Metallurgic Infuser and 2x processing), Immersive Engineering (coke oven and windmill power), Thermal (fire-charge alloys and dynamos), Ender IO (Grains of Infinity and Dark Steel)
+The first sessions are covered in more detail in [STARTING_MODS.md](STARTING_MODS.md).
+
+1. **Early game:** Tinkers' Construct (tools and smeltery), Mystical Agriculture (Inferium seeds), Botania (Pure Daisy and mana), Mekanism (Metallurgic Infuser and 2x processing), Create (andesite age). Optionally one more tech mod: Thermal (fire-charge alloys and dynamos), Ender IO (Grains of Infinity and Dark Steel) or Immersive Engineering (coke oven and windmill power)
 2. **First Nether trip:** a blaze for Create brass, Blast Bricks for IE steel, cobalt and Nether Grout for Tinkers, Soularium for Ender IO, Soulium for Mystical Agriculture
-3. **Mid game:** AE2 (meteorite → storage → autocrafting), Mekanism 3x/4x, Extreme Reactors, Create brass and trains, Thermal Integral Components, EvilCraft, ProjectE up to Dark Matter, Modular Powersuits, RFTools utilities, Botania Terrasteel and Alfheim, Alex's Caves biomes
-4. **Late game:** Mekanism 5x and fission → MekaSuit, Tinkers' Blazing Blood alloys, Botania Gaia Guardian, ProjectE Red Matter, RFTools Dimensions, **Wither** → Draconic Evolution Wyvern tier, Mystical Agriculture Supremium
+3. **Mid game:** AE2 (meteorite → storage → autocrafting), Mekanism 3x/4x, Extreme Reactors, Create brass and precision mechanisms, Thermal Integral Components, EvilCraft, Modular Powersuits, RFTools utilities, Botania Terrasteel and Alfheim, Alex's Caves biomes
+4. **Late game:** Mekanism 5x and fission → MekaSuit, Create trains and package logistics, Tinkers' Blazing Blood alloys, Botania Gaia Guardian, ProjectE (EMC up to Dark and Red Matter), RFTools Dimensions, **Wither** → Draconic Evolution Wyvern tier, Mystical Agriculture Supremium
 5. **Endgame:** **Ender Dragon** → Draconic tier, **Chaos Guardian** → Chaotic tier, Mekanism fusion and SPS antimatter, Mystical Agriculture Awakened Supremium, Advanced AE quantum tier and AppliedE
 
 ---

@@ -3,6 +3,9 @@
 This file checks each progression mod in [PROGRESSION_MODS.md](PROGRESSION_MODS.md) against its official wiki,
 GitHub repo and in-game guide. It is the source material for the step-by-step guides.
 
+Mods are grouped here by size (major mods and smaller mods). The early–mid game (Tier 1) and end game (Tier 2)
+split is in [PROGRESSION_MODS.md](PROGRESSION_MODS.md), and each mod's own stages are in [MOD_TIERS.md](MOD_TIERS.md).
+
 ## How this was checked
 
 - **The pack's own jars come first.** Recipes, advancements, loot tables, worldgen and the in-game books were read
@@ -42,7 +45,7 @@ Each progression step ends with where it was confirmed:
 
 **Best 1.20.1 source** is the one to trust when writing the guide.
 
-### Tier 1
+### Major mods
 
 | Mod | Pack version | Best 1.20.1 source | Official web docs (and how well they fit 1.20.1) | In-game guide (how to get it) |
 |-----|-------------|--------------------|---------------------------------------------------|-------------------------------|
@@ -63,7 +66,7 @@ Each progression step ends with where it was confirmed:
 | Tinkers' Construct | 3.11.2 | In-game books | [Slime Knights docs, 1.20 books](https://slimeknights.github.io/docs/books/): match. Avoid the Tinkers' Construct 2 (1.12) pages | **Materials and You** is given on first spawn; 5 more books are craftable |
 | Alex's Caves | 2.0.2 | Cave Compendium | [Alex's Caves wiki](https://alexscaves.wiki.gg/wiki/Main_Page): blocked from here, unverified | **Cave Compendium**: Book + Cave Tablet + Gold Nugget |
 
-### Tier 2
+### Smaller mods
 
 | Mod | Pack version | Best 1.20.1 source | Official web docs | In-game guide |
 |-----|-------------|--------------------|-------------------|---------------|
@@ -77,7 +80,7 @@ Each progression step ends with where it was confirmed:
 
 ---
 
-## Tier 1 — Tech
+## Major mods — Tech
 
 ### Create (6.0.8) + Create Crafts & Additions (1.3.3)
 
@@ -423,7 +426,7 @@ Each progression step ends with where it was confirmed:
 
 ---
 
-## Tier 1 — Magic
+## Major mods — Magic
 
 ### Botania (1.20.1-456)
 
@@ -521,7 +524,7 @@ A suggested rewrite: Dark Gems → Blood Extractor → Dark Power Gem / Blood In
 
 ---
 
-## Tier 1 — Resources and tools
+## Major mods — Resources and tools
 
 ### Mystical Agriculture (7.0.24, MC 1.20.1; no Mystical Agradditions)
 
@@ -602,7 +605,7 @@ A suggested rewrite: Dark Gems → Blood Extractor → Dark Power Gem / Blood In
 
 ---
 
-## Tier 1 — Adventure
+## Major mods — Adventure
 
 ### Alex's Caves (2.0.2)
 
@@ -644,7 +647,7 @@ A suggested rewrite: Dark Gems → Blood Extractor → Dark Power Gem / Blood In
 
 ---
 
-## Tier 2 — Smaller progression mods
+## Smaller mods
 
 ### Hexerei (0.4.2.3)
 **References**
@@ -668,7 +671,7 @@ A suggested rewrite: Dark Gems → Blood Extractor → Dark Power Gem / Blood In
 
 **Corrections to the first-draft summary**: None. Optionally add that the broom ladder runs gold blocks, then diamond, then netherite, all gated on Bottles of Blood.
 
-**Tier recommendation**: Keep as Tier 2. There is one short ladder (cauldron → blood → three brooms + netherite tip), and the Book of Shadows already covers it in game.
+**Guide size**: Keep as a smaller mod. There is one short ladder (cauldron → blood → three brooms + netherite tip), and the Book of Shadows already covers it in game.
 
 ### Reliquary (2.0.65 — Reliquary Reincarnations)
 **References**
@@ -707,7 +710,7 @@ A suggested rewrite: Dark Gems → Blood Extractor → Dark Power Gem / Blood In
 
 **Corrections to the first-draft summary**: Minor additions. Drops need a player kill at about 2–3% base (Looting helps), so expect a grind. Also mention the Apothecary potion system and the Void Tear → Infernal Tear and Phoenix Down chains. The official wiki is 2016–2017 era and should not be cited for 1.20.1 details.
 
-**Tier recommendation**: Keep as Tier 2. Progression is a flat mob-drop grind with only 1–2 crafting steps per item, so one table of drops and key relics is enough.
+**Guide size**: Keep as a smaller mod. Progression is a flat mob-drop grind with only 1–2 crafting steps per item, so one table of drops and key relics is enough.
 
 ### AgriCraft (4.0.6)
 **References**
@@ -758,7 +761,7 @@ A suggested rewrite: Dark Gems → Blood Extractor → Dark Power Gem / Blood In
 - Irrigation and greenhouses are not in this build.
 - The official site does not list 1.20.1 as a supported version. Treat the build as beta.
 
-**Tier recommendation**: Keep as Tier 2, as a short guide with the mutation-tree table. There is a real 6-deep mutation chain, but it is a single mechanic and overlaps Mystical Agriculture.
+**Guide size**: Keep as a smaller mod, as a short guide with the mutation-tree table. There is a real 6-deep mutation chain, but it is a single mechanic and overlaps Mystical Agriculture.
 
 ### Extra Utilities Reborn (1.0.1)
 **What it actually is (jar data)**
@@ -814,7 +817,7 @@ A suggested rewrite: Dark Gems → Blood Extractor → Dark Power Gem / Blood In
 - Several sources (Demon Ingot, Ender Lilly Seed) are undocumented.
 - The "Chunk Loading Ward" is marked "Under development" in its tooltip.
 
-**Tier recommendation**: Keep as Tier 2. There is a modest ladder (Survival Generator → Machine Block → Resonator/Enchanter → Ender Quarry → Rainbow Generator), but there are no docs, so one page with the hidden machine recipes from the tooltips is valuable.
+**Guide size**: Keep as a smaller mod. There is a modest ladder (Survival Generator → Machine Block → Resonator/Enchanter → Ender Quarry → Rainbow Generator), but there are no docs, so one page with the hidden machine recipes from the tooltips is valuable.
 
 ### Mowzie's Mobs (1.8.2)
 **References**
@@ -839,7 +842,7 @@ A suggested rewrite: Dark Gems → Blood Extractor → Dark Power Gem / Blood In
 
 **Corrections to the first-draft summary**: Add **Tongbi, the Sculptor** (Earthrend Gauntlet via his challenge; Geomancer armor), the main boss missing from the list. Naga is better described as a mini-boss. Umvuthi's main reward is the Sun's Blessing, which you trade for, plus the Sol Visage.
 
-**Tier recommendation**: Keep as Tier 2, as a boss/drop table. There is no crafting ladder, but four bosses give unique gear worth one page.
+**Guide size**: Keep as a smaller mod, as a boss/drop table. There is no crafting ladder, but four bosses give unique gear worth one page.
 
 ### Alex's Mobs (1.22.9)
 **References**
@@ -875,7 +878,7 @@ A suggested rewrite: Dark Gems → Blood Extractor → Dark Power Gem / Blood In
 
 **Corrections to the first-draft summary**: The summary is fine. You could add the exact summon chain (Mosquito Larva → Capsid → Mysterious Worm → End void) and that the reward is the Dimensional Carver, which needs netherite. Also note the Tarantula Hawk Elytra needs an existing Elytra.
 
-**Tier recommendation**: Keep as Tier 2, as a section with a Void Worm chain plus a gear table. The Animal Dictionary covers the rest in game.
+**Guide size**: Keep as a smaller mod, as a section with a Void Worm chain plus a gear table. The Animal Dictionary covers the rest in game.
 
 ### Blue Power (0.10.323-alpha)
 **References**
@@ -903,4 +906,4 @@ A suggested rewrite: Dark Gems → Blood Extractor → Dark Power Gem / Blood In
 - Tubes and the sorting machine are named in lang but have no recipes.
 - What it actually offers is ores and gem tools, alloy smelting, silicon wafers, Blulectric power and a few redstone machines.
 
-**Tier recommendation**: Drop to "no guide needed" (a one-paragraph note at most). In this alpha the advertised redstone and logistics features are mostly not craftable, and nothing else in the pack gates on it.
+**Guide size**: Drop to "no guide needed" (a one-paragraph note at most). In this alpha the advertised redstone and logistics features are mostly not craftable, and nothing else in the pack gates on it.

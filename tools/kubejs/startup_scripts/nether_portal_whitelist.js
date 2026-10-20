@@ -1,6 +1,7 @@
 // Stops Nether portals from lighting anywhere except the areas listed below.
 // Copy to <server>/kubejs/startup_scripts/ and restart (startup scripts don't reload with /reload).
 // Portals already lit keep working until broken - find them with tools/find_portals.py.
+// Note: KubeJS 6's script engine (Rhino) has no `template strings`, so join strings with +.
 
 // One entry per allowed portal: dimension, centre of the portal, and how many blocks around it count.
 const ALLOWED_PORTALS = [
@@ -15,6 +16,6 @@ ForgeEvents.onEvent('net.minecraftforge.event.level.BlockEvent$PortalSpawnEvent'
     Math.abs(pos.x - a.x) <= a.r && Math.abs(pos.y - a.y) <= a.r && Math.abs(pos.z - a.z) <= a.r)
   if (!allowed) {
     event.setCanceled(true)
-    console.info(`Blocked Nether portal at ${dim} ${pos.x} ${pos.y} ${pos.z}`)
+    console.info('Blocked Nether portal at ' + dim + ' ' + pos.x + ' ' + pos.y + ' ' + pos.z)
   }
 })

@@ -149,10 +149,14 @@ def walk_items(node, res, where, path=""):
             for key, amt in zip(keys, amts):
                 if isinstance(key, dict) and key.get("id") in res.items:
                     res.add_stack(key["id"], amt, where + " [AE2 storage cell]")
+        # Items nested inside another item (shulker box, backpack, tool belt...) say what they're in
+        inner = where
+        if isinstance(item_id, str) and "Count" in node and item_id not in res.items:
+            inner = where + " > inside " + item_id
         for k, v in node.items():
             if k in ("keys", "amts"):
                 continue
-            walk_items(v, res, where, path + "/" + k)
+            walk_items(v, res, inner, path + "/" + k)
     elif isinstance(node, list):
         for v in node:
             walk_items(v, res, where, path)
@@ -238,6 +242,8 @@ def process_file(name, data, res, names, needles):
             uuid = base[:-4]
             who = "player " + names.get(uuid, uuid)
             for key, value in root.items():
+                if key == "recipeBook":
+                    continue  # unlocked recipes, not items
                 walk_items(value, res, who + " / " + key)
         else:
             walk_items(root, res, "file " + p)

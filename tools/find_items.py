@@ -150,11 +150,21 @@ def walk_items(node, res, where, path=""):
                 if isinstance(key, dict) and key.get("id") in res.items:
                     res.add_stack(key["id"], amt, where + " [AE2 storage cell]")
         # Items nested inside another item (shulker box, backpack, tool belt...) say what they're in
+        is_stack = isinstance(item_id, str) and "Count" in node
         inner = where
-        if isinstance(item_id, str) and "Count" in node and item_id not in res.items:
+        if is_stack and item_id not in res.items:
             inner = where + " > inside " + item_id
+        skip = {"keys", "amts"}
+        # Some bags keep their contents twice: in the item's "tag" and again in a Forge capability
+        # copy ("ForgeCaps"). Only count the capability copy if it holds something the tag doesn't.
+        if is_stack and "tag" in node and "ForgeCaps" in node:
+            in_tag, in_caps = Results(res.items), Results(res.items)
+            walk_items(node["tag"], in_tag, inner)
+            walk_items(node["ForgeCaps"], in_caps, inner)
+            if in_caps.stored and sorted(in_caps.stored.items()) == sorted(in_tag.stored.items()):
+                skip.add("ForgeCaps")
         for k, v in node.items():
-            if k in ("keys", "amts"):
+            if k in skip:
                 continue
             walk_items(v, res, inner, path + "/" + k)
     elif isinstance(node, list):

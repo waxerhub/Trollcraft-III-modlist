@@ -14,7 +14,13 @@ const DISABLED_ITEMS = [
   'projecte:gem_helmet', 'projecte:gem_chestplate', 'projecte:gem_leggings', 'projecte:gem_boots',
   // Extra Utilities Reborn
   'extrautilitiesreborn:ender_quarry',
-  'extrautilitiesreborn:chunk_loading_ward' // has no recipe in this version; listed so placing/holding it is blocked too
+  'extrautilitiesreborn:chunk_loading_ward', // has no recipe in this version; listed so placing/holding it is blocked too
+  // Explosives
+  'alexscaves:nuclear_bomb',
+  'thermal:nuke_tnt',
+  'thermal:nuke_tnt_minecart',
+  'thermal:nuke_grenade',
+  'projecte:nova_cataclysm'
 ]
 
 // 1. Nobody can craft them

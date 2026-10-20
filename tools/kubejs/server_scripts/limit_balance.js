@@ -1,7 +1,17 @@
-// Disables a set of ProjectE / Extra Utilities Reborn items for game balance.
+// Limits a set of items for game balance.
 // Copy to <server>/kubejs/server_scripts/ and run /reload.
 // Note: KubeJS 6's script engine (Rhino) has no `template strings`, so join strings with +.
 
+// Recipes removed only. The items still work, so admins can hand them out as rewards.
+const RECIPE_ONLY = [
+  'alexscaves:nuclear_bomb',
+  'thermal:nuke_tnt',
+  'thermal:nuke_tnt_minecart',
+  'thermal:nuke_grenade',
+  'projecte:nova_cataclysm'
+]
+
+// Fully disabled: no recipe, can't be placed or used, and removed from inventories on login.
 const DISABLED_ITEMS = [
   // ProjectE EMC factory top tiers
   'projecte:condenser_mk2',
@@ -14,21 +24,15 @@ const DISABLED_ITEMS = [
   'projecte:gem_helmet', 'projecte:gem_chestplate', 'projecte:gem_leggings', 'projecte:gem_boots',
   // Extra Utilities Reborn
   'extrautilitiesreborn:ender_quarry',
-  'extrautilitiesreborn:chunk_loading_ward', // has no recipe in this version; listed so placing/holding it is blocked too
-  // Explosives
-  'alexscaves:nuclear_bomb',
-  'thermal:nuke_tnt',
-  'thermal:nuke_tnt_minecart',
-  'thermal:nuke_grenade',
-  'projecte:nova_cataclysm'
+  'extrautilitiesreborn:chunk_loading_ward' // has no recipe in this version; listed so placing/holding it is blocked too
 ]
 
-// 1. Nobody can craft them
+// 1. Nobody can craft any of them
 ServerEvents.recipes(event => {
-  DISABLED_ITEMS.forEach(id => event.remove({ output: id }))
+  RECIPE_ONLY.concat(DISABLED_ITEMS).forEach(id => event.remove({ output: id }))
 })
 
-// 2. Existing ones can't be placed or used
+// 2. Fully disabled items can't be placed or used
 BlockEvents.placed(event => {
   if (DISABLED_ITEMS.indexOf(String(event.block.id)) >= 0) event.cancel()
 })
@@ -39,7 +43,7 @@ ItemEvents.rightClicked(event => {
   }
 })
 
-// 3. Remove them from inventories on login (armor, Swiftwolf and the Watch work just by being carried)
+// 3. Remove fully disabled items from inventories on login (armor, Swiftwolf and the Watch work just by being carried)
 PlayerEvents.loggedIn(event => {
   DISABLED_ITEMS.forEach(id => {
     event.server.runCommandSilent('clear ' + event.player.username + ' ' + id)

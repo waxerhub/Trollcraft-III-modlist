@@ -101,7 +101,7 @@ Nothing ever travels through the event portal.
    - Within a second: "Tampering … detected", the pig reappears where it was, and you (the last player who touched it) glow and are slowed for 30 s.
 8. **Raiders.** Test in **survival**: mobs ignore creative players, although they still go for the pig. The world must not be on Peaceful, or the event refuses to start.
    - After 20 s (or right away with `/pigescort wave`), a wave appears 20–35 blocks from the pig. The mobs glow red and carry gold swords, crossbows or gold axes.
-   - They go for the pig when within 16 blocks of it, and for you otherwise.
+   - They head for the pig. If you (in survival) get within 8 blocks of one, it turns on you instead. With `USE_CLEAN_APIS = true`, hoglins target the pig too; with the fallbacks, hoglins only attack players near them.
    - Wait more than 15 s: piglins must **not** turn into zombified piglins.
    - Kill one: the chat says "Escort … has neutralized a Piglin".
    - Let one hit the pig: the bossbar health drops, scaled by difficulty.

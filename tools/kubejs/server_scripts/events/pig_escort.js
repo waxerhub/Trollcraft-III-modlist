@@ -89,7 +89,8 @@ const EXTRA_MOB_PER_PLAYERS = 2        // each wave gets +1 mob per this many Es
 const FIRST_WAVE_DELAY_SECONDS = 20    // grace period before the first wave
 const WAVE_SPAWN_MIN_DISTANCE = 20     // waves appear this far from the pig...
 const WAVE_SPAWN_MAX_DISTANCE = 35
-const MOB_TARGET_PIG_RANGE = 16        // mobs this close to the pig go for the pig, others for the nearest Escort
+const MOB_PLAYER_AGGRO_RANGE = 8       // raiders go for the pig, unless an Escort comes this close to them
+                                       // (creative/spectator players are never targeted; mobs ignore them anyway)
 const MOB_MAX_DISTANCE_FROM_PIG = 96   // mobs that wander further than this are removed
 const RAIDER_MOBS_GLOW = true          // raider mobs glow red so they can be seen through walls
 
@@ -844,25 +845,34 @@ function uuidIntArray(u) {
   return '[I;' + out.join(',') + ']'
 }
 
-function setMobTarget(server, mob, target, refresh) {
+function setMobTarget(server, mob, target) {
   const isHoglin = typeOf(mob) == 'minecraft:hoglin'
   if (CLEAN.memory) {
     try {
       if (isHoglin) mob.getBrain().setMemory(CLEAN.memory.ATTACK_TARGET, target)
-      else mob.getBrain().setMemoryWithExpiry(CLEAN.memory.ANGRY_AT, javaUuidOf(target), 200)
+      else mob.getBrain().setMemoryWithExpiry(CLEAN.memory.ANGRY_AT, javaUuidOf(target), 600)
       return
     } catch (e) { }
   }
-  // Fallback: write the piglin's anger memory with /data. This resets its AI, so only every few seconds.
-  // Hoglins have no anger memory, so in fallback mode they just go for nearby players on their own.
-  if (isHoglin || !refresh) return
-  run(server, 'data merge entity ' + uuidOf(mob) + ' {Brain:{memories:{"minecraft:angry_at":{value:' + uuidIntArray(uuidOf(target)) + ',ttl:200L}}}}')
+  // Fallback: write the piglin's anger memory with /data. This restarts its AI, so it's only done when the
+  // target changes (or to renew it). Hoglins have no anger memory, so in fallback mode they only go for
+  // players near them; set USE_CLEAN_APIS = true for hoglins to target the pig too.
+  if (isHoglin) return
+  run(server, 'data merge entity ' + uuidOf(mob) + ' {Brain:{memories:{"minecraft:angry_at":{value:' + uuidIntArray(uuidOf(target)) + ',ttl:600L}}}}')
 }
 
+// Creative and spectator players can't be attacked, so don't aim mobs at them.
+function canBeTargeted(player) {
+  try { return !player.isCreative() && !player.isSpectator() } catch (e) { return true }
+}
+
+// Raiders go for the pig; an Escort who gets within MOB_PLAYER_AGGRO_RANGE of a raider draws it off.
+// A mob's target is only rewritten when it changes, or every 20 seconds to renew it.
 function retargetMobs(server, escorts) {
   const R = S.run, pig = R.pig
-  const refresh = (server.tickCount - R.lastRetarget) >= 60
-  if (refresh) R.lastRetarget = server.tickCount
+  const renew = (server.tickCount - R.lastRetarget) >= 400
+  if (renew) R.lastRetarget = server.tickCount
+  const targets = escorts.filter(canBeTargeted)
   aliveMobs().forEach(m => {
     const dPig = dist3({ x: ex(m), y: ey(m), z: ez(m) }, { x: ex(pig), y: ey(pig), z: ez(pig) })
     if (dPig > MOB_MAX_DISTANCE_FROM_PIG || dimOf(m) != OVERWORLD) {
@@ -871,14 +881,15 @@ function retargetMobs(server, escorts) {
       return
     }
     let target = pig
-    if (dPig > MOB_TARGET_PIG_RANGE) {
-      let best = 32
-      escorts.forEach(p => {
-        const d = dist3({ x: ex(m), y: ey(m), z: ez(m) }, { x: ex(p), y: ey(p), z: ez(p) })
-        if (d < best) { best = d; target = p }
-      })
-    }
-    setMobTarget(server, m, target, refresh)
+    let best = MOB_PLAYER_AGGRO_RANGE
+    targets.forEach(p => {
+      const d = dist3({ x: ex(m), y: ey(m), z: ez(m) }, { x: ex(p), y: ey(p), z: ez(p) })
+      if (d < best) { best = d; target = p }
+    })
+    const id = uuidOf(m), targetId = uuidOf(target)
+    if (R.mobTargets[id] == targetId && !renew) return
+    R.mobTargets[id] = targetId
+    setMobTarget(server, m, target)
   })
 }
 
@@ -998,7 +1009,7 @@ function startEvent(server) {
     start: start, site: site, minutes: setup.minutes, difficulty: setup.difficulty, diff: DIFFICULTIES[setup.difficulty],
     checkpoints: buildCheckpoints(server, start, site, setup.checkpoints), cpSecured: 0,
     participants: {}, pig: null, pigDead: false, pigUuid: '', pigChunk: '', lastValid: null, lastInteract: null,
-    mobs: {}, nextWaveTick: 0, waveStats: { noGround: 0, summonFailed: 0, removedOnSpawn: 0 }, lastWave: null, halfTick: 0, endTick: 0, lastRetarget: 0, lastRegen: 0, lastPortalRepair: -1000,
+    mobs: {}, nextWaveTick: 0, waveStats: { noGround: 0, summonFailed: 0, removedOnSpawn: 0 }, lastWave: null, halfTick: 0, endTick: 0, lastRetarget: 0, mobTargets: {}, lastRegen: 0, lastPortalRepair: -1000,
     forced: {}, forcedByOthers: {}, keepForced: {}, tampers: 0, pushCooldown: {},
     portalBoxStrict: portalBox(site, 0), portalBoxLoose: portalBox(site, 0.5), frameCells: [], footprint: {}, solidKeys: {},
   }

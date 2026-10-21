@@ -1517,41 +1517,55 @@ function diagnostics(ctx) {
   return 1
 }
 
+// Any error inside a command is shown to whoever ran it (with the script line) instead of only a long Java
+// stack trace in the console.
+function safe(fn) {
+  return ctx => {
+    try {
+      return fn(ctx)
+    } catch (e) {
+      console.error('[PigEscort] Command failed: ' + e + (e && e.stack ? '\n' + e.stack : ''))
+      try { reply(ctx, 'Error: ' + e + ' (details in logs/kubejs/server.log)') } catch (e2) { }
+      return 0
+    }
+  }
+}
+
 ServerEvents.commandRegistry(event => {
   const Commands = event.commands
   const Arguments = event.arguments
 
   const difficultyNode = Commands.literal('difficulty')
   Object.keys(DIFFICULTIES).forEach(d => {
-    difficultyNode.then(Commands.literal(d).executes(ctx => {
+    difficultyNode.then(Commands.literal(d).executes(safe(ctx => {
       if (!requireStaged(ctx)) return 0
       S.setup.difficulty = d
       reply(ctx, 'Difficulty set to ' + d + '.')
       return 1
-    }))
+    })))
   })
 
   event.register(
     Commands.literal('pigescort')
       .requires(source => source.hasPermission(2))
-      .then(Commands.literal('setup').executes(ctx => {
+      .then(Commands.literal('setup').executes(safe(ctx => {
         if (S.phase != 'idle') { reply(ctx, 'The event is already ' + S.phase + '.'); return 0 }
         if (global.trollcraftEventActive) { reply(ctx, 'Another event is active.'); return 0 }
         S.setup = { start: null, portal: null, minutes: DEFAULT_DURATION_MINUTES, difficulty: DEFAULT_DIFFICULTY, checkpoints: [] }
         S.phase = 'staged'
         reply(ctx, 'Pig Escort Detail staged. Defaults: start = world spawn, portal = random, ' + DEFAULT_DURATION_MINUTES + ' min, ' + DEFAULT_DIFFICULTY + '. Adjust, /pigescort preview, then /pigescort start.')
         return 1
-      }))
-      .then(Commands.literal('setstart').executes(ctx => {
+      })))
+      .then(Commands.literal('setstart').executes(safe(ctx => {
         if (!requireStaged(ctx)) return 0
         const p = requirePlayer(ctx)
         if (!p) return 0
         S.setup.start = { x: Math.floor(p.x), y: Math.floor(p.y), z: Math.floor(p.z) }
         reply(ctx, 'Start point set to ' + S.setup.start.x + ' ' + S.setup.start.y + ' ' + S.setup.start.z + '.')
         return 1
-      }))
+      })))
       .then(Commands.literal('setportal')
-        .executes(ctx => {
+        .executes(safe(ctx => {
           if (!requireStaged(ctx)) return 0
           const p = requirePlayer(ctx)
           if (!p) return 0
@@ -1561,8 +1575,8 @@ ServerEvents.commandRegistry(event => {
           S.setup.portal = site
           reply(ctx, 'Portal set at ' + describeSite(site) + ', walk-through direction ' + String(p.facing) + '. You are standing on its platform.')
           return 1
-        })
-        .then(Commands.literal('random').executes(ctx => {
+        }))
+        .then(Commands.literal('random').executes(safe(ctx => {
           if (!requireStaged(ctx)) return 0
           const server = ctx.source.server
           const site = pickRandomPortal(server, S.setup.start || worldSpawn(server))
@@ -1570,61 +1584,61 @@ ServerEvents.commandRegistry(event => {
           S.setup.portal = site
           reply(ctx, 'Random portal site chosen at ' + describeSite(site) + '.')
           return 1
-        })))
+        }))))
       .then(Commands.literal('settime')
-        .then(Commands.argument('minutes', Arguments.INTEGER.create(event)).executes(ctx => {
+        .then(Commands.argument('minutes', Arguments.INTEGER.create(event)).executes(safe(ctx => {
           if (!requireStaged(ctx)) return 0
           const m = Number(Arguments.INTEGER.getResult(ctx, 'minutes'))
           if (m < 1 || m > MAX_DURATION_MINUTES) { reply(ctx, 'Pick 1 to ' + MAX_DURATION_MINUTES + ' minutes.'); return 0 }
           S.setup.minutes = m
           reply(ctx, 'Event length set to ' + m + ' minutes.')
           return 1
-        })))
+        }))))
       .then(difficultyNode)
-      .then(Commands.literal('addcheckpoint').executes(ctx => {
+      .then(Commands.literal('addcheckpoint').executes(safe(ctx => {
         if (!requireStaged(ctx)) return 0
         const p = requirePlayer(ctx)
         if (!p) return 0
         S.setup.checkpoints.push({ x: Math.floor(p.x), y: Math.floor(p.y), z: Math.floor(p.z) })
         reply(ctx, 'Checkpoint ' + S.setup.checkpoints.length + ' added. Checkpoints are secured in the order you add them.')
         return 1
-      }))
-      .then(Commands.literal('clearcheckpoints').executes(ctx => {
+      })))
+      .then(Commands.literal('clearcheckpoints').executes(safe(ctx => {
         if (!requireStaged(ctx)) return 0
         S.setup.checkpoints = []
         reply(ctx, 'Manual checkpoints cleared; automatic ones will be used.')
         return 1
-      }))
-      .then(Commands.literal('preview').executes(ctx => requireStaged(ctx) ? preview(ctx) : 0))
-      .then(Commands.literal('start').executes(ctx => {
+      })))
+      .then(Commands.literal('preview').executes(safe(ctx => requireStaged(ctx) ? preview(ctx) : 0)))
+      .then(Commands.literal('start').executes(safe(ctx => {
         const err = startEvent(ctx.source.server)
         if (err) { reply(ctx, 'Can\'t start: ' + err); return 0 }
         reply(ctx, 'Countdown started.')
         return 1
-      }))
-      .then(Commands.literal('stop').executes(ctx => {
+      })))
+      .then(Commands.literal('stop').executes(safe(ctx => {
         if (S.phase != 'running' && S.phase != 'countdown') { reply(ctx, 'No event is running.'); return 0 }
         endEvent(ctx.source.server, 'stopped')
         reply(ctx, 'Event stopped and cleaned up.')
         return 1
-      }))
-      .then(Commands.literal('cancel').executes(ctx => {
+      })))
+      .then(Commands.literal('cancel').executes(safe(ctx => {
         if (S.phase != 'staged') { reply(ctx, 'Nothing staged to cancel.'); return 0 }
         S.phase = 'idle'
         S.setup = null
         S.previewToken++
         reply(ctx, 'Setup discarded.')
         return 1
-      }))
-      .then(Commands.literal('status').executes(ctx => status(ctx)))
-      .then(Commands.literal('purge').executes(ctx => {
+      })))
+      .then(Commands.literal('status').executes(safe(ctx => status(ctx))))
+      .then(Commands.literal('purge').executes(safe(ctx => {
         if (S.phase != 'idle' && S.phase != 'staged') { reply(ctx, 'Not while an event is running.'); return 0 }
         const server = ctx.source.server
         const n = removeTagged(server, TAG_PIG) + removeTagged(server, TAG_MOB)
         reply(ctx, 'Removed ' + n + ' leftover event entities from loaded chunks.')
         return 1
-      }))
-      .then(Commands.literal('diagnostics').executes(ctx => diagnostics(ctx)))
+      })))
+      .then(Commands.literal('diagnostics').executes(safe(ctx => diagnostics(ctx))))
   )
 })
 

@@ -171,12 +171,18 @@ function run(server, command) { return server.runCommandSilent(command) }
 function runOW(server, command) { return server.runCommandSilent('execute in ' + OVERWORLD + ' run ' + command) }
 function nameOf(player) { return String(player.getGameProfile().getName()) }
 function uuidOf(entity) { return String(entity.getStringUUID()) }
-// Rhino resolves some names to Minecraft's method and others to KubeJS's getter: on this server
-// `server.overworld` is the overworld() method but `player.level` is the level itself. These two helpers
-// work either way.
+// Some names exist both as a Minecraft method and as a KubeJS getter (level, dimension, overworld), and
+// Rhino doesn't pick the same one for each: on this server `server.overworld` is the overworld() method,
+// while `player.level` and `level.dimension` are KubeJS's values. These helpers work with either form.
 function overworldOf(server) { const o = server.overworld; return typeof o == 'function' ? server.overworld() : o }
 function levelOf(entity) { const l = entity.level; return typeof l == 'function' ? entity.level() : l }
-function dimOf(entity) { return String(levelOf(entity).dimension().location()) }
+function dimensionId(level) {
+  let d = level.dimension
+  if (typeof d == 'function') d = level.dimension()      // Minecraft's: a ResourceKey
+  if (d != null && typeof d.location == 'function') d = d.location()
+  return String(d)                                        // KubeJS's is already the ID
+}
+function dimOf(entity) { return dimensionId(levelOf(entity)) }
 // Entity ID like minecraft:hoglin (getEncodeId is plain Minecraft; null for players).
 function typeOf(entity) { const id = entity.getEncodeId(); return id == null ? '' : String(id) }
 function hasTag(entity, tag) { return entity != null && entity.getTags().contains(tag) }
@@ -1362,7 +1368,7 @@ BlockEvents.placed(event => {
 })
 
 LevelEvents.afterExplosion(event => {
-  if (S.phase != 'running' || String(event.getLevel().dimension().location()) != OVERWORLD) return
+  if (S.phase != 'running' || dimensionId(event.getLevel()) != OVERWORLD) return
   const R = S.run
   const list = event.getAffectedBlocks()
   const protect = []

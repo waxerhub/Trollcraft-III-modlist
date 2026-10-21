@@ -115,6 +115,9 @@ const USE_CLEAN_APIS = false
 
 // ===================== CONSTANTS =====================
 
+// Math.PI is missing in the server's script engine (it came out as NaN), so the value is written out here.
+const TWO_PI = 6.283185307179586
+
 const TAG_PIG = 'pig_escort_ambassador'
 const TAG_MOB = 'pig_escort_raider'
 const TAG_PLAYER = 'pig_escort_participant'
@@ -445,7 +448,7 @@ function siteFromPlayer(player) {
 function pickRandomPortal(server, start) {
   const level = overworldOf(server)
   for (let attempt = 0; attempt < RANDOM_PORTAL_ATTEMPTS; attempt++) {
-    let angle = Math.random() * Math.PI * 2
+    let angle = Math.random() * TWO_PI
     let d = RANDOM_PORTAL_MIN_DISTANCE + Math.random() * (RANDOM_PORTAL_MAX_DISTANCE - RANDOM_PORTAL_MIN_DISTANCE)
     let x = Math.floor(start.x + Math.cos(angle) * d), z = Math.floor(start.z + Math.sin(angle) * d)
     if (!insideWorldBorder(server, x, z)) continue
@@ -766,7 +769,7 @@ function pickKind(R, server) {
 function spawnRaider(server, kind) {
   const R = S.run, pig = R.pig, level = overworldOf(server)
   for (let attempt = 0; attempt < 6; attempt++) {
-    let angle = Math.random() * Math.PI * 2
+    let angle = Math.random() * TWO_PI
     let d = WAVE_SPAWN_MIN_DISTANCE + Math.random() * (WAVE_SPAWN_MAX_DISTANCE - WAVE_SPAWN_MIN_DISTANCE)
     let px = ex(pig), py = ey(pig), pz = ez(pig)
     let x = Math.floor(px + Math.cos(angle) * d)

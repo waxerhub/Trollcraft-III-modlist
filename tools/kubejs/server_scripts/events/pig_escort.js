@@ -145,7 +145,7 @@ const S = {
   expectMob: false,   // true while the script is summoning a raider
   lastMob: null,
   previewToken: 0,
-  diag: { hookCalls: {}, discard: 'not used yet', snapshotFile: 'not written yet' },
+  diag: { hookCalls: {}, discard: 'not used yet', snapshotFile: 'not written yet', position: 'not used yet' },
 }
 global.pigEscortState = S
 const WAS_INTERRUPTED = PREVIOUS_STATE != null &&
@@ -177,11 +177,37 @@ function nameOf(player) { return String(player.getGameProfile().getName()) }
 function uuidOf(entity) { return String(typeof entity.getStringUuid == 'function' ? entity.getStringUuid() : entity.getStringUUID()) }
 function javaUuidOf(entity) { return typeof entity.getUuid == 'function' ? entity.getUuid() : entity.getUUID() }
 function extinguish(entity) { if (typeof entity.extinguish == 'function') entity.extinguish(); else entity.clearFire() }
-// Entity position. Calls getX()/getY()/getZ() explicitly: on the live server the `.x` property worked for
-// players but came back empty for the pig.
-function ex(e) { return Number(typeof e.getX == 'function' ? e.getX() : e.x) }
-function ey(e) { return Number(typeof e.getY == 'function' ? e.getY() : e.y) }
-function ez(e) { return Number(typeof e.getZ == 'function' ? e.getZ() : e.z) }
+// Entity position. On the live server neither `pig.x` nor `pig.getX()` gave a number for the pig (players
+// were fine), so this tries several independent ways and uses the first that gives a real number:
+//   1. Minecraft's getX()   2. Minecraft's position() vector   3. KubeJS's entity.block (the block it's in)
+// Which one worked is shown by /pigescort diagnostics.
+const POS_WAYS = [
+  ['getX()', (e, k) => e['get' + k.toUpperCase()]()],
+  ['position()', (e, k) => { const v = e.position(); return typeof v[k] == 'function' ? v[k]() : v[k] }],
+  ['entity.block', (e, k) => Number(e.block[k]) + (k == 'y' ? 0 : 0.5)],
+  ['.x property', (e, k) => e[k]],
+]
+function coord(e, k) {
+  for (let i = 0; i < POS_WAYS.length; i++) {
+    let v = NaN
+    try { v = Number(POS_WAYS[i][1](e, k)) } catch (err) { }
+    if (isFinite(v)) {
+      if (S.diag.position != POS_WAYS[i][0]) S.diag.position = POS_WAYS[i][0]
+      return v
+    }
+  }
+  throw new Error('could not read the ' + k + ' position of ' + e + ' (' + positionReport(e) + ')')
+}
+function positionReport(e) {
+  return POS_WAYS.map(w => {
+    let r
+    try { r = String(w[1](e, 'x')) } catch (err) { r = 'error: ' + err }
+    return w[0] + ' = ' + r
+  }).join('; ')
+}
+function ex(e) { return coord(e, 'x') }
+function ey(e) { return coord(e, 'y') }
+function ez(e) { return coord(e, 'z') }
 // Who is responsible for damage (the shooter for arrows), or null.
 function attackerOf(source) { return typeof source.getActual == 'function' ? source.getActual() : source.getEntity() }
 function damageTypeOf(source) { return String(typeof source.getMsgId == 'function' ? source.getMsgId() : source.getType()) }
@@ -742,8 +768,14 @@ function spawnRaider(server, kind) {
   for (let attempt = 0; attempt < 6; attempt++) {
     let angle = Math.random() * Math.PI * 2
     let d = WAVE_SPAWN_MIN_DISTANCE + Math.random() * (WAVE_SPAWN_MAX_DISTANCE - WAVE_SPAWN_MIN_DISTANCE)
-    let x = Math.floor(ex(pig) + Math.cos(angle) * d), z = Math.floor(ez(pig) + Math.sin(angle) * d)
-    let g = findGround(level, x, z, Math.floor(ey(pig)) + 16, Math.floor(ey(pig)) - 24)
+    let px = ex(pig), py = ey(pig), pz = ez(pig)
+    let x = Math.floor(px + Math.cos(angle) * d)
+    let z = Math.floor(pz + Math.sin(angle) * d)
+    let top = Math.floor(py) + 16
+    if (!isFinite(x) || !isFinite(z) || !isFinite(top)) {
+      throw new Error('bad spawn position: pig ' + px + ' ' + py + ' ' + pz + ', angle ' + angle + ', distance ' + d + ' -> ' + x + ' ' + top + ' ' + z)
+    }
+    let g = findGround(level, x, z, top, top - 40)
     if (!g || g.fluid || g.bad) { R.waveStats.noGround++; continue }
     S.lastMob = null
     S.expectMob = true
@@ -1551,6 +1583,10 @@ function diagnostics(ctx) {
   probe('Event$Result (effect blocking)', () => { Java.loadClass('net.minecraftforge.eventbus.api.Event$Result').DENY.toString() })
   probe('World border', () => { overworldOf(server).getWorldBorder().getMinX() })
   lines.push('entity.discard(): ' + S.diag.discard)
+  lines.push('Entity position read with: ' + S.diag.position)
+  if (S.run && S.run.pig) lines.push('Pig position test: ' + positionReport(S.run.pig))
+  const me = ctx.source.getPlayer()
+  if (me) lines.push('Your position test: ' + positionReport(me))
   lines.push('Crash snapshot file (' + SNAPSHOT_FILE + '): ' + S.diag.snapshotFile)
   lines.forEach(l => reply(ctx, l))
   return 1

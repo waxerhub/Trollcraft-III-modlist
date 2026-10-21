@@ -87,8 +87,10 @@ const DIFFICULTIES = {
 }
 const EXTRA_MOB_PER_PLAYERS = 2        // each wave gets +1 mob per this many Escorts
 const FIRST_WAVE_DELAY_SECONDS = 20    // grace period before the first wave
-const WAVE_SPAWN_MIN_DISTANCE = 20     // waves appear this far from the pig...
-const WAVE_SPAWN_MAX_DISTANCE = 35
+const WAVE_SPAWN_MIN_DISTANCE = 10     // waves appear this far from the pig... (keep within 16: piglins can't
+const WAVE_SPAWN_MAX_DISTANCE = 15     // notice an attack target further away than that, whatever their follow range)
+const RAIDER_REGROUP_DISTANCE = 14     // raiders further than this from the pig are sent back towards it
+const RAIDER_RELOCATE_DISTANCE = 22    // fallback mode only: raiders further than this are moved back near the pig
 const MOB_PLAYER_AGGRO_RANGE = 8       // raiders go for the pig, unless an Escort comes this close to them
                                        // (creative/spectator players are never targeted; mobs ignore them anyway)
 const MOB_MAX_DISTANCE_FROM_PIG = 96   // mobs that wander further than this are removed
@@ -162,10 +164,11 @@ if (PREVIOUS_STATE) {
 }
 
 // Optional "clean" APIs. Each one is only used when USE_CLEAN_APIS is true and it loaded.
-let CLEAN = { heightmap: null, memory: null, effectDeny: null }
+let CLEAN = { heightmap: null, memory: null, effectDeny: null, walkTarget: null }
 if (USE_CLEAN_APIS) {
   try { CLEAN.heightmap = Java.loadClass('net.minecraft.world.level.levelgen.Heightmap$Types').MOTION_BLOCKING_NO_LEAVES } catch (e) { }
   try { CLEAN.memory = Java.loadClass('net.minecraft.world.entity.ai.memory.MemoryModuleType') } catch (e) { }
+  try { CLEAN.walkTarget = Java.loadClass('net.minecraft.world.entity.ai.memory.WalkTarget') } catch (e) { }
   try { CLEAN.effectDeny = Java.loadClass('net.minecraftforge.eventbus.api.Event$Result').DENY } catch (e) { }
 }
 
@@ -767,25 +770,33 @@ function pickKind(R, server) {
   return kinds[0]
 }
 
-function spawnRaider(server, kind) {
+// A random standable spot WAVE_SPAWN_MIN..MAX_DISTANCE blocks from the pig, or null (counts failures).
+function spotNearPig(server) {
   const R = S.run, pig = R.pig, level = overworldOf(server)
+  let angle = Math.random() * TWO_PI
+  let d = WAVE_SPAWN_MIN_DISTANCE + Math.random() * (WAVE_SPAWN_MAX_DISTANCE - WAVE_SPAWN_MIN_DISTANCE)
+  let px = ex(pig), py = ey(pig), pz = ez(pig)
+  let x = Math.floor(px + Math.cos(angle) * d)
+  let z = Math.floor(pz + Math.sin(angle) * d)
+  let top = Math.floor(py) + 16
+  if (!isFinite(x) || !isFinite(z) || !isFinite(top)) {
+    throw new Error('bad spawn position: pig ' + px + ' ' + py + ' ' + pz + ', angle ' + angle + ', distance ' + d + ' -> ' + x + ' ' + top + ' ' + z)
+  }
+  let g = findGround(level, x, z, top, top - 40)
+  if (!g || g.fluid || g.bad) return null
+  return { x: x + 0.5, y: g.y + 1, z: z + 0.5 }
+}
+
+function spawnRaider(server, kind) {
+  const R = S.run
   for (let attempt = 0; attempt < 6; attempt++) {
-    let angle = Math.random() * TWO_PI
-    let d = WAVE_SPAWN_MIN_DISTANCE + Math.random() * (WAVE_SPAWN_MAX_DISTANCE - WAVE_SPAWN_MIN_DISTANCE)
-    let px = ex(pig), py = ey(pig), pz = ez(pig)
-    let x = Math.floor(px + Math.cos(angle) * d)
-    let z = Math.floor(pz + Math.sin(angle) * d)
-    let top = Math.floor(py) + 16
-    if (!isFinite(x) || !isFinite(z) || !isFinite(top)) {
-      throw new Error('bad spawn position: pig ' + px + ' ' + py + ' ' + pz + ', angle ' + angle + ', distance ' + d + ' -> ' + x + ' ' + top + ' ' + z)
-    }
-    let g = findGround(level, x, z, top, top - 40)
-    if (!g || g.fluid || g.bad) { R.waveStats.noGround++; continue }
+    let spot = spotNearPig(server)
+    if (!spot) { R.waveStats.noGround++; continue }
     S.lastMob = null
     S.expectMob = true
     let result = 0
     try {
-      result = runOW(server, 'summon ' + MOB_TYPES[kind] + ' ' + (x + 0.5) + ' ' + (g.y + 1) + ' ' + (z + 0.5) + ' ' + mobNbt(kind))
+      result = runOW(server, 'summon ' + MOB_TYPES[kind] + ' ' + spot.x + ' ' + spot.y + ' ' + spot.z + ' ' + mobNbt(kind))
     } finally {
       S.expectMob = false
     }
@@ -861,6 +872,25 @@ function setMobTarget(server, mob, target) {
   run(server, 'data merge entity ' + uuidOf(mob) + ' {Brain:{memories:{"minecraft:angry_at":{value:' + uuidIntArray(uuidOf(target)) + ',ttl:600L}}}}')
 }
 
+// Sends a raider that has drifted away back towards the pig. Piglins can't notice a target more than 16 blocks
+// away, so without this they wander off. Clean mode: walk it there. Fallback: move it back once it's far out.
+function regroup(server, mob, dPig) {
+  const R = S.run
+  if (CLEAN.memory && CLEAN.walkTarget) {
+    try {
+      mob.getBrain().setMemory(CLEAN.memory.WALK_TARGET, new CLEAN.walkTarget(R.pig, 1.0, 3))
+      return
+    } catch (e) { }
+  }
+  if (dPig <= RAIDER_RELOCATE_DISTANCE) return
+  const id = uuidOf(mob)
+  if (R.relocated[id] && server.tickCount - R.relocated[id] < 200) return
+  const spot = spotNearPig(server)
+  if (!spot) return
+  R.relocated[id] = server.tickCount
+  runOW(server, 'tp ' + id + ' ' + spot.x + ' ' + spot.y + ' ' + spot.z)
+}
+
 // Creative and spectator players can't be attacked, so don't aim mobs at them.
 function canBeTargeted(player) {
   try { return !player.isCreative() && !player.isSpectator() } catch (e) { return true }
@@ -880,6 +910,7 @@ function retargetMobs(server, escorts) {
       try { run(server, 'kill ' + uuidOf(m)) } finally { S.allowRemoval = false }
       return
     }
+    if (dPig > RAIDER_REGROUP_DISTANCE) regroup(server, m, dPig)
     let target = pig
     let best = MOB_PLAYER_AGGRO_RANGE
     targets.forEach(p => {
@@ -1009,7 +1040,7 @@ function startEvent(server) {
     start: start, site: site, minutes: setup.minutes, difficulty: setup.difficulty, diff: DIFFICULTIES[setup.difficulty],
     checkpoints: buildCheckpoints(server, start, site, setup.checkpoints), cpSecured: 0,
     participants: {}, pig: null, pigDead: false, pigUuid: '', pigChunk: '', lastValid: null, lastInteract: null,
-    mobs: {}, nextWaveTick: 0, waveStats: { noGround: 0, summonFailed: 0, removedOnSpawn: 0 }, lastWave: null, halfTick: 0, endTick: 0, lastRetarget: 0, mobTargets: {}, lastRegen: 0, lastPortalRepair: -1000,
+    mobs: {}, nextWaveTick: 0, waveStats: { noGround: 0, summonFailed: 0, removedOnSpawn: 0 }, lastWave: null, halfTick: 0, endTick: 0, lastRetarget: 0, mobTargets: {}, relocated: {}, lastRegen: 0, lastPortalRepair: -1000,
     forced: {}, forcedByOthers: {}, keepForced: {}, tampers: 0, pushCooldown: {},
     portalBoxStrict: portalBox(site, 0), portalBoxLoose: portalBox(site, 0.5), frameCells: [], footprint: {}, solidKeys: {},
   }
@@ -1594,6 +1625,7 @@ function diagnostics(ctx) {
   }
   probe('Heightmap (ground finding)', () => { Java.loadClass('net.minecraft.world.level.levelgen.Heightmap$Types').MOTION_BLOCKING_NO_LEAVES.toString() })
   probe('MemoryModuleType (mob targeting)', () => { Java.loadClass('net.minecraft.world.entity.ai.memory.MemoryModuleType').ANGRY_AT.toString() })
+  probe('WalkTarget (raiders walking back to the pig)', () => { Java.loadClass('net.minecraft.world.entity.ai.memory.WalkTarget').toString() })
   probe('Event$Result (effect blocking)', () => { Java.loadClass('net.minecraftforge.eventbus.api.Event$Result').DENY.toString() })
   probe('World border', () => { overworldOf(server).getWorldBorder().getMinX() })
   lines.push('entity.discard(): ' + S.diag.discard)

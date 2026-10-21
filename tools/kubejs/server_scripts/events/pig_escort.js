@@ -266,7 +266,7 @@ function insideWorldBorder(server, x, z) {
   const level = server.overworld
   if (USE_CLEAN_APIS) {
     try {
-      const b = level.getWorldBorder()
+      let b = level.getWorldBorder()
       return x > b.getMinX() + WORLD_BORDER_MARGIN && x < b.getMaxX() - WORLD_BORDER_MARGIN &&
              z > b.getMinZ() + WORLD_BORDER_MARGIN && z < b.getMaxZ() - WORLD_BORDER_MARGIN
     } catch (e) { }
@@ -451,7 +451,7 @@ function loadSnapshot(server) {
   let json = String(server.persistentData.getString(SNAPSHOT_KEY) || '')
   if (!json.length) {
     try {
-      const m = JsonIO.read(SNAPSHOT_FILE)
+      let m = JsonIO.read(SNAPSHOT_FILE)
       if (m && m.get('snapshot')) json = String(m.get('snapshot'))
     } catch (e) { }
   }
@@ -530,8 +530,8 @@ function removeTagged(server, tag) {
   try {
     if (USE_CLEAN_APIS) {
       try {
-        const all = server.entities
-        const found = []
+        let all = server.entities
+        let found = []
         for (let i = 0; i < all.size(); i++) if (hasTag(all.get(i), tag)) found.push(all.get(i))
         found.forEach(e => { e.discard(); removed++ })
         S.diag.discard = 'clean (discard) OK'
@@ -557,7 +557,7 @@ function noteInteraction(player) {
 function interactionAllowed(player, pig, item) {
   if (String(item.id) == 'minecraft:lead') return true
   if (item.isEmpty() && pig.isLeashed()) {
-    const holder = pig.getLeashHolder()
+    let holder = pig.getLeashHolder()
     return holder != null && uuidOf(holder) == uuidOf(player)
   }
   return false
@@ -609,13 +609,13 @@ function checkPig(server) {
   if (!pig || pig.isRemoved() || !pig.isAlive()) problem = 'the Ambassador went missing'
   else if (dimOf(pig) != OVERWORLD) problem = 'the Ambassador left the Overworld'
   else {
-    const dy = Math.abs(pig.y - R.lastValid.y)
+    let dy = Math.abs(pig.y - R.lastValid.y)
     if (horizDist(pig.x, pig.z, R.lastValid.x, R.lastValid.z) > TELEPORT_LIMIT_HORIZONTAL || dy > TELEPORT_LIMIT_VERTICAL) {
       problem = 'unauthorized relocation'
     } else if (pig.isPassenger() || pig.getPassengers().size() > 0) {
       problem = 'the Ambassador was mounted or put in a vehicle'
     } else if (pig.isLeashed()) {
-      const h = pig.getLeashHolder()
+      let h = pig.getLeashHolder()
       if (h != null && !h.isPlayer() && String(h.type) != 'minecraft:leash_knot') problem = 'the Ambassador was attached to ' + String(h.type)
     }
     if (!problem && (!hasTag(pig, TAG_PIG) || pigName(pig) != PIG_NAME || Math.abs(pig.getMaxHealth() - PIG_MAX_HEALTH) > 0.01)) {
@@ -883,7 +883,7 @@ function updateHud(server, secondsLeft) {
   // Particle column on the portal (force = visible from far away), and on the next checkpoint.
   runOW(server, 'particle minecraft:end_rod ' + num(c.x) + ' ' + (c.y + 12) + ' ' + num(c.z) + ' 0.2 10 0.2 0.01 40 force @a')
   if (R.cpSecured < R.checkpoints.length) {
-    const cp = R.checkpoints[R.cpSecured]
+    let cp = R.checkpoints[R.cpSecured]
     runOW(server, 'particle minecraft:happy_villager ' + (cp.x + 0.5) + ' ' + (cp.y + 6) + ' ' + (cp.z + 0.5) + ' 0.2 6 0.2 0 20 force @a')
   }
 }
@@ -1062,7 +1062,7 @@ function everySecond(server) {
   // Keep the pig's chunk loaded as it moves.
   const k = chunkKey(pig.x, pig.z)
   if (k != R.pigChunk) {
-    const old = R.pigChunk
+    let old = R.pigChunk
     forceChunk(server, pig.x, pig.z)
     R.pigChunk = k
     unforceChunk(server, old)
@@ -1099,7 +1099,7 @@ function endEvent(server, result) {
   S.token++
 
   if (wasRunning) {
-    const players = participantPlayers(server)
+    let players = participantPlayers(server)
     let top = null, topKills = 0
     Object.keys(R.participants).forEach(n => { if (R.participants[n].kills > topKills) { topKills = R.participants[n].kills; top = n } })
 
@@ -1136,11 +1136,11 @@ function cleanup(server, snap) {
   if (snap) {
     if (snap.blocks) {
       // Bottom up, so sand and gravel land back where they were.
-      const blocks = snap.blocks.slice().sort((a, b) => a.y - b.y)
+      let blocks = snap.blocks.slice().sort((a, b) => a.y - b.y)
       blocks.forEach(b => runOW(server, 'setblock ' + b.x + ' ' + b.y + ' ' + b.z + ' ' + b.s + (b.n ? b.n : '')))
       // Anyone standing where the portal was gets lifted onto the restored ground.
       if (snap.site) {
-        const lo = local(snap.site, -2, 0, -2), hi = local(snap.site, 3, 7, 2)
+        let lo = local(snap.site, -2, 0, -2), hi = local(snap.site, 3, 7, 2)
         onlinePlayers(server).forEach(p => {
           if (dimOf(p) != OVERWORLD) return
           if (p.x < Math.min(lo.x, hi.x) - 1 || p.x > Math.max(lo.x, hi.x) + 2 || p.z < Math.min(lo.z, hi.z) - 1 || p.z > Math.max(lo.z, hi.z) + 2) return
@@ -1187,7 +1187,7 @@ const hooks = {
     const inPortal = dimOf(e) == OVERWORLD && entityInBox(e, R.portalBoxLoose)
     if (hasTag(e, TAG_PIG)) {
       event.setCanceled(true)
-      const server = Utils.server
+      let server = Utils.server
       if (inPortal) server.scheduleInTicks(1, () => escortsWin(server))
       else tellIfPossible(server, 'The Ambassador may only leave through the Ministry-Approved Portal. Your portal is unsanctioned and possibly illegal.')
       return
@@ -1195,8 +1195,8 @@ const hooks = {
     if (!inPortal) return // every other portal in the world works as normal
     event.setCanceled(true)
     if (e.isPlayer()) {
-      const server = Utils.server
-      const n = nameOf(e)
+      let server = Utils.server
+      let n = nameOf(e)
       pushOut(server, e)
       if (!R.pushCooldown[n] || server.tickCount - R.pushCooldown[n] > 60) {
         R.pushCooldown[n] = server.tickCount
@@ -1287,10 +1287,10 @@ EntityEvents.death(event => {
     return
   }
   if (hasTag(e, TAG_PIG)) {
-    const killer = event.source.getEntity()
+    let killer = event.source.getEntity()
     if (killer && hasTag(killer, TAG_MOB)) {
       R.pigDead = true
-      const token = S.token
+      let token = S.token
       server.scheduleInTicks(1, () => { if (token == S.token) endEvent(server, 'pig_died') })
     } else {
       // Anything else that somehow killed it is overruled.
@@ -1302,7 +1302,7 @@ EntityEvents.death(event => {
   }
   if (hasTag(e, TAG_MOB)) {
     delete R.mobs[uuidOf(e)]
-    const killer = event.source.getEntity()
+    let killer = event.source.getEntity()
     if (killer && killer.isPlayer() && R.participants[nameOf(killer)]) {
       R.participants[nameOf(killer)].kills++
       announce(server, 'Escort ' + nameOf(killer) + ' has neutralized a ' + (MOB_NAMES[String(e.type)] || 'Piglin') + '. The pig thanks you.', 'green')
@@ -1410,10 +1410,8 @@ ServerEvents.loaded(event => {
   const server = event.server
   server.scheduleInTicks(20, () => recover(server))
 })
-if (Utils.server) {
-  const server = Utils.server
-  server.scheduleInTicks(1, () => recover(server))
-}
+// After a /reload the server is already running, so check straight away (well, next tick).
+if (Utils.server) Utils.server.scheduleInTicks(1, () => recover(Utils.server))
 
 
 // ===================== COMMANDS =====================
@@ -1476,7 +1474,7 @@ function status(ctx) {
   const server = ctx.source.server
   if (S.phase == 'idle') { reply(ctx, 'Idle. Run /pigescort setup to begin.'); return 1 }
   if (S.phase == 'staged') {
-    const st = S.setup
+    let st = S.setup
     reply(ctx, 'Staged | Start: ' + (st.start ? st.start.x + ' ' + st.start.y + ' ' + st.start.z : 'world spawn') +
       ' | Portal: ' + (st.portal ? describeSite(st.portal) + ' (axis ' + st.portal.axis + ')' : 'random') +
       ' | Time: ' + st.minutes + ' min | Difficulty: ' + st.difficulty +

@@ -404,7 +404,7 @@ function sendBroadcast(server) {
     { text: ' ' + message, color: 'yellow' }])
 
   if (mode == 'fullscreen') {
-    const fits = message.length <= SUBTITLE_MAX_CHARS
+    let fits = message.length <= SUBTITLE_MAX_CHARS
     run(server, 'title @a times 10 100 20') // fade in, stay, fade out (ticks)
     run(server, 'title @a subtitle ' + JSON.stringify({ text: fits ? message : SUBTITLE_FALLBACK, color: 'yellow' }))
     run(server, 'title @a title ' + JSON.stringify({ text: TITLE_TEXT, color: 'gold', bold: true }))
@@ -475,7 +475,7 @@ ServerEvents.commandRegistry(event => {
           const server = ctx.source.server
           let next = 'paused (nobody online or broadcasts off)'
           if (state.timerActive) {
-            const secs = Math.max(0, Math.round((state.nextFireTick - server.tickCount) / 20))
+            let secs = Math.max(0, Math.round((state.nextFireTick - server.tickCount) / 20))
             next = Math.floor(secs / 60) + 'm ' + (secs % 60) + 's'
           }
           reply(ctx, 'Broadcasts: ' + (isEnabled(server) ? 'ON' : 'OFF') +

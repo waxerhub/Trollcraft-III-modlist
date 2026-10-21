@@ -16,7 +16,7 @@ function protectingArea(player, block) {
   if (!player || player.hasPermissions(2)) return null
   const dim = String(block.level.dimension().location())
   const name = String(player.getGameProfile().getName())
-  for (const a of PROTECTED_AREAS) {
+  for (let a of PROTECTED_AREAS) {
     if (a.dim != dim || a.allowed.indexOf(name) >= 0) continue
     if (block.x >= Math.min(a.x1, a.x2) && block.x <= Math.max(a.x1, a.x2) &&
         block.y >= Math.min(a.y1, a.y2) && block.y <= Math.max(a.y1, a.y2) &&

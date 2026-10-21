@@ -177,6 +177,11 @@ function nameOf(player) { return String(player.getGameProfile().getName()) }
 function uuidOf(entity) { return String(typeof entity.getStringUuid == 'function' ? entity.getStringUuid() : entity.getStringUUID()) }
 function javaUuidOf(entity) { return typeof entity.getUuid == 'function' ? entity.getUuid() : entity.getUUID() }
 function extinguish(entity) { if (typeof entity.extinguish == 'function') entity.extinguish(); else entity.clearFire() }
+// Entity position. Calls getX()/getY()/getZ() explicitly: on the live server the `.x` property worked for
+// players but came back empty for the pig.
+function ex(e) { return Number(typeof e.getX == 'function' ? e.getX() : e.x) }
+function ey(e) { return Number(typeof e.getY == 'function' ? e.getY() : e.y) }
+function ez(e) { return Number(typeof e.getZ == 'function' ? e.getZ() : e.z) }
 // Who is responsible for damage (the shooter for arrows), or null.
 function attackerOf(source) { return typeof source.getActual == 'function' ? source.getActual() : source.getEntity() }
 function damageTypeOf(source) { return String(typeof source.getMsgId == 'function' ? source.getMsgId() : source.getType()) }
@@ -350,7 +355,7 @@ function portalCenter(site) {
 
 function entityInBox(e, box) {
   const hw = e.getBbWidth() / 2, h = e.getBbHeight()
-  return e.x + hw > box.minX && e.x - hw < box.maxX && e.y + h > box.minY && e.y < box.maxY && e.z + hw > box.minZ && e.z - hw < box.maxZ
+  return ex(e) + hw > box.minX && ex(e) - hw < box.maxX && ey(e) + h > box.minY && ey(e) < box.maxY && ez(e) + hw > box.minZ && ez(e) - hw < box.maxZ
 }
 
 // Block state as text a /setblock command accepts, e.g. minecraft:oak_stairs[facing=east,half=bottom].
@@ -406,7 +411,7 @@ function checkPortalSite(server, site, strict) {
 function siteFromPlayer(player) {
   const facing = String(player.facing)
   return {
-    x: Math.floor(player.x), y: Math.floor(player.y) - 1, z: Math.floor(player.z),
+    x: Math.floor(ex(player)), y: Math.floor(ey(player)) - 1, z: Math.floor(ez(player)),
     axis: (facing == 'north' || facing == 'south') ? 'x' : 'z',
   }
 }
@@ -592,7 +597,7 @@ function findCulprit(server) {
   let best = null, bestD = 10
   onlinePlayers(server).forEach(p => {
     if (dimOf(p) != OVERWORLD) return
-    const d = dist3({ x: p.x, y: p.y, z: p.z }, R.lastValid)
+    const d = dist3({ x: ex(p), y: ey(p), z: ez(p) }, R.lastValid)
     if (d <= bestD) { bestD = d; best = nameOf(p) }
   })
   return best
@@ -631,8 +636,8 @@ function checkPig(server) {
   if (!pig || pig.isRemoved() || !pig.isAlive()) problem = 'the Ambassador went missing'
   else if (dimOf(pig) != OVERWORLD) problem = 'the Ambassador left the Overworld'
   else {
-    let dy = Math.abs(pig.y - R.lastValid.y)
-    if (horizDist(pig.x, pig.z, R.lastValid.x, R.lastValid.z) > TELEPORT_LIMIT_HORIZONTAL || dy > TELEPORT_LIMIT_VERTICAL) {
+    let dy = Math.abs(ey(pig) - R.lastValid.y)
+    if (horizDist(ex(pig), ez(pig), R.lastValid.x, R.lastValid.z) > TELEPORT_LIMIT_HORIZONTAL || dy > TELEPORT_LIMIT_VERTICAL) {
       problem = 'unauthorized relocation'
     } else if (pig.isPassenger() || pig.getPassengers().size() > 0) {
       problem = 'the Ambassador was mounted or put in a vehicle'
@@ -651,7 +656,7 @@ function checkPig(server) {
   // Effects: blocked as they're applied when USE_CLEAN_APIS works; otherwise cleared here every second.
   if (pig.getActiveEffects().size() > 0) run(server, 'effect clear ' + R.pigUuid)
   if (pig.isOnFire()) extinguish(pig)
-  R.lastValid = { x: pig.x, y: pig.y, z: pig.z, health: pig.health }
+  R.lastValid = { x: ex(pig), y: ey(pig), z: ez(pig), health: pig.getHealth() }
   return true
 }
 
@@ -691,7 +696,7 @@ function checkPortalIntact(server) {
 function pushOut(server, player) {
   const R = S.run, site = R.site
   const c = portalCenter(site)
-  const along = site.axis == 'x' ? player.z - c.z : player.x - c.x
+  const along = site.axis == 'x' ? ez(player) - c.z : ex(player) - c.x
   const side = along >= 0 ? 2 : -2
   const spot = local(site, 0, 1, side) // on the platform, 2 blocks in front of or behind the frame
   const x = site.axis == 'x' ? c.x : spot.x + 0.5
@@ -737,8 +742,8 @@ function spawnRaider(server, kind) {
   for (let attempt = 0; attempt < 6; attempt++) {
     let angle = Math.random() * Math.PI * 2
     let d = WAVE_SPAWN_MIN_DISTANCE + Math.random() * (WAVE_SPAWN_MAX_DISTANCE - WAVE_SPAWN_MIN_DISTANCE)
-    let x = Math.floor(pig.x + Math.cos(angle) * d), z = Math.floor(pig.z + Math.sin(angle) * d)
-    let g = findGround(level, x, z, Math.floor(pig.y) + 16, Math.floor(pig.y) - 24)
+    let x = Math.floor(ex(pig) + Math.cos(angle) * d), z = Math.floor(ez(pig) + Math.sin(angle) * d)
+    let g = findGround(level, x, z, Math.floor(ey(pig)) + 16, Math.floor(ey(pig)) - 24)
     if (!g || g.fluid || g.bad) { R.waveStats.noGround++; continue }
     S.lastMob = null
     S.expectMob = true
@@ -824,7 +829,7 @@ function retargetMobs(server, escorts) {
   const refresh = (server.tickCount - R.lastRetarget) >= 60
   if (refresh) R.lastRetarget = server.tickCount
   aliveMobs().forEach(m => {
-    const dPig = dist3({ x: m.x, y: m.y, z: m.z }, { x: pig.x, y: pig.y, z: pig.z })
+    const dPig = dist3({ x: ex(m), y: ey(m), z: ez(m) }, { x: ex(pig), y: ey(pig), z: ez(pig) })
     if (dPig > MOB_MAX_DISTANCE_FROM_PIG || dimOf(m) != OVERWORLD) {
       S.allowRemoval = true
       try { run(server, 'kill ' + uuidOf(m)) } finally { S.allowRemoval = false }
@@ -834,7 +839,7 @@ function retargetMobs(server, escorts) {
     if (dPig > MOB_TARGET_PIG_RANGE) {
       let best = 32
       escorts.forEach(p => {
-        const d = dist3({ x: m.x, y: m.y, z: m.z }, { x: p.x, y: p.y, z: p.z })
+        const d = dist3({ x: ex(m), y: ey(m), z: ez(m) }, { x: ex(p), y: ey(p), z: ez(p) })
         if (d < best) { best = d; target = p }
       })
     }
@@ -856,9 +861,9 @@ function checkCheckpoints(server) {
   if (R.cpSecured >= R.checkpoints.length) return
   const cp = R.checkpoints[R.cpSecured]
   const end = portalCenter(R.site)
-  const near = horizDist(pig.x, pig.z, cp.x, cp.z)
+  const near = horizDist(ex(pig), ez(pig), cp.x, cp.z)
   // Secured when the pig gets close, or has got past it (closer to the portal) without straying too far.
-  const past = horizDist(pig.x, pig.z, end.x, end.z) <= horizDist(cp.x, cp.z, end.x, end.z) && near <= 48
+  const past = horizDist(ex(pig), ez(pig), end.x, end.z) <= horizDist(cp.x, cp.z, end.x, end.z) && near <= 48
   if (near <= CHECKPOINT_RADIUS || past) {
     R.cpSecured++
     announce(server, 'Checkpoint ' + R.cpSecured + ' of ' + R.checkpoints.length + ' secured. Escorts will now be reassigned here after any workplace incident.', 'green')
@@ -875,7 +880,7 @@ function interceptDeath(server, event, player) {
   player.setHealth(player.getMaxHealth())
   extinguish(player)
   player.resetFallDistance()
-  player.foodLevel = 20
+  if (typeof player.setFoodLevel == "function") player.setFoodLevel(20)
   if (server.tickCount < info.processingUntil) return // already being processed
   info.processingUntil = server.tickCount + RESPAWN_PENALTY_SECONDS * 20
   info.deaths++
@@ -904,9 +909,9 @@ function interceptDeath(server, event, player) {
 
 function updateHud(server, secondsLeft) {
   const R = S.run, pig = R.pig
-  const hp = Math.max(0, Math.ceil(pig.health))
+  const hp = Math.max(0, Math.ceil(pig.getHealth()))
   const c = portalCenter(R.site)
-  const d = Math.round(horizDist(pig.x, pig.z, c.x, c.z))
+  const d = Math.round(horizDist(ex(pig), ez(pig), c.x, c.z))
   run(server, 'bossbar set ' + BOSSBAR + ' players @a')
   run(server, 'bossbar set ' + BOSSBAR + ' value ' + hp)
   run(server, 'bossbar set ' + BOSSBAR + ' name ' + JSON.stringify([
@@ -1092,14 +1097,14 @@ function everySecond(server) {
 
   if (server.tickCount - R.lastRegen >= PIG_REGEN_EVERY_SECONDS * 20) {
     R.lastRegen = server.tickCount
-    if (pig.health < PIG_MAX_HEALTH) pig.heal(PIG_REGEN_AMOUNT)
+    if (pig.getHealth() < PIG_MAX_HEALTH) pig.heal(PIG_REGEN_AMOUNT)
   }
 
   // Keep the pig's chunk loaded as it moves.
-  const k = chunkKey(pig.x, pig.z)
+  const k = chunkKey(ex(pig), ez(pig))
   if (k != R.pigChunk) {
     let old = R.pigChunk
-    forceChunk(server, pig.x, pig.z)
+    forceChunk(server, ex(pig), ez(pig))
     R.pigChunk = k
     unforceChunk(server, old)
   }
@@ -1119,8 +1124,8 @@ function escortsWin(server) {
   if (S.phase != 'running') return
   const pig = S.run.pig
   if (pig) {
-    runOW(server, 'particle minecraft:heart ' + num(pig.x) + ' ' + num(pig.y + 1) + ' ' + num(pig.z) + ' 1 1 1 0 30 force @a')
-    runOW(server, 'particle minecraft:totem_of_undying ' + num(pig.x) + ' ' + num(pig.y + 1) + ' ' + num(pig.z) + ' 0.5 1 0.5 0.5 80 force @a')
+    runOW(server, 'particle minecraft:heart ' + num(ex(pig)) + ' ' + num(ey(pig) + 1) + ' ' + num(ez(pig)) + ' 1 1 1 0 30 force @a')
+    runOW(server, 'particle minecraft:totem_of_undying ' + num(ex(pig)) + ' ' + num(ey(pig) + 1) + ' ' + num(ez(pig)) + ' 0.5 1 0.5 0.5 80 force @a')
   }
   endEvent(server, 'delivered')
 }
@@ -1179,10 +1184,10 @@ function cleanup(server, snap) {
         let lo = local(snap.site, -2, 0, -2), hi = local(snap.site, 3, 7, 2)
         onlinePlayers(server).forEach(p => {
           if (dimOf(p) != OVERWORLD) return
-          if (p.x < Math.min(lo.x, hi.x) - 1 || p.x > Math.max(lo.x, hi.x) + 2 || p.z < Math.min(lo.z, hi.z) - 1 || p.z > Math.max(lo.z, hi.z) + 2) return
-          if (p.y < lo.y - 2 || p.y > hi.y + 2) return
-          const spot = safeSpot(overworldOf(server), { x: Math.floor(p.x), y: Math.floor(p.y), z: Math.floor(p.z) })
-          if (spot) runOW(server, 'tp ' + nameOf(p) + ' ' + num(p.x) + ' ' + spot.y + ' ' + num(p.z))
+          if (ex(p) < Math.min(lo.x, hi.x) - 1 || ex(p) > Math.max(lo.x, hi.x) + 2 || ez(p) < Math.min(lo.z, hi.z) - 1 || ez(p) > Math.max(lo.z, hi.z) + 2) return
+          if (ey(p) < lo.y - 2 || ey(p) > hi.y + 2) return
+          const spot = safeSpot(overworldOf(server), { x: Math.floor(ex(p)), y: Math.floor(ey(p)), z: Math.floor(ez(p)) })
+          if (spot) runOW(server, 'tp ' + nameOf(p) + ' ' + num(ex(p)) + ' ' + spot.y + ' ' + num(ez(p)))
         })
       }
     }
@@ -1364,7 +1369,7 @@ EntityEvents.spawned(event => {
   if (tags.contains(TAG_PIG)) {
     if (S.expectPig && S.run) { S.run.pig = e; return }
     if (S.phase == 'running' && S.run && uuidOf(e) == S.run.pigUuid) { S.run.pig = e; return } // the real one reloading
-    console.info('[PigEscort] Removed a stray copy of the Ambassador at ' + Math.floor(e.x) + ' ' + Math.floor(e.y) + ' ' + Math.floor(e.z))
+    console.info('[PigEscort] Removed a stray copy of the Ambassador at ' + Math.floor(ex(e)) + ' ' + Math.floor(ey(e)) + ' ' + Math.floor(ez(e)))
     event.cancel()
   } else if (tags.contains(TAG_MOB)) {
     if (S.expectMob) { S.lastMob = e; return }
@@ -1522,8 +1527,8 @@ function status(ctx) {
   if (S.phase != 'running' || !R || !R.pig) { reply(ctx, 'State: ' + S.phase); return 1 }
   const secs = Math.max(0, Math.ceil((R.endTick - server.tickCount) / 20))
   const kills = Object.keys(R.participants).map(n => n + ' (' + R.participants[n].kills + ' kills, ' + R.participants[n].deaths + ' incidents)')
-  reply(ctx, 'Running | Time left: ' + clock(secs) + ' | Pig: ' + Math.ceil(R.pig.health) + '/' + PIG_MAX_HEALTH +
-    ' at ' + Math.floor(R.pig.x) + ' ' + Math.floor(R.pig.y) + ' ' + Math.floor(R.pig.z) +
+  reply(ctx, 'Running | Time left: ' + clock(secs) + ' | Pig: ' + Math.ceil(R.pig.getHealth()) + '/' + PIG_MAX_HEALTH +
+    ' at ' + Math.floor(ex(R.pig)) + ' ' + Math.floor(ey(R.pig)) + ' ' + Math.floor(ez(R.pig)) +
     ' | Portal: ' + describeSite(R.site) + ' | Difficulty: ' + R.difficulty + ' | Raiders alive: ' + aliveMobs().length +
     ' | Checkpoints: ' + R.cpSecured + '/' + R.checkpoints.length + ' | Tampering: ' + R.tampers +
     (R.lastWave ? ' | Last wave: ' + R.lastWave.spawned + '/' + R.lastWave.wanted + ' spawned (no ground ' + R.lastWave.noGround +
@@ -1594,7 +1599,7 @@ ServerEvents.commandRegistry(event => {
         if (!requireStaged(ctx)) return 0
         const p = requirePlayer(ctx)
         if (!p) return 0
-        S.setup.start = { x: Math.floor(p.x), y: Math.floor(p.y), z: Math.floor(p.z) }
+        S.setup.start = { x: Math.floor(ex(p)), y: Math.floor(ey(p)), z: Math.floor(ez(p)) }
         reply(ctx, 'Start point set to ' + S.setup.start.x + ' ' + S.setup.start.y + ' ' + S.setup.start.z + '.')
         return 1
       })))
@@ -1633,7 +1638,7 @@ ServerEvents.commandRegistry(event => {
         if (!requireStaged(ctx)) return 0
         const p = requirePlayer(ctx)
         if (!p) return 0
-        S.setup.checkpoints.push({ x: Math.floor(p.x), y: Math.floor(p.y), z: Math.floor(p.z) })
+        S.setup.checkpoints.push({ x: Math.floor(ex(p)), y: Math.floor(ey(p)), z: Math.floor(ez(p)) })
         reply(ctx, 'Checkpoint ' + S.setup.checkpoints.length + ' added. Checkpoints are secured in the order you add them.')
         return 1
       })))

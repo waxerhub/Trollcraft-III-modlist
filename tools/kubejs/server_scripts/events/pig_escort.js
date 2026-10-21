@@ -170,7 +170,15 @@ if (USE_CLEAN_APIS) {
 function run(server, command) { return server.runCommandSilent(command) }
 function runOW(server, command) { return server.runCommandSilent('execute in ' + OVERWORLD + ' run ' + command) }
 function nameOf(player) { return String(player.getGameProfile().getName()) }
-function uuidOf(entity) { return String(entity.getStringUUID()) }
+// KubeJS renames some Minecraft methods for scripts (getStringUUID -> getStringUuid, clearFire -> extinguish,
+// DamageSource.getEntity -> getActual, getMsgId -> getType, ...). These helpers use KubeJS's name and fall
+// back to Minecraft's, so they work either way.
+function uuidOf(entity) { return String(typeof entity.getStringUuid == 'function' ? entity.getStringUuid() : entity.getStringUUID()) }
+function javaUuidOf(entity) { return typeof entity.getUuid == 'function' ? entity.getUuid() : entity.getUUID() }
+function extinguish(entity) { if (typeof entity.extinguish == 'function') entity.extinguish(); else entity.clearFire() }
+// Who is responsible for damage (the shooter for arrows), or null.
+function attackerOf(source) { return typeof source.getActual == 'function' ? source.getActual() : source.getEntity() }
+function damageTypeOf(source) { return String(typeof source.getMsgId == 'function' ? source.getMsgId() : source.getType()) }
 // Some names exist both as a Minecraft method and as a KubeJS getter (level, dimension, overworld), and
 // Rhino doesn't pick the same one for each: on this server `server.overworld` is the overworld() method,
 // while `player.level` and `level.dimension` are KubeJS's values. These helpers work with either form.
@@ -641,7 +649,7 @@ function checkPig(server) {
   }
   // Effects: blocked as they're applied when USE_CLEAN_APIS works; otherwise cleared here every second.
   if (pig.getActiveEffects().size() > 0) run(server, 'effect clear ' + R.pigUuid)
-  if (pig.isOnFire()) pig.clearFire()
+  if (pig.isOnFire()) extinguish(pig)
   R.lastValid = { x: pig.x, y: pig.y, z: pig.z, health: pig.health }
   return true
 }
@@ -788,7 +796,7 @@ function setMobTarget(server, mob, target, refresh) {
   if (CLEAN.memory) {
     try {
       if (isHoglin) mob.getBrain().setMemory(CLEAN.memory.ATTACK_TARGET, target)
-      else mob.getBrain().setMemoryWithExpiry(CLEAN.memory.ANGRY_AT, target.getUUID(), 200)
+      else mob.getBrain().setMemoryWithExpiry(CLEAN.memory.ANGRY_AT, javaUuidOf(target), 200)
       return
     } catch (e) { }
   }
@@ -852,17 +860,17 @@ function interceptDeath(server, event, player) {
   const info = R.participants[name]
   event.cancel()
   player.setHealth(player.getMaxHealth())
-  player.clearFire()
+  extinguish(player)
   player.resetFallDistance()
   player.foodLevel = 20
   if (server.tickCount < info.processingUntil) return // already being processed
   info.processingUntil = server.tickCount + RESPAWN_PENALTY_SECONDS * 20
   info.deaths++
-  const killer = event.source.getEntity()
+  const killer = attackerOf(event.source)
   if (killer && hasTag(killer, TAG_MOB)) {
     announce(server, 'Escort ' + name + ' has been temporarily decommissioned by a ' + (MOB_NAMES[typeOf(killer)] || 'Piglin') + '. Reassignment to the nearest checkpoint is underway.', 'red')
   } else {
-    announce(server, 'Escort ' + name + ' has suffered a workplace incident (' + String(event.source.getMsgId()) + '). Reassignment to the nearest checkpoint is underway.', 'red')
+    announce(server, 'Escort ' + name + ' has suffered a workplace incident (' + damageTypeOf(event.source) + '). Reassignment to the nearest checkpoint is underway.', 'red')
   }
   const spot = respawnPoint(server)
   const token = S.token
@@ -1259,7 +1267,7 @@ const hooks = {
   onLivingHurt: event => {
     count('livingHurt')
     if (!hasTag(event.getEntity(), TAG_PIG)) return
-    const src = event.getSource().getEntity()
+    const src = attackerOf(event.getSource())
     if (src && hasTag(src, TAG_MOB) && S.run) event.setAmount(event.getAmount() * S.run.diff.pigDamageMultiplier)
   },
 }
@@ -1283,7 +1291,7 @@ EntityEvents.hurt(event => {
   if (S.phase != 'running' || S.allowRemoval) return
   const e = event.entity
   if (!hasTag(e, TAG_PIG)) return
-  const attacker = event.source.getEntity()
+  const attacker = attackerOf(event.source)
   if (attacker && hasTag(attacker, TAG_MOB)) return
   if (attacker && attacker.isPlayer()) noteInteraction(attacker)
   event.cancel()
@@ -1300,7 +1308,7 @@ EntityEvents.death(event => {
     return
   }
   if (hasTag(e, TAG_PIG)) {
-    let killer = event.source.getEntity()
+    let killer = attackerOf(event.source)
     if (killer && hasTag(killer, TAG_MOB)) {
       R.pigDead = true
       let token = S.token
@@ -1315,7 +1323,7 @@ EntityEvents.death(event => {
   }
   if (hasTag(e, TAG_MOB)) {
     delete R.mobs[uuidOf(e)]
-    let killer = event.source.getEntity()
+    let killer = attackerOf(event.source)
     if (killer && killer.isPlayer() && R.participants[nameOf(killer)]) {
       R.participants[nameOf(killer)].kills++
       announce(server, 'Escort ' + nameOf(killer) + ' has neutralized a ' + (MOB_NAMES[typeOf(e)] || 'Piglin') + '. The pig thanks you.', 'green')

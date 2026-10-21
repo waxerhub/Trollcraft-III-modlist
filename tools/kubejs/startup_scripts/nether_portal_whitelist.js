@@ -9,11 +9,28 @@ const ALLOWED_PORTALS = [
   { dim: 'minecraft:the_nether', x: 12,  y: 70, z: 25,  r: 8 },
 ]
 
+// Dimension ID of a level. KubeJS renames Minecraft's level.dimension() to getDimensionKey() and adds its own
+// `dimension` getter, so this tries each form.
+function portalWhitelistDimension(level) {
+  let d = level.dimension
+  if (typeof d == 'function') d = level.dimension()
+  else if (d == null && typeof level.getDimensionKey == 'function') d = level.getDimensionKey()
+  if (d != null && typeof d.location == 'function') d = d.location()
+  return String(d)
+}
+
 ForgeEvents.onEvent('net.minecraftforge.event.level.BlockEvent$PortalSpawnEvent', event => {
   const pos = event.getPos()
-  const dim = String(event.getLevel().dimension().location())
-  const allowed = ALLOWED_PORTALS.some(a => a.dim == dim &&
-    Math.abs(pos.x - a.x) <= a.r && Math.abs(pos.y - a.y) <= a.r && Math.abs(pos.z - a.z) <= a.r)
+  let dim = 'unknown'
+  let allowed = false
+  try {
+    dim = portalWhitelistDimension(event.getLevel())
+    allowed = ALLOWED_PORTALS.some(a => a.dim == dim &&
+      Math.abs(pos.x - a.x) <= a.r && Math.abs(pos.y - a.y) <= a.r && Math.abs(pos.z - a.z) <= a.r)
+  } catch (e) {
+    // If anything goes wrong, block the portal rather than let it through.
+    console.error('Nether portal whitelist error (portal blocked): ' + e)
+  }
   if (!allowed) {
     event.setCanceled(true)
     console.info('Blocked Nether portal at ' + dim + ' ' + pos.x + ' ' + pos.y + ' ' + pos.z)

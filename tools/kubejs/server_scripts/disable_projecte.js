@@ -1,5 +1,6 @@
-// Temporarily switches ProjectE (and its AppliedE addon) off without deleting anyone's items.
-//  - Removes every ProjectE / AppliedE crafting recipe
+// Temporarily switches ProjectE off without deleting anyone's items.
+// Applied Energistics 2 (ME systems) and its AppliedE addon are not touched.
+//  - Removes every ProjectE crafting recipe
 //  - Stops ProjectE blocks from being placed or opened (tables, condensers, collectors, relays, pedestals...)
 //  - Stops ProjectE items from being right-clicked (Transmutation Tablet, Philosopher's Stone, rings, catalysts...)
 // Alchemical Chests and Alchemical Bags stay usable so nobody is locked out of their stored items.
@@ -8,7 +9,7 @@
 // can still power keybind abilities and passive ring effects, which KubeJS can't block.
 // Note: KubeJS 6's script engine (Rhino) has no `template strings`, so join strings with +.
 
-const DISABLED_MODS = ['projecte', 'appliede']
+const DISABLED_MODS = ['projecte']
 
 // Still allowed, so players can get their stored items out
 const STILL_ALLOWED = [/^projecte:alchemical_chest$/, /^projecte:.*_alchemical_bag$/]

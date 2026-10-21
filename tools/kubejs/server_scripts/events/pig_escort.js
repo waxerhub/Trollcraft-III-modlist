@@ -22,6 +22,7 @@
 //   /pigescort stop                      end now with no winner and clean up
 //   /pigescort cancel                    discard a setup that hasn't started
 //   /pigescort status                    current state, settings, time left, pig health, players
+//   /pigescort wave                      send a raider wave now (testing)
 //   /pigescort purge                     remove stray event pigs/mobs left in loaded chunks (only when idle)
 //   /pigescort diagnostics               which version of each uncertain API is in use (see USE_CLEAN_APIS)
 //
@@ -738,16 +739,19 @@ function spawnRaider(server, kind) {
     let d = WAVE_SPAWN_MIN_DISTANCE + Math.random() * (WAVE_SPAWN_MAX_DISTANCE - WAVE_SPAWN_MIN_DISTANCE)
     let x = Math.floor(pig.x + Math.cos(angle) * d), z = Math.floor(pig.z + Math.sin(angle) * d)
     let g = findGround(level, x, z, Math.floor(pig.y) + 16, Math.floor(pig.y) - 24)
-    if (!g || g.fluid || g.bad) continue
+    if (!g || g.fluid || g.bad) { R.waveStats.noGround++; continue }
     S.lastMob = null
     S.expectMob = true
+    let result = 0
     try {
-      runOW(server, 'summon ' + MOB_TYPES[kind] + ' ' + (x + 0.5) + ' ' + (g.y + 1) + ' ' + (z + 0.5) + ' ' + mobNbt(kind))
+      result = runOW(server, 'summon ' + MOB_TYPES[kind] + ' ' + (x + 0.5) + ' ' + (g.y + 1) + ' ' + (z + 0.5) + ' ' + mobNbt(kind))
     } finally {
       S.expectMob = false
     }
     let m = S.lastMob
     S.lastMob = null
+    if (!result) { R.waveStats.summonFailed++; continue }   // /summon itself was rejected
+    if (!m) { R.waveStats.removedOnSpawn++; continue }      // summoned, but something removed it as it appeared
     if (m) {
       R.mobs[uuidOf(m)] = m
       run(server, 'team join ' + TEAM_RAIDERS + ' ' + uuidOf(m))
@@ -775,8 +779,17 @@ function maybeSpawnWave(server) {
   if (room <= 0) return
   const want = Math.min(room, R.diff.mobsPerWave + Math.floor(Object.keys(R.participants).length / EXTRA_MOB_PER_PLAYERS))
   let spawned = 0
+  R.waveStats = { noGround: 0, summonFailed: 0, removedOnSpawn: 0 }
   for (let i = 0; i < want; i++) if (spawnRaider(server, pickKind(R, server))) spawned++
+  R.waveStats.spawned = spawned
+  R.waveStats.wanted = want
+  R.lastWave = R.waveStats
   if (spawned > 0) announce(server, 'A Piglin delegation of ' + spawned + ' has arrived to contest the transfer. Please remain calm and keep the Ambassador away from them.', 'red')
+  if (spawned < want) {
+    console.warn('[PigEscort] Wave spawned ' + spawned + '/' + want + ' raiders. Failed attempts: no usable ground ' + R.waveStats.noGround +
+      ', /summon rejected or cancelled by another mod ' + R.waveStats.summonFailed + ', removed as it spawned ' + R.waveStats.removedOnSpawn +
+      '. World difficulty: ' + ['peaceful', 'easy', 'normal', 'hard'][run(server, 'difficulty')])
+  }
 }
 
 // Turns a UUID string into the [I;a,b,c,d] form NBT uses.
@@ -924,6 +937,8 @@ function startEvent(server) {
   const players = onlinePlayers(server)
   if (!TEST_MODE && players.length < MIN_PLAYERS) return 'At least ' + MIN_PLAYERS + ' players must be online (' + players.length + ' are). Set TEST_MODE to test alone.'
   if (players.length < 1) return 'Nobody is online.'
+  // /difficulty with no argument returns 0 = peaceful ... 3 = hard. Hostile mobs can't exist on peaceful.
+  if (run(server, 'difficulty') == 0) return 'The world is on Peaceful, so the Piglin raiders would vanish instantly. Use /difficulty easy (or higher) first.'
 
   const setup = S.setup
   const level = overworldOf(server)
@@ -943,7 +958,7 @@ function startEvent(server) {
     start: start, site: site, minutes: setup.minutes, difficulty: setup.difficulty, diff: DIFFICULTIES[setup.difficulty],
     checkpoints: buildCheckpoints(server, start, site, setup.checkpoints), cpSecured: 0,
     participants: {}, pig: null, pigDead: false, pigUuid: '', pigChunk: '', lastValid: null, lastInteract: null,
-    mobs: {}, nextWaveTick: 0, halfTick: 0, endTick: 0, lastRetarget: 0, lastRegen: 0, lastPortalRepair: -1000,
+    mobs: {}, nextWaveTick: 0, waveStats: { noGround: 0, summonFailed: 0, removedOnSpawn: 0 }, lastWave: null, halfTick: 0, endTick: 0, lastRetarget: 0, lastRegen: 0, lastPortalRepair: -1000,
     forced: {}, forcedByOthers: {}, keepForced: {}, tampers: 0, pushCooldown: {},
     portalBoxStrict: portalBox(site, 0), portalBoxLoose: portalBox(site, 0.5), frameCells: [], footprint: {}, solidKeys: {},
   }
@@ -1511,6 +1526,8 @@ function status(ctx) {
     ' at ' + Math.floor(R.pig.x) + ' ' + Math.floor(R.pig.y) + ' ' + Math.floor(R.pig.z) +
     ' | Portal: ' + describeSite(R.site) + ' | Difficulty: ' + R.difficulty + ' | Raiders alive: ' + aliveMobs().length +
     ' | Checkpoints: ' + R.cpSecured + '/' + R.checkpoints.length + ' | Tampering: ' + R.tampers +
+    (R.lastWave ? ' | Last wave: ' + R.lastWave.spawned + '/' + R.lastWave.wanted + ' spawned (no ground ' + R.lastWave.noGround +
+      ', summon rejected/cancelled ' + R.lastWave.summonFailed + ', removed on spawn ' + R.lastWave.removedOnSpawn + ')' : ' | No wave yet') +
     ' | Escorts: ' + kills.join(', '))
   return 1
 }
@@ -1645,6 +1662,15 @@ ServerEvents.commandRegistry(event => {
         S.setup = null
         S.previewToken++
         reply(ctx, 'Setup discarded.')
+        return 1
+      })))
+      .then(Commands.literal('wave').executes(safe(ctx => {
+        if (S.phase != 'running') { reply(ctx, 'No event is running.'); return 0 }
+        S.run.nextWaveTick = 0
+        maybeSpawnWave(ctx.source.server)
+        const w = S.run.lastWave
+        reply(ctx, 'Wave: ' + w.spawned + '/' + w.wanted + ' spawned. Failed attempts: no usable ground ' + w.noGround +
+          ', /summon rejected or cancelled by another mod ' + w.summonFailed + ', removed as it spawned ' + w.removedOnSpawn + '.')
         return 1
       })))
       .then(Commands.literal('status').executes(safe(ctx => status(ctx))))

@@ -30,7 +30,8 @@ Nothing ever travels through the event portal.
 | `/pigescort start` | Launch it. Everything after this is automatic. |
 | `/pigescort stop` | End now with no winner and clean up. |
 | `/pigescort cancel` | Discard a staged setup. |
-| `/pigescort status` | State, settings, time left, pig health and the Escorts' stats. |
+| `/pigescort status` | State, settings, time left, pig health and the Escorts' stats. It also shows how the last raider wave went. |
+| `/pigescort wave` | Send a raider wave now, for testing. It reports how many spawned and why any failed. |
 | `/pigescort purge` | Remove stray event pigs and mobs from loaded chunks. Only works when no event is running. |
 | `/pigescort diagnostics` | Shows whether the hooks are installed and which version of each uncertain API is in use. |
 
@@ -98,8 +99,8 @@ Nothing ever travels through the event portal.
 7. **Tamper detection**
    - Run `/execute as @e[tag=pig_escort_ambassador] run data merge entity @s {Pos:[0d,120d,0d]}` (pick coordinates far away). This moves the pig without firing an event.
    - Within a second: "Tampering … detected", the pig reappears where it was, and you (the last player who touched it) glow and are slowed for 30 s.
-8. **Raiders**
-   - After 20 s, a wave appears 20–35 blocks from the pig. The mobs glow red and carry gold swords, crossbows or gold axes.
+8. **Raiders.** Test in **survival**: mobs ignore creative players, although they still go for the pig. The world must not be on Peaceful, or the event refuses to start.
+   - After 20 s (or right away with `/pigescort wave`), a wave appears 20–35 blocks from the pig. The mobs glow red and carry gold swords, crossbows or gold axes.
    - They go for the pig when within 16 blocks of it, and for you otherwise.
    - Wait more than 15 s: piglins must **not** turn into zombified piglins.
    - Kill one: the chat says "Escort … has neutralized a Piglin".

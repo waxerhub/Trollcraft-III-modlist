@@ -171,9 +171,12 @@ function run(server, command) { return server.runCommandSilent(command) }
 function runOW(server, command) { return server.runCommandSilent('execute in ' + OVERWORLD + ' run ' + command) }
 function nameOf(player) { return String(player.getGameProfile().getName()) }
 function uuidOf(entity) { return String(entity.getStringUUID()) }
-// Note: level(), overworld() etc. must be called as methods. Minecraft has methods with those names,
-// so in Rhino `entity.level` would be the method itself, not the level.
-function dimOf(entity) { return String(entity.level().dimension().location()) }
+// Rhino resolves some names to Minecraft's method and others to KubeJS's getter: on this server
+// `server.overworld` is the overworld() method but `player.level` is the level itself. These two helpers
+// work either way.
+function overworldOf(server) { const o = server.overworld; return typeof o == 'function' ? server.overworld() : o }
+function levelOf(entity) { const l = entity.level; return typeof l == 'function' ? entity.level() : l }
+function dimOf(entity) { return String(levelOf(entity).dimension().location()) }
 // Entity ID like minecraft:hoglin (getEncodeId is plain Minecraft; null for players).
 function typeOf(entity) { const id = entity.getEncodeId(); return id == null ? '' : String(id) }
 function hasTag(entity, tag) { return entity != null && entity.getTags().contains(tag) }
@@ -267,7 +270,7 @@ function safeSpot(level, p) {
 }
 
 function insideWorldBorder(server, x, z) {
-  const level = server.overworld()
+  const level = overworldOf(server)
   if (USE_CLEAN_APIS) {
     try {
       let b = level.getWorldBorder()
@@ -344,7 +347,7 @@ function stateString(block) {
 
 // Checks a site can be used. Returns null if OK, otherwise the reason it can't.
 function checkPortalSite(server, site, strict) {
-  const level = server.overworld()
+  const level = overworldOf(server)
   let top = 319, bottom = -64
   try { top = level.getMaxBuildHeight() - 1; bottom = level.getMinBuildHeight() } catch (e) { }
   if (site.y < bottom + 1 || site.y + 7 > top) return 'it is too close to the top or bottom of the world'
@@ -394,7 +397,7 @@ function siteFromPlayer(player) {
 }
 
 function pickRandomPortal(server, start) {
-  const level = server.overworld()
+  const level = overworldOf(server)
   for (let attempt = 0; attempt < RANDOM_PORTAL_ATTEMPTS; attempt++) {
     let angle = Math.random() * Math.PI * 2
     let d = RANDOM_PORTAL_MIN_DISTANCE + Math.random() * (RANDOM_PORTAL_MAX_DISTANCE - RANDOM_PORTAL_MIN_DISTANCE)
@@ -410,14 +413,14 @@ function pickRandomPortal(server, start) {
 }
 
 function worldSpawn(server) {
-  const p = server.overworld().getSharedSpawnPos()
+  const p = overworldOf(server).getSharedSpawnPos()
   return { x: p.getX(), y: p.getY(), z: p.getZ() }
 }
 
 // Checkpoints along the straight line from start to portal (or the ones the admin placed).
 function buildCheckpoints(server, start, site, manual) {
   if (manual && manual.length) return manual.map(c => ({ x: c.x, y: c.y, z: c.z }))
-  const level = server.overworld()
+  const level = overworldOf(server)
   const end = portalCenter(site)
   const out = []
   AUTO_CHECKPOINTS.forEach(f => {
@@ -655,7 +658,7 @@ function buildPortal(server, site, framesOnly) {
 
 // Puts the frame and portal blocks back if anything (machines, mods) changed them.
 function checkPortalIntact(server) {
-  const R = S.run, level = server.overworld()
+  const R = S.run, level = overworldOf(server)
   let broken = false
   for (let i = 0; i < R.frameCells.length && !broken; i++) {
     let p = R.frameCells[i]
@@ -715,7 +718,7 @@ function pickKind(R, server) {
 }
 
 function spawnRaider(server, kind) {
-  const R = S.run, pig = R.pig, level = server.overworld()
+  const R = S.run, pig = R.pig, level = overworldOf(server)
   for (let attempt = 0; attempt < 6; attempt++) {
     let angle = Math.random() * Math.PI * 2
     let d = WAVE_SPAWN_MIN_DISTANCE + Math.random() * (WAVE_SPAWN_MAX_DISTANCE - WAVE_SPAWN_MIN_DISTANCE)
@@ -818,7 +821,7 @@ function retargetMobs(server, escorts) {
 function respawnPoint(server) {
   const R = S.run
   const p = R.cpSecured > 0 ? R.checkpoints[R.cpSecured - 1] : R.start
-  return safeSpot(server.overworld(), { x: Math.floor(p.x), y: Math.floor(p.y), z: Math.floor(p.z) }) || R.start
+  return safeSpot(overworldOf(server), { x: Math.floor(p.x), y: Math.floor(p.y), z: Math.floor(p.z) }) || R.start
 }
 
 function checkCheckpoints(server) {
@@ -909,7 +912,7 @@ function startEvent(server) {
   if (players.length < 1) return 'Nobody is online.'
 
   const setup = S.setup
-  const level = server.overworld()
+  const level = overworldOf(server)
   const startRaw = setup.start || worldSpawn(server)
   const start = safeSpot(level, startRaw)
   if (!start) return 'The start point isn\'t safe to stand on (water or lava?). Use /pigescort setstart somewhere dry.'
@@ -962,7 +965,7 @@ function beginEvent(server) {
   const now = server.tickCount
 
   // 1. Remember what has to be put back, before changing anything.
-  const level = server.overworld()
+  const level = overworldOf(server)
   const cells = portalLayout(R.site)
   const blocks = []
   cells.forEach(p => {
@@ -1149,7 +1152,7 @@ function cleanup(server, snap) {
           if (dimOf(p) != OVERWORLD) return
           if (p.x < Math.min(lo.x, hi.x) - 1 || p.x > Math.max(lo.x, hi.x) + 2 || p.z < Math.min(lo.z, hi.z) - 1 || p.z > Math.max(lo.z, hi.z) + 2) return
           if (p.y < lo.y - 2 || p.y > hi.y + 2) return
-          const spot = safeSpot(server.overworld(), { x: Math.floor(p.x), y: Math.floor(p.y), z: Math.floor(p.z) })
+          const spot = safeSpot(overworldOf(server), { x: Math.floor(p.x), y: Math.floor(p.y), z: Math.floor(p.z) })
           if (spot) runOW(server, 'tp ' + nameOf(p) + ' ' + num(p.x) + ' ' + spot.y + ' ' + num(p.z))
         })
       }
@@ -1510,7 +1513,7 @@ function diagnostics(ctx) {
   probe('Heightmap (ground finding)', () => { Java.loadClass('net.minecraft.world.level.levelgen.Heightmap$Types').MOTION_BLOCKING_NO_LEAVES.toString() })
   probe('MemoryModuleType (mob targeting)', () => { Java.loadClass('net.minecraft.world.entity.ai.memory.MemoryModuleType').ANGRY_AT.toString() })
   probe('Event$Result (effect blocking)', () => { Java.loadClass('net.minecraftforge.eventbus.api.Event$Result').DENY.toString() })
-  probe('World border', () => { server.overworld().getWorldBorder().getMinX() })
+  probe('World border', () => { overworldOf(server).getWorldBorder().getMinX() })
   lines.push('entity.discard(): ' + S.diag.discard)
   lines.push('Crash snapshot file (' + SNAPSHOT_FILE + '): ' + S.diag.snapshotFile)
   lines.forEach(l => reply(ctx, l))

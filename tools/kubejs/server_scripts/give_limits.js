@@ -31,6 +31,8 @@ const ALLOWED_ONLY = []
 const MAX_COUNT = 64            // most items one /give can hand out
 const BLOCK_NBT = true          // true = no /give with {NBT} (custom enchantments, names, contents...)
 const BLOCK_MULTI_TARGET = true // true = no @a, @e or @r; one named player (or @s / @p) at a time
+const BLOCK_SELF = true         // true = can't give to yourself; the target must be another player, by name
+                                //        (selectors like @s or @p aren't allowed, since they can pick yourself)
 const MAX_USES_PER_HOUR = 30    // per player; 0 = no limit
 const NOTIFY_OPS = true         // show every limited /give to operators who are online
 
@@ -79,8 +81,12 @@ function parseGive(input) {
 }
 
 // Returns null if the /give is allowed, otherwise the reason it isn't.
-function checkGive(give, name) {
+function checkGive(give, name, uuid) {
   if (!give) return 'use the simple form: /give <player> <item> [amount]'
+  if (BLOCK_SELF) {
+    if (give.target.charAt(0) == '@') return 'give to another player by name (selectors like @s or @p are not allowed)'
+    if (give.target.toLowerCase() == name.toLowerCase() || give.target.toLowerCase() == uuid) return 'you cannot give items to yourself'
+  }
   if (BLOCK_MULTI_TARGET && /^@[aer]/.test(give.target)) return 'give to one player at a time (no @a, @e or @r)'
   if (BLOCK_NBT && give.hasNbt) return 'items with {NBT} data are not allowed'
   if (!(give.count >= 1) || give.count > MAX_COUNT) return 'the most you can give at once is ' + MAX_COUNT
@@ -123,7 +129,9 @@ ServerEvents.command('give', event => {
   const name = String(player.getGameProfile().getName())
   const input = String(event.getInput())
   const give = parseGive(input)
-  const problem = checkGive(give, name)
+  let uuid = ''
+  try { uuid = String(player.getStringUuid()).toLowerCase() } catch (e) { }
+  const problem = checkGive(give, name, uuid)
 
   if (problem) {
     event.cancel()

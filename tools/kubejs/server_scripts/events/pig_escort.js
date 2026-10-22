@@ -91,7 +91,10 @@ const WAVE_SPAWN_MIN_DISTANCE = 10     // waves appear this far from the pig... 
 const WAVE_SPAWN_MAX_DISTANCE = 15     // notice an attack target further away than that, whatever their follow range)
 const RAIDER_REGROUP_DISTANCE = 14     // raiders further than this from the pig are sent back towards it
 const RAIDER_RELOCATE_DISTANCE = 22    // fallback mode only: raiders further than this are moved back near the pig
-const MOB_PLAYER_AGGRO_RANGE = 8       // raiders go for the pig, unless an Escort comes this close to them
+// Raiders of these kinds only ever target the pig: they ignore players, even ones who hit them.
+// Kinds: 'piglin', 'marksman' (crossbow piglin), 'brute', 'hoglin'.
+const PIG_ONLY_RAIDERS = ['marksman']
+const MOB_PLAYER_AGGRO_RANGE = 8       // other raiders go for the pig, unless an Escort comes this close to them
                                        // (creative/spectator players are never targeted; mobs ignore them anyway)
 const MOB_MAX_DISTANCE_FROM_PIG = 96   // mobs that wander further than this are removed
 const RAIDER_MOBS_GLOW = true          // raider mobs glow red so they can be seen through walls
@@ -806,6 +809,7 @@ function spawnRaider(server, kind) {
     if (!m) { R.waveStats.removedOnSpawn++; continue }      // summoned, but something removed it as it appeared
     if (m) {
       R.mobs[uuidOf(m)] = m
+      R.mobKinds[uuidOf(m)] = kind
       run(server, 'team join ' + TEAM_RAIDERS + ' ' + uuidOf(m))
       return true
     }
@@ -896,12 +900,16 @@ function canBeTargeted(player) {
   try { return !player.isCreative() && !player.isSpectator() } catch (e) { return true }
 }
 
-// Raiders go for the pig; an Escort who gets within MOB_PLAYER_AGGRO_RANGE of a raider draws it off.
-// A mob's target is only rewritten when it changes, or every 20 seconds to renew it.
+// Raiders go for the pig; an Escort who gets within MOB_PLAYER_AGGRO_RANGE of a raider draws it off
+// (except PIG_ONLY_RAIDERS). A mob's target is only rewritten when it changes, or every 20 seconds to renew it.
+// Pig-only raiders are pointed back at the pig regularly, because piglins turn on whoever hits them.
 function retargetMobs(server, escorts) {
   const R = S.run, pig = R.pig
   const renew = (server.tickCount - R.lastRetarget) >= 400
   if (renew) R.lastRetarget = server.tickCount
+  // Clean mode can do it every second (it doesn't disturb the AI); the /data fallback only every 5 seconds.
+  const reassert = CLEAN.memory ? true : (server.tickCount - R.lastPigOnlyAssert) >= 100
+  if (reassert) R.lastPigOnlyAssert = server.tickCount
   const targets = escorts.filter(canBeTargeted)
   aliveMobs().forEach(m => {
     const dPig = dist3({ x: ex(m), y: ey(m), z: ez(m) }, { x: ex(pig), y: ey(pig), z: ez(pig) })
@@ -911,14 +919,18 @@ function retargetMobs(server, escorts) {
       return
     }
     if (dPig > RAIDER_REGROUP_DISTANCE) regroup(server, m, dPig)
+    const id = uuidOf(m)
+    const pigOnly = PIG_ONLY_RAIDERS.indexOf(R.mobKinds[id]) >= 0
     let target = pig
-    let best = MOB_PLAYER_AGGRO_RANGE
-    targets.forEach(p => {
-      const d = dist3({ x: ex(m), y: ey(m), z: ez(m) }, { x: ex(p), y: ey(p), z: ez(p) })
-      if (d < best) { best = d; target = p }
-    })
-    const id = uuidOf(m), targetId = uuidOf(target)
-    if (R.mobTargets[id] == targetId && !renew) return
+    if (!pigOnly) {
+      let best = MOB_PLAYER_AGGRO_RANGE
+      targets.forEach(p => {
+        const d = dist3({ x: ex(m), y: ey(m), z: ez(m) }, { x: ex(p), y: ey(p), z: ez(p) })
+        if (d < best) { best = d; target = p }
+      })
+    }
+    const targetId = uuidOf(target)
+    if (R.mobTargets[id] == targetId && !renew && !(pigOnly && reassert)) return
     R.mobTargets[id] = targetId
     setMobTarget(server, m, target)
   })
@@ -1040,7 +1052,7 @@ function startEvent(server) {
     start: start, site: site, minutes: setup.minutes, difficulty: setup.difficulty, diff: DIFFICULTIES[setup.difficulty],
     checkpoints: buildCheckpoints(server, start, site, setup.checkpoints), cpSecured: 0,
     participants: {}, pig: null, pigDead: false, pigUuid: '', pigChunk: '', lastValid: null, lastInteract: null,
-    mobs: {}, nextWaveTick: 0, waveStats: { noGround: 0, summonFailed: 0, removedOnSpawn: 0 }, lastWave: null, halfTick: 0, endTick: 0, lastRetarget: 0, mobTargets: {}, relocated: {}, lastRegen: 0, lastPortalRepair: -1000,
+    mobs: {}, nextWaveTick: 0, waveStats: { noGround: 0, summonFailed: 0, removedOnSpawn: 0 }, lastWave: null, halfTick: 0, endTick: 0, lastRetarget: 0, lastPigOnlyAssert: 0, mobTargets: {}, mobKinds: {}, relocated: {}, lastRegen: 0, lastPortalRepair: -1000,
     forced: {}, forcedByOthers: {}, keepForced: {}, tampers: 0, pushCooldown: {},
     portalBoxStrict: portalBox(site, 0), portalBoxLoose: portalBox(site, 0.5), frameCells: [], footprint: {}, solidKeys: {},
   }

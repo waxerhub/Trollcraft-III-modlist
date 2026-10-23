@@ -25,11 +25,11 @@ const PING_MIN = 25               // the connection bars shown in the tab list, 
 const PING_MAX = 90
 const GAME_MODE = 0               // 0 survival, 1 creative, 2 adventure, 3 spectator (spectators sort last)
 const POST_TO_DISCORD = true      // post the join/leave through Simple Discord Link, as for a real player
-// The Discord wording. These are Simple Discord Link's defaults; if you changed playerJoined/playerLeft in
-// config/simple-discord-link/simple-discord-link.toml, copy your versions here. (Scripts can't read that
-// config themselves.)
-const DISCORD_JOINED = '*%player% has joined the server!*'
-const DISCORD_LEFT = '*%player% has left the server!*'
+// The Discord wording, matching playerJoined/playerLeft in config/simple-discord-link/simple-discord-link.toml.
+// If you change those, change these too. (Scripts can't read that config themselves.)
+// 🪂 is the parachute emoji and 📋 the clipboard; ** ** makes the name bold.
+const DISCORD_JOINED = '🪂 **%player%** has deployed. The Ministry is watching.'
+const DISCORD_LEFT = '📋 **%player%** has left the battlefield. Their absence has been noted.'
 
 
 // ===================== HELPERS =====================

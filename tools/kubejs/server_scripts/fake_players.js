@@ -25,6 +25,11 @@ const PING_MIN = 25               // the connection bars shown in the tab list, 
 const PING_MAX = 90
 const GAME_MODE = 0               // 0 survival, 1 creative, 2 adventure, 3 spectator (spectators sort last)
 const POST_TO_DISCORD = true      // post the join/leave through Simple Discord Link, as for a real player
+// The Discord wording. These are Simple Discord Link's defaults; if you changed playerJoined/playerLeft in
+// config/simple-discord-link/simple-discord-link.toml, copy your versions here. (Scripts can't read that
+// config themselves.)
+const DISCORD_JOINED = '*%player% has joined the server!*'
+const DISCORD_LEFT = '*%player% has left the server!*'
 
 
 // ===================== HELPERS =====================
@@ -132,26 +137,21 @@ function announce(server, f, joined) {
 // Simple Discord Link's own join/leave message, built the same way it builds one for a real player.
 // Returns what happened, for the command's reply. Each step is checked separately so the reply says
 // exactly where it stopped. (Simple Discord Link itself only logs send errors when its "debugging"
-// setting is on.)
+// setting is on.) To stop fake joins reaching Discord, set POST_TO_DISCORD to false.
 const SDLINK = 'com.hypherionmc.sdlink.'
 function postToDiscord(f, joined) {
   if (!POST_TO_DISCORD) return 'Discord: off (POST_TO_DISCORD).'
   let step = 'loading Simple Discord Link'
   try {
+    // (Simple Discord Link's config object can't be reached from scripts, because KubeJS hides fields
+    // marked "transient", so the wording comes from DISCORD_JOINED / DISCORD_LEFT above.)
     let Bot = Java.loadClass(SDLINK + 'core.discord.BotController')
-    let Config = Java.loadClass(SDLINK + 'core.config.SDLinkConfig')
     let Author = Java.loadClass(SDLINK + 'api.accounts.DiscordAuthor')
     let Builder = Java.loadClass(SDLINK + 'api.messaging.discord.DiscordMessageBuilder')
     let Type = Java.loadClass(SDLINK + 'api.messaging.MessageType')
     step = 'checking the bot'
     if (Bot.INSTANCE == null || !Bot.INSTANCE.isBotReady()) return 'Discord: not posted, the bot is not connected.'
-    let cfg = Config.INSTANCE
-    if (cfg == null) return 'Discord: not posted, Simple Discord Link has no config loaded.'
-    step = 'reading the config'
-    if (!(joined ? cfg.chatConfig.playerJoin : cfg.chatConfig.playerLeave)) {
-      return 'Discord: not posted, ' + (joined ? 'playerJoin' : 'playerLeave') + ' is off in the Simple Discord Link config.'
-    }
-    let text = String(joined ? cfg.messageFormatting.playerJoined : cfg.messageFormatting.playerLeft).split('%player%').join(f.name)
+    let text = (joined ? DISCORD_JOINED : DISCORD_LEFT).split('%player%').join(f.name)
     step = 'building the message'
     let author = Author.getServer().setPlayerName(f.name).setPlayerAvatar(f.name, String(f.uuid))
     let message = new Builder(joined ? Type.JOIN : Type.LEAVE).message(text).author(author).build()

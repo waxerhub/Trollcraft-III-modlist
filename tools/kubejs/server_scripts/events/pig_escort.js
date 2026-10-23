@@ -965,12 +965,12 @@ function interceptDeath(server, event, player) {
   const R = S.run
   const name = nameOf(player)
   const info = R.participants[name]
-  event.cancel()
+  // Note: event.cancel() stops this function immediately (KubeJS 6), so it's called at each exit point.
   player.setHealth(player.getMaxHealth())
   extinguish(player)
   player.resetFallDistance()
   if (typeof player.setFoodLevel == "function") player.setFoodLevel(20)
-  if (server.tickCount < info.processingUntil) return // already being processed
+  if (server.tickCount < info.processingUntil) { event.cancel(); return } // already being processed
   info.processingUntil = server.tickCount + RESPAWN_PENALTY_SECONDS * 20
   info.deaths++
   const killer = attackerOf(event.source)
@@ -991,6 +991,7 @@ function interceptDeath(server, event, player) {
     runOW(server, 'tp ' + name + ' ' + (spot.x + 0.5) + ' ' + spot.y + ' ' + (spot.z + 0.5))
     title(server, name, 'MINISTRY PROCESSING', 'gold', 'Please hold. Your reassignment is important to us.', 'yellow')
   })
+  event.cancel()   // last: cancel() stops this function
 }
 
 
@@ -1424,9 +1425,9 @@ EntityEvents.death(event => {
       server.scheduleInTicks(1, () => { if (token == S.token) endEvent(server, 'pig_died') })
     } else {
       // Anything else that somehow killed it is overruled.
-      event.cancel()
       e.setHealth(Math.max(1, R.lastValid ? R.lastValid.health : PIG_MAX_HEALTH))
       announce(server, 'The Ambassador\'s death has been ruled unlawful and is therefore cancelled.', 'red')
+      event.cancel()   // last: cancel() stops this function
     }
     return
   }
@@ -1472,16 +1473,16 @@ BlockEvents.broken(event => {
   if (S.phase != 'running') return
   const b = event.block
   if (String(b.getDimension()) != OVERWORLD || !S.run.solidKeys[key(b.x, b.y, b.z)]) return
-  event.cancel()
   if (event.player) tell(Utils.server, nameOf(event.player), 'The Ministry-Approved Portal is protected property.', 'red')
+  event.cancel()
 })
 
 BlockEvents.placed(event => {
   if (S.phase != 'running') return
   const b = event.block
   if (String(b.getDimension()) != OVERWORLD || !S.run.footprint[key(b.x, b.y, b.z)]) return
-  event.cancel()
   if (event.player) tell(Utils.server, nameOf(event.player), 'Construction within the Ministry-Approved Portal zone requires a permit. You do not have one.', 'red')
+  event.cancel()
 })
 
 LevelEvents.afterExplosion(event => {

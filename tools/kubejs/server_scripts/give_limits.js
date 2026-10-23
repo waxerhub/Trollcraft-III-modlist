@@ -134,11 +134,10 @@ ServerEvents.command('give', event => {
   const problem = checkGive(give, name, uuid)
 
   if (problem) {
-    event.cancel()
     tellPlayer(server, name, 'Requisition denied: ' + problem + '.', 'red')
     console.warn('[GiveLimits] DENIED ' + name + ': /' + input.replace(/^\//, '') + ' (' + problem + ')')
     notifyOps(server, name + ' was denied: /' + input.replace(/^\//, '') + ' (' + problem + ')')
-    return
+    event.cancel()   // last: in KubeJS 6, cancel() stops this function immediately
   }
 
   if (MAX_USES_PER_HOUR > 0) state.uses[name].push(Date.now())

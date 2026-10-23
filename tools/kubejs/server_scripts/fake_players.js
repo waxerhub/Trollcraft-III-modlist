@@ -3,7 +3,8 @@
 // /fakeleave <name>  - shows "<name> left the game" and takes <name> off the tab list.
 // /fakeplayers       - lists the pretend players.
 // Players who log in later see the pretend players too. They're only for show: they aren't in /list or the
-// server-browser player count, can't be teleported to or messaged, and Discord bridges won't announce them.
+// server-browser player count, and can't be teleported to or messaged.
+// With Simple Discord Link installed, the join/leave is also posted to Discord like a real one.
 // They're forgotten when the server restarts (a /reload keeps them).
 // If the real player logs in while pretending to be online, the pretend one is quietly dropped.
 // Operators only (permission level 2). For an FTB Ranks rank:
@@ -23,6 +24,7 @@ const MAX_FAKE_PLAYERS = 20
 const PING_MIN = 25               // the connection bars shown in the tab list, in milliseconds
 const PING_MAX = 90
 const GAME_MODE = 0               // 0 survival, 1 creative, 2 adventure, 3 spectator (spectators sort last)
+const POST_TO_DISCORD = true      // post the join/leave through Simple Discord Link, as for a real player
 
 
 // ===================== HELPERS =====================
@@ -43,6 +45,7 @@ function classes() {
   J.Base64 = Java.loadClass('java.util.Base64')
   J.ArrayList = Java.loadClass('java.util.ArrayList')
   J.ready = true
+  try { J.Serializer = Java.loadClass('net.minecraft.network.chat.Component$Serializer') } catch (e) { J.Serializer = null }
   try { J.Skull = Java.loadClass('net.minecraft.world.level.block.entity.SkullBlockEntity') } catch (e) { J.Skull = null }
   return J
 }
@@ -106,6 +109,8 @@ function removePacket(uuids) {
 function sendToAll(server, packet) { server.getPlayerList().broadcastAll(packet) }
 
 // The same yellow message as a real join or leave, including the name's hover card and click-to-message.
+// It's sent the way the game sends a real one (not with /tellraw, which Discord bridges relay as server
+// chat), so it also shows in the server console and log like a real join.
 function announce(server, f, joined) {
   const name = {
     text: f.name, insertion: f.name,
@@ -113,8 +118,38 @@ function announce(server, f, joined) {
     hoverEvent: { action: 'show_entity', contents: { type: 'minecraft:player', id: String(f.uuid), name: { text: f.name } } },
   }
   const key = joined ? 'multiplayer.player.joined' : 'multiplayer.player.left'
-  server.runCommandSilent('tellraw @a ' + JSON.stringify({ translate: key, with: [name], color: 'yellow' }))
-  console.info('[FakePlayers] ' + f.name + (joined ? ' joined' : ' left') + ' the game (pretend)')
+  let sent = false
+  if (J.Serializer) {
+    try {
+      server.getPlayerList().broadcastSystemMessage(J.Serializer.fromJson(JSON.stringify({ translate: key, with: [name], color: 'yellow' })), false)
+      sent = true
+    } catch (e) { console.warn('[FakePlayers] ' + e) }
+  }
+  if (!sent) server.tell(Text.translate(key, f.name).yellow())   // plainer, but still not relayed as chat
+  postToDiscord(f, joined)
+}
+
+// Simple Discord Link's own join/leave message, built the same way it builds one for a real player.
+// Does nothing if the mod isn't installed, its bot isn't connected, or its join/leave messages are off.
+let discordMissing = false
+function postToDiscord(f, joined) {
+  if (!POST_TO_DISCORD || discordMissing) return
+  try {
+    let Bot = Java.loadClass('com.hypherionmc.sdlink.core.discord.BotController')
+    let Config = Java.loadClass('com.hypherionmc.sdlink.core.config.SDLinkConfig')
+    let Author = Java.loadClass('com.hypherionmc.sdlink.api.accounts.DiscordAuthor')
+    let Builder = Java.loadClass('com.hypherionmc.sdlink.api.messaging.discord.DiscordMessageBuilder')
+    let Type = Java.loadClass('com.hypherionmc.sdlink.api.messaging.MessageType')
+    if (Bot.INSTANCE == null || !Bot.INSTANCE.isBotReady() || Config.INSTANCE == null) return
+    let cfg = Config.INSTANCE
+    if (!(joined ? cfg.chatConfig.playerJoin : cfg.chatConfig.playerLeave)) return
+    let text = String(joined ? cfg.messageFormatting.playerJoined : cfg.messageFormatting.playerLeft).replace('%player%', f.name)
+    let author = Author.getServer().setPlayerName(f.name).setPlayerAvatar(f.name, String(f.uuid))
+    new Builder(joined ? Type.JOIN : Type.LEAVE).message(text).author(author).build().sendMessage()
+  } catch (e) {
+    discordMissing = true   // don't keep trying (and logging) every time
+    console.warn('[FakePlayers] Not posting to Discord (is Simple Discord Link installed?): ' + e)
+  }
 }
 
 // Finds the real account for a name, with its skin. Mojang is asked in the background, the same way a

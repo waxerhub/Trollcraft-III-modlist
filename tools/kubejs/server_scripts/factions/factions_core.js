@@ -2,7 +2,8 @@
 // Factions: the core. Storage, commands, chat, dimension tracking and the global.Factions API.
 // Faction definitions and settings live in factions_config.js (loaded first, priority 1001).
 // Other modules that use global.Factions should keep the default priority (0) so they load after this.
-// Needs kubejs/startup_scripts/factions_hooks.js for the dimension events (restart once after adding it).
+// Needs kubejs/startup_scripts/factions_hooks.js for the dimension events and the rank prefix in front of names
+// (restart once after adding or updating it).
 // See FACTIONS.md for the guide and test plan.
 //
 // Rules this file sticks to:
@@ -12,6 +13,9 @@
 //    which Simple Discord Link relays to Discord.
 //  - Secret factions (the Syndicate) never show up in anything another player can see: chat, the tab list,
 //    nameplates, the display name, command replies, error messages or suggestions.
+//  - Public factions' rank prefix goes in front of the player's display name (Forge's NameFormat event, via
+//    factions_hooks.js), so chat reads "[Enforcer] <Goruk> hi". Secret members only ever get what an
+//    unregistered player shows (by default nothing).
 //  - No scoreboard teams (pig_escort.js uses those during its event).
 // KubeJS 6 notes: no template strings (strings are joined with +); `let` inside nested blocks; event.cancel()
 // stops the handler immediately, so it always comes last.
@@ -239,16 +243,32 @@ function rankIndex(f, rank) {
 let Serializer = null
 try { Serializer = Java.loadClass('net.minecraft.network.chat.Component$Serializer') } catch (e) { }
 
+let textWarned = false
 function comp(parts) {
   const json = JSON.stringify([''].concat(parts))
   if (Serializer) {
-    try { return Serializer.fromJson(json) } catch (e) { console.warn('[Factions] Text error: ' + e) }
+    try { return Serializer.fromJson(json) } catch (e) {
+      if (!textWarned) {
+        textWarned = true
+        console.warn('[Factions] Text error, using plain KubeJS text instead: ' + e + ' (in ' + json.substring(0, 120) + ')')
+      }
+    }
   }
-  return Text.of(parts.map(p => isStr(p) ? String(p) : (p.text || '')).join(''))
+  return compFallback(parts)
 }
-function compJson(c) {
-  try { return JSON.parse(String(Serializer.toJson(c))) } catch (e) { }
-  return { text: String(c.getString()) }
+// The same text built with KubeJS's own text methods, keeping colours and bold (click/hover are dropped).
+function camel(s) { return String(s).replace(/_([a-z])/g, (m, c) => c.toUpperCase()) }
+function compFallback(parts) {
+  let out = Text.of('')
+  parts.forEach(p => {
+    let t = Text.of(isStr(p) ? String(p) : (p.text || ''))
+    if (!isStr(p)) {
+      if (p.color && typeof t[camel(p.color)] == 'function') t = t[camel(p.color)]()
+      if (p.bold) { try { t = t.bold() } catch (e) { } }
+    }
+    out = out.append(t)
+  })
+  return out
 }
 function tell(p, parts) { try { p.tell(comp(parts)) } catch (e) { console.error('[Factions] Could not message a player: ' + e) } }
 function voice(f, text) {
@@ -351,6 +371,7 @@ function applyChange(player, newId, newRank, how) {
   if (f.id != DEF) delete S.invites[uuid]
   save()
   if (SET.LOG_CHANGES) console.info('[Factions] faction change for ' + uuid)
+  refreshName(player)
 
   if (old.f == f.id) {
     emit('rankChanged', player, old.r, rank)
@@ -495,18 +516,46 @@ function publicFaction(uuid) {
   return { f: f, r: rec.r }
 }
 
-// Public prefixes go into the message itself (after the name), so the player's display name never changes:
-// Simple Discord Link and FTB Essentials nicknames use the display name.
+// The coloured prefix as text, e.g. a gold "[Enforcer] ", or null if this faction has none.
+function prefixComponent(f, rank) {
+  const prefix = prefixFor(f, rank)
+  return prefix ? comp([{ text: prefix + ' ', color: f.color }]) : null
+}
+
+// The public prefix goes in front of the player's display name (see onNameFormat below), so it shows before the
+// name in chat, death messages, /msg and on Discord. It works together with FTB Essentials: the nickname is set
+// first (HIGHEST priority), then this prefix, then its recording icon (LOWEST): "⏺ [Enforcer] Nick".
+function nameFormat(event) {
+  if (!Utils.server || !SET.SHOW_PUBLIC_PREFIX) return
+  const player = event.getEntity()
+  if (!player || !player.isPlayer()) return
+  const pub = publicFaction(uuidOf(player))
+  const pre = prefixComponent(pub.f, pub.r)
+  if (pre) event.setDisplayname(pre.append(event.getDisplayname()))
+}
+
+// Makes Minecraft work out the player's display name again (after a faction or rank change, or a /reload).
+let NameUtil
+function refreshName(player) {
+  if (NameUtil === undefined) {
+    try { NameUtil = Java.loadClass('dev.ftb.mods.ftblibrary.util.PlayerDisplayNameUtil') } catch (e) { NameUtil = null }
+  }
+  try { if (NameUtil) { NameUtil.refreshDisplayName(player); return } } catch (e) { }
+  try { player.refreshDisplayName() } catch (e) { }
+}
+
+// Fallback for when the name hook isn't loaded yet (factions_hooks.js needs a restart): the prefix is added to
+// the start of the message instead, "<Goruk> [Enforcer] hi".
 PlayerEvents.decorateChat(event => {
-  if (!SET.SHOW_PUBLIC_PREFIX) return
+  if (!SET.SHOW_PUBLIC_PREFIX || global.factionsNameHookInstalled) return
   const player = event.player
   const uuid = uuidOf(player)
   if (SET.SECRET_PREFIX_FOR_MEMBERS && fac(recordOf(uuid).f).secret) return   // handled below, per viewer
   const pub = publicFaction(uuid)
-  const prefix = prefixFor(pub.f, pub.r)
-  if (!prefix) return
+  const pre = prefixComponent(pub.f, pub.r)
+  if (!pre) return
   try {
-    event.setComponent(comp([{ text: prefix + ' ', color: pub.f.color }, compJson(event.getComponent())]))
+    event.setComponent(pre.append(event.getComponent()))
   } catch (e) { console.error('[Factions] Chat prefix failed: ' + e) }
 })
 
@@ -521,14 +570,12 @@ if (SET.SECRET_PREFIX_FOR_MEMBERS) {
     const rec = recordOf(uuid)
     const f = fac(rec.f)
     if (!f.secret) return
-    const name = compJson(player.getDisplayName())
-    const message = compJson(event.getComponent())
-    const pub = publicFaction(uuid)
-    const pubPrefix = SET.SHOW_PUBLIC_PREFIX ? prefixFor(pub.f, pub.r) : ''
-    const memberPrefix = prefixFor(f, rec.r)
-    const head = ['<', name, '> ']
-    const forOthers = comp(head.concat(pubPrefix ? [{ text: pubPrefix + ' ', color: pub.f.color }] : []).concat([message]))
-    const forMembers = comp(head.concat(memberPrefix ? [{ text: memberPrefix + ' ', color: f.color }] : []).concat([message]))
+    const message = event.getComponent()
+    // Everyone else: "<Name> msg" (the display name already carries whatever an unregistered player shows).
+    // Fellow members: "[Cell Leader] <Name> msg".
+    const line = pre => (pre || comp([])).append(comp(['<'])).append(player.getDisplayName()).append(comp(['> '])).append(message)
+    const forOthers = line(null)
+    const forMembers = line(prefixComponent(f, rec.r))
     onlinePlayers().forEach(p => {
       try { p.tell(recordOf(uuidOf(p)).f == f.id ? forMembers : forOthers) } catch (e) { }
     })
@@ -572,6 +619,7 @@ function dimLeave(player, dim, how) {
 }
 
 global.factionsHooks = {
+  onNameFormat: nameFormat,
   onChangedDimension: event => {
     const player = event.getEntity()
     if (!player || !player.isPlayer()) return
@@ -592,6 +640,8 @@ PlayerEvents.loggedIn(event => {
   if (S.configProblem && isOp(player)) tell(player, bad('[Factions] ' + S.configProblem))
   if (!global.factionsHooksInstalled && isOp(player)) {
     tell(player, bad('[Factions] startup_scripts/factions_hooks.js is not active, so dimension events only fire on login, logout and respawn. Restart the server once to load it.'))
+  } else if (!global.factionsNameHookInstalled && isOp(player)) {
+    tell(player, bad('[Factions] The rank prefix is shown after the name until the server restarts with the updated factions_hooks.js.'))
   }
 })
 
@@ -615,8 +665,8 @@ PlayerEvents.respawned(event => {
   }
 })
 
-// After a /reload, refresh the dimension memory for everyone online (no events fire for this).
-onlinePlayers().forEach(p => { S.lastDim[uuidOf(p)] = dimensionId(levelOf(p)) })
+// After a /reload, refresh the dimension memory and display name (prefixes may have changed) of everyone online.
+onlinePlayers().forEach(p => { S.lastDim[uuidOf(p)] = dimensionId(levelOf(p)); refreshName(p) })
 // After a /reload, tell online ops about a config problem.
 if (S.configProblem) onlinePlayers().filter(isOp).forEach(p => tell(p, bad('[Factions] ' + S.configProblem)))
 

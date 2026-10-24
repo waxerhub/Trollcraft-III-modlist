@@ -15,10 +15,13 @@
 //   color         a Minecraft colour name: gold, dark_red, gray, red, yellow, green, aqua, blue, ...
 //   secret        true = membership is never shown to other players (only to admins and the member)
 //   ranks         lowest first. New members get the first rank.
-//   chatPrefix    shown in front of chat messages; %rank% and %title% are filled in. '' = none.
-//                 Public factions: everyone sees it. Secret factions: only fellow members see it, and
-//                 only when SECRET_PREFIX_FOR_MEMBERS is on (see below). Everyone else sees whatever an
-//                 unregistered player shows.
+//   chatPrefix    shown in front of the player's name; %rank% and %title% are filled in. '' = none.
+//                 Public factions: it becomes part of the display name, so everyone sees it before the
+//                 name in chat ("[Enforcer] <Goruk> hi"), death messages, /msg and on Discord. Works with
+//                 FTB Essentials nicknames ("[Enforcer] Nick"). Not in the tab list or on nameplates.
+//                 Secret factions: never in the display name. Fellow members see it only when
+//                 SECRET_PREFIX_FOR_MEMBERS is on (see below); everyone else sees whatever an unregistered
+//                 player shows.
 //   inviteRank    lowest rank allowed to use /faction invite ('' = nobody can invite into this faction)
 //   voice         the tag in front of this faction's messages, its colours, and its title-screen text
 //   info          the /faction info description (secret factions: shown to members only)
@@ -40,7 +43,7 @@ global.FactionsConfigSource = {
     INVITE_MINUTES: 5,                 // invitations expire after this long
     ANNOUNCE_DESERTION: true,          // tell everyone online when someone leaves a faction that has desertionText
     REJOIN_COOLDOWN_MINUTES: 0,        // after leaving, wait this long before an invite can reach them (0 = none)
-    SHOW_PUBLIC_PREFIX: true,          // public factions' chatPrefix in normal chat
+    SHOW_PUBLIC_PREFIX: true,          // public factions' chatPrefix in front of the player's name
     // Secret factions' chatPrefix, shown only to fellow members. OFF by default, because it has to cancel
     // each of their chat messages and send every viewer their own copy. Read FACTIONS.md before turning
     // it on: it can change how those messages reach Discord and how they look in chat.

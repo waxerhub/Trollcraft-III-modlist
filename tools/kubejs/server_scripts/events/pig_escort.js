@@ -1638,7 +1638,9 @@ function diagnostics(ctx) {
   }
   probe('Heightmap (ground finding)', () => { Java.loadClass('net.minecraft.world.level.levelgen.Heightmap$Types').MOTION_BLOCKING_NO_LEAVES.toString() })
   probe('MemoryModuleType (mob targeting)', () => { Java.loadClass('net.minecraft.world.entity.ai.memory.MemoryModuleType').ANGRY_AT.toString() })
-  probe('WalkTarget (raiders walking back to the pig)', () => { Java.loadClass('net.minecraft.world.entity.ai.memory.WalkTarget').toString() })
+  // WalkTarget has no constant to read, so this only checks that the class loads (calling toString() on the
+  // class itself is refused by the script engine, which made this probe always fail).
+  probe('WalkTarget (raiders walking back to the pig)', () => { if (!Java.loadClass('net.minecraft.world.entity.ai.memory.WalkTarget')) throw new Error('class not found') })
   probe('Event$Result (effect blocking)', () => { Java.loadClass('net.minecraftforge.eventbus.api.Event$Result').DENY.toString() })
   probe('World border', () => { overworldOf(server).getWorldBorder().getMinX() })
   lines.push('entity.discard(): ' + S.diag.discard)

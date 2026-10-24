@@ -44,9 +44,15 @@ The ranks only change titles and who can invite. The Enforcers' real permissions
 
 ## Chat prefixes
 
-- **Public factions:** the prefix (e.g. gold `[Enforcer]`) is added to the message itself: `<Goruk> [Enforcer] hello`. It isn't added to the player's display name, because Simple Discord Link's join and leave posts and FTB Essentials nicknames use the display name, and the tab list shows it. The same prefix may also appear on Discord.
-- **Secret factions:** by default, members chat exactly like Unregistered players, with no prefix for anyone.
-- **`SECRET_PREFIX_FOR_MEMBERS: true` (off by default)** shows Syndicate members their own prefix, while everyone else sees the plain message. To do that, each of their chat messages is cancelled and every viewer is sent their own copy. The trade-offs:
+- **Public factions:** the prefix (e.g. gold `[Enforcer]`) goes in front of the player's name: `[Enforcer] <Goruk> hello`. It's added to the player's **display name** through Forge's `NameFormat` event in `factions_hooks.js`.
+  - **Where it shows:** before the name in chat, death messages, `/msg`, the vanilla join and leave messages, and on Discord. Simple Discord Link uses the display name for the chat author and in its join and leave posts, e.g. "[Enforcer] Goruk has deployed".
+  - **Where it doesn't:** the tab list and the nameplate above a player's head don't use the server's display name, so they're unchanged.
+  - **FTB Essentials:** the nickname is set first (it runs at Forge's HIGHEST priority), then the prefix, then the recording or streaming icon (LOWEST). So you get `⏺ [Enforcer] Nick`.
+  - **Changes:** the name updates as soon as someone joins, leaves, is promoted or demoted, and after `/reload`.
+  - **Before the restart:** until the server restarts with the updated `factions_hooks.js`, the prefix is added to the message instead (`<Goruk> [Enforcer] hello`), and ops get a reminder on login.
+  - **Turning it off:** set `SHOW_PUBLIC_PREFIX: false`.
+- **Secret factions:** never in the display name. By default, members chat exactly like Unregistered players, with no prefix for anyone.
+- **`SECRET_PREFIX_FOR_MEMBERS: true` (off by default)** shows Syndicate members their own prefix in front of the name (`[Cell Leader] <Dana> hi`), while everyone else sees the plain message. To do that, each of their chat messages is cancelled and every viewer is sent their own copy. The trade-offs:
   - **Discord:** whether Simple Discord Link still relays those messages depends on when its library (CraterLib) reads chat, which I couldn't check. They may stop reaching Discord, and Syndicate members' messages going missing would itself be a giveaway. Test it before relying on it.
   - **How they look:** the re-sent copies are server messages, not player chat. Players without mods won't notice, but Chat Heads may not show the head next to them. Both groups of viewers get the same kind of copy, so the difference doesn't give away who's in the Syndicate.
   - **Muting still works:** FTB Essentials' mute runs before this, so muted players stay muted.
@@ -107,9 +113,11 @@ Events:
 
 Use **A** (op) and **B** (not op). Copy the three files, restart, and join with both.
 
+**Give each client its own game folder,** or read the results from each client's chat screen. Two clients started from the same instance folder write to the same `logs/latest.log`, so lines appear twice or get overwritten. That once made a message look like a secrecy leak when it wasn't.
+
 1. **Startup:** the log has no `[Factions]` errors, and A gets no "factions_hooks.js is not active" message.
 2. **Defaults:** B runs `/faction` and is told they're an Unregistered Citizen. B runs `/faction set` and gets "unknown command". Tab completion shows B no `set`, `rank`, `remove`, `whois` or `list`.
-3. **Ministry:** A runs `/faction set A ministry Enforcer`. A sees the gold MINISTRY title and welcome, and B sees nothing. A types in chat, and both see `<A> [Enforcer] ...`.
+3. **Ministry:** A runs `/faction set A ministry Enforcer`. A sees the gold MINISTRY title and welcome, and B sees nothing. A types in chat, and both see a gold `[Enforcer] <A> ...`. Set a nickname with `/nickname Goruk`: chat shows `[Enforcer] <Goruk> ...`. A death message reads `[Enforcer] A was slain by ...`.
 4. **Invite and accept:** A runs `/faction invite B`. A sees "Your request has been filed...", and B sees the invitation naming A with Accept and Decline buttons. B clicks Accept, gets the welcome, and A is told B accepted. Then `/faction leave` as B: everyone sees the desertion notice.
 5. **Syndicate secrecy (the important one):** A runs `/faction set A syndicate Cell Leader`. Then, as **B**, check:
    - A's chat messages have no prefix.
@@ -134,13 +142,19 @@ Use **A** (op) and **B** (not op). Copy the three files, restart, and join with 
 
 ## Not verified on a real server
 
-Everything above passed a mock-server test (61 checks). These parts rely on server behaviour I couldn't run here:
+Everything above passed a mock-server test (73 checks). These parts rely on server behaviour I couldn't run here:
 
-- **Where the public prefix shows, and whether it reaches Discord.** It's set through `PlayerEvents.decorateChat` → `setComponent`, which edits the message text. Simple Discord Link may or may not include the prefix, depending on when CraterLib reads chat.
+- **The order of `NameFormat` against FTB Essentials:** that a nickname comes out as `[Enforcer] Nick`. If the prefix ever disappears when a nickname is set, the nickname is being applied after the prefix.
 - **`SECRET_PREFIX_FOR_MEMBERS` mode:** whether Discord still receives those messages, and how Chat Heads handles the re-sent copies (see above).
-- **The title packets** (`ClientboundSetTitleTextPacket` and the others) through KubeJS's name mapping. If they fail, the title text appears in chat instead, with a warning in the log.
 - **Forge firing `PlayerChangedDimensionEvent` for cross-dimension `/tp`.** Forge patches teleporting to do this. Reading the dimension from `getFrom()`/`getTo()` has a fallback for either format.
-- **`Component$Serializer.toJson`**, which is used to keep the original message when adding a prefix. `fromJson` already works on your server, because `/fakejoin` uses it.
+- **If Minecraft's text reader ever fails,** messages are rebuilt with KubeJS's own text methods, keeping colours but losing click and hover. The log then shows one `[Factions] Text error` line with the reason.
+
+**Confirmed on the live server** (by the KubeJS test report):
+- the title packets;
+- invite secrecy;
+- the silent Syndicate leave;
+- persistence across `/reload`;
+- `/ambush status` with the hooks loaded.
 - **Size limit.** The saved data is one NBT text value, which has a limit of about 64 KB. That's roughly 600 faction members. Unregistered players aren't stored.
 
 ---

@@ -562,12 +562,13 @@ function factionChat(player, message, reply) {
 // succeeds, including cross-dimension /tp. Blocked portals never fire it. Login, logout and respawning
 // somewhere else don't fire it, so those are handled here using each player's last known dimension.
 
-function dimEnter(player, from, to) {
+// how: 'travel' (portal, /tp or a mod, from the Forge hook), 'login' or 'respawn'.
+function dimEnter(player, from, to, how) {
   S.lastDim[uuidOf(player)] = to
-  emit('enteredDimension', player, recordOf(uuidOf(player)).f, from, to)
+  emit('enteredDimension', player, recordOf(uuidOf(player)).f, from, to, how)
 }
-function dimLeave(player, dim) {
-  emit('leftDimension', player, recordOf(uuidOf(player)).f, dim)
+function dimLeave(player, dim, how) {
+  emit('leftDimension', player, recordOf(uuidOf(player)).f, dim, how)
 }
 
 global.factionsHooks = {
@@ -576,8 +577,8 @@ global.factionsHooks = {
     if (!player || !player.isPlayer()) return
     const from = keyId(event.getFrom()), to = keyId(event.getTo())
     if (from == to) return
-    dimLeave(player, from)
-    dimEnter(player, from, to)
+    dimLeave(player, from, 'travel')
+    dimEnter(player, from, to, 'travel')
   },
 }
 
@@ -587,7 +588,7 @@ PlayerEvents.loggedIn(event => {
   // Keep the stored name up to date (players are stored by UUID, so a name change loses nothing).
   const r = db().players[uuid]
   if (r && r.n != nameOf(player)) { r.n = nameOf(player); save() }
-  dimEnter(player, null, dimensionId(levelOf(player)))
+  dimEnter(player, null, dimensionId(levelOf(player)), 'login')
   if (S.configProblem && isOp(player)) tell(player, bad('[Factions] ' + S.configProblem))
   if (!global.factionsHooksInstalled && isOp(player)) {
     tell(player, bad('[Factions] startup_scripts/factions_hooks.js is not active, so dimension events only fire on login, logout and respawn. Restart the server once to load it.'))
@@ -598,7 +599,7 @@ PlayerEvents.loggedOut(event => {
   const uuid = uuidOf(event.player)
   const dim = S.lastDim[uuid] || dimensionId(levelOf(event.player))
   delete S.lastDim[uuid]
-  dimLeave(event.player, dim)
+  dimLeave(event.player, dim, 'logout')
 })
 
 PlayerEvents.respawned(event => {
@@ -607,8 +608,8 @@ PlayerEvents.respawned(event => {
   const now = dimensionId(levelOf(player))
   const before = S.lastDim[uuid]
   if (before && before != now) {
-    dimLeave(player, before)
-    dimEnter(player, before, now)
+    dimLeave(player, before, 'respawn')
+    dimEnter(player, before, now, 'respawn')
   } else {
     S.lastDim[uuid] = now
   }

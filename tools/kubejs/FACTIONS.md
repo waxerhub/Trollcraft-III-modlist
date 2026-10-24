@@ -91,11 +91,13 @@ Events:
 - `joinedFaction(player, oldFaction, newFaction)`: not fired when someone becomes Unregistered.
 - `leftFaction(player, faction)`: moving straight from one faction to another fires `leftFaction` first, then `joinedFaction`.
 - `rankChanged(player, oldRank, newRank)`.
-- `enteredDimension(player, faction, from, to)` and `leftDimension(player, faction, dimension)`: they fire when a player:
-  - arrives through a portal or a cross-dimension `/tp` (`leftDimension`, then `enteredDimension`);
-  - logs in (`enteredDimension` with `from = null`);
-  - logs out (`leftDimension`);
-  - respawns in a different dimension from the one they died in (both).
+- `enteredDimension(player, faction, from, to, how)` and `leftDimension(player, faction, dimension, how)`: they fire when a player:
+  - arrives through a portal or a cross-dimension `/tp` (`leftDimension`, then `enteredDimension`; `how` = `'travel'`);
+  - logs in (`enteredDimension` with `from = null`, `how` = `'login'`);
+  - logs out (`leftDimension`, `how` = `'logout'`);
+  - respawns in a different dimension from the one they died in (both, `how` = `'respawn'`).
+
+  `'travel'` doesn't say whether it was a portal or `/tp`. Portal Ambush tells them apart by checking for a portal block where the player arrived.
 
   Portals blocked by `nether_portal_whitelist.js` fire nothing. A listener that throws is logged and doesn't stop the others or the change itself.
 
@@ -140,3 +142,96 @@ Everything above passed a mock-server test (61 checks). These parts rely on serv
 - **Forge firing `PlayerChangedDimensionEvent` for cross-dimension `/tp`.** Forge patches teleporting to do this. Reading the dimension from `getFrom()`/`getTo()` has a fallback for either format.
 - **`Component$Serializer.toJson`**, which is used to keep the original message when adding a prefix. `fromJson` already works on your server, because `/fakejoin` uses it.
 - **Size limit.** The saved data is one NBT text value, which has a limit of about 64 KB. That's roughly 600 faction members. Unregistered players aren't stored.
+
+---
+
+# Portal Ambush (add-on)
+
+Punishes faction members for travelling into the dimension hostile to their faction. Crownsworn (`ministry`) are hunted in the Nether, and Syndicate (`syndicate`) members are hunted in the Overworld.
+
+| Mechanic | Trigger | What comes |
+|---|---|---|
+| 1. Nether Ambush | A ministry player comes into the Nether **through a Nether portal**. 50% chance. | A war party of Blood-Marked Piglins: piglins with a sword or crossbow, and brutes with an axe, in dark red leather. 3 mobs, +1 per extra target, up to 8. |
+| 2. Return Inspection | A syndicate player comes back to the Overworld through a portal. 50% chance, and **only if nobody outside the Syndicate is within 48 blocks**. | A patrol of Ministry Inspectors: vindicators and pillagers in gold leather. 2 mobs, +1 per extra target, up to 6. |
+| 3. Random Raid | A countdown that only runs while the player is in their hostile dimension: Nether 30–60 minutes, Overworld 45–90. When it ends there's a 35% chance of a raid. | The same mobs, 18–32 blocks away and ideally out of sight. A warning comes 3 seconds before they arrive. Overworld raids follow the same secrecy rule: with a witness nearby, the raid is postponed 2–5 minutes, up to 3 times. |
+
+## Files
+
+| File | Goes in | |
+|---|---|---|
+| `portal_ambush.js` | `kubejs/server_scripts/factions/` | Everything. All settings, names and messages are at the top. |
+| `portal_ambush_hooks.js` | `kubejs/startup_scripts/` | Stops ambush mobs targeting anyone outside their group, and powers the `ZERO_XP` option. |
+
+Both also need `factions_core.js` and `factions_hooks.js`, which is how portal arrivals are detected. **Restart once** after adding the startup file. `/ambush status` shows whether both hooks are loaded.
+
+## Rules
+
+- **Who they attack:** mobs only attack their own group's targets. They're steered to their targets every second, and the hook refuses any other target. Damage from them, arrows included, to anyone or anything else is cancelled. So they never fight other players, villagers, iron golems, normal piglins or each other.
+- **Targets:**
+  - **Portal ambushes:** the players who came through, plus other eligible players of the hunted faction within 24 blocks.
+  - **Raids:** hunted-faction players within 32 blocks.
+  - **Never targeted:** players in creative or spectator, players taking part in a Pig Escort, and players on cooldown.
+  - **Switching:** mobs switch to the nearest target within 32 blocks.
+- **Ending a group:** the group ends, quietly and with no drops, when:
+  - all its mobs are killed;
+  - 60 seconds pass with every target dead, offline or more than 64 blocks away;
+  - every target has escaped (a target who leaves the dimension just drops out of the group);
+  - it reaches 10 minutes;
+  - someone runs `/ambush clear`.
+
+  Each target then gets a **10-minute cooldown**.
+- **Drops:**
+  - **Vanilla loot and equipment:** none.
+  - **Reward per kill:** Blood-Marked Piglins drop 1–3 gold nuggets, Ministry Inspectors 0–1 emerald.
+  - **XP:** vanilla, unless `ZERO_XP = true`.
+  - **Other:** they can't pick up items or barter. Inspectors never join or start raids, and give no Bad Omen.
+- **Caps:** 8 mobs per group and 24 ambush mobs on the whole server.
+- **Where nothing happens:**
+  - within 64 blocks of world spawn;
+  - within 64 blocks of an active Pig Escort portal;
+  - inside the `SAFE_ZONES` areas.
+
+  Raid countdowns pause there too.
+- **Peaceful:** everything is skipped and countdowns pause.
+- **Saved data:** cooldowns and countdowns are stored by UUID in `persistentData["portal_ambush"]`, so logging out, `/reload` and restarts don't reset them. A countdown keeps its remaining time when the player leaves and comes back.
+- **Leftovers:** ambush mobs from before a restart or `/reload` are removed as they load.
+
+## Commands (op level 2)
+
+| Command | |
+|---|---|
+| `/ambush test nether <player>` | A war party on the player in 3 seconds. Skips the roll, cooldown and safe zones, and targets them whatever their faction. |
+| `/ambush test overworld <player>` | An inspection patrol in 3 seconds. Also skips the secrecy check. |
+| `/ambush test raid <player>` | A raid in their hostile dimension (they must be there). Skips the roll and cooldown but **keeps the secrecy postponement**. |
+| `/ambush timer <player>` | Their raid countdown, any postponement, their cooldown, and whether they're in a group. |
+| `/ambush status` | On or off, hooks, and the active groups with their mechanic, targets, mob count and age. |
+| `/ambush clear` | Ends every group and removes every ambush mob. No cooldowns are given. |
+| `/ambush toggle` | Turns the add-on on or off. The setting is saved, and no data is lost. Turning it off ends the active groups. |
+
+## Test plan (two accounts in survival: A = ministry, B = syndicate)
+
+Set up as an op: `/faction set A ministry` and `/faction set B syndicate`. Keep away from world spawn (64 blocks) for everything except step 9. To test the chances quickly, temporarily set `NETHER_AMBUSH_CHANCE` and `OVERWORLD_PATROL_CHANCE` to `1`, then `/reload`.
+
+1. **Nether ambush through a portal:** A goes through an allowed Nether portal. After 3 seconds, Blood-Marked Piglins (dark red chestplates, names showing) appear 6–12 blocks away. Only A sees "[SIGNAL HIJACKED] Blood for the Blood God." They attack A even if A wears gold.
+2. **No ambush from `/tp`:** go back to the Overworld and wait until `/ambush timer A` shows no cooldown (10 minutes). Then use `/execute in minecraft:the_nether run tp A ~ 100 ~`. No ambush appears. Going through the portal again now would trigger one.
+3. **Return inspection:** B comes back to the Overworld through a portal with A more than 48 blocks away. Ministry Inspectors appear, and only B sees "[MINISTRY] Routine border inspection...". Repeat after the cooldown with **A standing within 48 blocks** of the arrival portal: nothing happens, and nobody gets a message.
+4. **Raids:** with B in the Overworld, run `/ambush test raid B`. B gets "[MINISTRY] Inspectors have been dispatched..." and a patrol arrives 3 seconds later, 18–32 blocks away. Then, with A standing within 48 blocks of B, run `/ambush test raid B` again (after `/ambush clear`). The reply says the raid was postponed, and `/ambush timer B` shows "postponed raid, 1/3". With A in the Nether, `/ambush test raid A` sends a war party after "[SIGNAL HIJACKED] The Blood God has found you."
+5. **Wrong faction ignored:** during a war party on A, B stands among the piglins. They never target or hurt B. During a patrol on B, A stands among the inspectors and is ignored. Nearby villagers and iron golems aren't attacked.
+6. **Drops:** each killed piglin drops 1–3 gold nuggets and nothing else (no gold sword or crossbow, no loot). Inspectors drop 0–1 emerald.
+7. **Despawning:** start a group and run more than 64 blocks away. About 60 seconds later the group vanishes without drops. Or go back through the portal: you escape, and the group ends once nobody is left.
+8. **Cooldowns:** after a group ends, `/ambush timer A` shows a cooldown of about 10 minutes, and portal trips trigger nothing until it's over. Restart the server and check that the cooldown and countdown survived.
+9. **Safe zones and caps:**
+   - near world spawn, portal arrivals and raids never trigger;
+   - `/ambush status` never shows more than 8 mobs in a group or 24 in total;
+   - on Peaceful nothing happens and `/ambush timer` stops counting down.
+
+## Not verified on a real server
+
+The mock-server test passed all 50 checks: portal travel versus `/tp` versus respawn, shared rolls, secrecy skips and postponements, sizes and caps, target and damage filtering, rewards, quiet despawning, escapes, cooldowns, persistence across `/reload`, Peaceful, toggle and stray removal. These parts depend on the real game:
+
+- **Whether Forge's `LivingChangeTargetEvent` also covers the piglin brain's own target choice.** If it doesn't, piglins are still re-aimed every second, and their hits on anyone else are cancelled.
+- **Whether the change-target cancel holds against vanilla "revenge" targeting** (mobs turning on whoever hit them). Same safety net as above.
+- **Whether `CanPickUpLoot:0b` fully stops piglins taking gold to barter.**
+- **Whether `block.popItem` works for the rewards.** If it doesn't, the reward is spawned with `/summon item`.
+- **Whether `EntityEvents.spawned` fires for mobs loading from saved chunks.** That's how leftovers are removed. `/ambush clear` also removes any loaded ones.
+- **Whether the portal-block check works with mods that teleport you next to a portal.**

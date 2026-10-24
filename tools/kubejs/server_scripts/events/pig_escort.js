@@ -138,8 +138,19 @@ const UNLOCK_NETHER = true             // the reveal ends by switching off nethe
 // %leader% in any text below is replaced with this name.
 const LEADER_NAME = 'hypixel'
 const LEADER_EFFECTS_DELAY_SECONDS = 2   // thunder, red column and title this long after the join message
-const LEADER_FINALE_DELAY_SECONDS = 20   // the rest of the finale (AFTER_LEADER) starts this long after the
-                                         // join message. /pigescort reveal continue starts it straight away.
+const LEADER_FINALE_DELAY_SECONDS = 20   // with no LEADER_LINES: the rest of the finale (AFTER_LEADER) starts
+                                         // this long after the join message
+// What the leader says after arriving, before the Ministry responds. Each line comes `after` seconds after the
+// previous one (the first: after the join message). Sent with /fakesay (fake_players.js): it shows as
+// <%leader%> text, like real chat, and Discord posts it as the leader speaking. [] = no speech.
+const LEADER_LINES = [
+  { after: 4, text: 'Citizens. The Ministry told you there was one door, and that it was theirs.' },
+  { after: 5, text: 'We are the Blood God\'s Syndicate. We stamp no forms. We collect no tolls.' },
+  { after: 5, text: 'Your fields are yours. Your strength is yours. The Nether is yours.' },
+  { after: 4, text: 'Blood for the Blood God.' },
+]
+const LEADER_LINES_END_PAUSE_SECONDS = 5  // after the last line, the rest of the finale (AFTER_LEADER) starts
+// (/pigescort reveal continue skips whatever is left of the wait or the speech.)
 
 // Only for /pigescort finale test and /pigescort finale restoreframe: two opposite corners of an obsidian
 // frame (the outer edge, obsidian included), for example { x: 100, y: 64, z: 200 } and { x: 103, y: 68, z: 200 }.
@@ -185,7 +196,8 @@ const REVEAL = [
   { at: 4, hijack: 'Honor the player, not the statue. Tend your fields, grow your strength, answer to no one.' },
   { at: 8, action: 'leader' },
 ]
-// After the leader: from LEADER_FINALE_DELAY_SECONDS after the join message (or /pigescort reveal continue).
+// After the leader: once the leader's lines are said (or LEADER_FINALE_DELAY_SECONDS after the join message if
+// there are none, or straight away with /pigescort reveal continue).
 const AFTER_LEADER = [
   { at: 0, ministry: 'The preceding broadcast was not authorized. There is no Syndicate. Citizens who heard it are asked to un-hear it by end of day.' },
   { at: 5, action: 'unlock' },
@@ -226,7 +238,7 @@ const FINALE_UNLOCK_MESSAGE = 'Due to an unscheduled structural event, Nether ac
 // Shown to ops only. %seconds% = LEADER_FINALE_DELAY_SECONDS.
 // Told to a player who walks into the event portal before the explosion (nothing goes through it).
 const FINALE_PORTAL_CLOSED = 'This portal is closed pending an inquiry. Step away from the portal.'
-const FINALE_OP_NOTICE = '%leader% has joined. The rest of the finale runs in %seconds% s. Run /pigescort reveal continue to run it now.'
+const FINALE_OP_NOTICE = '%leader% has joined. %speech%The rest of the finale runs in %seconds% s. Run /pigescort reveal continue to run it now.'
 
 
 // ===================== CONSTANTS =====================
@@ -1647,11 +1659,33 @@ function leaderJoined(server, arrived) {
   const F = S.fin
   if (F.leaderAt != null) return
   F.leaderAt = server.tickCount
+  // The leader's lines, only if they're really "online" to say them (not if /fakejoin failed).
+  const fakes = (global.fakePlayers && global.fakePlayers.fakes) || {}
+  const lines = arrived && LEADER_NAME && fakes[LEADER_NAME.toLowerCase()] ? LEADER_LINES : []
+  let t = 0
+  lines.forEach(line => {
+    t += line.after
+    later(server, t * 20, () => leaderSays(server, line.text))
+  })
+  const wait = lines.length ? t + LEADER_LINES_END_PAUSE_SECONDS : LEADER_FINALE_DELAY_SECONDS
   if (arrived) {
     later(server, LEADER_EFFECTS_DELAY_SECONDS * 20, () => FINALE_ACTIONS.leader_arrival(server))
-    tellOps(server, fill(FINALE_OP_NOTICE).split('%seconds%').join(String(LEADER_FINALE_DELAY_SECONDS)))
+    tellOps(server, fill(FINALE_OP_NOTICE).split('%speech%').join(lines.length ? 'They say ' + lines.length + ' line' + (lines.length == 1 ? '' : 's') + '. ' : '')
+      .split('%seconds%').join(String(wait)))
   }
-  later(server, LEADER_FINALE_DELAY_SECONDS * 20, () => afterLeader(server))
+  later(server, wait * 20, () => afterLeader(server))
+}
+// One of the leader's lines, as real-looking chat (and on Discord as them). Nothing once the Ministry has the floor.
+function leaderSays(server, text) {
+  if (!S.fin || S.fin.afterLeader) return
+  const fp = global.fakePlayers
+  if (!fp || typeof fp.say != 'function') {
+    if (!S.fin.sayMissing) tellOps(server, 'The leader\'s lines need fake_players.js (global.fakePlayers.say). They were skipped.')
+    S.fin.sayMissing = true
+    return
+  }
+  const result = String(fp.say(LEADER_NAME, fill(text)))
+  if (!/^</.test(result)) console.warn('[PigEscort] Leader line not said: ' + result)
 }
 function afterLeader(server) {
   if (!S.fin || S.fin.afterLeader) return

@@ -2,6 +2,8 @@
 //                      If <name> is a real Minecraft account, the tab list shows that player's skin.
 // /fakeleave <name>  - shows "<name> left the game" and takes <name> off the tab list.
 // /fakeplayers       - lists the pretend players.
+// /fakesay <name> <message> - a pretend player "says" something: it shows as <name> message, like real chat,
+//                      and is posted to Discord's chat channel as that player. Scripts: global.fakePlayers.say(name, text).
 // Players who log in later see the pretend players too. They're only for show: they aren't in /list or the
 // server-browser player count, and can't be teleported to or messaged.
 // With Simple Discord Link installed, the join/leave is also posted to Discord like a real one.
@@ -11,6 +13,7 @@
 //   /ftbranks node add <rank> command.fakejoin true
 //   /ftbranks node add <rank> command.fakeleave true
 //   /ftbranks node add <rank> command.fakeplayers true
+//   /ftbranks node add <rank> command.fakesay true
 // Copy to <server>/kubejs/server_scripts/ and run /reload.
 // Note: KubeJS 6's script engine (Rhino) has no `template strings`, so strings are joined with +.
 
@@ -25,6 +28,8 @@ const PING_MIN = 25               // the connection bars shown in the tab list, 
 const PING_MAX = 90
 const GAME_MODE = 0               // 0 survival, 1 creative, 2 adventure, 3 spectator (spectators sort last)
 const POST_TO_DISCORD = true      // post the join/leave through Simple Discord Link, as for a real player
+const POST_CHAT_TO_DISCORD = true // post /fakesay lines to Discord's chat channel as that player
+const MAX_CHAT_LENGTH = 256       // the same limit as real chat
 // The Discord wording, matching playerJoined/playerLeft in config/simple-discord-link/simple-discord-link.toml.
 // If you change those, change these too. (Scripts can't read that config themselves.)
 // 🪂 is the parachute emoji and 📋 the clipboard; ** ** makes the name bold.
@@ -116,12 +121,17 @@ function sendToAll(server, packet) { server.getPlayerList().broadcastAll(packet)
 // The same yellow message as a real join or leave, including the name's hover card and click-to-message.
 // It's sent the way the game sends a real one (not with /tellraw, which Discord bridges relay as server
 // chat), so it also shows in the server console and log like a real join.
-function announce(server, f, joined) {
-  const name = {
+// The player name as the game shows it in chat: hover card and click-to-message.
+function nameJson(f) {
+  return {
     text: f.name, insertion: f.name,
     clickEvent: { action: 'suggest_command', value: '/tell ' + f.name + ' ' },
     hoverEvent: { action: 'show_entity', contents: { type: 'minecraft:player', id: String(f.uuid), name: { text: f.name } } },
   }
+}
+
+function announce(server, f, joined) {
+  const name = nameJson(f)
   const key = joined ? 'multiplayer.player.joined' : 'multiplayer.player.left'
   let sent = false
   if (J.Serializer) {
@@ -164,6 +174,60 @@ function postToDiscord(f, joined) {
     console.error('[FakePlayers] Discord post failed while ' + step + ': ' + detail)
     return 'Discord: failed while ' + step + ': ' + detail
   }
+}
+
+// A pretend player's chat line, the way Simple Discord Link posts a real player's chat (its onServerChatEvent):
+// in the chat channel, with the player's name and avatar.
+function postChatToDiscord(f, text) {
+  if (!POST_CHAT_TO_DISCORD) return 'Discord: off (POST_CHAT_TO_DISCORD).'
+  let step = 'loading Simple Discord Link'
+  try {
+    let Bot = Java.loadClass(SDLINK + 'core.discord.BotController')
+    let Author = Java.loadClass(SDLINK + 'api.accounts.DiscordAuthor')
+    let Builder = Java.loadClass(SDLINK + 'api.messaging.discord.DiscordMessageBuilder')
+    let Type = Java.loadClass(SDLINK + 'api.messaging.MessageType')
+    step = 'checking the bot'
+    if (Bot.INSTANCE == null || !Bot.INSTANCE.isBotReady()) return 'Discord: not posted, the bot is not connected.'
+    step = 'building the message'
+    let author = Author.of(f.name, String(f.uuid), f.name).setPlayerName(f.name).setPlayerAvatar(f.name, String(f.uuid))
+    let message = new Builder(Type.CHAT).message(text).author(author).build()
+    step = 'sending'
+    message.sendMessage()
+    return 'Discord: sent.'
+  } catch (e) {
+    let detail = String(e)
+    try { if (e.javaException) detail = String(e.javaException) } catch (e2) { }
+    console.error('[FakePlayers] Discord chat post failed while ' + step + ': ' + detail)
+    return 'Discord: failed while ' + step + ': ' + detail
+  }
+}
+
+// <name> message, exactly like real chat. Sent the way the game sends system messages (not with /tellraw,
+// which Discord bridges relay as server chat), so the server console and log show it too.
+function fakeSay(server, name, text, reply) {
+  classes()
+  const f = state.fakes[keyOf(name)]
+  if (!f) return reply(name + ' is not a pretend player. /fakejoin them first.', true)
+  text = String(text).trim()
+  if (!text) return reply('Nothing to say.', true)
+  if (text.length > MAX_CHAT_LENGTH) text = text.substring(0, MAX_CHAT_LENGTH)
+  let sent = false
+  if (J.Serializer) {
+    try {
+      server.getPlayerList().broadcastSystemMessage(J.Serializer.fromJson(JSON.stringify({ translate: 'chat.type.text', with: [nameJson(f), text] })), false)
+      sent = true
+    } catch (e) { console.warn('[FakePlayers] ' + e) }
+  }
+  if (!sent) server.tell(Text.of('<' + f.name + '> ' + text))
+  return reply('<' + f.name + '> ' + text + ' ' + postChatToDiscord(f, text), false)
+}
+
+// For other scripts: global.fakePlayers.say('hypixel', 'Hello.'). Returns what the command would reply.
+state.say = (name, text) => {
+  let result = ''
+  if (!Utils.server) return 'The server is not running.'
+  fakeSay(Utils.server, String(name), String(text), (msg, bad) => { result = msg; return bad ? 0 : 1 })
+  return result
 }
 
 // Finds the real account for a name, with its skin. Mojang is asked in the background, the same way a
@@ -296,6 +360,23 @@ ServerEvents.commandRegistry(event => {
         return builder.buildFuture()
       })
       .executes(run(fakeLeave, 'fakeleave'))))
+
+  event.register(Commands.literal('fakesay')
+    .requires(source => source.hasPermission(2))
+    .then(Commands.argument('name', StringArgumentType.word())
+      .suggests((ctx, builder) => {
+        fakeList().forEach(f => builder.suggest(f.name))
+        return builder.buildFuture()
+      })
+      .then(Commands.argument('message', StringArgumentType.greedyString()).executes(ctx => {
+        const reply = replier(ctx)
+        try {
+          return fakeSay(ctx.source.server, String(StringArgumentType.getString(ctx, 'name')), String(StringArgumentType.getString(ctx, 'message')), reply)
+        } catch (e) {
+          console.error('[FakePlayers] /fakesay failed: ' + e)
+          return reply('/fakesay failed: ' + e, true)
+        }
+      }))))
 
   event.register(Commands.literal('fakeplayers')
     .requires(source => source.hasPermission(2))

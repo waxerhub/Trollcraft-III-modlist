@@ -105,16 +105,21 @@ The escort plays exactly as before. Only the ending changes. All the texts, titl
 - **R+0:** everyone online gets the title "THE BLOOD GOD'S SYNDICATE" with the subtitle "Blood for the Blood God." and the Elder Guardian curse sound.
 - **R+4:** [SIGNAL HIJACKED] "Honor the player, not the statue…"
 - **R+8:** the leader, `/fakejoin hypixel` (`LEADER_NAME`). That shows the join message, puts hypixel on the tab list with their skin, and posts the join to Discord.
-- **2 s after the join message:** thunder for everyone (no real lightning), a red particle column at the portal, and the title "hypixel / has entered the server.". Ops get a note saying how long until the rest runs.
-- **20 s after the join message** (`LEADER_FINALE_DELAY_SECONDS`, or straight away with `/pigescort reveal continue`): [MINISTRY] "The preceding broadcast was not authorized…"
+- **2 s after the join message:** thunder for everyone (no real lightning), a red particle column at the portal, and the title "hypixel / has entered the server.". Ops get a note saying how many lines follow and how long until the rest runs.
+- **hypixel speaks:** the lines in `LEADER_LINES`, at 4, 9, 14 and 18 s after the join message by default.
+  - They're sent with `/fakesay` (fake_players.js), so in-game they look exactly like real chat: `<hypixel> …`, with the same name hover as a real player.
+  - Simple Discord Link posts them to the Discord chat channel as hypixel (hypixel's name and avatar), like a real player's message.
+- **5 s after the last line** (`LEADER_LINES_END_PAUSE_SECONDS`, or straight away with `/pigescort reveal continue`, which also cuts the speech short): [MINISTRY] "The preceding broadcast was not authorized…". With `LEADER_LINES = []` there's no speech, and this comes 20 s after the join message (`LEADER_FINALE_DELAY_SECONDS`).
 - **+5 s:** the Nether is unlocked (`UNLOCK_NETHER`) with [MINISTRY] "Due to an unscheduled structural event…".
 - **+8 s:** the event ends and cleans up.
 
 **Leader notes:**
-- No chat is ever sent as the leader.
+- **Editing the speech:** add, remove or reword lines in `LEADER_LINES` at the top of `pig_escort.js`. `after` is the pause before each line, in seconds.
+- **If the join failed** (fake_players.js missing), the lines are skipped, because nobody is there to say them.
+- **Speaking live:** an op can also type as hypixel at any time with `/fakesay hypixel <message>`.
 - hypixel stays on the tab list until you run `/fakeleave hypixel`. If hypixel is still "online" at the next finale, there's no second join message and ops are told so.
 
-**Discord:** like every Pig Escort announcement, the finale lines use `tellraw @a`, which Simple Discord Link relays to Discord as server chat. So the reveal shows up in Discord too.
+**Discord:** like every Pig Escort announcement, the [MINISTRY] and [SIGNAL HIJACKED] lines use `tellraw @a`, which Simple Discord Link relays to Discord as server chat. So the reveal shows up in Discord too. hypixel's lines are the exception: they post as hypixel speaking.
 
 **Stopping:** `/pigescort stop` during the finale ends it at once and cleans up. A `/reload` or restart during it does the same, and no later step runs.
 
@@ -129,26 +134,31 @@ Test on a **copy of the world**. A test is announced to everyone online, and the
    - After the reveal, the land at the site is put back exactly, and the setup is still staged (`/pigescort status`).
    - `/pigescort nether status` still says Locked, because tests never unlock. Ops are told "Test run: the Nether was NOT unlocked".
 2. **Ending B:** run `/pigescort finale test fail`. Red dust drifts from 15 blocks in front of the portal into it at T+8.
-3. **The leader delay:**
+3. **hypixel's chat on its own (no finale):**
+   - Run `/fakejoin hypixel`, then `/fakesay hypixel test`.
+   - In-game it reads `<hypixel> test`, exactly like real chat, and the server console shows it too.
+   - In Discord it appears in the chat channel as hypixel speaking, not as the server. The command's reply says "Discord: sent." or why not.
+   - Run `/fakeleave hypixel` afterwards.
+4. **The leader and the speech:**
    - Before the test, run `/fakeleave hypixel`.
    - About 29 s in, "hypixel joined the game" appears, with hypixel on the tab list and their skin.
-   - 2 s later come the thunder, the red column and the "hypixel" title, and ops get the "rest of the finale runs in 20 s" note.
-   - 20 s after the join, the Ministry response follows.
-4. **`/pigescort reveal continue`:**
-   - Run another test and use it right after the join note: the Ministry response comes at once.
+   - 2 s later come the thunder, the red column and the "hypixel" title, and ops get the "They say 4 lines. The rest of the finale runs in 23 s" note.
+   - The four lines arrive 4, 9, 14 and 18 s after the join, in-game and in Discord's chat channel. The Ministry response follows 5 s after the last.
+5. **`/pigescort reveal continue`:**
+   - Run another test and use it during the speech: the remaining lines are dropped and the Ministry response comes at once.
    - Run it again: "Already continuing."
    - Run it before the leader step: "hasn't reached the leader yet."
-5. **`/pigescort stop` mid-finale:** everything is cleaned up, and nothing else is said afterwards.
-6. **Walking into the portal before T+14:** you're put back in front of it with "This portal is closed pending an inquiry."
-7. **A fixed test frame (optional):**
+6. **`/pigescort stop` mid-finale:** everything is cleaned up, and nothing else is said afterwards.
+7. **Walking into the portal before T+14:** you're put back in front of it with "This portal is closed pending an inquiry."
+8. **A fixed test frame (optional):**
    - Set `PORTAL_FRAME_FROM` / `PORTAL_FRAME_TO` to the outer corners of a frame (it must be flat: the same x or the same z) and run `/reload`.
    - `/pigescort finale restoreframe` builds and lights it. `finale test fail` blows it up, and it stays crying obsidian afterwards.
    - `restoreframe` puts it back.
-8. **Unlocking:**
+9. **Unlocking:**
    - `/pigescort nether unlock`, then light a Nether portal outside the whitelist: it lights.
    - `/pigescort nether lock`: it's refused again.
    - Restart the server between unlock and lighting to check that the switch is saved.
-9. **A real run:**
+10. **A real run:**
    - With `TEST_MODE = true`, `/pigescort settime 2`, and walk the pig in (Ending A).
    - Then run again and let it time out (Ending B).
    - After the real Ending A, `/pigescort nether status` says Unlocked. Run `/pigescort nether lock` if this was only a test.
@@ -256,6 +266,7 @@ Test on a **copy of the world**. A test is announced to everyone online, and the
    - **The explosion push** uses Minecraft's `knockback(...)` and then sets `hurtMarked` so the player's game gets the new motion. If either fails, the push is skipped and a warning is logged; nothing else is affected.
    - **The unlock switch** is read inside the whitelist's startup handler through `event.getLevel().getServer().persistentData`. If that can't be read, the whitelist stays on, and the error is logged once. `/pigescort nether unlock` also sets a `global` flag the whitelist checks first, so it still works until the next restart.
    - **`/fakejoin` run from the script:** the server runs it with full permission, so this should work. If it fails, ops are told and the finale goes on.
+   - **hypixel's chat on Discord:** `/fakesay` builds Simple Discord Link's chat message (`DiscordAuthor.of(name, uuid, name)` with `MessageType.CHAT`) the same way Simple Discord Link does for a real player's chat. If it fails, the command's reply and the log say where. The in-game line is not affected.
    - **The fireworks:** the NBT format (`FireworksItem`) and the damage name `fireworks` used to cancel firework damage. The fireworks explode 12 blocks above the frame, out of their 5-block damage range anyway.
    - **`explosion_emitter` with `force`:** it should show for everyone, at any distance.
 6. **Mods that react to a right-click on the pig at a higher priority** than KubeJS's could act before the cancel. Tamper detection is the backstop.

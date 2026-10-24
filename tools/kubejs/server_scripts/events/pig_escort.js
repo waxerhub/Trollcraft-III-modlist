@@ -161,6 +161,18 @@ const LEADER_LINES = [
 // kept between minSeconds and maxSeconds. With these numbers the lines above take 4.8 to 13.5 s each (about 73 s in all).
 const LEADER_TYPING = { pauseSeconds: 2, charsPerSecond: 8, minSeconds: 3, maxSeconds: 14 }
 const LEADER_LINES_END_PAUSE_SECONDS = 8  // after the last line, the rest of the finale (AFTER_LEADER) starts
+                                          // (with a FINALE_TRACK: the track starts instead, see below)
+// A music track after the leader's last line, before the Ministry responds (with no lines: when the Ministry
+// would have responded). It comes from a resource pack the players have (see PIG_ESCORT.md, "The finale track")
+// and plays for everyone online, wherever they are. While it plays the heartbeat is silent.
+const FINALE_TRACK = {
+  sound: 'trollcraft:finale_track',  // the sound event in the pack's sounds.json. '' = no track
+  seconds: 0,                         // THE TRACK'S LENGTH. 0 = not set up yet: no track, ops are reminded
+  startAfter: 4,                      // seconds after the last line (instead of LEADER_LINES_END_PAUSE_SECONDS)
+  pauseAfter: 2,                      // seconds of quiet after it ends, before the Ministry responds
+  volume: 1,
+  category: 'master',                 // the sound slider it follows: master, music, record, ...
+}
 // (/pigescort reveal continue skips whatever is left of the wait or the speech.)
 
 // Only for /pigescort finale test and /pigescort finale restoreframe: two opposite corners of an obsidian
@@ -1692,6 +1704,7 @@ function startFinale(server, fin) {
 function finishFinale(server) {
   const keep = S.fin ? S.fin.keepSetup : null
   console.info('[PigEscort] Finale finished')
+  stopTrack(server)
   restoreWeather(server)
   cleanup(server, S.snap)
   if (keep) { S.setup = keep; S.phase = 'staged' }   // a test at the staged portal site leaves the setup as it was
@@ -1738,7 +1751,14 @@ function leaderJoined(server, arrived) {
     later(server, t * 20, () => leaderSays(server, line))
   })
   if (lines.length) speechStart(server)
-  const wait = lines.length ? t + LEADER_LINES_END_PAUSE_SECONDS : LEADER_FINALE_DELAY_SECONDS
+  // Then the track (if there is one), then the rest of the finale.
+  const T = FINALE_TRACK, track = !!T.sound && T.seconds > 0
+  if (T.sound && !(T.seconds > 0)) tellOps(server, 'FINALE_TRACK.seconds (the length of ' + T.sound + ') isn\'t set in pig_escort.js, so the finale track was skipped.')
+  let wait = lines.length ? t + (track ? T.startAfter : LEADER_LINES_END_PAUSE_SECONDS) : LEADER_FINALE_DELAY_SECONDS
+  if (track) {
+    later(server, wait * 20, () => playTrack(server))
+    wait += T.seconds + T.pauseAfter
+  }
   if (arrived) {
     later(server, LEADER_EFFECTS_DELAY_SECONDS * 20, () => FINALE_ACTIONS.leader_arrival(server))
     tellOps(server, fill(FINALE_OP_NOTICE).split('%speech%').join(lines.length ? 'They say ' + lines.length + ' line' + (lines.length == 1 ? '' : 's') + '. ' : '')
@@ -1812,7 +1832,7 @@ function speechPulse(server) {
     particleAt(server, 'minecraft:dust ' + Sp.dustColor + ' 2', { x: c.x + Math.cos(a) * 2.5, y: F.frame.bottom + 1 + (i % 4), z: c.z + Math.sin(a) * 2.5 }, '0.1 0.3 0.1', 0, 6)
   }
   particleAt(server, 'minecraft:crimson_spore', c, '3 2 3', 0, 40)
-  soundAround(server, c, Sp.heartbeat, Sp.pulseRadius, 1, 1)
+  if (!F.trackPlaying) soundAround(server, c, Sp.heartbeat, Sp.pulseRadius, 1, 1)
   later(server, Sp.pulseSeconds * 20, () => speechPulse(server))
 }
 function restoreWeather(server) {
@@ -1863,7 +1883,22 @@ function lightningBurst(server, spec) {
 function afterLeader(server) {
   if (!S.fin || S.fin.afterLeader) return
   S.fin.afterLeader = true
+  stopTrack(server)
   runSteps(server, AFTER_LEADER)
+}
+// FINALE_TRACK for everyone online, played where each of them stands.
+function playTrack(server) {
+  if (!S.fin || S.fin.afterLeader) return
+  const T = FINALE_TRACK
+  S.fin.trackPlaying = true
+  run(server, 'execute as @a at @s run playsound ' + T.sound + ' ' + T.category + ' @s ~ ~ ~ ' + T.volume + ' 1 1')
+  console.info('[PigEscort] Finale track started: ' + T.sound)
+}
+// Cuts the track short (/pigescort reveal continue, /pigescort stop).
+function stopTrack(server) {
+  if (!S.fin || !S.fin.trackPlaying) return
+  S.fin.trackPlaying = false
+  run(server, 'stopsound @a ' + FINALE_TRACK.category + ' ' + FINALE_TRACK.sound)
 }
 
 const FINALE_ACTIONS = {

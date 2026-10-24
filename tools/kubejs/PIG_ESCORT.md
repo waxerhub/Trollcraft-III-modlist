@@ -124,7 +124,8 @@ The escort plays exactly as before. Only the ending changes. All the texts, titl
     - on the last line, "Blood for the Blood God.", a ring of 10 bolts strikes around the ruins, with 3 s of Darkness and the Elder Guardian curse sound.
   - They're sent with `/fakesay` (fake_players.js), so in-game they look exactly like real chat: `<hypixel> …`, with the same name hover as a real player.
   - Simple Discord Link posts them to the Discord chat channel as hypixel (hypixel's name and avatar), like a real player's message.
-- **8 s after the last line** (`LEADER_LINES_END_PAUSE_SECONDS`, or straight away with `/pigescort reveal continue`, which also cuts the speech short): [MINISTRY] "The preceding broadcast was not authorized…". With `LEADER_LINES = []` there's no speech, and this comes 20 s after the join message (`LEADER_FINALE_DELAY_SECONDS`).
+- **The finale track,** if you've set one up (see [The finale track](#the-finale-track)): it starts 4 s after the last line and plays for everyone. The heartbeat goes quiet while it plays.
+- **8 s after the last line** (`LEADER_LINES_END_PAUSE_SECONDS`), or 2 s after the track ends, or straight away with `/pigescort reveal continue` (which also cuts the speech and the track short): [MINISTRY] "The preceding broadcast was not authorized…". With `LEADER_LINES = []` there's no speech, and this comes 20 s after the join message (`LEADER_FINALE_DELAY_SECONDS`).
 - **+5 s:** the Nether is unlocked (`UNLOCK_NETHER`) with [MINISTRY] "Due to an unscheduled structural event…".
 - **+8 s:** the event ends and cleans up.
 
@@ -136,6 +137,36 @@ The escort plays exactly as before. Only the ending changes. All the texts, titl
 - **If the join failed** (fake_players.js missing), the lines are skipped, because nobody is there to say them.
 - **Speaking live:** an op can also type as hypixel at any time with `/fakesay hypixel <message>`.
 - hypixel stays on the tab list until you run `/fakeleave hypixel`. If hypixel is still "online" at the next finale, there's no second join message and ops are told so.
+
+### The finale track
+
+A piece of music (or any audio) that plays after hypixel's last line and before the Ministry responds. The Ministry waits for it to finish.
+
+**Players need the audio file on their own computer.** The server can't send audio. It only tells each player's game to play `trollcraft:finale_track`. Anyone without the file hears nothing, and the finale still goes on. The pack template is in `tools/finale_pack/`.
+
+1. **Convert the track to Ogg Vorbis** (`.ogg`). A renamed MP3 won't play.
+   - In Audacity, use File > Export > Export as OGG.
+   - With ffmpeg: `ffmpeg -i track.mp3 -c:a libvorbis -q:a 5 finale_track.ogg`.
+   - Export it in **stereo**, so it sounds the same wherever players walk. A mono file plays from the spot the player was standing on when it started, and fades as they walk away.
+2. **Name it `finale_track.ogg`** and put it in `tools/finale_pack/assets/trollcraft/sounds/`.
+3. **Get it to the players,** in one of two ways:
+   - **In the modpack (no prompt for players):** copy `tools/finale_pack/assets/trollcraft/` into the modpack's `kubejs/assets/`, so it ends up as `kubejs/assets/trollcraft/sounds.json` and `kubejs/assets/trollcraft/sounds/finale_track.ogg`. Release a pack update; everyone has to update before the event. KubeJS loads that folder as a resource pack on each player's game.
+   - **As a server resource pack (no modpack update):**
+     - Zip `pack.mcmeta` and the `assets` folder, with both at the top of the zip, not inside another folder.
+     - Upload the zip somewhere with a **direct download** link, for example a GitHub release, or Dropbox with `?dl=1`.
+     - In Bisect's panel, set these in `server.properties`:
+       - `resource-pack=<link>`;
+       - `resource-pack-sha1=<the zip's SHA-1>`. On Windows: `certutil -hashfile pack.zip SHA1`.
+       - Optionally `require-resource-pack=true`.
+     - Restart the server. Players are asked to accept the pack when they join.
+4. **Set `FINALE_TRACK.seconds`** at the top of `pig_escort.js` to the track's length in seconds, then `/reload`.
+   - While it's 0, the track is skipped and ops are reminded during the finale.
+   - The other settings: `startAfter` (4 s after the last line), `pauseAfter` (2 s of quiet after it), `volume`, and `category`.
+     - `category` is the volume slider the track follows. The default is `master`.
+     - `music` or `record` would let players turn it down, but anyone who has that slider at 0 won't hear it.
+5. **Check it:** run `/playsound trollcraft:finale_track master @s`. If you hear nothing, the pack isn't loaded: press F3+T to reload resources, or check the file name and format.
+
+`/pigescort reveal continue` and `/pigescort stop` cut the track off with `/stopsound`. After a `/reload` mid-finale it plays on to its end.
 
 **Discord:** like every Pig Escort announcement, the [MINISTRY] and [SIGNAL HIJACKED] lines use `tellraw @a`, which Simple Discord Link relays to Discord as server chat. So the reveal shows up in Discord too. hypixel's lines are the exception: they post as hypixel speaking.
 
@@ -168,6 +199,7 @@ Test on a **copy of the world**. A test is announced to everyone online, and the
    - It starts raining. The ruins pulse (red dust, spores, a heartbeat) every 2 s.
    - The eight lines arrive about 5, 17, 28, 42, 47, 56, 68 and 73 s after the join, in-game and in Discord's chat channel. Each one comes with a bolt, and the last with a ring of lightning and Darkness.
    - The Ministry response follows 8 s after the last line. The pulsing stops then, and the rain stops when the finale ends.
+   - **With the finale track set up:** it starts 4 s after the last line (the heartbeat goes quiet), and the Ministry responds 2 s after it ends. `/pigescort reveal continue` during the track cuts it off.
 5. **`/pigescort reveal continue`:**
    - Run another test and use it during the speech: the remaining lines are dropped and the Ministry response comes at once.
    - Run it again: "Already continuing."

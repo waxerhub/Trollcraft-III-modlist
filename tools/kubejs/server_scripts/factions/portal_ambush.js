@@ -103,12 +103,42 @@ const PATROL = {
   reward: { item: 'minecraft:emerald', min: 0, max: 1 },
 }
 
-// Mob kinds: entity id and weapon choices [item, weight].
+// Mob kinds: entity id, weapon choices [weapon, weight] and how tough they are.
+// A weapon is { item, enchants: { enchantment: level } }. ammo (crossbow users only) goes in the off hand and
+// is shot instead of plain arrows until it runs out.
+// Stats are tuned for players in full diamond or netherite armour with Protection IV:
+//   health      max health (vanilla: piglin 16, brute 50, vindicator 24, pillager 24)
+//   damage      melee damage before the weapon and Sharpness (vanilla: 5)
+//   armor       built-in armour that doesn't show (a full netherite set is 20)
+//   toughness   built-in armour toughness (a full netherite set is 12)
+//   knockback   knockback resistance, 0 (none) to 1 (immune)
+// On Normal, against full netherite with Protection IV, a brute hits for about 2 hearts and a sword piglin or
+// vindicator for 1 to 1.5, plus fire or Harming. Hard is 1.5 times that; without Protection, about 3 times.
 const MOB_KINDS = {
-  piglin: { id: 'minecraft:piglin', weapons: [['minecraft:golden_sword', 0.5], ['minecraft:crossbow', 0.5]], piglin: true },
-  brute: { id: 'minecraft:piglin_brute', weapons: [['minecraft:golden_axe', 1]], piglin: true },
-  vindicator: { id: 'minecraft:vindicator', weapons: [['minecraft:iron_axe', 1]], illager: true },
-  pillager: { id: 'minecraft:pillager', weapons: [['minecraft:crossbow', 1]], illager: true },
+  piglin: {
+    id: 'minecraft:piglin', piglin: true,
+    weapons: [
+      [{ item: 'minecraft:netherite_sword', enchants: { sharpness: 5, fire_aspect: 2 } }, 0.5],
+      [{ item: 'minecraft:crossbow', enchants: { quick_charge: 3, multishot: 1 } }, 0.5],
+    ],
+    stats: { health: 40, damage: 9, armor: 10, toughness: 4, knockback: 0.3 },
+  },
+  brute: {
+    id: 'minecraft:piglin_brute', piglin: true,
+    weapons: [[{ item: 'minecraft:netherite_axe', enchants: { sharpness: 5 } }, 1]],
+    stats: { health: 90, damage: 14, armor: 16, toughness: 8, knockback: 0.6 },
+  },
+  vindicator: {
+    id: 'minecraft:vindicator', illager: true,
+    weapons: [[{ item: 'minecraft:netherite_axe', enchants: { sharpness: 5 } }, 1]],
+    stats: { health: 50, damage: 9, armor: 12, toughness: 6, knockback: 0.4 },
+  },
+  pillager: {
+    id: 'minecraft:pillager', illager: true,
+    weapons: [[{ item: 'minecraft:crossbow', enchants: { quick_charge: 2, piercing: 2 } }, 1]],
+    ammo: { item: 'minecraft:tipped_arrow', potion: 'minecraft:harming', count: 64 },   // 3 hearts, ignores armour (not Protection)
+    stats: { health: 36, damage: 5, armor: 8, toughness: 4, knockback: 0.2 },
+  },
 }
 
 // --- Messages (only the targeted players see them) ---
@@ -420,16 +450,35 @@ function pickSpot(level, dim, center, minD, maxD, hideFrom) {
 
 function snbtString(s) { return "'" + String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'") + "'" }
 
+function weaponNbt(w) {
+  const ench = Object.keys(w.enchants || {}).map(e => '{id:"minecraft:' + e + '",lvl:' + w.enchants[e] + 's}')
+  return '{id:"' + w.item + '",Count:1b' + (ench.length ? ',tag:{Enchantments:[' + ench.join(',') + ']}' : '') + '}'
+}
+function ammoNbt(a) {
+  if (!a) return '{}'
+  return '{id:"' + a.item + '",Count:' + (a.count || 64) + 'b' + (a.potion ? ',tag:{Potion:"' + a.potion + '"}' : '') + '}'
+}
+function attributesNbt(st) {
+  const list = ['{Name:"minecraft:generic.follow_range",Base:48d}']
+  if (st.health) list.push('{Name:"minecraft:generic.max_health",Base:' + st.health + 'd}')
+  if (st.damage) list.push('{Name:"minecraft:generic.attack_damage",Base:' + st.damage + 'd}')
+  if (st.armor) list.push('{Name:"minecraft:generic.armor",Base:' + st.armor + 'd}')
+  if (st.toughness) list.push('{Name:"minecraft:generic.armor_toughness",Base:' + st.toughness + 'd}')
+  if (st.knockback) list.push('{Name:"minecraft:generic.knockback_resistance",Base:' + st.knockback + 'd}')
+  return '[' + list.join(',') + ']'
+}
+
 function mobNbt(kindName, def, groupId) {
   const kind = MOB_KINDS[kindName]
   const weapon = pickWeighted(kind.weapons)
+  const stats = kind.stats || {}
   let nbt = '{PersistenceRequired:1b,CanPickUpLoot:0b,DeathLootTable:"minecraft:empty"' +
     ',Tags:["' + TAG + '","' + TAG + '_g_' + groupId + '"]' +
     ',CustomName:' + snbtString(JSON.stringify({ text: def.name, color: def.nameColor, italic: false })) + ',CustomNameVisible:1b' +
-    ',HandItems:[{id:"' + weapon + '",Count:1b},{}],HandDropChances:[0f,0f]' +
+    ',HandItems:[' + weaponNbt(weapon) + ',' + (weapon.item == 'minecraft:crossbow' ? ammoNbt(kind.ammo) : '{}') + '],HandDropChances:[0f,0f]' +
     ',ArmorItems:[{},{},{id:"minecraft:leather_chestplate",Count:1b,tag:{display:{color:' + def.chestplateColor + '}}},{}]' +
     ',ArmorDropChances:[0f,0f,0f,0f]' +
-    ',Attributes:[{Name:"minecraft:generic.follow_range",Base:48d}]'
+    ',Attributes:' + attributesNbt(stats) + (stats.health ? ',Health:' + stats.health + 'f' : '')
   if (kind.piglin) nbt += ',IsImmuneToZombification:1b,CannotHunt:1b'
   if (kind.illager) nbt += ',CanJoinRaid:0b,PatrolLeader:0b,Patrolling:0b'
   return nbt + '}'

@@ -165,9 +165,20 @@ Punishes faction members for travelling into the dimension hostile to their fact
 
 | Mechanic | Trigger | What comes |
 |---|---|---|
-| 1. Nether Ambush | A ministry player comes into the Nether **through a Nether portal**. 50% chance. | A war party of Blood-Marked Piglins: piglins with a sword or crossbow, and brutes with an axe, in dark red leather. 3 mobs, +1 per extra target, up to 8. |
-| 2. Return Inspection | A syndicate player comes back to the Overworld through a portal. 50% chance, and **only if nobody outside the Syndicate is within 48 blocks**. | A patrol of Ministry Inspectors: vindicators and pillagers in gold leather. 2 mobs, +1 per extra target, up to 6. |
+| 1. Nether Ambush | A ministry player comes into the Nether **through a Nether portal**. 50% chance. | A war party of Blood-Marked Piglins: piglins with a Sharpness V / Fire Aspect II netherite sword or a fast multishot crossbow, and brutes with a Sharpness V netherite axe, in dark red leather. 3 mobs, +1 per extra target, up to 8. |
+| 2. Return Inspection | A syndicate player comes back to the Overworld through a portal. 50% chance, and **only if nobody outside the Syndicate is within 48 blocks**. | A patrol of Ministry Inspectors: vindicators with Sharpness V netherite axes and pillagers shooting Harming arrows, in gold leather. 2 mobs, +1 per extra target, up to 6. |
 | 3. Random Raid | A countdown that only runs while the player is in their hostile dimension: Nether 30–60 minutes, Overworld 45–90. When it ends there's a 35% chance of a raid. | The same mobs, 18–32 blocks away and ideally out of sight. A warning comes 3 seconds before they arrive. Overworld raids follow the same secrecy rule: with a witness nearby, the raid is postponed 2–5 minutes, up to 3 times. |
+
+**Mob strength.** The ambush mobs are tuned for players in full diamond or netherite with Protection IV. Each has more health, melee damage and built-in (invisible) armour than vanilla. These are the `stats` in `MOB_KINDS` near the top of `portal_ambush.js`:
+
+| Mob | Health (vanilla) | Weapon | Hit on netherite + Prot IV (Normal) |
+|---|---|---|---|
+| Piglin | 40 (16) | Netherite sword, Sharpness V, Fire Aspect II, or a Quick Charge III multishot crossbow | about 1.2 hearts, plus fire |
+| Piglin brute | 90 (50) | Netherite axe, Sharpness V | about 2 hearts |
+| Vindicator | 50 (24) | Netherite axe, Sharpness V | about 1.4 hearts |
+| Pillager | 36 (24) | Quick Charge II crossbow with 64 Harming arrows | about 1 heart per arrow (Harming ignores armour) |
+
+Hard difficulty is 1.5 times those hits. Without Protection enchantments they're about 3 times. To make them tougher or weaker, change `health`, `damage`, `armor` and `toughness`, the weapon enchantments, or the group sizes (`NETHER_AMBUSH_BASE_SIZE`, `PATROL_BASE_SIZE`, `RAID_SIZE`). Then run `/reload`.
 
 ## Files
 
@@ -231,7 +242,7 @@ Set up as an op: `/faction set A ministry` and `/faction set B syndicate`. Keep 
 3. **Return inspection:** B comes back to the Overworld through a portal with A more than 48 blocks away. Ministry Inspectors appear, and only B sees "[MINISTRY] Routine border inspection...". Repeat after the cooldown with **A standing within 48 blocks** of the arrival portal: nothing happens, and nobody gets a message.
 4. **Raids:** with B in the Overworld, run `/ambush test raid B`. B gets "[MINISTRY] Inspectors have been dispatched..." and a patrol arrives 3 seconds later, 18–32 blocks away. Then, with A standing within 48 blocks of B, run `/ambush test raid B` again (after `/ambush clear`). The reply says the raid was postponed, and `/ambush timer B` shows "postponed raid, 1/3". With A in the Nether, `/ambush test raid A` sends a war party after "[SIGNAL HIJACKED] The Blood God has found you."
 5. **Wrong faction ignored:** during a war party on A, B stands among the piglins. They never target or hurt B. During a patrol on B, A stands among the inspectors and is ignored. Nearby villagers and iron golems aren't attacked.
-6. **Drops:** each killed piglin drops 1–3 gold nuggets and nothing else (no gold sword or crossbow, no loot). Inspectors drop 0–1 emerald.
+6. **Drops:** each killed piglin drops 1–3 gold nuggets and nothing else (never their weapons or arrows, no loot). Inspectors drop 0–1 emerald.
 7. **Despawning:** start a group and run more than 64 blocks away. About 60 seconds later the group vanishes without drops. Or go back through the portal: you escape, and the group ends once nobody is left.
 8. **Cooldowns:** after a group ends, `/ambush timer A` shows a cooldown of about 10 minutes, and portal trips trigger nothing until it's over. Restart the server and check that the cooldown and countdown survived.
 9. **Safe zones and caps:**
@@ -241,7 +252,7 @@ Set up as an op: `/faction set A ministry` and `/faction set B syndicate`. Keep 
 
 ## Not verified on a real server
 
-The mock-server test passed all 60 checks: portal travel versus `/tp` versus respawn, shared rolls, secrecy skips and postponements, sizes and caps, target and damage filtering, rewards, quiet despawning, escapes, cooldowns, persistence across `/reload`, Peaceful, toggle and stray removal. These parts depend on the real game:
+The mock-server test passed all 65 checks: mob gear and stats (the summon NBT is parsed), portal travel versus `/tp` versus respawn, shared rolls, secrecy skips and postponements, sizes and caps, target and damage filtering, rewards, quiet despawning, escapes, cooldowns, persistence across `/reload`, Peaceful, toggle and stray removal. These parts depend on the real game:
 
 - **Whether Forge's `LivingChangeTargetEvent` also covers the piglin brain's own target choice.** If it doesn't, piglins are still re-aimed every second, and their hits on anyone else are cancelled.
 - **Whether the change-target cancel holds against vanilla "revenge" targeting** (mobs turning on whoever hit them). Same safety net as above.
@@ -249,3 +260,4 @@ The mock-server test passed all 60 checks: portal travel versus `/tp` versus res
 - **Whether `block.popItem` works for the rewards.** If it doesn't, the reward is spawned with `/summon item`.
 - **Whether `EntityEvents.spawned` fires for mobs loading from saved chunks.** That's how leftovers are removed. `/ambush clear` also removes any loaded ones.
 - **Whether the portal-block check works with mods that teleport you next to a portal.**
+- **Whether pillagers shoot the Harming arrows from their off hand.** If they shoot plain arrows instead, they're only weaker; nothing else changes.

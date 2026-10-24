@@ -193,6 +193,7 @@ const ENDING_SUCCESS = [
 ]
 // Ending B: from the pig's death (or the moment time runs out).
 const ENDING_FAIL = [
+  { at: 0, action: 'gather' },
   { at: 0, ministry: 'The Swine has been lost. An inquiry will determine which of you is responsible. Preliminary findings: all of you.' },
   { at: 4, ministry: 'Nether access is denied indefinitely. Please return to your homes and reflect.' },
   { at: 8, action: 'blood_trail' },
@@ -223,8 +224,17 @@ const FINALE_FIREWORKS = { height: 12, count: 5, colors: [0xFFD700, 0xFFAA00], f
 const FINALE_PORTAL_HUM = { sound: 'minecraft:block.portal.trigger', volume: 1, pitch: 0.7, radius: 48 }
 // darkness: the screen darkens briefly for everyone this close.
 const FINALE_DARKNESS = { seconds: 3, radius: 48 }
-// blood_trail: red dust rising from where the pig died and drifting to the portal (particles only).
-const FINALE_BLOOD_TRAIL = { color: '0.7 0 0', size: 1.5, seconds: 3, steps: 12, rise: 3 }
+// gather: the escort party is brought to the portal to watch the rest. Escorts online in the Overworld and more
+// than minDistance blocks from the portal are teleported `distance` blocks in front of it (on the side the pig
+// came from, so the blood trail passes them), side by side `spacing` blocks apart, facing it.
+// In a test (/pigescort finale test) only the op who ran it is brought.
+const FINALE_GATHER = {
+  distance: 10, spacing: 2, minDistance: 16,
+  message: 'All Escorts are to report to the portal for the inquiry. You have been reported.',
+}
+// blood_trail: red dust rising from where the pig died and drifting to the portal (particles only). If the pig
+// died further away than maxDistance, the trail starts maxDistance blocks out, in the direction it died.
+const FINALE_BLOOD_TRAIL = { color: '0.7 0 0', size: 1.5, seconds: 3, steps: 12, rise: 3, maxDistance: 20 }
 // explosion: VISUAL ONLY. Particles and sounds, then the portal blocks become air and the frame crying
 // obsidian (nothing else changes), and a gentle push with no damage for players this close.
 const FINALE_EXPLOSION = {
@@ -1590,6 +1600,33 @@ function frontOf(frame, d) {
   return frame.axis == 'x' ? { x: c.x, y: frame.bottom + 1, z: c.z + d } : { x: c.x + d, y: frame.bottom + 1, z: c.z }
 }
 
+// The escort party (or, in a test, the op who ran it) is teleported in front of the portal, facing it.
+function gatherParty(server) {
+  const G = FINALE_GATHER, F = S.fin, fr = F.frame, c = fr.center
+  const names = F.test ? (F.testBy ? [F.testBy] : []) : (S.run ? Object.keys(S.run.participants) : [])
+  const players = onlinePlayers(server).filter(p => names.indexOf(nameOf(p)) >= 0 && dimOf(p) == OVERWORLD &&
+    horizDist(ex(p), ez(p), c.x, c.z) > G.minDistance)
+  if (!players.length) return
+  const along = F.from ? (fr.axis == 'x' ? F.from.z - c.z : F.from.x - c.x) : 1
+  const base = frontOf(fr, (along >= 0 ? 1 : -1) * G.distance), level = overworldOf(server)
+  players.forEach((p, i) => {
+    let off = (i - (players.length - 1) / 2) * G.spacing
+    let x = Math.floor(fr.axis == 'x' ? base.x + off : base.x), z = Math.floor(fr.axis == 'x' ? base.z : base.z + off)
+    let spot = safeSpot(level, { x: x, y: base.y, z: z })
+    runOW(server, 'tp ' + uuidOf(p) + ' ' + (x + 0.5) + ' ' + (spot ? spot.y : base.y) + ' ' + (z + 0.5) +
+      ' facing ' + num(c.x) + ' ' + num(c.y) + ' ' + num(c.z))
+    tell(server, nameOf(p), G.message, 'yellow')
+  })
+  console.info('[PigEscort] Brought ' + players.length + ' escort' + (players.length == 1 ? '' : 's') + ' to the portal')
+}
+// Where the blood trail starts: `from`, or maxDistance blocks from the portal in its direction if it's further.
+function trailStart(from, to, maxDistance) {
+  const d = horizDist(from.x, from.z, to.x, to.z)
+  if (!maxDistance || d <= maxDistance) return from
+  const k = maxDistance / d
+  return { x: to.x + (from.x - to.x) * k, y: to.y + (from.y - to.y) * k, z: to.z + (from.z - to.z) * k }
+}
+
 // Where the pig was when the event ended (for the blood trail), or null.
 function pigEndPos(R, result) {
   if (result == 'pig_died' && R.pigDeathPos) return R.pigDeathPos
@@ -1847,9 +1884,10 @@ const FINALE_ACTIONS = {
   darkness: server => {
     at(server, S.fin.frame.center, 'effect give @a[distance=..' + FINALE_DARKNESS.radius + '] minecraft:darkness ' + FINALE_DARKNESS.seconds + ' 0 true')
   },
+  gather: server => gatherParty(server),
   blood_trail: server => {
     const B = FINALE_BLOOD_TRAIL, F = S.fin, to = F.frame.center
-    const from = F.from || frontOf(F.frame, 10)
+    const from = trailStart(F.from || frontOf(F.frame, 10), to, B.maxDistance)
     const steps = []
     for (let i = 0; i <= B.steps; i++) steps.push(i / B.steps)
     // forEach, so each scheduled step keeps its own t
@@ -1941,7 +1979,8 @@ function finaleTest(ctx, kind) {
     buildPortal(server, site, false)
     frame = siteFrame(site)
   }
-  startFinale(server, { kind: kind, test: true, frame: frame, from: frontOf(frame, 15), keepSetup: keepSetup })
+  const me = ctx.source.getPlayer()
+  startFinale(server, { kind: kind, test: true, frame: frame, from: frontOf(frame, 15), keepSetup: keepSetup, testBy: me ? nameOf(me) : null })
   const c = frame.center
   reply(ctx, 'Test finale (' + (kind == 'success' ? 'Ending A' : 'Ending B') + ') started at ' + Math.floor(c.x) + ' ' + Math.floor(c.y) + ' ' + Math.floor(c.z) +
     '. Everyone online sees and hears it. No rewards, and the Nether is not unlocked. /pigescort stop ends it.' +

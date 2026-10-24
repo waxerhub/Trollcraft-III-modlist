@@ -663,15 +663,26 @@ function tickGroup(server, g, now) {
 function nearPortalBlock(p) {
   const level = levelOf(p), pos = posOf(p)
   const bx = Math.floor(pos.x), by = Math.floor(pos.y), bz = Math.floor(pos.z), r = PORTAL_CHECK_RADIUS
-  for (let dx = -r; dx <= r; dx++) for (let dy = -1; dy <= 3; dy++) for (let dz = -r; dz <= r; dz++) {
+  for (let dx = -r; dx <= r; dx++) for (let dy = -2; dy <= 3; dy++) for (let dz = -r; dz <= r; dz++) {
     if (String(level.getBlock(bx + dx, by + dy, bz + dz).id) == 'minecraft:nether_portal') return true
   }
   return false
 }
+// Came through a Nether portal (not /tp or a mod's teleport)? Minecraft starts a short portal cooldown just
+// before a portal trip, so that's checked first; the portal block check covers mods that move the player.
+function cameThroughPortal(p) {
+  try { if (p.isOnPortalCooldown()) return true } catch (e) { }
+  return nearPortalBlock(p)
+}
 
-// Why the last portal arrival of each player did or didn't lead to an ambush (shown by /ambush timer).
-// Kept in memory only, never logged.
-function noteArrival(p, text) { S.lastArrival[uuidOf(p)] = { time: Date.now(), text: text } }
+// What happened on each player's last trip between dimensions, and why it did or didn't lead to an ambush
+// (shown by /ambush timer). Kept in memory only, never logged.
+function shortDim(d) { return String(d).replace('minecraft:', '') }
+function noteArrival(p, text) {
+  const u = uuidOf(p), old = S.lastArrival[u]
+  S.lastArrival[u] = { time: Date.now(), trip: old ? old.trip : '', text: text }
+}
+function noteTrip(p, from, to, how) { S.lastArrival[uuidOf(p)] = { time: Date.now(), trip: shortDim(from) + ' -> ' + shortDim(to) + ' (' + how + ')', text: '' } }
 function whyNotEligible(server, p, factionId) {
   const uuid = uuidOf(p)
   if (factionOf(p) != factionId) return 'not in the hunted faction'
@@ -691,7 +702,8 @@ function arrival(server, p, mechanic) {
   if (why) return noteArrival(p, 'skipped: ' + why)
   const now = Date.now(), pos = posOf(p), dim = dimOf(p), uuid = uuidOf(p)
   S.buckets = S.buckets.filter(b => now - b.time < ARRIVAL_GROUP_SECONDS * 1000)
-  const b = S.buckets.filter(x => x.mechanic == mechanic && x.dim == dim && dist(x.pos, pos) <= ARRIVAL_GROUP_RADIUS)[0]
+  // (A player coming back through the same portal a few seconds later doesn't share their own earlier roll.)
+  const b = S.buckets.filter(x => x.mechanic == mechanic && x.dim == dim && dist(x.pos, pos) <= ARRIVAL_GROUP_RADIUS && x.players.indexOf(uuid) < 0)[0]
   if (b) {
     // Same portal, same few seconds: no new roll. Join the group if it's already here.
     if (b.players.indexOf(uuid) < 0) b.players.push(uuid)
@@ -882,11 +894,20 @@ if (global.Factions) {
       if (!S.coreOutdated) console.error('[PortalAmbush] factions_core.js is outdated (its dimension events don\'t say how the player arrived), so portal arrivals can\'t be detected. Update factions_core.js.')
       S.coreOutdated = true
     }
-    const hunted = (to == NETHER && faction == 'ministry') || (to == OVERWORLD && faction == 'syndicate')
-    if (hunted && from != null && ((from == OVERWORLD && to == NETHER) || (from == NETHER && to == OVERWORLD))) {
-      if (how != 'travel') noteArrival(player, 'not a portal trip (' + (how || 'factions_core.js outdated') + ')')
-      else if (!nearPortalBlock(player)) noteArrival(player, 'no Nether portal block where they arrived (teleported, not a portal trip)')
-      else arrival(server, player, to == NETHER ? 'nether_ambush' : 'return_inspection')
+    if (from != null) {
+      try {
+        noteTrip(player, from, to, how || '?')
+        let pair = (from == OVERWORLD && to == NETHER) || (from == NETHER && to == OVERWORLD)
+        let hunted =(to == NETHER && faction == 'ministry') || (to == OVERWORLD && faction == 'syndicate')
+        if (!pair) noteArrival(player, 'only Overworld <-> Nether trips can be ambushed')
+        else if (!hunted) noteArrival(player, 'faction "' + faction + '" isn\'t hunted in ' + shortDim(to))
+        else if (how != 'travel') noteArrival(player, 'not a portal trip (' + (how || 'factions_core.js outdated') + ')')
+        else if (!cameThroughPortal(player)) noteArrival(player, 'no Nether portal where they arrived (teleported, not a portal trip)')
+        else arrival(server, player, to == NETHER ? 'nether_ambush' : 'return_inspection')
+      } catch (e) {
+        noteArrival(player, 'error: ' + e)
+        console.error('[PortalAmbush] Portal arrival check failed: ' + e)
+      }
     }
     if (needsLoop(server)) startLoop(server)
   })
@@ -1027,7 +1048,8 @@ ServerEvents.commandRegistry(event => {
         '; raid countdown ' + (r ? clock(r.left) + (r.postponed ? ' (postponed raid, ' + r.postpones + '/' + RAID_MAX_POSTPONES + ')' : '') : 'not started') +
         '; cooldown ' + (cd ? clock(cd / 1000) : 'none') +
         (S.inGroup[u] ? '; in an active group' : '') + '.' +
-        (S.lastArrival[u] ? ' Last portal arrival (' + clock((Date.now() - S.lastArrival[u].time) / 1000) + ' ago): ' + S.lastArrival[u].text + '.' : ' No portal arrival seen since the last /reload.'))
+        (S.lastArrival[u] ? ' Last trip (' + clock((Date.now() - S.lastArrival[u].time) / 1000) + ' ago): ' + S.lastArrival[u].trip + ': ' + (S.lastArrival[u].text || 'no result') + '.' :
+          ' No dimension change seen since the server started' + (global.factionsHooksInstalled ? '' : ' (factions_hooks.js is NOT loaded)') + '.'))
     }))))
     .then(Commands.literal('status').executes(safe(ctx => {
       const server = ctx.source.server

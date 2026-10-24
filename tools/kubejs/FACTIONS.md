@@ -103,7 +103,7 @@ Events:
   - logs out (`leftDimension`, `how` = `'logout'`);
   - respawns in a different dimension from the one they died in (both, `how` = `'respawn'`).
 
-  `'travel'` doesn't say whether it was a portal or `/tp`. Portal Ambush tells them apart by checking for a portal block where the player arrived.
+  `'travel'` doesn't say whether it was a portal or `/tp`. Portal Ambush tells them apart by Minecraft's short portal cooldown (set just before every portal trip), or else by a portal block where the player arrived.
 
   Portals blocked by `nether_portal_whitelist.js` fire nothing. A listener that throws is logged and doesn't stop the others or the change itself.
 
@@ -217,7 +217,7 @@ Both also need `factions_core.js` and `factions_hooks.js`, which is how portal a
 | `/ambush test nether <player>` | A war party on the player in 3 seconds. Skips the roll, cooldown and safe zones, and targets them whatever their faction. |
 | `/ambush test overworld <player>` | An inspection patrol in 3 seconds. Also skips the secrecy check. |
 | `/ambush test raid <player>` | A raid in their hostile dimension (they must be there). Skips the roll and cooldown but **keeps the secrecy postponement**. |
-| `/ambush timer <player>` | Their raid countdown, any postponement, their cooldown, and whether they're in a group. |
+| `/ambush timer <player>` | Their raid countdown, any postponement, their cooldown, whether they're in a group, and their last trip between dimensions with the reason it did or didn't lead to an ambush (e.g. `overworld -> the_nether (travel): rolled 71%, needed under 50%`). Use it first when an ambush doesn't happen. |
 | `/ambush status` | On or off, hooks, and the active groups with their mechanic, targets, mob count and age. |
 | `/ambush clear` | Ends every group and removes every ambush mob. No cooldowns are given. |
 | `/ambush toggle` | Turns the add-on on or off. The setting is saved, and no data is lost. Turning it off ends the active groups. |
@@ -241,7 +241,7 @@ Set up as an op: `/faction set A ministry` and `/faction set B syndicate`. Keep 
 
 ## Not verified on a real server
 
-The mock-server test passed all 50 checks: portal travel versus `/tp` versus respawn, shared rolls, secrecy skips and postponements, sizes and caps, target and damage filtering, rewards, quiet despawning, escapes, cooldowns, persistence across `/reload`, Peaceful, toggle and stray removal. These parts depend on the real game:
+The mock-server test passed all 60 checks: portal travel versus `/tp` versus respawn, shared rolls, secrecy skips and postponements, sizes and caps, target and damage filtering, rewards, quiet despawning, escapes, cooldowns, persistence across `/reload`, Peaceful, toggle and stray removal. These parts depend on the real game:
 
 - **Whether Forge's `LivingChangeTargetEvent` also covers the piglin brain's own target choice.** If it doesn't, piglins are still re-aimed every second, and their hits on anyone else are cancelled.
 - **Whether the change-target cancel holds against vanilla "revenge" targeting** (mobs turning on whoever hit them). Same safety net as above.

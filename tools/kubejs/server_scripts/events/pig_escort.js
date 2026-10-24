@@ -140,19 +140,26 @@ const LEADER_NAME = 'hypixel'
 const LEADER_EFFECTS_DELAY_SECONDS = 2   // thunder, red column and title this long after the join message
 const LEADER_FINALE_DELAY_SECONDS = 20   // with no LEADER_LINES: the rest of the finale (AFTER_LEADER) starts
                                          // this long after the join message
-// What the leader says after arriving, before the Ministry responds. Each line comes `after` seconds after the
-// previous one (the first: after the join message). Sent with /fakesay (fake_players.js): it shows as
-// <%leader%> text, like real chat, and Discord posts it as the leader speaking. [] = no speech.
+// What the leader says after arriving, before the Ministry responds, one line after another (the first after
+// the join message). Each line takes as long as the leader would need to type it (LEADER_TYPING below), so
+// longer lines come later; give a line `after: N` to have it come exactly N seconds after the one before.
+// Sent with /fakesay (fake_players.js): it shows as <%leader%> text, like real chat, and Discord posts it as the
+// leader speaking. [] = no speech.
+// effect: what happens at the ruins as the line appears (FINALE_SPEECH below):
+//   'strike' (the default) one bolt of lightning   'ring' a ring of lightning and darkness   'none' nothing
 const LEADER_LINES = [
-  { after: 5, text: "Sorry about the portal." },
-  { after: 7, text: "I was a friend of Technoblade's. Long before your statues. Long before your laws." },
-  { after: 7, text: "He never asked you to protect his pigs. You decided that after he was gone." },
-  { after: 8, text: "We value every pig. Each one is precious to us. Right up until we are mildly inconvenienced." },
-  { after: 8, text: "The same goes for you." },
-  { after: 7, text: "Some of you already work for us. You will not know which ones." },
-  { after: 7, text: "We have been here the whole time. We will be here when the Ministry is not." },
-  { after: 6, text: "Blood for the Blood God." },
+  { text: "Sorry about the portal." },
+  { text: "I was a friend of Technoblade's. Long before your statues. Long before your laws." },
+  { text: "He never asked you to protect his pigs. You decided that after he was gone." },
+  { text: "We value every pig. Each one is precious to us. Right up until we are mildly inconvenienced." },
+  { text: "The same goes for you." },
+  { text: "Some of you already work for us. You will not know which ones." },
+  { text: "We have been here the whole time. We will be here when the Ministry is not." },
+  { text: "Blood for the Blood God.", effect: 'ring' },
 ]
+// How long the leader takes to "type" a line: pauseSeconds, plus one second for every charsPerSecond characters,
+// kept between minSeconds and maxSeconds. With these numbers the lines above take 4.8 to 13.5 s each (about 73 s in all).
+const LEADER_TYPING = { pauseSeconds: 2, charsPerSecond: 8, minSeconds: 3, maxSeconds: 14 }
 const LEADER_LINES_END_PAUSE_SECONDS = 8  // after the last line, the rest of the finale (AFTER_LEADER) starts
 // (/pigescort reveal continue skips whatever is left of the wait or the speech.)
 
@@ -230,7 +237,28 @@ const FINALE_REVEAL_TITLE = {
   title: 'THE BLOOD GOD\'S SYNDICATE', titleColor: 'dark_red', subtitle: 'Blood for the Blood God.', subtitleColor: 'red',
   fadeIn: 10, stay: 80, fadeOut: 20, sound: 'minecraft:entity.elder_guardian.curse',
 }
-// leader: thunder (no real lightning), a red column at the portal, and a title, once the join message is out.
+// Lightning: VISUAL ONLY (a flash and thunder; no damage, no fire, nothing nearby is changed by it). If the game
+// won't make a visual-only bolt, sparks and a thunder sound are used instead. Each burst: `bolts` bolts landing
+// minRadius to maxRadius blocks from the middle of the portal (center: true = the first one right in the middle;
+// ring: true = evenly around), spread over `seconds`.
+const FINALE_LIGHTNING = {
+  explosion: { bolts: 7, seconds: 1.5, minRadius: 1, maxRadius: 6, center: true },  // as the portal disappears
+  arrival: { bolts: 3, seconds: 0.5, minRadius: 2, maxRadius: 5 },    // as the leader arrives
+  line: { bolts: 1, seconds: 0, minRadius: 3, maxRadius: 10 },        // a leader's line with effect 'strike'
+  ring: { bolts: 10, seconds: 1, minRadius: 6, maxRadius: 6, ring: true },  // a leader's line with effect 'ring'
+}
+// While the leader speaks (from their arrival until the Ministry responds; only if there are LEADER_LINES).
+const FINALE_SPEECH = {
+  weather: 'rain',        // 'rain', 'thunder' or 'none'. Put back the way it was when the finale ends.
+                          // 'thunder' also brings the game's own REAL lightning (fire, damage) anywhere in the world.
+  pulseSeconds: 2,        // this often at the ruins: a swirl of red dust and crimson spores, and a heartbeat
+  pulseRadius: 32,        // who hears the heartbeat
+  heartbeat: 'minecraft:entity.warden.heartbeat',
+  dustColor: '0.6 0 0',
+  ringDarkness: 3,        // seconds of darkness (for everyone within pulseRadius) with a 'ring' line
+  ringSound: 'minecraft:entity.elder_guardian.curse',
+}
+// leader: thunder, lightning, a red column at the portal, and a title, once the join message is out.
 const FINALE_LEADER = {
   sounds: ['minecraft:entity.lightning_bolt.thunder', 'minecraft:entity.lightning_bolt.impact'],
   columnColor: '0.8 0 0', columnHeight: 30,
@@ -1627,6 +1655,7 @@ function startFinale(server, fin) {
 function finishFinale(server) {
   const keep = S.fin ? S.fin.keepSetup : null
   console.info('[PigEscort] Finale finished')
+  restoreWeather(server)
   cleanup(server, S.snap)
   if (keep) { S.setup = keep; S.phase = 'staged' }   // a test at the staged portal site leaves the setup as it was
 }
@@ -1668,19 +1697,30 @@ function leaderJoined(server, arrived) {
   const lines = arrived && LEADER_NAME && fakes[LEADER_NAME.toLowerCase()] ? LEADER_LINES : []
   let t = 0
   lines.forEach(line => {
-    t += line.after
-    later(server, t * 20, () => leaderSays(server, line.text))
+    t += lineDelay(line)
+    later(server, t * 20, () => leaderSays(server, line))
   })
+  if (lines.length) speechStart(server)
   const wait = lines.length ? t + LEADER_LINES_END_PAUSE_SECONDS : LEADER_FINALE_DELAY_SECONDS
   if (arrived) {
     later(server, LEADER_EFFECTS_DELAY_SECONDS * 20, () => FINALE_ACTIONS.leader_arrival(server))
     tellOps(server, fill(FINALE_OP_NOTICE).split('%speech%').join(lines.length ? 'They say ' + lines.length + ' line' + (lines.length == 1 ? '' : 's') + '. ' : '')
-      .split('%seconds%').join(String(wait)))
+      .split('%seconds%').join(num(wait)))
   }
   later(server, wait * 20, () => afterLeader(server))
 }
-// One of the leader's lines, as real-looking chat (and on Discord as them). Nothing once the Ministry has the floor.
-function leaderSays(server, text) {
+// Seconds from the line before to this one: `after` if the line has it, otherwise the time to type it.
+function lineDelay(line) {
+  let sec = line.after
+  if (sec == null) {
+    let T = LEADER_TYPING
+    sec = Math.min(T.maxSeconds, Math.max(T.minSeconds, T.pauseSeconds + String(line.text).length / T.charsPerSecond))
+  }
+  return Math.round(sec * 20) / 20   // whole ticks
+}
+// One of the leader's lines, as real-looking chat (and on Discord as them), and its effect at the ruins.
+// Nothing once the Ministry has the floor.
+function leaderSays(server, line) {
   if (!S.fin || S.fin.afterLeader) return
   const fp = global.fakePlayers
   if (!fp || typeof fp.say != 'function') {
@@ -1688,8 +1728,100 @@ function leaderSays(server, text) {
     S.fin.sayMissing = true
     return
   }
-  const result = String(fp.say(LEADER_NAME, fill(text)))
+  const result = String(fp.say(LEADER_NAME, fill(line.text)))
   if (!/^</.test(result)) console.warn('[PigEscort] Leader line not said: ' + result)
+  lineEffect(server, line.effect || 'strike')
+}
+function lineEffect(server, effect) {
+  if (effect == 'none') return
+  if (effect == 'ring') {
+    let Sp = FINALE_SPEECH, c = S.fin.frame.center
+    lightningBurst(server, FINALE_LIGHTNING.ring)
+    at(server, c, 'effect give @a[distance=..' + Sp.pulseRadius + '] minecraft:darkness ' + Sp.ringDarkness + ' 0 true')
+    soundAround(server, c, Sp.ringSound, Sp.pulseRadius, 1, 1)
+    return
+  }
+  if (effect != 'strike') console.warn('[PigEscort] Unknown leader line effect "' + effect + '" (a strike is used)')
+  lightningBurst(server, FINALE_LIGHTNING.line)
+}
+
+// While the leader speaks: the weather turns (put back by finishFinale) and the ruins pulse until the Ministry
+// has the floor.
+function speechStart(server) {
+  const W = FINALE_SPEECH.weather
+  if (W == 'rain' || W == 'thunder') {
+    let before = null
+    try {
+      let level = overworldOf(server)
+      before = level.isThundering() ? 'thunder' : level.isRaining() ? 'rain' : 'clear'
+    } catch (e) {
+      console.warn('[PigEscort] Could not read the weather, so it is left alone: ' + e)
+    }
+    // Already stormy enough: leave it (and don't calm a thunderstorm down to rain).
+    if (before != null && before != W && before != 'thunder') {
+      S.fin.weatherBefore = before
+      runOW(server, 'weather ' + W)
+    }
+  }
+  S.fin.pulses = 0
+  later(server, FINALE_SPEECH.pulseSeconds * 20, () => speechPulse(server))
+}
+function speechPulse(server) {
+  const F = S.fin, Sp = FINALE_SPEECH
+  if (!F || F.afterLeader) return
+  const c = F.frame.center, n = 8, turn = F.pulses++ * 0.4
+  for (let i = 0; i < n; i++) {
+    let a = turn + i / n * TWO_PI
+    particleAt(server, 'minecraft:dust ' + Sp.dustColor + ' 2', { x: c.x + Math.cos(a) * 2.5, y: F.frame.bottom + 1 + (i % 4), z: c.z + Math.sin(a) * 2.5 }, '0.1 0.3 0.1', 0, 6)
+  }
+  particleAt(server, 'minecraft:crimson_spore', c, '3 2 3', 0, 40)
+  soundAround(server, c, Sp.heartbeat, Sp.pulseRadius, 1, 1)
+  later(server, Sp.pulseSeconds * 20, () => speechPulse(server))
+}
+function restoreWeather(server) {
+  if (!S.fin || !S.fin.weatherBefore) return
+  runOW(server, 'weather ' + S.fin.weatherBefore)
+  S.fin.weatherBefore = null
+}
+
+// Visual-only lightning (as /aura in smite.js): a flash and thunder, no damage, no fire. If it can't be made,
+// sparks and a thunder sound instead. Never real lightning.
+let boltWarned = false
+function visualBolt(server, p) {
+  try {
+    let bolt = overworldOf(server).createEntity('minecraft:lightning_bolt')
+    bolt.setVisualOnly(true)
+    bolt.setPosition(p.x, p.y, p.z)
+    bolt.spawn()
+    return
+  } catch (e) {
+    if (!boltWarned) console.warn('[PigEscort] Visual-only lightning failed (sparks are used instead): ' + e)
+    boltWarned = true
+  }
+  particleAt(server, 'minecraft:electric_spark', { x: p.x, y: p.y + 1, z: p.z }, '0.3 2 0.3', 0.1, 60)
+  at(server, p, 'playsound minecraft:entity.lightning_bolt.thunder weather @a ~ ~ ~ 4 1')
+}
+// A burst of FINALE_LIGHTNING around the portal: the first bolt now, the rest spread over spec.seconds.
+function lightningBurst(server, spec) {
+  if (!spec || !(spec.bolts > 0)) return
+  const fr = S.fin.frame, c = fr.center
+  const bolts = []
+  for (let i = 0; i < spec.bolts; i++) {
+    let p
+    if (i == 0 && spec.center) {
+      p = { x: c.x, y: fr.bottom, z: c.z }
+    } else {
+      let a = spec.ring ? i / spec.bolts * TWO_PI : Math.random() * TWO_PI
+      let d = spec.minRadius + Math.random() * (spec.maxRadius - spec.minRadius)
+      p = { x: c.x + Math.cos(a) * d, y: fr.bottom, z: c.z + Math.sin(a) * d }
+    }
+    bolts.push({ p: p, ticks: spec.bolts > 1 ? i / (spec.bolts - 1) * spec.seconds * 20 : 0 })
+  }
+  // forEach, so each scheduled bolt keeps its own spot
+  bolts.forEach(b => {
+    if (b.ticks < 1) visualBolt(server, b.p)
+    else later(server, b.ticks, () => visualBolt(server, b.p))
+  })
 }
 function afterLeader(server) {
   if (!S.fin || S.fin.afterLeader) return
@@ -1731,6 +1863,7 @@ const FINALE_ACTIONS = {
     fr.corners.concat([c]).forEach(p => particleAt(server, 'minecraft:explosion_emitter', p, '0 0 0', 0, 1))
     E.particles.forEach(id => particleAt(server, id, c, '1.5 2 1.5', 0.05, 60))
     E.sounds.forEach(id => soundAround(server, c, id, E.soundRadius, 1, 1))
+    lightningBurst(server, FINALE_LIGHTNING.explosion)
     // Portal blocks first (a changed frame would break them anyway), then the frame. Nothing else changes.
     fr.cells.filter(p => p.kind == 'portal').forEach(p => runOW(server, 'setblock ' + p.x + ' ' + p.y + ' ' + p.z + ' minecraft:air'))
     fr.cells.filter(p => p.kind == 'frame').forEach(p => runOW(server, 'setblock ' + p.x + ' ' + p.y + ' ' + p.z + ' minecraft:crying_obsidian'))
@@ -1757,6 +1890,7 @@ const FINALE_ACTIONS = {
   leader_arrival: server => {
     const L = FINALE_LEADER, c = S.fin.frame.center
     L.sounds.forEach(id => sound(server, '@a', id, 1, 1))
+    lightningBurst(server, FINALE_LIGHTNING.arrival)
     const half = L.columnHeight / 2
     ;[0, 10, 20, 30].forEach(t => later(server, t, () =>
       particleAt(server, 'minecraft:dust ' + L.columnColor + ' 2', { x: c.x, y: S.fin.frame.bottom + half, z: c.z }, '0.2 ' + half + ' 0.2', 0, 300)))

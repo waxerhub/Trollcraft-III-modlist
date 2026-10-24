@@ -96,6 +96,9 @@ The escort plays exactly as before. Only the ending changes. All the texts, titl
 
 **The explosion is visual only:**
 - **Effects:** `explosion_emitter` particles at the frame's four corners and centre, plus smoke and lava particles. The explode and Wither-spawn sounds play for everyone within 96 blocks.
+- **Lightning:** 7 bolts over 1.5 s (`FINALE_LIGHTNING.explosion`). The first strikes the middle of the portal the moment it goes out, and the rest land up to 6 blocks around it.
+  - Every bolt in the finale is **visual only**: the flash and the thunder, but no damage and no fire. Pigs and villagers nearby don't change either. It's the same kind of bolt as `/aura`.
+  - If the game won't make one, sparks and a thunder sound are used instead, with a warning in the log. A real bolt is never summoned.
 - **Blocks:** the portal blocks become air and the frame becomes crying obsidian. Nothing else changes. No real explosion, no block damage, no player damage.
 - **Push:** players within 6 blocks get a gentle shove away from the portal.
 - **Afterwards:** the normal cleanup at the very end puts the original land back, as it always has.
@@ -105,8 +108,14 @@ The escort plays exactly as before. Only the ending changes. All the texts, titl
 - **R+0:** everyone online gets the title "THE BLOOD GOD'S SYNDICATE" with the subtitle "Blood for the Blood God." and the Elder Guardian curse sound.
 - **R+4:** [SIGNAL HIJACKED] "Honor the player, not the statue…"
 - **R+8:** the leader, `/fakejoin hypixel` (`LEADER_NAME`). That shows the join message, puts hypixel on the tab list with their skin, and posts the join to Discord.
-- **2 s after the join message:** thunder for everyone (no real lightning), a red particle column at the portal, and the title "hypixel / has entered the server.". Ops get a note saying how many lines follow and how long until the rest runs.
-- **hypixel speaks:** the 8 lines in `LEADER_LINES`, from "Sorry about the portal." to "Blood for the Blood God.", over 55 s (the first 5 s after the join message).
+- **2 s after the join message:** thunder for everyone, 3 visual-only bolts around the ruins, a red particle column at the portal, and the title "hypixel / has entered the server.". Ops get a note saying how many lines follow and how long until the rest runs.
+- **hypixel speaks:** the 8 lines in `LEADER_LINES`, from "Sorry about the portal." to "Blood for the Blood God.", over about 73 s.
+  - **Typing time:** each line takes as long as hypixel would need to type it (`LEADER_TYPING`): a 2 s pause plus 1 s per 8 characters, between 3 and 14 s. So the short lines come quickly and the long ones take longer. The gaps are 4.9, 12.15, 11.4, 13.5, 4.75, 9.75, 11.4 and 5 s.
+  - **While hypixel speaks** (`FINALE_SPEECH`):
+    - it starts to rain (put back the way it was when the finale ends);
+    - every 2 s the ruins pulse with a swirl of red dust, crimson spores and a heartbeat for everyone within 32 blocks;
+    - a bolt of lightning hits near the ruins with each line;
+    - on the last line, "Blood for the Blood God.", a ring of 10 bolts strikes around the ruins, with 3 s of Darkness and the Elder Guardian curse sound.
   - They're sent with `/fakesay` (fake_players.js), so in-game they look exactly like real chat: `<hypixel> …`, with the same name hover as a real player.
   - Simple Discord Link posts them to the Discord chat channel as hypixel (hypixel's name and avatar), like a real player's message.
 - **8 s after the last line** (`LEADER_LINES_END_PAUSE_SECONDS`, or straight away with `/pigescort reveal continue`, which also cuts the speech short): [MINISTRY] "The preceding broadcast was not authorized…". With `LEADER_LINES = []` there's no speech, and this comes 20 s after the join message (`LEADER_FINALE_DELAY_SECONDS`).
@@ -114,23 +123,27 @@ The escort plays exactly as before. Only the ending changes. All the texts, titl
 - **+8 s:** the event ends and cleans up.
 
 **Leader notes:**
-- **Editing the speech:** add, remove or reword lines in `LEADER_LINES` at the top of `pig_escort.js`. `after` is the pause before each line, in seconds.
+- **Editing the speech:** add, remove or reword lines in `LEADER_LINES` at the top of `pig_escort.js`.
+  - The timing follows each line's length (`LEADER_TYPING`). To fix one line's timing, give it `after: N` (seconds since the line before).
+  - `effect: 'ring'` gives a line the ring of lightning, and `effect: 'none'` gives it no lightning. The default is one bolt.
+- **The weather:** `FINALE_SPEECH.weather` is `'rain'`, `'thunder'` or `'none'`. It's left alone if it's already raining or storming. `'thunder'` also brings Minecraft's own real lightning anywhere in the world, which can start fires, so `'rain'` is the default.
 - **If the join failed** (fake_players.js missing), the lines are skipped, because nobody is there to say them.
 - **Speaking live:** an op can also type as hypixel at any time with `/fakesay hypixel <message>`.
 - hypixel stays on the tab list until you run `/fakeleave hypixel`. If hypixel is still "online" at the next finale, there's no second join message and ops are told so.
 
 **Discord:** like every Pig Escort announcement, the [MINISTRY] and [SIGNAL HIJACKED] lines use `tellraw @a`, which Simple Discord Link relays to Discord as server chat. So the reveal shows up in Discord too. hypixel's lines are the exception: they post as hypixel speaking.
 
-**Stopping:** `/pigescort stop` during the finale ends it at once and cleans up. A `/reload` or restart during it does the same, and no later step runs.
+**Stopping:** `/pigescort stop` during the finale ends it at once and cleans up, and puts the weather back. A `/reload` or restart during it does the same and no later step runs, but the rain is left to clear by itself.
 
 ## Testing the finale
 
 Test on a **copy of the world**. A test is announced to everyone online, and the hypixel join is posted to Discord if Simple Discord Link is set up on that server.
 
+0. **Lightning first:** run `/aura <yourself>`. You should see flashes and hear thunder, with no fire and no damage. The finale's lightning is made the same way.
 1. **Test at the event's own portal (no config needed).**
    - Run `/pigescort setup`, then stand somewhere flat and run `/pigescort setportal`.
    - Run `/pigescort finale test success`. The portal is built, and the whole of Ending A plays. Check each step against the table above.
-   - At T+14 the frame turns to crying obsidian and the portal goes out. Stand within 6 blocks to feel the push and check you take no damage.
+   - At T+14 the frame turns to crying obsidian, the portal goes out, and lightning strikes it and around it. Stand within 6 blocks to feel the push and check you take no damage, nothing catches fire, and there are no "Visual-only lightning failed" warnings in the server log.
    - After the reveal, the land at the site is put back exactly, and the setup is still staged (`/pigescort status`).
    - `/pigescort nether status` still says Locked, because tests never unlock. Ops are told "Test run: the Nether was NOT unlocked".
 2. **Ending B:** run `/pigescort finale test fail`. Red dust drifts from 15 blocks in front of the portal into it at T+8.
@@ -142,13 +155,15 @@ Test on a **copy of the world**. A test is announced to everyone online, and the
 4. **The leader and the speech:**
    - Before the test, run `/fakeleave hypixel`.
    - About 29 s in, "hypixel joined the game" appears, with hypixel on the tab list and their skin.
-   - 2 s later come the thunder, the red column and the "hypixel" title, and ops get the "They say 8 lines. The rest of the finale runs in 63 s" note.
-   - The eight lines arrive 5, 12, 19, 27, 35, 42, 49 and 55 s after the join, in-game and in Discord's chat channel. The Ministry response follows 8 s after the last.
+   - 2 s later come the thunder, lightning, the red column and the "hypixel" title, and ops get the "They say 8 lines. The rest of the finale runs in 80.85 s" note.
+   - It starts raining. The ruins pulse (red dust, spores, a heartbeat) every 2 s.
+   - The eight lines arrive about 5, 17, 28, 42, 47, 56, 68 and 73 s after the join, in-game and in Discord's chat channel. Each one comes with a bolt, and the last with a ring of lightning and Darkness.
+   - The Ministry response follows 8 s after the last line. The pulsing stops then, and the rain stops when the finale ends.
 5. **`/pigescort reveal continue`:**
    - Run another test and use it during the speech: the remaining lines are dropped and the Ministry response comes at once.
    - Run it again: "Already continuing."
    - Run it before the leader step: "hasn't reached the leader yet."
-6. **`/pigescort stop` mid-finale:** everything is cleaned up, and nothing else is said afterwards.
+6. **`/pigescort stop` mid-finale:** everything is cleaned up, nothing else is said or struck afterwards, and the weather goes back to what it was.
 7. **Walking into the portal before T+14:** you're put back in front of it with "This portal is closed pending an inquiry."
 8. **A fixed test frame (optional):**
    - Set `PORTAL_FRAME_FROM` / `PORTAL_FRAME_TO` to the outer corners of a frame (it must be flat: the same x or the same z) and run `/reload`.
@@ -269,6 +284,9 @@ Test on a **copy of the world**. A test is announced to everyone online, and the
    - **hypixel's chat on Discord:** `/fakesay` builds Simple Discord Link's chat message (`DiscordAuthor.of(name, uuid, name)` with `MessageType.CHAT`) the same way Simple Discord Link does for a real player's chat. If it fails, the command's reply and the log say where. The in-game line is not affected.
    - **The fireworks:** the NBT format (`FireworksItem`) and the damage name `fireworks` used to cancel firework damage. The fireworks explode 12 blocks above the frame, out of their 5-block damage range anyway.
    - **`explosion_emitter` with `force`:** it should show for everyone, at any distance.
+   - **Visual-only lightning** (`createEntity('minecraft:lightning_bolt')` + `setVisualOnly(true)`): this is the same code as `/aura`. If KubeJS doesn't expose `setVisualOnly`, sparks and a thunder sound are used instead and one warning is logged. A real bolt is never summoned.
+   - **The weather:** it's read with `isRaining()` / `isThundering()` on the overworld. If that fails, the weather is left alone and a warning is logged.
+   - **The heartbeat sound** `minecraft:entity.warden.heartbeat` and the `crimson_spore` particle are vanilla 1.20.1 IDs. A wrong ID would only make that effect silent or invisible.
 6. **Mods that react to a right-click on the pig at a higher priority** than KubeJS's could act before the cancel. Tamper detection is the backstop.
 
 ## Known limitations

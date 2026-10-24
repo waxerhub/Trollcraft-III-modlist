@@ -132,6 +132,7 @@ const TWO_PI = 6.283185307179586   // Math.PI is missing in the server's script 
 // Kept across /reload. Groups from before a /reload are ended (their mobs removed) when the script loads.
 if (!global.portalAmbushState) global.portalAmbushState = { token: 0, groups: {}, mobGroup: {}, inGroup: {}, buckets: [], counter: 0 }
 const S = global.portalAmbushState
+if (!S.lastArrival) S.lastArrival = {}
 S.token++                 // stops loops and timers from before a /reload
 S.loopRunning = false
 S.expectMob = false
@@ -668,10 +669,26 @@ function nearPortalBlock(p) {
   return false
 }
 
+// Why the last portal arrival of each player did or didn't lead to an ambush (shown by /ambush timer).
+// Kept in memory only, never logged.
+function noteArrival(p, text) { S.lastArrival[uuidOf(p)] = { time: Date.now(), text: text } }
+function whyNotEligible(server, p, factionId) {
+  const uuid = uuidOf(p)
+  if (factionOf(p) != factionId) return 'not in the hunted faction'
+  if (S.inGroup[uuid]) return 'already in an active group'
+  if (cooldownLeftMs(uuid) > 0) return 'on cooldown (' + clock(cooldownLeftMs(uuid) / 1000) + ' left)'
+  if (!canBeTargeted(p)) return 'in creative or spectator'
+  if (isPigEscortParticipant(p)) return 'taking part in a Pig Escort'
+  if (inSafeZone(server, dimOf(p), posOf(p))) return 'arrived inside a safe zone'
+  return null
+}
+
 function arrival(server, p, mechanic) {
-  if (!isEnabled() || isPeaceful(server)) return
+  if (!isEnabled()) return noteArrival(p, 'add-on is OFF (/ambush toggle)')
+  if (isPeaceful(server)) return noteArrival(p, 'difficulty is Peaceful')
   const factionId = mechanic == 'nether_ambush' ? 'ministry' : 'syndicate'
-  if (!eligible(server, p, factionId)) return
+  const why = whyNotEligible(server, p, factionId)
+  if (why) return noteArrival(p, 'skipped: ' + why)
   const now = Date.now(), pos = posOf(p), dim = dimOf(p), uuid = uuidOf(p)
   S.buckets = S.buckets.filter(b => now - b.time < ARRIVAL_GROUP_SECONDS * 1000)
   const b = S.buckets.filter(x => x.mechanic == mechanic && x.dim == dim && dist(x.pos, pos) <= ARRIVAL_GROUP_RADIUS)[0]
@@ -685,17 +702,22 @@ function arrival(server, p, mechanic) {
       S.inGroup[uuid] = g.id
       sendMessage(server, [p], mechanic)
     }
-    return
+    return noteArrival(p, 'came through with others; shared their roll')
   }
   const nb = { mechanic: mechanic, dim: dim, pos: pos, time: now, players: [uuid], groupId: null }
   S.buckets.push(nb)
-  if (mechanic == 'return_inspection' && witnesses(server, dim, pos).length) return   // secrecy: skip silently
+  if (mechanic == 'return_inspection' && witnesses(server, dim, pos).length) return noteArrival(p, 'skipped: someone outside the faction was within ' + SECRECY_RADIUS + ' blocks')
   const chance = mechanic == 'nether_ambush' ? NETHER_AMBUSH_CHANCE : OVERWORLD_PATROL_CHANCE
-  if (Math.random() >= chance) return
+  const roll = Math.random()
+  if (roll >= chance) return noteArrival(p, 'rolled ' + Math.round(roll * 100) + '%, needed under ' + Math.round(chance * 100) + '%: no ambush this time')
+  noteArrival(p, 'roll succeeded; ambush in ' + AMBUSH_DELAY_SECONDS + ' s')
   const token = S.token
   server.scheduleInTicks(AMBUSH_DELAY_SECONDS * 20, () => {
     if (token != S.token) return
-    try { spawnArrivalGroup(server, nb, {}) } catch (e) { console.error('[PortalAmbush] ' + e) }
+    try {
+      let g = spawnArrivalGroup(server, nb, {})
+      if (!g) noteArrival(p, 'roll succeeded, but nothing spawned (no safe ground nearby, the mob cap, or the player left)')
+    } catch (e) { console.error('[PortalAmbush] ' + e) }
   })
   startLoop(server)
 }
@@ -855,10 +877,16 @@ if (global.Factions) {
   global.Factions.on('enteredDimension', (player, faction, from, to, how) => {
     const server = Utils.server
     if (!server) return
-    if (how == 'travel' && from != null &&
-        ((from == OVERWORLD && to == NETHER) || (from == NETHER && to == OVERWORLD)) && nearPortalBlock(player)) {
-      if (to == NETHER && faction == 'ministry') arrival(server, player, 'nether_ambush')
-      if (to == OVERWORLD && faction == 'syndicate') arrival(server, player, 'return_inspection')
+    // An old factions_core.js doesn't say how the player arrived, so portal trips can't be recognised.
+    if (how === undefined && from != null) {
+      if (!S.coreOutdated) console.error('[PortalAmbush] factions_core.js is outdated (its dimension events don\'t say how the player arrived), so portal arrivals can\'t be detected. Update factions_core.js.')
+      S.coreOutdated = true
+    }
+    const hunted = (to == NETHER && faction == 'ministry') || (to == OVERWORLD && faction == 'syndicate')
+    if (hunted && from != null && ((from == OVERWORLD && to == NETHER) || (from == NETHER && to == OVERWORLD))) {
+      if (how != 'travel') noteArrival(player, 'not a portal trip (' + (how || 'factions_core.js outdated') + ')')
+      else if (!nearPortalBlock(player)) noteArrival(player, 'no Nether portal block where they arrived (teleported, not a portal trip)')
+      else arrival(server, player, to == NETHER ? 'nether_ambush' : 'return_inspection')
     }
     if (needsLoop(server)) startLoop(server)
   })
@@ -998,7 +1026,8 @@ ServerEvents.commandRegistry(event => {
         (dim ? 'hostile dimension ' + dim + (dimOf(p) == dim ? ' (there now)' : ' (not there)') : 'no hostile dimension') +
         '; raid countdown ' + (r ? clock(r.left) + (r.postponed ? ' (postponed raid, ' + r.postpones + '/' + RAID_MAX_POSTPONES + ')' : '') : 'not started') +
         '; cooldown ' + (cd ? clock(cd / 1000) : 'none') +
-        (S.inGroup[u] ? '; in an active group' : '') + '.')
+        (S.inGroup[u] ? '; in an active group' : '') + '.' +
+        (S.lastArrival[u] ? ' Last portal arrival (' + clock((Date.now() - S.lastArrival[u].time) / 1000) + ' ago): ' + S.lastArrival[u].text + '.' : ' No portal arrival seen since the last /reload.'))
     }))))
     .then(Commands.literal('status').executes(safe(ctx => {
       const server = ctx.source.server
@@ -1006,6 +1035,7 @@ ServerEvents.commandRegistry(event => {
       reply(ctx, (isEnabled() ? 'ON' : 'OFF') + (isPeaceful(server) ? ' (Peaceful: paused)' : '') +
         ' | hooks: ' + (global.portalAmbushHooksInstalled ? 'loaded' : 'NOT loaded (restart after adding portal_ambush_hooks.js)') +
         (global.factionsHooksInstalled ? '' : ' | factions_hooks.js NOT loaded: portal arrivals can\'t be detected') +
+        (S.coreOutdated ? ' | factions_core.js is OUTDATED: portal arrivals can\'t be detected, update it' : '') +
         ' | groups: ' + ids.length + ' | ambush mobs: ' + aliveAmbushMobs() + '/' + SERVER_MAX_MOBS)
       ids.forEach(id => {
         let g = S.groups[id]

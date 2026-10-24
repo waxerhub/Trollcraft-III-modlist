@@ -1,6 +1,6 @@
 # Factions (core)
 
-The Ministry of Trolling, the Free Swine Syndicate and the Unregistered Citizens.
+Techno's Crownsworn (id `ministry`), The Blood God's Syndicate (id `syndicate`) and the Unregistered Citizens.
 
 ## Files
 

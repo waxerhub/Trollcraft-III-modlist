@@ -52,7 +52,7 @@ global.FactionsConfigSource = {
   factions: [
     {
       id: 'ministry',
-      displayName: 'Ministry of Trolling',
+      displayName: "Techno's Crownsworn",
       memberTitle: 'Loyalist',
       color: 'gold',
       secret: false,
@@ -78,7 +78,7 @@ global.FactionsConfigSource = {
     },
     {
       id: 'syndicate',
-      displayName: 'Free Swine Syndicate',
+      displayName: "The Blood God's Syndicate",
       memberTitle: 'Operative',
       color: 'dark_red',
       secret: true,

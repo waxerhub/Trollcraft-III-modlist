@@ -37,7 +37,7 @@ const BUILTIN_CONFIG = {
   stamp: 'builtin',
   settings: {},
   factions: [
-    { id: 'ministry', displayName: 'Ministry of Trolling', memberTitle: 'Loyalist', color: 'gold', secret: false,
+    { id: 'ministry', displayName: "Techno's Crownsworn", memberTitle: 'Loyalist', color: 'gold', secret: false,
       ranks: ['Recruit', 'Loyalist', 'Enforcer', 'Minister'], chatPrefix: '[%rank%]', inviteRank: 'Enforcer',
       voice: { tag: '[MINISTRY]', tagColor: 'gold', textColor: 'yellow', title: 'MINISTRY', subtitle: 'Your paperwork has been processed.' },
       chatLabel: '[MINISTRY CHANNEL]', info: ['The government. Glory to Managed Trollocracy.'],
@@ -45,7 +45,7 @@ const BUILTIN_CONFIG = {
       inviteText: 'You have been selected for citizenship processing by %inviter%.',
       leaveText: 'Your resignation has been filed under "Disappointments".',
       desertionText: 'NOTICE OF DESERTION: %player% has abandoned their post.' },
-    { id: 'syndicate', displayName: 'Free Swine Syndicate', memberTitle: 'Operative', color: 'dark_red', secret: true,
+    { id: 'syndicate', displayName: "The Blood God's Syndicate", memberTitle: 'Operative', color: 'dark_red', secret: true,
       ranks: ['Sympathizer', 'Operative', 'Cell Leader'], chatPrefix: '[%rank%]', inviteRank: 'Cell Leader',
       voice: { tag: '[SIGNAL HIJACKED]', tagColor: 'dark_red', textColor: 'red', title: 'SIGNAL HIJACKED', subtitle: 'You were never here.' },
       chatLabel: '[ENCRYPTED]', info: ['There is no Syndicate. If there were, it would answer to no one.'],

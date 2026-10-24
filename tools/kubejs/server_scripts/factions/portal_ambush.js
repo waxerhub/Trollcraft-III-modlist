@@ -173,6 +173,8 @@ S.allowRemoval = false
 let MEMORY = null, WALK_TARGET = null, SERIALIZER = null
 try { MEMORY = Java.loadClass('net.minecraft.world.entity.ai.memory.MemoryModuleType') } catch (e) { }
 try { WALK_TARGET = Java.loadClass('net.minecraft.world.entity.ai.memory.WalkTarget') } catch (e) { }
+// fromJsonLenient, not fromJson: fromJson has a text and a JSON-object version, and KubeJS can turn a
+// string into either, so the script engine refuses to pick one ("ambiguous").
 try { SERIALIZER = Java.loadClass('net.minecraft.network.chat.Component$Serializer') } catch (e) { }
 
 
@@ -265,7 +267,7 @@ function factionHuntedIn(dim) {
 function comp(parts) {
   const json = JSON.stringify([''].concat(parts))
   if (SERIALIZER) {
-    try { return SERIALIZER.fromJson(json) } catch (e) { }
+    try { return SERIALIZER.fromJsonLenient(json) } catch (e) { }
   }
   return Text.of(parts.map(p => p.text || '').join(''))
 }

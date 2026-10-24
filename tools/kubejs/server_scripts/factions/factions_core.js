@@ -240,6 +240,8 @@ function rankIndex(f, rank) {
 // Messages are built as JSON text components (the same format /tellraw uses) and turned into real text
 // with Minecraft's own reader, then sent with player.tell.
 
+// fromJsonLenient, not fromJson: fromJson has a text and a JSON-object version, and KubeJS can turn a
+// string into either, so the script engine refuses to pick one ("ambiguous").
 let Serializer = null
 try { Serializer = Java.loadClass('net.minecraft.network.chat.Component$Serializer') } catch (e) { }
 
@@ -247,7 +249,7 @@ let textWarned = false
 function comp(parts) {
   const json = JSON.stringify([''].concat(parts))
   if (Serializer) {
-    try { return Serializer.fromJson(json) } catch (e) {
+    try { return Serializer.fromJsonLenient(json) } catch (e) {
       if (!textWarned) {
         textWarned = true
         console.warn('[Factions] Text error, using plain KubeJS text instead: ' + e + ' (in ' + json.substring(0, 120) + ')')

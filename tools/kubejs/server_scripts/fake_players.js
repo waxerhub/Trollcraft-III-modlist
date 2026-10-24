@@ -55,6 +55,8 @@ function classes() {
   J.Base64 = Java.loadClass('java.util.Base64')
   J.ArrayList = Java.loadClass('java.util.ArrayList')
   J.ready = true
+  // fromJsonLenient, not fromJson: fromJson has a text and a JSON-object version, and KubeJS can turn a
+  // string into either, so the script engine refuses to pick one ("ambiguous").
   try { J.Serializer = Java.loadClass('net.minecraft.network.chat.Component$Serializer') } catch (e) { J.Serializer = null }
   try { J.Skull = Java.loadClass('net.minecraft.world.level.block.entity.SkullBlockEntity') } catch (e) { J.Skull = null }
   return J
@@ -136,7 +138,7 @@ function announce(server, f, joined) {
   let sent = false
   if (J.Serializer) {
     try {
-      server.getPlayerList().broadcastSystemMessage(J.Serializer.fromJson(JSON.stringify({ translate: key, with: [name], color: 'yellow' })), false)
+      server.getPlayerList().broadcastSystemMessage(J.Serializer.fromJsonLenient(JSON.stringify({ translate: key, with: [name], color: 'yellow' })), false)
       sent = true
     } catch (e) { console.warn('[FakePlayers] ' + e) }
   }
@@ -214,7 +216,7 @@ function fakeSay(server, name, text, reply) {
   let sent = false
   if (J.Serializer) {
     try {
-      server.getPlayerList().broadcastSystemMessage(J.Serializer.fromJson(JSON.stringify({ translate: 'chat.type.text', with: [nameJson(f), text] })), false)
+      server.getPlayerList().broadcastSystemMessage(J.Serializer.fromJsonLenient(JSON.stringify({ translate: 'chat.type.text', with: [nameJson(f), text] })), false)
       sent = true
     } catch (e) { console.warn('[FakePlayers] ' + e) }
   }

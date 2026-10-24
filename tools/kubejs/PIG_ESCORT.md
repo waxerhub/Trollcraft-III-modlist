@@ -6,6 +6,8 @@ All players are **Escorts**. They walk **Ambassador Oinkington** to a temporary 
 - **Escorts win** when the pig steps into the portal.
 - **The Piglins win** if the pig dies or the time runs out.
 
+Either way, the event ends with **the reveal of the Blood God's Syndicate** (see [The finale](#the-finale-the-syndicate-reveal)). `FINALE_ENABLED = false` brings back the old Ministry endings.
+
 Nothing ever travels through the event portal.
 
 ## Files
@@ -13,6 +15,8 @@ Nothing ever travels through the event portal.
 | File | Goes in | Why |
 |---|---|---|
 | `server_scripts/events/pig_escort.js` | `kubejs/server_scripts/events/` | All the event logic and commands. You can reload it with `/reload`, but a reload during an event voids that event. |
+| `startup_scripts/nether_portal_whitelist.js` | `kubejs/startup_scripts/` | Optional. Only lets Nether portals light in the allowed spots. The finale switches it off at the end. **Restart after updating it.** |
+| `server_scripts/fake_players.js` | `kubejs/server_scripts/` | Needed for the Syndicate leader's arrival (`/fakejoin`). Without it, the finale goes on without the join message. |
 | `startup_scripts/pig_escort_hooks.js` | `kubejs/startup_scripts/` | KubeJS 6 only lets startup scripts listen to raw Forge events. This file forwards six of them to the server script: dimension travel, teleports, mounting, effects, the second kind of right-click, and damage scaling. **It needs a server restart** after you add or change it. |
 
 ## Commands (op level 2)
@@ -34,6 +38,10 @@ Nothing ever travels through the event portal.
 | `/pigescort wave` | Send a raider wave now, for testing. It reports how many spawned and why any failed. |
 | `/pigescort purge` | Remove stray event pigs and mobs from loaded chunks. Only works when no event is running. |
 | `/pigescort diagnostics` | Shows whether the hooks are installed and which version of each uncertain API is in use. |
+| `/pigescort finale test success\|fail` | Play Ending A or B right now, without a pig run. Everyone online sees and hears it. No rewards, and the Nether is not unlocked. See [Testing the finale](#testing-the-finale). |
+| `/pigescort finale restoreframe` | Rebuild the test frame (`PORTAL_FRAME_FROM` / `PORTAL_FRAME_TO`) in obsidian and relight it. |
+| `/pigescort reveal continue` | After the leader has joined, run the rest of the finale now instead of waiting `LEADER_FINALE_DELAY_SECONDS`. |
+| `/pigescort nether lock\|unlock\|status` | Switch `nether_portal_whitelist.js` on or off by hand. The finale unlocks it; use `lock` to undo that. The switch is saved with the world. |
 
 ## Behaviour summary
 
@@ -62,6 +70,88 @@ Nothing ever travels through the event portal.
   - No tick handlers at all.
   - While running, one check per second.
   - The pig's chunk and the portal's chunks are force-loaded. Chunks that were already force-loaded by someone else are left alone.
+
+## The finale (the Syndicate reveal)
+
+The escort plays exactly as before. Only the ending changes. All the texts, titles, sounds and timings are in the **CONFIG: THE FINALE** block at the top of `pig_escort.js`. The timelines are lists of steps (`{ at: seconds, ministry/hijack: 'text' }` or `{ at, action }`), so lines can be reworded, moved or added without touching the code.
+
+**How it starts:**
+- **Ending A** starts when the pig reaches the portal.
+- **Ending B** starts when the pig dies, and also when time runs out.
+
+**At the start:**
+- The pig and the raiders leave at once, so nobody is fighting during the cutscene, and the bossbar goes.
+- The usual rewards are given quietly: a diamond each on a delivery, plus the top-killer bonus in both endings.
+- Teams, Glowing and keepInventory stay until the end, then the normal cleanup runs.
+
+| Ending A (delivered) | Ending B (lost, or out of time) |
+|---|---|
+| T+0 gold fireworks above the portal. [MINISTRY] "The Swine has been delivered…" | T+0 [MINISTRY] "The Swine has been lost…" |
+| T+5 [MINISTRY] Form 88-D | T+4 [MINISTRY] "Nether access is denied indefinitely…" |
+| T+9 the portal hum gets louder; 3 s of Darkness for everyone within 48 blocks | T+8 red dust rises from where the pig died and drifts into the portal (particles only) |
+| T+11 [SIGNAL HIJACKED] "Thank you for the escort." (scrambled characters around it) | T+11 [SIGNAL HIJACKED] "Spilled blood still pays the toll." (scrambled) |
+| T+14 **the explosion** | T+14 **the explosion** |
+| T+17 [SIGNAL HIJACKED] "The Ministry wanted one door…" | T+17 [SIGNAL HIJACKED] "They would have kept him behind a wall of laws…" |
+| T+21 **the reveal** | T+21 **the reveal** |
+
+**The explosion is visual only:**
+- **Effects:** `explosion_emitter` particles at the frame's four corners and centre, plus smoke and lava particles. The explode and Wither-spawn sounds play for everyone within 96 blocks.
+- **Blocks:** the portal blocks become air and the frame becomes crying obsidian. Nothing else changes. No real explosion, no block damage, no player damage.
+- **Push:** players within 6 blocks get a gentle shove away from the portal.
+- **Afterwards:** the normal cleanup at the very end puts the original land back, as it always has.
+- **Before the explosion,** the still-lit portal stays closed: anyone walking in is put back in front of it.
+
+**The reveal:**
+- **R+0:** everyone online gets the title "THE BLOOD GOD'S SYNDICATE" with the subtitle "Blood for the Blood God." and the Elder Guardian curse sound.
+- **R+4:** [SIGNAL HIJACKED] "Honor the player, not the statue…"
+- **R+8:** the leader, `/fakejoin hypixel` (`LEADER_NAME`). That shows the join message, puts hypixel on the tab list with their skin, and posts the join to Discord.
+- **2 s after the join message:** thunder for everyone (no real lightning), a red particle column at the portal, and the title "hypixel / has entered the server.". Ops get a note saying how long until the rest runs.
+- **20 s after the join message** (`LEADER_FINALE_DELAY_SECONDS`, or straight away with `/pigescort reveal continue`): [MINISTRY] "The preceding broadcast was not authorized…"
+- **+5 s:** the Nether is unlocked (`UNLOCK_NETHER`) with [MINISTRY] "Due to an unscheduled structural event…".
+- **+8 s:** the event ends and cleans up.
+
+**Leader notes:**
+- No chat is ever sent as the leader.
+- hypixel stays on the tab list until you run `/fakeleave hypixel`. If hypixel is still "online" at the next finale, there's no second join message and ops are told so.
+
+**Discord:** like every Pig Escort announcement, the finale lines use `tellraw @a`, which Simple Discord Link relays to Discord as server chat. So the reveal shows up in Discord too.
+
+**Stopping:** `/pigescort stop` during the finale ends it at once and cleans up. A `/reload` or restart during it does the same, and no later step runs.
+
+## Testing the finale
+
+Test on a **copy of the world**. A test is announced to everyone online, and the hypixel join is posted to Discord if Simple Discord Link is set up on that server.
+
+1. **Test at the event's own portal (no config needed).**
+   - Run `/pigescort setup`, then stand somewhere flat and run `/pigescort setportal`.
+   - Run `/pigescort finale test success`. The portal is built, and the whole of Ending A plays. Check each step against the table above.
+   - At T+14 the frame turns to crying obsidian and the portal goes out. Stand within 6 blocks to feel the push and check you take no damage.
+   - After the reveal, the land at the site is put back exactly, and the setup is still staged (`/pigescort status`).
+   - `/pigescort nether status` still says Locked, because tests never unlock. Ops are told "Test run: the Nether was NOT unlocked".
+2. **Ending B:** run `/pigescort finale test fail`. Red dust drifts from 15 blocks in front of the portal into it at T+8.
+3. **The leader delay:**
+   - Before the test, run `/fakeleave hypixel`.
+   - About 29 s in, "hypixel joined the game" appears, with hypixel on the tab list and their skin.
+   - 2 s later come the thunder, the red column and the "hypixel" title, and ops get the "rest of the finale runs in 20 s" note.
+   - 20 s after the join, the Ministry response follows.
+4. **`/pigescort reveal continue`:**
+   - Run another test and use it right after the join note: the Ministry response comes at once.
+   - Run it again: "Already continuing."
+   - Run it before the leader step: "hasn't reached the leader yet."
+5. **`/pigescort stop` mid-finale:** everything is cleaned up, and nothing else is said afterwards.
+6. **Walking into the portal before T+14:** you're put back in front of it with "This portal is closed pending an inquiry."
+7. **A fixed test frame (optional):**
+   - Set `PORTAL_FRAME_FROM` / `PORTAL_FRAME_TO` to the outer corners of a frame (it must be flat: the same x or the same z) and run `/reload`.
+   - `/pigescort finale restoreframe` builds and lights it. `finale test fail` blows it up, and it stays crying obsidian afterwards.
+   - `restoreframe` puts it back.
+8. **Unlocking:**
+   - `/pigescort nether unlock`, then light a Nether portal outside the whitelist: it lights.
+   - `/pigescort nether lock`: it's refused again.
+   - Restart the server between unlock and lighting to check that the switch is saved.
+9. **A real run:**
+   - With `TEST_MODE = true`, `/pigescort settime 2`, and walk the pig in (Ending A).
+   - Then run again and let it time out (Ending B).
+   - After the real Ending A, `/pigescort nether status` says Unlocked. Run `/pigescort nether lock` if this was only a test.
 
 ## Test plan (local server, 1–2 accounts)
 
@@ -162,7 +252,13 @@ Nothing ever travels through the event portal.
 
    If diagnostics says every clean API is OK, you can set `USE_CLEAN_APIS = true` and `/reload`.
 4. **Plain Minecraft methods called by their Mojang names**, which KubeJS normally remaps: `getActiveEffects`, `getBbWidth`, `resetFallDistance`, `getSharedSpawnPos`, `getMsgId`, `getLeashHolder`, `blocksMotion`, `getMaxBuildHeight` and others. These are standard, but untested on your server.
-5. **Mods that react to a right-click on the pig at a higher priority** than KubeJS's could act before the cancel. Tamper detection is the backstop.
+5. **The finale:**
+   - **The explosion push** uses Minecraft's `knockback(...)` and then sets `hurtMarked` so the player's game gets the new motion. If either fails, the push is skipped and a warning is logged; nothing else is affected.
+   - **The unlock switch** is read inside the whitelist's startup handler through `event.getLevel().getServer().persistentData`. If that can't be read, the whitelist stays on, and the error is logged once. `/pigescort nether unlock` also sets a `global` flag the whitelist checks first, so it still works until the next restart.
+   - **`/fakejoin` run from the script:** the server runs it with full permission, so this should work. If it fails, ops are told and the finale goes on.
+   - **The fireworks:** the NBT format (`FireworksItem`) and the damage name `fireworks` used to cancel firework damage. The fireworks explode 12 blocks above the frame, out of their 5-block damage range anyway.
+   - **`explosion_emitter` with `force`:** it should show for everyone, at any distance.
+6. **Mods that react to a right-click on the pig at a higher priority** than KubeJS's could act before the cancel. Tamper detection is the backstop.
 
 ## Known limitations
 

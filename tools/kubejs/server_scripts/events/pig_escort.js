@@ -4,6 +4,7 @@
 // All players are Escorts. They must walk Ambassador Oinkington (a sacred pig) to a temporary
 // Ministry-Approved Portal while waves of Piglins, Brutes and Hoglins try to kill it.
 // Escorts win when the pig steps into the portal. The Piglins win if the pig dies or time runs out.
+// Either way the event ends with the reveal of the Blood God's Syndicate (see FINALE_ENABLED).
 // Nothing ever actually travels through the event portal.
 //
 // Needs kubejs/startup_scripts/pig_escort_hooks.js too (restart once after installing it).
@@ -25,6 +26,10 @@
 //   /pigescort wave                      send a raider wave now (testing)
 //   /pigescort purge                     remove stray event pigs/mobs left in loaded chunks (only when idle)
 //   /pigescort diagnostics               which version of each uncertain API is in use (see USE_CLEAN_APIS)
+//   /pigescort finale test success|fail  play that finale now, without a pig run (see PORTAL_FRAME_FROM)
+//   /pigescort finale restoreframe       rebuild and relight the test frame (PORTAL_FRAME_FROM / _TO)
+//   /pigescort reveal continue           skip the rest of the wait after the Syndicate leader joins
+//   /pigescort nether lock|unlock|status switch nether_portal_whitelist.js on or off (the finale unlocks it)
 //
 // Note: KubeJS 6's script engine (Rhino) has no `template strings`, so strings are joined with +,
 // and loops use let rather than const.
@@ -119,6 +124,111 @@ const PREVIEW_SECONDS = 30
 const USE_CLEAN_APIS = false
 
 
+// ===================== CONFIG: THE FINALE (the Blood God's Syndicate reveal) =====================
+// When the pig reaches the portal (Ending A) or dies or runs out of time (Ending B), the event ends with
+// the reveal of the Blood God's Syndicate instead of the Ministry's usual closing words. Both endings lead to
+// the same explosion and reveal. The escort itself plays exactly as before.
+// All times are in seconds.
+
+const FINALE_ENABLED = true            // false = the old endings ("DELIVERED" / "DIPLOMATIC INCIDENT")
+const UNLOCK_NETHER = true             // the reveal ends by switching off nether_portal_whitelist.js
+
+// The Syndicate leader "joins" with /fakejoin (fake_players.js): the join message, the tab list entry with
+// their skin, and the Discord join post. '' = no leader. They stay "online" until you run /fakeleave <name>.
+// %leader% in any text below is replaced with this name.
+const LEADER_NAME = 'hypixel'
+const LEADER_EFFECTS_DELAY_SECONDS = 2   // thunder, red column and title this long after the join message
+const LEADER_FINALE_DELAY_SECONDS = 20   // the rest of the finale (AFTER_LEADER) starts this long after the
+                                         // join message. /pigescort reveal continue starts it straight away.
+
+// Only for /pigescort finale test and /pigescort finale restoreframe: two opposite corners of an obsidian
+// frame (the outer edge, obsidian included), for example { x: 100, y: 64, z: 200 } and { x: 103, y: 68, z: 200 }.
+// A real event always uses the portal it built itself. null = tests build the portal at the spot chosen
+// with /pigescort setportal (or setportal random) and put the land back afterwards.
+const PORTAL_FRAME_FROM = null
+const PORTAL_FRAME_TO = null
+
+// Voices: the same tags and colours as factions_config.js. garble is shown scrambled (like §k) before and
+// after lines marked garble: true.
+const VOICE_MINISTRY = { tag: '[MINISTRY]', tagColor: 'gold', textColor: 'yellow' }
+const VOICE_HIJACK = { tag: '[SIGNAL HIJACKED]', tagColor: 'dark_red', textColor: 'red', garble: '||||||', garbleColor: 'dark_red' }
+
+// The timelines. Each step happens `at` seconds after its timeline starts and is one of:
+//   { at, ministry: 'text' }                  a [MINISTRY] line for everyone
+//   { at, hijack: 'text', garble: true }      a [SIGNAL HIJACKED] line (garble: scrambled characters around it)
+//   { at, action: 'name' }                    one of the actions set up below
+// Ending A: from the moment the pig enters the portal.
+const ENDING_SUCCESS = [
+  { at: 0, action: 'fireworks' },
+  { at: 0, ministry: 'The Swine has been delivered. Nether access is hereby authorized. Celebration is permitted for thirty (30) seconds.' },
+  { at: 5, ministry: 'Each Escort will receive Form 88-D (Commendation, Pending) within 6 to 8 business weeks.' },
+  { at: 9, action: 'portal_hum' },
+  { at: 9, action: 'darkness' },
+  { at: 11, hijack: 'Thank you for the escort.', garble: true },
+  { at: 14, action: 'explosion' },
+  { at: 17, hijack: 'The Ministry wanted one door: guarded, stamped, and taxed. Now every door is open.' },
+  { at: 21, action: 'reveal' },
+]
+// Ending B: from the pig's death (or the moment time runs out).
+const ENDING_FAIL = [
+  { at: 0, ministry: 'The Swine has been lost. An inquiry will determine which of you is responsible. Preliminary findings: all of you.' },
+  { at: 4, ministry: 'Nether access is denied indefinitely. Please return to your homes and reflect.' },
+  { at: 8, action: 'blood_trail' },
+  { at: 11, hijack: 'Spilled blood still pays the toll.', garble: true },
+  { at: 14, action: 'explosion' },
+  { at: 17, hijack: 'They would have kept him behind a wall of laws. We spent him, and the door opened. Every door is open now.' },
+  { at: 21, action: 'reveal' },
+]
+// The reveal, after either ending.
+const REVEAL = [
+  { at: 0, action: 'reveal_title' },
+  { at: 4, hijack: 'Honor the player, not the statue. Tend your fields, grow your strength, answer to no one.' },
+  { at: 8, action: 'leader' },
+]
+// After the leader: from LEADER_FINALE_DELAY_SECONDS after the join message (or /pigescort reveal continue).
+const AFTER_LEADER = [
+  { at: 0, ministry: 'The preceding broadcast was not authorized. There is no Syndicate. Citizens who heard it are asked to un-hear it by end of day.' },
+  { at: 5, action: 'unlock' },
+  { at: 8, action: 'end' },     // the event ends: the usual cleanup (the land around the portal is put back)
+]
+
+// The actions.
+// fireworks: gold fireworks this high above the top of the frame (high enough that they can't hurt anyone;
+// firework damage to players is also cancelled during the finale).
+const FINALE_FIREWORKS = { height: 12, count: 5, colors: [0xFFD700, 0xFFAA00], fadeColors: [0xFFFFFF], lifeTicks: 10 }
+// portal_hum: the portal gets louder for everyone this close.
+const FINALE_PORTAL_HUM = { sound: 'minecraft:block.portal.trigger', volume: 1, pitch: 0.7, radius: 48 }
+// darkness: the screen darkens briefly for everyone this close.
+const FINALE_DARKNESS = { seconds: 3, radius: 48 }
+// blood_trail: red dust rising from where the pig died and drifting to the portal (particles only).
+const FINALE_BLOOD_TRAIL = { color: '0.7 0 0', size: 1.5, seconds: 3, steps: 12, rise: 3 }
+// explosion: VISUAL ONLY. Particles and sounds, then the portal blocks become air and the frame crying
+// obsidian (nothing else changes), and a gentle push with no damage for players this close.
+const FINALE_EXPLOSION = {
+  particles: ['minecraft:large_smoke', 'minecraft:lava'],
+  sounds: ['minecraft:entity.generic.explode', 'minecraft:entity.wither.spawn'],
+  soundRadius: 96, knockbackRadius: 6, knockbackStrength: 0.8,
+}
+// reveal_title: the title for everyone online.
+const FINALE_REVEAL_TITLE = {
+  title: 'THE BLOOD GOD\'S SYNDICATE', titleColor: 'dark_red', subtitle: 'Blood for the Blood God.', subtitleColor: 'red',
+  fadeIn: 10, stay: 80, fadeOut: 20, sound: 'minecraft:entity.elder_guardian.curse',
+}
+// leader: thunder (no real lightning), a red column at the portal, and a title, once the join message is out.
+const FINALE_LEADER = {
+  sounds: ['minecraft:entity.lightning_bolt.thunder', 'minecraft:entity.lightning_bolt.impact'],
+  columnColor: '0.8 0 0', columnHeight: 30,
+  title: '%leader%', titleColor: 'dark_red', subtitle: 'has entered the server.', subtitleColor: 'gray',
+  fadeIn: 10, stay: 60, fadeOut: 20,
+}
+// unlock: the Ministry's last word (only if UNLOCK_NETHER).
+const FINALE_UNLOCK_MESSAGE = 'Due to an unscheduled structural event, Nether access is now unrestricted. This was always the plan.'
+// Shown to ops only. %seconds% = LEADER_FINALE_DELAY_SECONDS.
+// Told to a player who walks into the event portal before the explosion (nothing goes through it).
+const FINALE_PORTAL_CLOSED = 'This portal is closed pending an inquiry. Step away from the portal.'
+const FINALE_OP_NOTICE = '%leader% has joined. The rest of the finale runs in %seconds% s. Run /pigescort reveal continue to run it now.'
+
+
 // ===================== CONSTANTS =====================
 
 // Math.PI is missing in the server's script engine (it came out as NaN), so the value is written out here.
@@ -133,13 +243,16 @@ const BOSSBAR = 'kubejs:pig_escort'
 const OVERWORLD = 'minecraft:overworld'
 const SNAPSHOT_KEY = 'pig_escort_snapshot'
 const SNAPSHOT_FILE = 'kubejs/pig_escort_snapshot.json'
+// nether_portal_whitelist.js lets every portal light while this is true in the server's saved data.
+const NETHER_UNLOCK_KEY = 'trollcraft_nether_unlocked'
+const LEADER_JOIN_TIMEOUT_TICKS = 140  // longest wait for /fakejoin's message (it looks up the skin first)
 
 const MOB_TYPES = { piglin: 'minecraft:piglin', marksman: 'minecraft:piglin', brute: 'minecraft:piglin_brute', hoglin: 'minecraft:hoglin' }
 const MOB_NAMES = { 'minecraft:piglin': 'Piglin', 'minecraft:piglin_brute': 'Piglin Brute', 'minecraft:hoglin': 'Hoglin' }
 
 
 // ===================== STATE =====================
-// S.phase: idle -> staged -> countdown -> running -> ending -> idle
+// S.phase: idle -> staged -> countdown -> running -> (finale ->) ending -> idle
 // `global` survives /reload; the previous state is only used to know whether an event was interrupted.
 
 const PREVIOUS_STATE = global.pigEscortState
@@ -154,11 +267,12 @@ const S = {
   expectMob: false,   // true while the script is summoning a raider
   lastMob: null,
   previewToken: 0,
+  fin: null,          // the finale in progress (see THE FINALE)
   diag: { hookCalls: {}, discard: 'not used yet', snapshotFile: 'not written yet', position: 'not used yet' },
 }
 global.pigEscortState = S
 const WAS_INTERRUPTED = PREVIOUS_STATE != null &&
-  (PREVIOUS_STATE.phase == 'countdown' || PREVIOUS_STATE.phase == 'running' || PREVIOUS_STATE.phase == 'ending')
+  (PREVIOUS_STATE.phase == 'countdown' || PREVIOUS_STATE.phase == 'running' || PREVIOUS_STATE.phase == 'finale' || PREVIOUS_STATE.phase == 'ending')
 if (PREVIOUS_STATE) {
   // The old version's scheduled callbacks check its own token and phase; this makes them all stop.
   S.token = (PREVIOUS_STATE.token || 0) + 1
@@ -399,6 +513,13 @@ function stateString(block) {
   const s = String(block.blockState.toString())
   const m = s.match(/^Block\{([^}]+)\}(\[.*\])?$/)
   return m ? m[1] + (m[2] || '') : String(block.id)
+}
+
+// What has to be put back for one cell of the portal layout.
+function snapshotCell(level, p) {
+  const b = level.getBlock(p.x, p.y, p.z)
+  const nbt = b.entityData
+  return { x: p.x, y: p.y, z: p.z, s: stateString(b), n: nbt != null ? String(nbt.toString()) : null }
 }
 
 // Checks a site can be used. Returns null if OK, otherwise the reason it can't.
@@ -1093,9 +1214,7 @@ function beginEvent(server) {
   const cells = portalLayout(R.site)
   const blocks = []
   cells.forEach(p => {
-    const b = level.getBlock(p.x, p.y, p.z)
-    const nbt = b.entityData
-    blocks.push({ x: p.x, y: p.y, z: p.z, s: stateString(b), n: nbt != null ? String(nbt.toString()) : null })
+    blocks.push(snapshotCell(level, p))
     R.footprint[key(p.x, p.y, p.z)] = true
     if (p.kind != 'air') R.solidKeys[key(p.x, p.y, p.z)] = true
     if (p.kind == 'frame' || p.kind == 'portal') R.frameCells.push(p)
@@ -1229,6 +1348,13 @@ function endEvent(server, result) {
   hooks.running = false
   S.token++
 
+  if (wasRunning && FINALE_ENABLED && (result == 'delivered' || result == 'pig_died' || result == 'timeout')) {
+    console.info('[PigEscort] Event ended: ' + result + ' (finale)')
+    finaleRewards(server, result == 'delivered')
+    startFinale(server, { kind: result == 'delivered' ? 'success' : 'fail', test: false, frame: siteFrame(R.site), from: pigEndPos(R, result) })
+    return
+  }
+
   if (wasRunning) {
     let players = participantPlayers(server)
     let top = null, topKills = 0
@@ -1300,7 +1426,381 @@ function cleanup(server, snap) {
   S.run = null
   S.snap = null
   S.setup = null
+  S.fin = null
   S.token++
+}
+
+
+// ===================== THE FINALE (the Blood God's Syndicate reveal) =====================
+// S.fin = { kind: 'success'|'fail', test, frame, from, startTick, leaderAt, afterLeader, keepSetup }.
+// Every step is scheduled with the current token: /pigescort stop, a /reload or the cleanup bumps the token,
+// and every step still waiting is dropped.
+
+function fill(text) { return String(text).split('%leader%').join(LEADER_NAME) }
+
+// A voice line: tag, text, and the scrambled characters around it when garble is set.
+function voiceJson(voice, text, garble) {
+  const g = garble && voice.garble ? { text: voice.garble, color: voice.garbleColor || voice.tagColor, obfuscated: true } : null
+  const parts = ['']
+  if (g) parts.push(g, { text: ' ' })
+  parts.push({ text: voice.tag, color: voice.tagColor, bold: true }, { text: ' ' + fill(text), color: voice.textColor })
+  if (g) parts.push({ text: ' ' }, g)
+  return JSON.stringify(parts)
+}
+function say(server, voice, text, garble) { run(server, 'tellraw @a ' + voiceJson(voice, text, garble)) }
+
+// Shown to operators only (and logged).
+function tellOps(server, text) {
+  console.info('[PigEscort] ' + text)
+  const json = JSON.stringify(['', { text: '[Escort] ', color: 'gold' }, { text: text, color: 'yellow' }])
+  onlinePlayers(server).forEach(p => {
+    let op = false
+    try { op = p.hasPermissions(2) } catch (e) { }
+    if (op) run(server, 'tellraw ' + nameOf(p) + ' ' + json)
+  })
+}
+
+function titleAll(server, t) {
+  run(server, 'title @a times ' + t.fadeIn + ' ' + t.stay + ' ' + t.fadeOut)
+  run(server, 'title @a subtitle ' + JSON.stringify({ text: fill(t.subtitle), color: t.subtitleColor }))
+  run(server, 'title @a title ' + JSON.stringify({ text: fill(t.title), color: t.titleColor, bold: true }))
+}
+
+// Runs a command at a point in the Overworld, so ~ ~ ~ and @a[distance=..] work from there.
+function at(server, p, command) {
+  return run(server, 'execute in ' + OVERWORLD + ' positioned ' + num(p.x) + ' ' + num(p.y) + ' ' + num(p.z) + ' run ' + command)
+}
+function particleAt(server, id, p, spread, speed, count) {
+  runOW(server, 'particle ' + id + ' ' + num(p.x) + ' ' + num(p.y) + ' ' + num(p.z) + ' ' + spread + ' ' + speed + ' ' + count + ' force @a')
+}
+// A sound everyone within radius hears at full volume.
+function soundAround(server, p, id, radius, volume, pitch) {
+  at(server, p, 'playsound ' + id + ' master @a[distance=..' + radius + '] ~ ~ ~ ' + volume + ' ' + pitch + ' 1')
+}
+
+// The frame: its cells ({x, y, z, kind: 'frame'|'portal'}), the portal's axis, the middle of the portal
+// opening, and the four outer corners.
+function frameInfo(cells, axis) {
+  const frame = cells.filter(c => c.kind == 'frame'), portal = cells.filter(c => c.kind == 'portal')
+  const mid = list => {
+    let x = 0, y = 0, z = 0
+    list.forEach(c => { x += c.x; y += c.y; z += c.z })
+    return { x: x / list.length + 0.5, y: y / list.length + 0.5, z: z / list.length + 0.5 }
+  }
+  const minOf = k => Math.min.apply(null, frame.map(c => c[k])), maxOf = k => Math.max.apply(null, frame.map(c => c[k]))
+  const lo = axis == 'x' ? minOf('x') : minOf('z'), hi = axis == 'x' ? maxOf('x') : maxOf('z')
+  const center = mid(portal.length ? portal : frame)
+  const point = (u, y) => axis == 'x' ? { x: u + 0.5, y: y + 0.5, z: center.z } : { x: center.x, y: y + 0.5, z: u + 0.5 }
+  const bottom = minOf('y'), top = maxOf('y')
+  return { cells: cells, axis: axis, center: center, bottom: bottom, top: top,
+    corners: [point(lo, bottom), point(hi, bottom), point(lo, top), point(hi, top)] }
+}
+// The portal the event built.
+function siteFrame(site) {
+  return frameInfo(portalLayout(site).filter(p => p.kind == 'frame' || p.kind == 'portal'), site.axis)
+}
+// The frame from PORTAL_FRAME_FROM / _TO: null if they aren't set, { error } if they don't describe a frame.
+function cornerFrame() {
+  if (!PORTAL_FRAME_FROM || !PORTAL_FRAME_TO) return null
+  const a = PORTAL_FRAME_FROM, b = PORTAL_FRAME_TO
+  let axis
+  if (a.z == b.z) axis = 'x'
+  else if (a.x == b.x) axis = 'z'
+  else return { error: 'PORTAL_FRAME_FROM and PORTAL_FRAME_TO must have the same x or the same z (a portal frame is flat).' }
+  const uMin = axis == 'x' ? Math.min(a.x, b.x) : Math.min(a.z, b.z), uMax = axis == 'x' ? Math.max(a.x, b.x) : Math.max(a.z, b.z)
+  const yMin = Math.min(a.y, b.y), yMax = Math.max(a.y, b.y)
+  if (uMax - uMin < 2 || yMax - yMin < 2) return { error: 'The frame from PORTAL_FRAME_FROM to PORTAL_FRAME_TO has no room for portal blocks inside.' }
+  const cells = []
+  for (let u = uMin; u <= uMax; u++) {
+    for (let y = yMin; y <= yMax; y++) {
+      let edge = u == uMin || u == uMax || y == yMin || y == yMax
+      cells.push(axis == 'x' ? { x: u, y: y, z: a.z, kind: edge ? 'frame' : 'portal' } : { x: a.x, y: y, z: u, kind: edge ? 'frame' : 'portal' })
+    }
+  }
+  return frameInfo(cells, axis)
+}
+// The portal opening, grown by half a block, for spotting anything that walks into it.
+function finaleBox(frame) {
+  const portal = frame.cells.filter(c => c.kind == 'portal')
+  const lo = k => Math.min.apply(null, portal.map(c => c[k])), hi = k => Math.max.apply(null, portal.map(c => c[k]))
+  return { minX: lo('x') - 0.5, maxX: hi('x') + 1.5, minY: lo('y') - 0.5, maxY: hi('y') + 1.5, minZ: lo('z') - 0.5, maxZ: hi('z') + 1.5 }
+}
+// During the finale nothing goes through the event portal; players are put back in front of it.
+function finaleTravel(event) {
+  const e = event.getEntity(), F = S.fin
+  if (!F || dimOf(e) != OVERWORLD || !entityInBox(e, F.box)) return
+  event.setCanceled(true)
+  if (!e.isPlayer()) return
+  const server = Utils.server, n = nameOf(e), fr = F.frame, c = fr.center
+  const along = fr.axis == 'x' ? ez(e) - c.z : ex(e) - c.x
+  const spot = frontOf(fr, along >= 0 ? 2 : -2)
+  runOW(server, 'tp ' + uuidOf(e) + ' ' + num(spot.x) + ' ' + fr.bottom + ' ' + num(spot.z))
+  if (!F.pushCooldown[n] || server.tickCount - F.pushCooldown[n] > 60) {
+    F.pushCooldown[n] = server.tickCount
+    tell(server, n, FINALE_PORTAL_CLOSED, 'red')
+  }
+}
+// A point `d` blocks in front of the portal, at the bottom of the frame.
+function frontOf(frame, d) {
+  const c = frame.center
+  return frame.axis == 'x' ? { x: c.x, y: frame.bottom + 1, z: c.z + d } : { x: c.x + d, y: frame.bottom + 1, z: c.z }
+}
+
+// Where the pig was when the event ended (for the blood trail), or null.
+function pigEndPos(R, result) {
+  if (result == 'pig_died' && R.pigDeathPos) return R.pigDeathPos
+  try { if (R.pig && !R.pig.isRemoved()) return { x: ex(R.pig), y: ey(R.pig), z: ez(R.pig) } } catch (e) { }
+  return R.lastValid ? { x: R.lastValid.x, y: R.lastValid.y, z: R.lastValid.z } : null
+}
+
+// The same rewards as the old endings, given quietly: everyone on a delivery, the top killer either way.
+function finaleRewards(server, delivered) {
+  const R = S.run
+  const players = participantPlayers(server)
+  let top = null, topKills = 0
+  Object.keys(R.participants).forEach(n => { if (R.participants[n].kills > topKills) { topKills = R.participants[n].kills; top = n } })
+  if (delivered) players.forEach(p => rewardPlayer(p, REWARD_AMOUNT, 'Pig Escort Detail: Ambassador delivered'))
+  if (top) players.filter(p => nameOf(p) == top).forEach(p => rewardPlayer(p, TOP_KILLER_BONUS_AMOUNT, 'Pig Escort Detail: most kills'))
+}
+
+// Runs fn after `ticks`, unless the finale was stopped or replaced in the meantime.
+function later(server, ticks, fn) {
+  const token = S.token
+  server.scheduleInTicks(Math.max(1, Math.round(ticks)), () => {
+    if (token != S.token || S.phase != 'finale') return
+    try {
+      fn()
+    } catch (e) {
+      console.error('[PigEscort] Finale step failed: ' + e)
+    }
+  })
+}
+// Every step is one tick later than its `at`, so a step at 0 keeps its place relative to the others.
+function runSteps(server, steps) {
+  steps.forEach(step => later(server, 1 + step.at * 20, () => doStep(server, step)))
+}
+function doStep(server, step) {
+  if (step.ministry != null) say(server, VOICE_MINISTRY, step.ministry, step.garble)
+  if (step.hijack != null) say(server, VOICE_HIJACK, step.hijack, step.garble)
+  if (step.action) {
+    let action = FINALE_ACTIONS[step.action]
+    if (!action) throw new Error('unknown finale action "' + step.action + '"')
+    action(server)
+  }
+}
+
+// Starts a finale. The pig and the raiders leave at once, so nobody is fighting during it.
+function startFinale(server, fin) {
+  S.phase = 'finale'
+  hooks.running = true   // the portal stays closed to travellers until the explosion (see hooks.onTravel)
+  global.trollcraftEventActive = true
+  S.token++
+  fin.box = finaleBox(fin.frame)
+  fin.pushCooldown = {}
+  fin.startTick = server.tickCount
+  fin.leaderAt = null
+  fin.afterLeader = false
+  S.fin = fin
+  removeTagged(server, TAG_PIG)
+  removeTagged(server, TAG_MOB)
+  run(server, 'bossbar remove ' + BOSSBAR)
+  console.info('[PigEscort] Finale started: ' + fin.kind + (fin.test ? ' (test)' : ''))
+  runSteps(server, fin.kind == 'success' ? ENDING_SUCCESS : ENDING_FAIL)
+}
+
+function finishFinale(server) {
+  const keep = S.fin ? S.fin.keepSetup : null
+  console.info('[PigEscort] Finale finished')
+  cleanup(server, S.snap)
+  if (keep) { S.setup = keep; S.phase = 'staged' }   // a test at the staged portal site leaves the setup as it was
+}
+
+function stopFinale(server) {
+  S.token++
+  finishFinale(server)
+}
+
+// The leader: /fakejoin, then wait for the join message (the skin lookup can take a few seconds).
+function leaderStep(server) {
+  if (!LEADER_NAME) { leaderJoined(server, false); return }
+  const key = LEADER_NAME.toLowerCase()
+  const fakes = () => (global.fakePlayers && global.fakePlayers.fakes) || {}
+  if (fakes()[key]) {
+    tellOps(server, LEADER_NAME + ' was already pretending to be online, so there was no join message. Run /fakeleave ' + LEADER_NAME + ' before the next run.')
+    leaderJoined(server, true)
+    return
+  }
+  let ok = 0
+  try { ok = run(server, 'fakejoin ' + LEADER_NAME) } catch (e) { console.error('[PigEscort] /fakejoin failed: ' + e) }
+  if (!ok) {
+    tellOps(server, '/fakejoin ' + LEADER_NAME + ' failed (is fake_players.js installed?). The finale goes on without the join message.')
+    leaderJoined(server, true)
+    return
+  }
+  const wait = waited => {
+    if (fakes()[key] || waited >= LEADER_JOIN_TIMEOUT_TICKS) { leaderJoined(server, true); return }
+    later(server, 5, () => wait(waited + 5))
+  }
+  wait(0)
+}
+function leaderJoined(server, arrived) {
+  const F = S.fin
+  if (F.leaderAt != null) return
+  F.leaderAt = server.tickCount
+  if (arrived) {
+    later(server, LEADER_EFFECTS_DELAY_SECONDS * 20, () => FINALE_ACTIONS.leader_arrival(server))
+    tellOps(server, fill(FINALE_OP_NOTICE).split('%seconds%').join(String(LEADER_FINALE_DELAY_SECONDS)))
+  }
+  later(server, LEADER_FINALE_DELAY_SECONDS * 20, () => afterLeader(server))
+}
+function afterLeader(server) {
+  if (!S.fin || S.fin.afterLeader) return
+  S.fin.afterLeader = true
+  runSteps(server, AFTER_LEADER)
+}
+
+const FINALE_ACTIONS = {
+  fireworks: server => {
+    const F = FINALE_FIREWORKS, fr = S.fin.frame, c = fr.center
+    const nbt = '{LifeTime:' + F.lifeTicks + ',FireworksItem:{id:"minecraft:firework_rocket",Count:1b,tag:{Fireworks:{Flight:1b,Explosions:[{Type:1b,Flicker:1b,Trail:1b,Colors:[I;' +
+      F.colors.join(',') + '],FadeColors:[I;' + F.fadeColors.join(',') + ']}]}}}}'
+    for (let i = 0; i < F.count; i++) {
+      let off = (i - (F.count - 1) / 2) * 2
+      let x = fr.axis == 'x' ? c.x + off : c.x, z = fr.axis == 'x' ? c.z : c.z + off
+      runOW(server, 'summon minecraft:firework_rocket ' + num(x) + ' ' + (fr.top + F.height) + ' ' + num(z) + ' ' + nbt)
+    }
+  },
+  portal_hum: server => {
+    const H = FINALE_PORTAL_HUM
+    soundAround(server, S.fin.frame.center, H.sound, H.radius, H.volume, H.pitch)
+  },
+  darkness: server => {
+    at(server, S.fin.frame.center, 'effect give @a[distance=..' + FINALE_DARKNESS.radius + '] minecraft:darkness ' + FINALE_DARKNESS.seconds + ' 0 true')
+  },
+  blood_trail: server => {
+    const B = FINALE_BLOOD_TRAIL, F = S.fin, to = F.frame.center
+    const from = F.from || frontOf(F.frame, 10)
+    const steps = []
+    for (let i = 0; i <= B.steps; i++) steps.push(i / B.steps)
+    // forEach, so each scheduled step keeps its own t
+    steps.forEach(t => later(server, t * B.seconds * 20, () => {
+      const p = { x: from.x + (to.x - from.x) * t, y: from.y + 0.5 + (to.y - from.y - 0.5) * t + Math.sin(t * 3.14159) * B.rise, z: from.z + (to.z - from.z) * t }
+      particleAt(server, 'minecraft:dust ' + B.color + ' ' + B.size, p, '0.3 0.3 0.3', 0, 15)
+    }))
+  },
+  explosion: server => {
+    const E = FINALE_EXPLOSION, fr = S.fin.frame, c = fr.center
+    fr.corners.concat([c]).forEach(p => particleAt(server, 'minecraft:explosion_emitter', p, '0 0 0', 0, 1))
+    E.particles.forEach(id => particleAt(server, id, c, '1.5 2 1.5', 0.05, 60))
+    E.sounds.forEach(id => soundAround(server, c, id, E.soundRadius, 1, 1))
+    // Portal blocks first (a changed frame would break them anyway), then the frame. Nothing else changes.
+    fr.cells.filter(p => p.kind == 'portal').forEach(p => runOW(server, 'setblock ' + p.x + ' ' + p.y + ' ' + p.z + ' minecraft:air'))
+    fr.cells.filter(p => p.kind == 'frame').forEach(p => runOW(server, 'setblock ' + p.x + ' ' + p.y + ' ' + p.z + ' minecraft:crying_obsidian'))
+    // A gentle push away from the portal. No damage.
+    onlinePlayers(server).forEach(p => {
+      if (dimOf(p) != OVERWORLD) return
+      let dx = c.x - ex(p), dz = c.z - ez(p)
+      if (Math.sqrt(dx * dx + (c.y - ey(p)) * (c.y - ey(p)) + dz * dz) > E.knockbackRadius) return
+      if (Math.abs(dx) + Math.abs(dz) < 0.01) { dx = Math.random() - 0.5; dz = Math.random() - 0.5 }
+      try {
+        p.knockback(E.knockbackStrength, dx, dz)
+        p.hurtMarked = true   // sends the new motion to the player's game
+      } catch (e) {
+        console.warn('[PigEscort] Explosion push failed for ' + nameOf(p) + ': ' + e)
+      }
+    })
+  },
+  reveal: server => runSteps(server, REVEAL),
+  reveal_title: server => {
+    titleAll(server, FINALE_REVEAL_TITLE)
+    sound(server, '@a', FINALE_REVEAL_TITLE.sound, 1, 1)
+  },
+  leader: server => leaderStep(server),
+  leader_arrival: server => {
+    const L = FINALE_LEADER, c = S.fin.frame.center
+    L.sounds.forEach(id => sound(server, '@a', id, 1, 1))
+    const half = L.columnHeight / 2
+    ;[0, 10, 20, 30].forEach(t => later(server, t, () =>
+      particleAt(server, 'minecraft:dust ' + L.columnColor + ' 2', { x: c.x, y: S.fin.frame.bottom + half, z: c.z }, '0.2 ' + half + ' 0.2', 0, 300)))
+    titleAll(server, L)
+  },
+  unlock: server => {
+    if (!UNLOCK_NETHER) return
+    if (S.fin.test) tellOps(server, 'Test run: the Nether was NOT unlocked (/pigescort nether unlock does it by hand).')
+    else setNetherUnlocked(server, true)
+    say(server, VOICE_MINISTRY, FINALE_UNLOCK_MESSAGE, false)
+  },
+  end: server => finishFinale(server),
+}
+
+// The Nether portal whitelist switch (read by startup_scripts/nether_portal_whitelist.js). Saved with the
+// world, so it survives restarts.
+function setNetherUnlocked(server, on) {
+  server.persistentData.putBoolean(NETHER_UNLOCK_KEY, on)
+  global.netherPortalsUnlocked = on
+  console.info('[PigEscort] Nether portals ' + (on ? 'unlocked' : 'locked'))
+}
+function netherUnlocked(server) {
+  try { return !!server.persistentData.getBoolean(NETHER_UNLOCK_KEY) } catch (e) { return global.netherPortalsUnlocked === true }
+}
+
+// /pigescort finale test success|fail
+function finaleTest(ctx, kind) {
+  const server = ctx.source.server
+  if (S.phase != 'idle' && S.phase != 'staged') { reply(ctx, 'Not while the event is ' + S.phase + '. /pigescort stop first.'); return 0 }
+  if (global.trollcraftEventActive) { reply(ctx, 'Another event is active.'); return 0 }
+  let frame = cornerFrame()
+  if (frame && frame.error) { reply(ctx, frame.error); return 0 }
+  // A test during a setup leaves the setup as it was.
+  const keepSetup = S.phase == 'staged' ? S.setup : null
+  const usesSite = !frame
+  if (!frame) {
+    let site = S.phase == 'staged' ? S.setup.portal : null
+    if (!site) {
+      reply(ctx, 'No frame to test with. Either set PORTAL_FRAME_FROM / PORTAL_FRAME_TO at the top of pig_escort.js (and /reload), or run /pigescort setup and /pigescort setportal (or setportal random) first.')
+      return 0
+    }
+    let problem = checkPortalSite(server, site, false)
+    if (problem) { reply(ctx, 'The portal site can\'t be used: ' + problem + '.'); return 0 }
+    // Build the event portal like a real run, remembering the land so the cleanup puts it back.
+    let level = overworldOf(server)
+    S.snap = { site: site, blocks: portalLayout(site).map(p => snapshotCell(level, p)), forced: [], participants: [], prevTeams: {}, keepInv: null }
+    saveSnapshot(server)
+    buildPortal(server, site, false)
+    frame = siteFrame(site)
+  }
+  startFinale(server, { kind: kind, test: true, frame: frame, from: frontOf(frame, 15), keepSetup: keepSetup })
+  const c = frame.center
+  reply(ctx, 'Test finale (' + (kind == 'success' ? 'Ending A' : 'Ending B') + ') started at ' + Math.floor(c.x) + ' ' + Math.floor(c.y) + ' ' + Math.floor(c.z) +
+    '. Everyone online sees and hears it. No rewards, and the Nether is not unlocked. /pigescort stop ends it.' +
+    (usesSite ? ' The land at the portal site is put back afterwards.' : ' The frame stays crying obsidian: /pigescort finale restoreframe rebuilds it.'))
+  return 1
+}
+
+// /pigescort finale restoreframe
+function restoreFrame(ctx) {
+  const server = ctx.source.server
+  if (S.phase == 'running' || S.phase == 'countdown' || S.phase == 'finale') { reply(ctx, 'Not while the event is ' + S.phase + '.'); return 0 }
+  const frame = cornerFrame()
+  if (!frame) { reply(ctx, 'Set PORTAL_FRAME_FROM / PORTAL_FRAME_TO first. (Tests at the /pigescort setportal spot put the land back by themselves.)'); return 0 }
+  if (frame.error) { reply(ctx, frame.error); return 0 }
+  frame.cells.filter(p => p.kind == 'frame').forEach(p => runOW(server, 'setblock ' + p.x + ' ' + p.y + ' ' + p.z + ' minecraft:obsidian'))
+  const portal = frame.cells.filter(p => p.kind == 'portal')
+  const lo = k => Math.min.apply(null, portal.map(p => p[k])), hi = k => Math.max.apply(null, portal.map(p => p[k]))
+  runOW(server, 'fill ' + lo('x') + ' ' + lo('y') + ' ' + lo('z') + ' ' + hi('x') + ' ' + hi('y') + ' ' + hi('z') + ' minecraft:nether_portal[axis=' + frame.axis + ']')
+  reply(ctx, 'Frame rebuilt and relit.')
+  return 1
+}
+
+// /pigescort reveal continue
+function revealContinue(ctx) {
+  const F = S.fin
+  if (S.phase != 'finale' || !F) { reply(ctx, 'No finale is running.'); return 0 }
+  if (F.leaderAt == null) { reply(ctx, 'The finale hasn\'t reached the leader yet.'); return 0 }
+  if (F.afterLeader) { reply(ctx, 'Already continuing.'); return 0 }
+  afterLeader(ctx.source.server)
+  reply(ctx, 'Continuing the finale.')
+  return 1
 }
 
 
@@ -1312,6 +1812,7 @@ const hooks = {
   // Something is about to change dimension.
   onTravel: event => {
     count('travel')
+    if (S.phase == 'finale') { finaleTravel(event); return }
     const e = event.getEntity()
     const R = S.run
     if (!R || (dimOf(e) != OVERWORLD && !hasTag(e, TAG_PIG))) return
@@ -1398,6 +1899,11 @@ function tellIfPossible(server, text) {
 // Damage to the pig: only raider mobs may hurt it. (On Forge this fires before armour and knockback,
 // so a cancelled hit does nothing at all.) Player-vs-player and everything else is untouched.
 EntityEvents.hurt(event => {
+  if (S.phase == 'finale') {
+    // The celebration fireworks never hurt anyone.
+    if (event.entity.isPlayer() && damageTypeOf(event.source) == 'fireworks') event.cancel()   // last: cancel() stops this function
+    return
+  }
   if (S.phase != 'running' || S.allowRemoval) return
   const e = event.entity
   if (!hasTag(e, TAG_PIG)) return
@@ -1421,6 +1927,7 @@ EntityEvents.death(event => {
     let killer = attackerOf(event.source)
     if (killer && hasTag(killer, TAG_MOB)) {
       R.pigDead = true
+      try { R.pigDeathPos = { x: ex(e), y: ey(e), z: ez(e) } } catch (err) { }
       let token = S.token
       server.scheduleInTicks(1, () => { if (token == S.token) endEvent(server, 'pig_died') })
     } else {
@@ -1604,6 +2111,13 @@ function preview(ctx) {
 function status(ctx) {
   const server = ctx.source.server
   if (S.phase == 'idle') { reply(ctx, 'Idle. Run /pigescort setup to begin.'); return 1 }
+  if (S.phase == 'finale' && S.fin) {
+    let F = S.fin
+    reply(ctx, 'Finale: ' + (F.kind == 'success' ? 'Ending A (delivered)' : 'Ending B (lost)') + (F.test ? ', TEST run' : '') +
+      ' | running for ' + clock(Math.floor((server.tickCount - F.startTick) / 20)) +
+      ' | leader: ' + (F.leaderAt == null ? 'not yet' : (F.afterLeader ? 'joined, last part running' : 'joined, waiting (/pigescort reveal continue)')))
+    return 1
+  }
   if (S.phase == 'staged') {
     let st = S.setup
     reply(ctx, 'Staged | Start: ' + (st.start ? st.start.x + ' ' + st.start.y + ' ' + st.start.z : 'world spawn') +
@@ -1753,6 +2267,11 @@ ServerEvents.commandRegistry(event => {
         return 1
       })))
       .then(Commands.literal('stop').executes(safe(ctx => {
+        if (S.phase == 'finale') {
+          stopFinale(ctx.source.server)
+          reply(ctx, 'Finale stopped and cleaned up.')
+          return 1
+        }
         if (S.phase != 'running' && S.phase != 'countdown') { reply(ctx, 'No event is running.'); return 0 }
         endEvent(ctx.source.server, 'stopped')
         reply(ctx, 'Event stopped and cleaned up.')
@@ -1784,6 +2303,28 @@ ServerEvents.commandRegistry(event => {
         return 1
       })))
       .then(Commands.literal('diagnostics').executes(safe(ctx => diagnostics(ctx))))
+      .then(Commands.literal('finale')
+        .then(Commands.literal('test')
+          .then(Commands.literal('success').executes(safe(ctx => finaleTest(ctx, 'success'))))
+          .then(Commands.literal('fail').executes(safe(ctx => finaleTest(ctx, 'fail')))))
+        .then(Commands.literal('restoreframe').executes(safe(ctx => restoreFrame(ctx)))))
+      .then(Commands.literal('reveal')
+        .then(Commands.literal('continue').executes(safe(ctx => revealContinue(ctx)))))
+      .then(Commands.literal('nether')
+        .then(Commands.literal('lock').executes(safe(ctx => {
+          setNetherUnlocked(ctx.source.server, false)
+          reply(ctx, 'Nether portals are limited to nether_portal_whitelist.js again.')
+          return 1
+        })))
+        .then(Commands.literal('unlock').executes(safe(ctx => {
+          setNetherUnlocked(ctx.source.server, true)
+          reply(ctx, 'Nether portals can be lit anywhere (nether_portal_whitelist.js is switched off).')
+          return 1
+        })))
+        .then(Commands.literal('status').executes(safe(ctx => {
+          reply(ctx, netherUnlocked(ctx.source.server) ? 'Unlocked: Nether portals can be lit anywhere.' : 'Locked: only the portals allowed in nether_portal_whitelist.js can be lit (if it is installed).')
+          return 1
+        }))))
   )
 })
 

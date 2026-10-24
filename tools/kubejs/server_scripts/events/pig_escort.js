@@ -144,12 +144,16 @@ const LEADER_FINALE_DELAY_SECONDS = 20   // with no LEADER_LINES: the rest of th
 // previous one (the first: after the join message). Sent with /fakesay (fake_players.js): it shows as
 // <%leader%> text, like real chat, and Discord posts it as the leader speaking. [] = no speech.
 const LEADER_LINES = [
-  { after: 4, text: 'Citizens. The Ministry told you there was one door, and that it was theirs.' },
-  { after: 5, text: 'We are the Blood God\'s Syndicate. We stamp no forms. We collect no tolls.' },
-  { after: 5, text: 'Your fields are yours. Your strength is yours. The Nether is yours.' },
-  { after: 4, text: 'Blood for the Blood God.' },
+  { after: 5, text: "Sorry about the portal." },
+  { after: 7, text: "I was a friend of Technoblade's. Long before your statues. Long before your laws." },
+  { after: 7, text: "He never asked you to protect his pigs. You decided that after he was gone." },
+  { after: 8, text: "We value every pig. Each one is precious to us. Right up until we are mildly inconvenienced." },
+  { after: 8, text: "The same goes for you." },
+  { after: 7, text: "Some of you already work for us. You will not know which ones." },
+  { after: 7, text: "We have been here the whole time. We will be here when the Ministry is not." },
+  { after: 6, text: "Blood for the Blood God." },
 ]
-const LEADER_LINES_END_PAUSE_SECONDS = 5  // after the last line, the rest of the finale (AFTER_LEADER) starts
+const LEADER_LINES_END_PAUSE_SECONDS = 8  // after the last line, the rest of the finale (AFTER_LEADER) starts
 // (/pigescort reveal continue skips whatever is left of the wait or the speech.)
 
 // Only for /pigescort finale test and /pigescort finale restoreframe: two opposite corners of an obsidian

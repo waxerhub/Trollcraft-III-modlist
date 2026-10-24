@@ -106,10 +106,10 @@ The escort plays exactly as before. Only the ending changes. All the texts, titl
 - **R+4:** [SIGNAL HIJACKED] "Honor the player, not the statue…"
 - **R+8:** the leader, `/fakejoin hypixel` (`LEADER_NAME`). That shows the join message, puts hypixel on the tab list with their skin, and posts the join to Discord.
 - **2 s after the join message:** thunder for everyone (no real lightning), a red particle column at the portal, and the title "hypixel / has entered the server.". Ops get a note saying how many lines follow and how long until the rest runs.
-- **hypixel speaks:** the lines in `LEADER_LINES`, at 4, 9, 14 and 18 s after the join message by default.
+- **hypixel speaks:** the 8 lines in `LEADER_LINES`, from "Sorry about the portal." to "Blood for the Blood God.", over 55 s (the first 5 s after the join message).
   - They're sent with `/fakesay` (fake_players.js), so in-game they look exactly like real chat: `<hypixel> …`, with the same name hover as a real player.
   - Simple Discord Link posts them to the Discord chat channel as hypixel (hypixel's name and avatar), like a real player's message.
-- **5 s after the last line** (`LEADER_LINES_END_PAUSE_SECONDS`, or straight away with `/pigescort reveal continue`, which also cuts the speech short): [MINISTRY] "The preceding broadcast was not authorized…". With `LEADER_LINES = []` there's no speech, and this comes 20 s after the join message (`LEADER_FINALE_DELAY_SECONDS`).
+- **8 s after the last line** (`LEADER_LINES_END_PAUSE_SECONDS`, or straight away with `/pigescort reveal continue`, which also cuts the speech short): [MINISTRY] "The preceding broadcast was not authorized…". With `LEADER_LINES = []` there's no speech, and this comes 20 s after the join message (`LEADER_FINALE_DELAY_SECONDS`).
 - **+5 s:** the Nether is unlocked (`UNLOCK_NETHER`) with [MINISTRY] "Due to an unscheduled structural event…".
 - **+8 s:** the event ends and cleans up.
 
@@ -142,8 +142,8 @@ Test on a **copy of the world**. A test is announced to everyone online, and the
 4. **The leader and the speech:**
    - Before the test, run `/fakeleave hypixel`.
    - About 29 s in, "hypixel joined the game" appears, with hypixel on the tab list and their skin.
-   - 2 s later come the thunder, the red column and the "hypixel" title, and ops get the "They say 4 lines. The rest of the finale runs in 23 s" note.
-   - The four lines arrive 4, 9, 14 and 18 s after the join, in-game and in Discord's chat channel. The Ministry response follows 5 s after the last.
+   - 2 s later come the thunder, the red column and the "hypixel" title, and ops get the "They say 8 lines. The rest of the finale runs in 63 s" note.
+   - The eight lines arrive 5, 12, 19, 27, 35, 42, 49 and 55 s after the join, in-game and in Discord's chat channel. The Ministry response follows 8 s after the last.
 5. **`/pigescort reveal continue`:**
    - Run another test and use it during the speech: the remaining lines are dropped and the Ministry response comes at once.
    - Run it again: "Already continuing."

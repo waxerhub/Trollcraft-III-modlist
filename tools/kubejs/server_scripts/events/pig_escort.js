@@ -29,6 +29,7 @@
 //   /pigescort finale test success|fail  play that finale now, without a pig run (see PORTAL_FRAME_FROM)
 //   /pigescort finale restoreframe       rebuild and relight the test frame (PORTAL_FRAME_FROM / _TO)
 //   /pigescort reveal continue           skip the rest of the wait after the Syndicate leader joins
+//   /pigescort track test                the Jockie countdown and cue on their own (ops only), for practice
 //   /pigescort nether lock|unlock|status switch nether_portal_whitelist.js on or off (the finale unlocks it)
 //
 // Note: KubeJS 6's script engine (Rhino) has no `template strings`, so strings are joined with +,
@@ -162,16 +163,24 @@ const LEADER_LINES = [
 const LEADER_TYPING = { pauseSeconds: 2, charsPerSecond: 8, minSeconds: 3, maxSeconds: 14 }
 const LEADER_LINES_END_PAUSE_SECONDS = 8  // after the last line, the rest of the finale (AFTER_LEADER) starts
                                           // (with a FINALE_TRACK: the track starts instead, see below)
-// A music track after the leader's last line, before the Ministry responds (with no lines: when the Ministry
-// would have responded). It comes from a resource pack the players have (see PIG_ESCORT.md, "The finale track")
-// and plays for everyone online, wherever they are. While it plays the heartbeat is silent.
+// A track (the Technoblade clip) after the leader's last line, before the Ministry responds (with no lines: when
+// the Ministry would have responded). The Ministry waits for it to end. While it plays the heartbeat is silent.
+// See PIG_ESCORT.md, "The finale track".
 const FINALE_TRACK = {
-  sound: 'trollcraft:finale_track',  // the sound event in the pack's sounds.json. '' = no track
-  seconds: 0,                         // THE TRACK'S LENGTH. 0 = not set up yet: no track, ops are reminded
-  startAfter: 4,                      // seconds after the last line (instead of LEADER_LINES_END_PAUSE_SECONDS)
-  pauseAfter: 2,                      // seconds of quiet after it ends, before the Ministry responds
+  seconds: 21,          // THE TRACK'S LENGTH. 0 = no track
+  startAfter: 4,        // seconds after the last line (instead of LEADER_LINES_END_PAUSE_SECONDS)
+  pauseAfter: 2,        // seconds of quiet after it ends, before the Ministry responds
+  // In Discord voice, through Jockie Music. The server can't start Jockie itself (it only plays for a person in
+  // a voice channel), so ops get a countdown and a cue, and one of them sends jockieStart in Discord.
+  // Queue it beforehand: m!play <link>, then m!pause.
+  jockie: true,
+  jockieStart: 'm!resume',
+  jockieStop: 'm!stop',     // shown to ops if the finale is cut short while it plays
+  cueCountdown: 5,          // seconds of countdown for ops before the cue
+  // In-game too (optional): the sound from a resource pack players have, e.g. 'trollcraft:finale_track'. '' = none
+  sound: '',
   volume: 1,
-  category: 'master',                 // the sound slider it follows: master, music, record, ...
+  category: 'master',       // the sound slider it follows: master, music, record, ...
 }
 // (/pigescort reveal continue skips whatever is left of the wait or the speech.)
 
@@ -1752,10 +1761,14 @@ function leaderJoined(server, arrived) {
   })
   if (lines.length) speechStart(server)
   // Then the track (if there is one), then the rest of the finale.
-  const T = FINALE_TRACK, track = !!T.sound && T.seconds > 0
-  if (T.sound && !(T.seconds > 0)) tellOps(server, 'FINALE_TRACK.seconds (the length of ' + T.sound + ') isn\'t set in pig_escort.js, so the finale track was skipped.')
+  const T = FINALE_TRACK, wanted = !!(T.jockie || T.sound), track = wanted && T.seconds > 0
+  if (wanted && !(T.seconds > 0)) tellOps(server, 'FINALE_TRACK.seconds (the length of the track) isn\'t set in pig_escort.js, so the finale track was skipped.')
   let wait = lines.length ? t + (track ? T.startAfter : LEADER_LINES_END_PAUSE_SECONDS) : LEADER_FINALE_DELAY_SECONDS
   if (track) {
+    if (T.jockie) {
+      // forEach, so each scheduled step keeps its own number
+      countdownNumbers(Math.min(T.cueCountdown, Math.floor(wait))).forEach(n => later(server, (wait - n) * 20, () => jockieCountdown(server, n)))
+    }
     later(server, wait * 20, () => playTrack(server))
     wait += T.seconds + T.pauseAfter
   }
@@ -1886,19 +1899,66 @@ function afterLeader(server) {
   stopTrack(server)
   runSteps(server, AFTER_LEADER)
 }
-// FINALE_TRACK for everyone online, played where each of them stands.
+// FINALE_TRACK starts: the cue for ops (Jockie), and in-game for everyone online, where each of them stands.
 function playTrack(server) {
   if (!S.fin || S.fin.afterLeader) return
   const T = FINALE_TRACK
   S.fin.trackPlaying = true
-  run(server, 'execute as @a at @s run playsound ' + T.sound + ' ' + T.category + ' @s ~ ~ ~ ' + T.volume + ' 1 1')
-  console.info('[PigEscort] Finale track started: ' + T.sound)
+  S.fin.trackEnds = server.tickCount + T.seconds * 20
+  if (T.jockie) jockieCue(server)
+  if (T.sound) run(server, 'execute as @a at @s run playsound ' + T.sound + ' ' + T.category + ' @s ~ ~ ~ ' + T.volume + ' 1 1')
+  console.info('[PigEscort] Finale track started')
 }
-// Cuts the track short (/pigescort reveal continue, /pigescort stop).
+// When the Ministry takes over or the finale ends; if that's before the track has ended, it's cut off
+// (and ops are told how to stop Jockie).
 function stopTrack(server) {
   if (!S.fin || !S.fin.trackPlaying) return
+  const T = FINALE_TRACK
   S.fin.trackPlaying = false
-  run(server, 'stopsound @a ' + FINALE_TRACK.category + ' ' + FINALE_TRACK.sound)
+  if (server.tickCount >= S.fin.trackEnds) return
+  if (T.sound) run(server, 'stopsound @a ' + T.category + ' ' + T.sound)
+  if (T.jockie) opsCopyLine(server, 'The finale was cut short. Stop the track in Jockie: ', T.jockieStop)
+}
+
+// The Jockie cue, for ops only.
+function opsOnline(server) {
+  return onlinePlayers(server).filter(p => {
+    try { return p.hasPermissions(2) } catch (e) { return false }
+  })
+}
+function countdownNumbers(from) {
+  const out = []
+  for (let k = from; k >= 1; k--) out.push(k)
+  return out
+}
+function jockieCountdown(server, n) {
+  const json = JSON.stringify({ text: 'Finale track (Jockie) in ' + n + '...', color: 'gold' })
+  opsOnline(server).forEach(p => run(server, 'title ' + nameOf(p) + ' actionbar ' + json))
+}
+function jockieCue(server) {
+  const T = FINALE_TRACK
+  opsOnline(server).forEach(p => {
+    title(server, nameOf(p), 'START THE TRACK', 'gold', 'Jockie: ' + T.jockieStart, 'aqua')
+    sound(server, nameOf(p), 'minecraft:block.note_block.pling', 1, 2)
+  })
+  opsCopyLine(server, 'Start the finale track in Jockie now: ', T.jockieStart)
+}
+// A chat line for ops with a command to click and copy.
+function opsCopyLine(server, text, command) {
+  const json = JSON.stringify(['', { text: '[Escort] ', color: 'gold' }, { text: text, color: 'yellow' },
+    { text: command, color: 'aqua', bold: true, underlined: true, clickEvent: { action: 'copy_to_clipboard', value: command },
+      hoverEvent: { action: 'show_text', contents: 'Click to copy' } }])
+  console.info('[PigEscort] ' + text + command)
+  opsOnline(server).forEach(p => run(server, 'tellraw ' + nameOf(p) + ' ' + json))
+}
+// /pigescort track test: the countdown and cue on their own, to practise with Jockie.
+function trackTest(ctx) {
+  const server = ctx.source.server, T = FINALE_TRACK
+  if (!T.jockie) { reply(ctx, 'FINALE_TRACK.jockie is off, so there is no cue to test.'); return 0 }
+  countdownNumbers(T.cueCountdown).forEach(n => server.scheduleInTicks(Math.max(1, (T.cueCountdown - n) * 20), () => jockieCountdown(server, n)))
+  server.scheduleInTicks(Math.max(1, T.cueCountdown * 20), () => jockieCue(server))
+  reply(ctx, 'Cue test: the countdown starts now and the cue comes in ' + T.cueCountdown + ' s (ops only). The track is ' + T.seconds + ' s long.')
+  return 1
 }
 
 const FINALE_ACTIONS = {
@@ -2556,6 +2616,8 @@ ServerEvents.commandRegistry(event => {
         .then(Commands.literal('restoreframe').executes(safe(ctx => restoreFrame(ctx)))))
       .then(Commands.literal('reveal')
         .then(Commands.literal('continue').executes(safe(ctx => revealContinue(ctx)))))
+      .then(Commands.literal('track')
+        .then(Commands.literal('test').executes(safe(ctx => trackTest(ctx)))))
       .then(Commands.literal('nether')
         .then(Commands.literal('lock').executes(safe(ctx => {
           setNetherUnlocked(ctx.source.server, false)

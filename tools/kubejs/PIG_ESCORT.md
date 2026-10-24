@@ -38,6 +38,7 @@ Nothing ever travels through the event portal.
 | `/pigescort wave` | Send a raider wave now, for testing. It reports how many spawned and why any failed. |
 | `/pigescort purge` | Remove stray event pigs and mobs from loaded chunks. Only works when no event is running. |
 | `/pigescort diagnostics` | Shows whether the hooks are installed and which version of each uncertain API is in use. |
+| `/pigescort track test` | The Jockie countdown and cue on their own, for ops, to practise starting the finale track. See [The finale track](#the-finale-track). |
 | `/pigescort finale test success\|fail` | Play Ending A or B right now, without a pig run. Everyone online sees and hears it. No rewards, and the Nether is not unlocked. See [Testing the finale](#testing-the-finale). |
 | `/pigescort finale restoreframe` | Rebuild the test frame (`PORTAL_FRAME_FROM` / `PORTAL_FRAME_TO`) in obsidian and relight it. |
 | `/pigescort reveal continue` | After the leader has joined, run the rest of the finale now instead of waiting `LEADER_FINALE_DELAY_SECONDS`. |
@@ -124,7 +125,7 @@ The escort plays exactly as before. Only the ending changes. All the texts, titl
     - on the last line, "Blood for the Blood God.", a ring of 10 bolts strikes around the ruins, with 3 s of Darkness and the Elder Guardian curse sound.
   - They're sent with `/fakesay` (fake_players.js), so in-game they look exactly like real chat: `<hypixel> …`, with the same name hover as a real player.
   - Simple Discord Link posts them to the Discord chat channel as hypixel (hypixel's name and avatar), like a real player's message.
-- **The finale track,** if you've set one up (see [The finale track](#the-finale-track)): it starts 4 s after the last line and plays for everyone. The heartbeat goes quiet while it plays.
+- **The finale track** (see [The finale track](#the-finale-track)): 4 s after the last line, ops are cued to start the Technoblade clip in Jockie (Discord voice). The heartbeat goes quiet for its 21 s.
 - **8 s after the last line** (`LEADER_LINES_END_PAUSE_SECONDS`), or 2 s after the track ends, or straight away with `/pigescort reveal continue` (which also cuts the speech and the track short): [MINISTRY] "The preceding broadcast was not authorized…". With `LEADER_LINES = []` there's no speech, and this comes 20 s after the join message (`LEADER_FINALE_DELAY_SECONDS`).
 - **+5 s:** the Nether is unlocked (`UNLOCK_NETHER`) with [MINISTRY] "Due to an unscheduled structural event…".
 - **+8 s:** the event ends and cleans up.
@@ -140,33 +141,46 @@ The escort plays exactly as before. Only the ending changes. All the texts, titl
 
 ### The finale track
 
-A piece of music (or any audio) that plays after hypixel's last line and before the Ministry responds. The Ministry waits for it to finish.
+The Technoblade clip plays after hypixel's last line, before the Ministry responds, and the Ministry waits for it to finish. It plays in **Discord voice through Jockie Music**.
+- **The server can't start Jockie itself:** Jockie only plays for a person in a voice channel. So **ops get a countdown and a cue in-game**, and one of them starts it in Discord.
+- **Only people in that voice channel hear it,** so ask players to join voice for the event.
 
-**Players need the audio file on their own computer.** The server can't send audio. It only tells each player's game to play `trollcraft:finale_track`. Anyone without the file hears nothing, and the finale still goes on. The pack template is in `tools/finale_pack/`.
+**The file:** `finale_track.mp3`, 20.7 s of audio cut from the screen recording, with short fades in and out. `FINALE_TRACK.seconds = 21` matches it.
 
-1. **Convert the track to Ogg Vorbis** (`.ogg`). A renamed MP3 won't play.
-   - In Audacity, use File > Export > Export as OGG.
-   - With ffmpeg: `ffmpeg -i track.mp3 -c:a libvorbis -q:a 5 finale_track.ogg`.
-   - Export it in **stereo**, so it sounds the same wherever players walk. A mono file plays from the spot the player was standing on when it started, and fades as they walk away.
-2. **Name it `finale_track.ogg`** and put it in `tools/finale_pack/assets/trollcraft/sounds/`.
-3. **Get it to the players,** in one of two ways:
-   - **In the modpack (no prompt for players):** copy `tools/finale_pack/assets/trollcraft/` into the modpack's `kubejs/assets/`, so it ends up as `kubejs/assets/trollcraft/sounds.json` and `kubejs/assets/trollcraft/sounds/finale_track.ogg`. Release a pack update; everyone has to update before the event. KubeJS loads that folder as a resource pack on each player's game.
-   - **As a server resource pack (no modpack update):**
-     - Zip `pack.mcmeta` and the `assets` folder, with both at the top of the zip, not inside another folder.
-     - Upload the zip somewhere with a **direct download** link, for example a GitHub release, or Dropbox with `?dl=1`.
-     - In Bisect's panel, set these in `server.properties`:
-       - `resource-pack=<link>`;
-       - `resource-pack-sha1=<the zip's SHA-1>`. On Windows: `certutil -hashfile pack.zip SHA1`.
-       - Optionally `require-resource-pack=true`.
-     - Restart the server. Players are asked to accept the pack when they join.
-4. **Set `FINALE_TRACK.seconds`** at the top of `pig_escort.js` to the track's length in seconds, then `/reload`.
-   - While it's 0, the track is skipped and ops are reminded during the finale.
-   - The other settings: `startAfter` (4 s after the last line), `pauseAfter` (2 s of quiet after it), `volume`, and `category`.
-     - `category` is the volume slider the track follows. The default is `master`.
-     - `music` or `record` would let players turn it down, but anyone who has that slider at 0 won't hear it.
-5. **Check it:** run `/playsound trollcraft:finale_track master @s`. If you hear nothing, the pack isn't loaded: press F3+T to reload resources, or check the file name and format.
+**Setting it up (once):**
+1. **Upload `finale_track.mp3` to Google Drive** and share it as "Anyone with the link".
+2. **Make a direct link.** From the share link `https://drive.google.com/file/d/<FILE_ID>/view`, build `https://drive.google.com/uc?export=download&id=<FILE_ID>`.
+   - Opened in a browser, it should download the file straight away, not show a Drive page.
+   - Jockie can't play the share link or the original screen recording. Videos over about 100 MB get a Drive warning page instead of the file.
+3. **If your Jockie doesn't use the `m!` prefix** (another prefix, or slash commands), change `jockieStart` / `jockieStop` in `FINALE_TRACK` to match.
 
-`/pigescort reveal continue` and `/pigescort stop` cut the track off with `/stopsound`. After a `/reload` mid-finale it plays on to its end.
+**Before each event:**
+- Join the voice channel.
+- Run `m!play <direct link>`, then `m!pause` straight away, so it's queued at the start.
+- Practise with `/pigescort track test`, which runs only the countdown and cue.
+
+**During the finale:**
+- **Countdown:** 5 s before the track, ops see "Finale track (Jockie) in 5…" counting down above the hotbar.
+- **Cue:** at 0, ops get the title **START THE TRACK** with a ping, and a chat line with **m!resume**. Click it to copy, then paste it into Discord and send. Non-ops see none of this.
+- **Ministry:** it responds 2 s after the track's 21 s are up.
+- **Cut short:** if the finale is cut short while the track plays (`/pigescort reveal continue` or `/pigescort stop`), ops get a click-to-copy **m!stop**.
+
+**Settings** (`FINALE_TRACK`):
+- `seconds` (0 = no track);
+- `startAfter` (4 s after the last line);
+- `pauseAfter` (2 s);
+- `cueCountdown` (5);
+- `jockie` (false = no cue).
+
+**Also in-game (optional).** The same clip can also play inside Minecraft from a resource pack players have, using `tools/finale_pack/`:
+1. Put `finale_track.ogg` in `tools/finale_pack/assets/trollcraft/sounds/`.
+2. Get the pack to players in one of two ways:
+   - copy `assets/trollcraft/` into the modpack's `kubejs/assets/` and release a pack update;
+   - or zip `pack.mcmeta` + `assets/` as a server resource pack (`resource-pack=` / `resource-pack-sha1=` in `server.properties`).
+3. Set `sound: 'trollcraft:finale_track'` in `FINALE_TRACK`.
+4. Check it with `/playsound trollcraft:finale_track master @s`.
+
+With both on, start Jockie right on the cue so they line up, or set `jockie: false` and use only the in-game sound. Anyone without the pack hears nothing in-game. `/pigescort stop` and `reveal continue` cut the in-game sound off with `/stopsound`.
 
 **Discord:** like every Pig Escort announcement, the [MINISTRY] and [SIGNAL HIJACKED] lines use `tellraw @a`, which Simple Discord Link relays to Discord as server chat. So the reveal shows up in Discord too. hypixel's lines are the exception: they post as hypixel speaking.
 
@@ -195,11 +209,11 @@ Test on a **copy of the world**. A test is announced to everyone online, and the
 4. **The leader and the speech:**
    - Before the test, run `/fakeleave hypixel`.
    - About 29 s in, "hypixel joined the game" appears, with hypixel on the tab list and their skin.
-   - 2 s later come the thunder, lightning, the red column and the "hypixel" title, and ops get the "They say 8 lines. The rest of the finale runs in 80.85 s" note.
+   - 2 s later come the thunder, lightning, the red column and the "hypixel" title, and ops get the "They say 8 lines. The rest of the finale runs in 99.85 s" note (80.85 s with no track).
    - It starts raining. The ruins pulse (red dust, spores, a heartbeat) every 2 s.
    - The eight lines arrive about 5, 17, 28, 42, 47, 56, 68 and 73 s after the join, in-game and in Discord's chat channel. Each one comes with a bolt, and the last with a ring of lightning and Darkness.
-   - The Ministry response follows 8 s after the last line. The pulsing stops then, and the rain stops when the finale ends.
-   - **With the finale track set up:** it starts 4 s after the last line (the heartbeat goes quiet), and the Ministry responds 2 s after it ends. `/pigescort reveal continue` during the track cuts it off.
+   - The Ministry response follows the track (or comes 8 s after the last line, with no track). The pulsing stops then, and the rain stops when the finale ends.
+   - **The finale track:** 4 s after the last line, ops get the 5-s countdown and the START THE TRACK cue (with Jockie queued and paused beforehand). The Ministry responds 23 s after the cue. With `/pigescort reveal continue` during the track, ops are shown `m!stop`.
 5. **`/pigescort reveal continue`:**
    - Run another test and use it during the speech: the remaining lines are dropped and the Ministry response comes at once.
    - Run it again: "Already continuing."

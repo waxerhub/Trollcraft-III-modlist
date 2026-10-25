@@ -162,8 +162,10 @@ const LEADER_LINES = [
   { text: "Blood for the Blood God.", effect: 'ring' },
 ]
 // How long the leader takes to "type" a line: pauseSeconds, plus one second for every charsPerSecond characters,
-// kept between minSeconds and maxSeconds. With these numbers the lines above take 4.8 to 13.5 s each (about 73 s in all).
+// kept between minSeconds and maxSeconds. With these numbers the lines above take 4.8 to 13.5 s each (about 74 s in all,
+// with the first line at 6 s).
 const LEADER_TYPING = { pauseSeconds: 2, charsPerSecond: 8, minSeconds: 3, maxSeconds: 14 }
+const LEADER_FIRST_LINE_MIN_SECONDS = 6   // the first line comes at least this long after the join message
 const LEADER_LINES_END_PAUSE_SECONDS = 8  // after the last line, the rest of the finale (AFTER_LEADER) starts
                                           // (with a FINALE_TRACK: the track starts instead, see below)
 // A track (the Technoblade clip) after the leader's last line, before the Ministry responds (with no lines: when
@@ -271,7 +273,7 @@ const FINALE_EXPLOSION = {
 }
 // reveal_title: the title for everyone online.
 const FINALE_REVEAL_TITLE = {
-  title: 'THE BLOOD GOD\'S SYNDICATE', titleColor: 'dark_red', subtitle: 'Blood for the Blood God.', subtitleColor: 'red',
+  title: 'THE BLOOD GOD\'S', titleColor: 'dark_red', subtitle: 'SYNDICATE', subtitleColor: 'red', subtitleBold: true,
   fadeIn: 10, stay: 80, fadeOut: 20, sound: 'minecraft:entity.elder_guardian.curse',
 }
 // Lightning: VISUAL ONLY (a flash and thunder; no damage, no fire, nothing nearby is changed by it). If the game
@@ -1553,7 +1555,9 @@ function tellOps(server, text) {
 
 function titleAll(server, t) {
   run(server, 'title @a times ' + t.fadeIn + ' ' + t.stay + ' ' + t.fadeOut)
-  run(server, 'title @a subtitle ' + JSON.stringify({ text: fill(t.subtitle), color: t.subtitleColor }))
+  const sub = { text: fill(t.subtitle), color: t.subtitleColor }
+  if (t.subtitleBold) sub.bold = true
+  run(server, 'title @a subtitle ' + JSON.stringify(sub))
   run(server, 'title @a title ' + JSON.stringify({ text: fill(t.title), color: t.titleColor, bold: true }))
 }
 
@@ -1773,8 +1777,8 @@ function leaderJoined(server, arrived) {
   const fakes = (global.fakePlayers && global.fakePlayers.fakes) || {}
   const lines = arrived && LEADER_NAME && fakes[LEADER_NAME.toLowerCase()] ? LEADER_LINES : []
   let t = 0
-  lines.forEach(line => {
-    t += lineDelay(line)
+  lines.forEach((line, i) => {
+    t += i == 0 ? Math.max(LEADER_FIRST_LINE_MIN_SECONDS, lineDelay(line)) : lineDelay(line)
     later(server, t * 20, () => leaderSays(server, line))
   })
   if (lines.length) speechStart(server)

@@ -126,12 +126,12 @@ The escort plays exactly as before. Only the ending changes. All the texts, titl
 - **Before the explosion,** the still-lit portal stays closed: anyone walking in is put back in front of it.
 
 **The reveal:**
-- **R+0:** everyone online gets the title "THE BLOOD GOD'S SYNDICATE" with the subtitle "Blood for the Blood God." and the Elder Guardian curse sound.
+- **R+0:** everyone online gets the title "THE BLOOD GOD'S" with the subtitle "SYNDICATE" (split so it fits on screen) and the Elder Guardian curse sound.
 - **R+4:** [SIGNAL HIJACKED] "Honor the player, not the statue…"
 - **R+8:** the leader, `/fakejoin hypixel` (`LEADER_NAME`). That shows the join message, puts hypixel on the tab list with their skin, and posts the join to Discord.
 - **2 s after the join message:** thunder for everyone, 3 visual-only bolts around the ruins, a red particle column at the portal, and the title "hypixel / has entered the server.". Ops get a note saying how many lines follow and how long until the rest runs.
-- **hypixel speaks:** the 8 lines in `LEADER_LINES`, from "Sorry about the portal." to "Blood for the Blood God.", over about 73 s.
-  - **Typing time:** each line takes as long as hypixel would need to type it (`LEADER_TYPING`): a 2 s pause plus 1 s per 8 characters, between 3 and 14 s. So the short lines come quickly and the long ones take longer. The gaps are 4.9, 12.15, 11.4, 13.5, 4.75, 9.75, 11.4 and 5 s.
+- **hypixel speaks:** the 8 lines in `LEADER_LINES`, from "Sorry about the portal." to "Blood for the Blood God.", over about 74 s. The first line comes 6 s after the join (`LEADER_FIRST_LINE_MIN_SECONDS`).
+  - **Typing time:** each line takes as long as hypixel would need to type it (`LEADER_TYPING`): a 2 s pause plus 1 s per 8 characters, between 3 and 14 s. So the short lines come quickly and the long ones take longer. After the first line, the gaps are 12.15, 11.4, 13.5, 4.75, 9.75, 11.4 and 5 s.
   - **While hypixel speaks** (`FINALE_SPEECH`):
     - it starts to rain (put back the way it was when the finale ends);
     - every 2 s the ruins pulse with a swirl of red dust, crimson spores and a heartbeat for everyone within 32 blocks;
@@ -223,9 +223,9 @@ Test on a **copy of the world**. A test is announced to everyone online, and the
 4. **The leader and the speech:**
    - Before the test, run `/fakeleave hypixel`.
    - About 29 s in, "hypixel joined the game" appears, with hypixel on the tab list and their skin.
-   - 2 s later come the thunder, lightning, the red column and the "hypixel" title, and ops get the "They say 8 lines. The rest of the finale runs in 99.85 s" note (80.85 s with no track).
+   - 2 s later come the thunder, lightning, the red column and the "hypixel" title, and ops get the "They say 8 lines. The rest of the finale runs in 100.95 s" note (81.95 s with no track).
    - It starts raining. The ruins pulse (red dust, spores, a heartbeat) every 2 s.
-   - The eight lines arrive about 5, 17, 28, 42, 47, 56, 68 and 73 s after the join, in-game and in Discord's chat channel. Each one comes with a bolt, and the last with a ring of lightning and Darkness.
+   - The eight lines arrive about 6, 18, 30, 43, 48, 58, 69 and 74 s after the join, in-game and in Discord's chat channel. Each one comes with a bolt, and the last with a ring of lightning and Darkness.
    - The Ministry response follows the track (or comes 8 s after the last line, with no track). The pulsing stops then, and the rain stops when the finale ends.
    - **The finale track:** 4 s after the last line, ops get the 5-s countdown and the START THE TRACK cue (with Jockie queued and paused beforehand). The Ministry responds 23 s after the cue. With `/pigescort reveal continue` during the track, ops are shown `m!stop`.
 5. **`/pigescort reveal continue`:**

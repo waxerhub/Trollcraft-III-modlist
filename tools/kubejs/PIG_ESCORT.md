@@ -38,7 +38,7 @@ Nothing ever travels through the event portal.
 | `/pigescort wave` | Send a raider wave now, for testing. It reports how many spawned and why any failed. |
 | `/pigescort purge` | Remove stray event pigs and mobs from loaded chunks. Only works when no event is running. |
 | `/pigescort diagnostics` | Shows whether the hooks are installed and which version of each uncertain API is in use. |
-| `/pigescort track test` | The Jockie countdown and cue on their own, for ops, to practise starting the finale track. See [The finale track](#the-finale-track). |
+| `/pigescort track test` | The Jockie countdown and cue on their own, for ops, to practise starting the finale track (only with `FINALE_TRACK.jockie` on). See [The finale track](#the-finale-track). |
 | `/pigescort finale test success\|fail` | Play Ending A or B right now, without a pig run. Everyone online sees and hears it. No rewards, and the Nether is not unlocked. See [Testing the finale](#testing-the-finale). |
 | `/pigescort finale restoreframe` | Rebuild the test frame (`PORTAL_FRAME_FROM` / `PORTAL_FRAME_TO`) in obsidian and relight it. |
 | `/pigescort reveal continue` | After the leader has joined, run the rest of the finale now instead of waiting `LEADER_FINALE_DELAY_SECONDS`. |
@@ -138,7 +138,23 @@ The escort plays exactly as before. Only the ending changes. All the texts, titl
 **The reveal:**
 - **R+0:** everyone online gets the title "THE BLOOD GOD'S" with the subtitle "SYNDICATE" (split so it fits on screen) and the Elder Guardian curse sound.
 - **R+4:** [SIGNAL HIJACKED] "Honor the player, not the statue…"
-- **R+8:** the leader, `/fakejoin hypixel` (`LEADER_NAME`). That shows the join message, puts hypixel on the tab list with their skin, and posts the join to Discord.
+- **R+8:** [MINISTRY] "The preceding broadcast was not authorized…"
+- **R+13:** the Nether is unlocked (`UNLOCK_NETHER`) with [MINISTRY] "Due to an unscheduled structural event…".
+- **R+16:** the event ends and cleans up, about 37 s after the pig reached the portal or died.
+
+**Discord:** like every Pig Escort announcement, the [MINISTRY] and [SIGNAL HIJACKED] lines use `tellraw @a`, which Simple Discord Link relays to Discord as server chat. So the reveal shows up in Discord too.
+
+**Stopping:** `/pigescort stop` during the finale ends it at once and cleans up. A `/reload` or restart during it does the same, and no later step runs.
+
+### Optional: the Syndicate leader and the finale track (off)
+
+Both are switched off; their code is still there. To bring them back:
+- **The leader:** set `LEADER_NAME = 'hypixel'`. At R+8 the leader then joins, and the Ministry only responds after their speech.
+- **The track:** set `FINALE_TRACK.jockie = true`. It only plays with the leader on, after their last line.
+
+Then `/reload`. With the leader on, the reveal goes on like this from R+8:
+
+- **R+8:** the leader joins with `/fakejoin hypixel` (`LEADER_NAME`). That shows the join message, puts hypixel on the tab list with their skin, and posts the join to Discord.
 - **2 s after the join message:** thunder for everyone, 3 visual-only bolts around the ruins, a red particle column at the portal, and, for everyone online, the title "Hypixel" with "has joined the server" under it, for 5 s. Ops get a note saying how many lines follow and how long until the rest runs.
 - **hypixel speaks:** the 8 lines in `LEADER_LINES`, from "Sorry about the portal." to "Blood for the Blood God.", over about 81 s. The first line comes 13 s after the join (`LEADER_FIRST_LINE_MIN_SECONDS`).
   - **Typing time:** each line takes as long as hypixel would need to type it (`LEADER_TYPING`): a 2 s pause plus 1 s per 8 characters, between 3 and 14 s. So the short lines come quickly and the long ones take longer. After the first line, the gaps are 12.15, 11.4, 13.5, 4.75, 9.75, 11.4 and 5 s.
@@ -151,8 +167,7 @@ The escort plays exactly as before. Only the ending changes. All the texts, titl
   - Simple Discord Link posts them to the Discord chat channel as hypixel (hypixel's name and avatar), like a real player's message.
 - **The finale track** (see [The finale track](#the-finale-track)): 4 s after the last line, ops are cued to start the Technoblade clip in Jockie (Discord voice). The heartbeat goes quiet for its 21 s.
 - **8 s after the last line** (`LEADER_LINES_END_PAUSE_SECONDS`), or 2 s after the track ends, or straight away with `/pigescort reveal continue` (which also cuts the speech and the track short): [MINISTRY] "The preceding broadcast was not authorized…". With `LEADER_LINES = []` there's no speech, and this comes 20 s after the join message (`LEADER_FINALE_DELAY_SECONDS`).
-- **+5 s:** the Nether is unlocked (`UNLOCK_NETHER`) with [MINISTRY] "Due to an unscheduled structural event…".
-- **+8 s:** the event ends and cleans up.
+- **Then:** the unlock 5 s after the Ministry, and the end 3 s after that.
 
 **Leader notes:**
 - **Editing the speech:** add, remove or reword lines in `LEADER_LINES` at the top of `pig_escort.js`.
@@ -163,7 +178,8 @@ The escort plays exactly as before. Only the ending changes. All the texts, titl
 - **Speaking live:** an op can also type as hypixel at any time with `/fakesay hypixel <message>`.
 - hypixel stays on the tab list until you run `/fakeleave hypixel`. If hypixel is still "online" at the next finale, there's no second join message and ops are told so.
 
-### The finale track
+#### The finale track
+
 
 The Technoblade clip plays after hypixel's last line, before the Ministry responds, and the Ministry waits for it to finish. It plays in **Discord voice through Jockie Music**.
 - **The server can't start Jockie itself:** Jockie only plays for a person in a voice channel. So **ops get a countdown and a cue in-game**, and one of them starts it in Discord.
@@ -206,13 +222,9 @@ The Technoblade clip plays after hypixel's last line, before the Ministry respon
 
 With both on, start Jockie right on the cue so they line up, or set `jockie: false` and use only the in-game sound. Anyone without the pack hears nothing in-game. `/pigescort stop` and `reveal continue` cut the in-game sound off with `/stopsound`.
 
-**Discord:** like every Pig Escort announcement, the [MINISTRY] and [SIGNAL HIJACKED] lines use `tellraw @a`, which Simple Discord Link relays to Discord as server chat. So the reveal shows up in Discord too. hypixel's lines are the exception: they post as hypixel speaking.
-
-**Stopping:** `/pigescort stop` during the finale ends it at once and cleans up, and puts the weather back. A `/reload` or restart during it does the same and no later step runs, but the rain is left to clear by itself.
-
 ## Testing the finale
 
-Test on a **copy of the world**. A test is announced to everyone online, and the hypixel join is posted to Discord if Simple Discord Link is set up on that server.
+Test on a **copy of the world**. A test is announced to everyone online. With the leader on, the hypixel join is also posted to Discord if Simple Discord Link is set up.
 
 0. **Lightning first:** run `/aura <yourself>`. You should see flashes and hear thunder, with no fire and no damage. The finale's lightning is made the same way.
 1. **Test at the event's own portal (no config needed).**
@@ -225,12 +237,12 @@ Test on a **copy of the world**. A test is announced to everyone online, and the
    - Stand more than 16 blocks from the portal and run `/pigescort finale test fail`.
    - You're brought 10 blocks in front of the portal, facing it.
    - At T+8, red dust drifts past you into the portal from 15 blocks out.
-3. **hypixel's chat on its own (no finale):**
+3. **hypixel's chat on its own (no finale; only matters with the leader on):**
    - Run `/fakejoin hypixel`, then `/fakesay hypixel test`.
    - In-game it reads `<hypixel> test`, exactly like real chat, and the server console shows it too.
    - In Discord it appears in the chat channel as hypixel speaking, not as the server. The command's reply says "Discord: sent." or why not.
    - Run `/fakeleave hypixel` afterwards.
-4. **The leader and the speech:**
+4. **The leader and the speech (only with `LEADER_NAME = 'hypixel'`):**
    - Before the test, run `/fakeleave hypixel`.
    - About 29 s in, "hypixel joined the game" appears, with hypixel on the tab list and their skin.
    - 2 s later come the thunder, lightning, the red column and the "Hypixel / has joined the server" title, and ops get the "They say 8 lines. The rest of the finale runs in 107.95 s" note (88.95 s with no track).
@@ -239,10 +251,9 @@ Test on a **copy of the world**. A test is announced to everyone online, and the
    - The Ministry response follows the track (or comes 8 s after the last line, with no track). The pulsing stops then, and the rain stops when the finale ends.
    - **The finale track:** 4 s after the last line, ops get the 5-s countdown and the START THE TRACK cue (with Jockie queued and paused beforehand). The Ministry responds 23 s after the cue. With `/pigescort reveal continue` during the track, ops are shown `m!stop`.
 5. **`/pigescort reveal continue`:**
-   - Run another test and use it during the speech: the remaining lines are dropped and the Ministry response comes at once.
-   - Run it again: "Already continuing."
-   - Run it before the leader step: "hasn't reached the leader yet."
-6. **`/pigescort stop` mid-finale:** everything is cleaned up, nothing else is said or struck afterwards, and the weather goes back to what it was.
+   - **With the leader off** (the default), the Ministry responds at R+8 by itself. Run before that, it says "hasn't reached that part yet."
+   - **With the leader on:** run another test and use it during the speech. The remaining lines are dropped and the Ministry response comes at once. Run it again: "Already continuing." Run it before the leader step: "hasn't reached the leader yet."
+6. **`/pigescort stop` mid-finale:** everything is cleaned up, and nothing else is said or struck afterwards. With the leader on, the weather also goes back to what it was.
 7. **Walking into the portal before T+14:** you're put back in front of it with "This portal is closed pending an inquiry."
 8. **A fixed test frame (optional):**
    - Set `PORTAL_FRAME_FROM` / `PORTAL_FRAME_TO` to the outer corners of a frame (it must be flat: the same x or the same z) and run `/reload`.

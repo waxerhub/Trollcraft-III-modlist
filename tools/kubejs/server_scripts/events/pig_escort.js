@@ -149,10 +149,12 @@ const USE_CLEAN_APIS = false
 const FINALE_ENABLED = true            // false = the old endings ("DELIVERED" / "DIPLOMATIC INCIDENT")
 const UNLOCK_NETHER = true             // the reveal ends by switching off nether_portal_whitelist.js
 
-// The Syndicate leader "joins" with /fakejoin (fake_players.js): the join message, the tab list entry with
-// their skin, and the Discord join post. '' = no leader. They stay "online" until you run /fakeleave <name>.
+// The Syndicate leader (OFF): with a name here, the leader "joins" with /fakejoin (fake_players.js) at the
+// reveal's 'leader' step - the join message, the tab list entry with their skin, and the Discord join post - then
+// says LEADER_LINES, with the effects below, and FINALE_TRACK can play. They stay "online" until /fakeleave <name>.
+// '' = no leader: the Ministry responds straight away at that step. 'hypixel' brings the whole part back.
 // %leader% in any text below is replaced with this name.
-const LEADER_NAME = 'hypixel'
+const LEADER_NAME = ''
 const LEADER_EFFECTS_DELAY_SECONDS = 2   // thunder, red column and title this long after the join message
 const LEADER_FINALE_DELAY_SECONDS = 20   // with no LEADER_LINES: the rest of the finale (AFTER_LEADER) starts
                                          // this long after the join message
@@ -190,7 +192,7 @@ const FINALE_TRACK = {
   // In Discord voice, through Jockie Music. The server can't start Jockie itself (it only plays for a person in
   // a voice channel), so ops get a countdown and a cue, and one of them sends jockieStart in Discord.
   // Queue it beforehand: m!play <link>, then m!pause.
-  jockie: true,
+  jockie: false,             // OFF. true = the Jockie cue (only with a leader, after their lines)
   jockieStart: 'm!resume',
   jockieStop: 'm!stop',     // shown to ops if the finale is cut short while it plays
   cueCountdown: 5,          // seconds of countdown for ops before the cue
@@ -245,7 +247,7 @@ const ENDING_FAIL = [
 const REVEAL = [
   { at: 0, action: 'reveal_title' },
   { at: 4, hijack: 'Honor the player, not the statue. Tend your fields, grow your strength, answer to no one.' },
-  { at: 8, action: 'leader' },
+  { at: 8, action: 'leader' },   // the leader joins; with no LEADER_NAME the Ministry responds here (AFTER_LEADER)
 ]
 // After the leader: once the leader's lines are said (or LEADER_FINALE_DELAY_SECONDS after the join message if
 // there are none, or straight away with /pigescort reveal continue).
@@ -1781,7 +1783,7 @@ function stopFinale(server) {
 
 // The leader: /fakejoin, then wait for the join message (the skin lookup can take a few seconds).
 function leaderStep(server) {
-  if (!LEADER_NAME) { leaderJoined(server, false); return }
+  if (!LEADER_NAME) { S.fin.leaderAt = server.tickCount; afterLeader(server); return }   // no leader: straight on
   const key = LEADER_NAME.toLowerCase()
   const fakes = () => (global.fakePlayers && global.fakePlayers.fakes) || {}
   if (fakes()[key]) {
@@ -2157,7 +2159,7 @@ function restoreFrame(ctx) {
 function revealContinue(ctx) {
   const F = S.fin
   if (S.phase != 'finale' || !F) { reply(ctx, 'No finale is running.'); return 0 }
-  if (F.leaderAt == null) { reply(ctx, 'The finale hasn\'t reached the leader yet.'); return 0 }
+  if (F.leaderAt == null) { reply(ctx, LEADER_NAME ? 'The finale hasn\'t reached the leader yet.' : 'The finale hasn\'t reached that part yet.'); return 0 }
   if (F.afterLeader) { reply(ctx, 'Already continuing.'); return 0 }
   afterLeader(ctx.source.server)
   reply(ctx, 'Continuing the finale.')
@@ -2476,7 +2478,8 @@ function status(ctx) {
     let F = S.fin
     reply(ctx, 'Finale: ' + (F.kind == 'success' ? 'Ending A (delivered)' : 'Ending B (lost)') + (F.test ? ', TEST run' : '') +
       ' | running for ' + clock(Math.floor((server.tickCount - F.startTick) / 20)) +
-      ' | leader: ' + (F.leaderAt == null ? 'not yet' : (F.afterLeader ? 'joined, last part running' : 'joined, waiting (/pigescort reveal continue)')))
+      (LEADER_NAME ? ' | leader: ' + (F.leaderAt == null ? 'not yet' : (F.afterLeader ? 'joined, last part running' : 'joined, waiting (/pigescort reveal continue)'))
+        : (F.afterLeader ? ' | last part running' : '')))
     return 1
   }
   if (S.phase == 'staged') {

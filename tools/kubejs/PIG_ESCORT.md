@@ -54,6 +54,16 @@ Nothing ever travels through the event portal.
   - The death is cancelled. The player is healed, with fire and all effects cleared, and teleported to the latest secured checkpoint (or the start).
   - They then get 6 seconds of Slowness and Blindness, the "Ministry processing" penalty, and are immune to damage during it.
   - No items are dropped and no corpse is made. The Corpse mod never sees a cancelled death.
+- **Raider waves by difficulty** (`DIFFICULTIES` at the top of `pig_escort.js`). Every wave gets +1 mob per 2 Escorts.
+
+  | | every | mobs per wave | max alive | mix |
+  |---|---|---|---|---|
+  | easy | 60 s | 2 | 6 | piglins, some hoglins |
+  | medium | 45 s | 3 | 10 | piglins, marksmen, hoglins; brutes join in the second half |
+  | hard | 30 s | 6, **+2 every other wave, up to 16** | 24 | piglins, marksmen, hoglins, brutes (about 29%, rising to about 41% in the second half) |
+
+  - **Hard with 5 Escorts:** 8, 8, 10, 10, 12, 12, 14, 14, then 16 per wave from the 9th wave, about 4½ minutes in.
+  - **Tuning the growth:** `growBy`, `growEveryWaves` and `maxWaveSize`. `/pigescort wave` doesn't count towards it, and `/pigescort status` shows the wave count and the next wave's size.
 - **The pig:**
   - Only event mobs can damage it, scaled by difficulty: ×0.25 / ×0.5 / ×0.75.
   - It regenerates 1 HP every 3 s and is immune to all effects.

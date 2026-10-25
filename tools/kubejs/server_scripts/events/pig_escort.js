@@ -82,14 +82,17 @@ const STRAY_PIG_GUARD_WHEN_IDLE = true
 // Raider mobs.
 const DEFAULT_DIFFICULTY = 'medium'
 // mix / lateMix = relative chance of each kind; lateMix is added after half the time has passed.
+// growBy / growEveryWaves / maxWaveSize (optional): waves get growBy bigger every growEveryWaves timed waves, up to
+// maxWaveSize. On hard with 5 Escorts: 8, 8, 10, 10, 12, 12, 14, 14, then 16.
 // Kinds: piglin (gold sword), marksman (piglin with crossbow), brute (piglin brute, gold axe), hoglin.
 const DIFFICULTIES = {
   easy:   { waveEverySeconds: 60, mobsPerWave: 2, maxAlive: 6,  pigDamageMultiplier: 0.25,
             mix: { piglin: 8, hoglin: 2 }, lateMix: {} },
   medium: { waveEverySeconds: 45, mobsPerWave: 3, maxAlive: 10, pigDamageMultiplier: 0.5,
             mix: { piglin: 5, marksman: 2, hoglin: 3 }, lateMix: { brute: 2 } },
-  hard:   { waveEverySeconds: 30, mobsPerWave: 4, maxAlive: 16, pigDamageMultiplier: 0.75,
-            mix: { piglin: 4, marksman: 3, hoglin: 3, brute: 2 }, lateMix: {} },
+  hard:   { waveEverySeconds: 30, mobsPerWave: 6, maxAlive: 24, pigDamageMultiplier: 0.75,
+            growBy: 2, growEveryWaves: 2, maxWaveSize: 16,
+            mix: { piglin: 4, marksman: 3, hoglin: 3, brute: 4 }, lateMix: { brute: 3 } },
 }
 const EXTRA_MOB_PER_PLAYERS = 2        // each wave gets +1 mob per this many Escorts
 const FIRST_WAVE_DELAY_SECONDS = 20    // grace period before the first wave
@@ -1026,13 +1029,23 @@ function aliveMobs() {
   return out
 }
 
-function maybeSpawnWave(server) {
+// How many raiders the next wave asks for (before the maxAlive room).
+function waveSize(R) {
+  const D = R.diff
+  let n = D.mobsPerWave + Math.floor(Object.keys(R.participants).length / EXTRA_MOB_PER_PLAYERS)
+  if (D.growBy) n = Math.min(D.maxWaveSize || Infinity, n + D.growBy * Math.floor((R.waveCount || 0) / (D.growEveryWaves || 1)))
+  return n
+}
+// manual = /pigescort wave: it doesn't count towards the waves growing.
+function maybeSpawnWave(server, manual) {
   const R = S.run
   if (server.tickCount < R.nextWaveTick) return
   R.nextWaveTick = server.tickCount + R.diff.waveEverySeconds * 20
+  const size = waveSize(R)
+  if (!manual) R.waveCount = (R.waveCount || 0) + 1
   const room = R.diff.maxAlive - aliveMobs().length
   if (room <= 0) return
-  const want = Math.min(room, R.diff.mobsPerWave + Math.floor(Object.keys(R.participants).length / EXTRA_MOB_PER_PLAYERS))
+  const want = Math.min(room, size)
   let spawned = 0
   R.waveStats = { noGround: 0, summonFailed: 0, removedOnSpawn: 0 }
   for (let i = 0; i < want; i++) if (spawnRaider(server, pickKind(R, server))) spawned++
@@ -2448,6 +2461,7 @@ function status(ctx) {
     ' | Checkpoints: ' + R.cpSecured + '/' + R.checkpoints.length + ' | Tampering: ' + R.tampers +
     (R.lastWave ? ' | Last wave: ' + R.lastWave.spawned + '/' + R.lastWave.wanted + ' spawned (no ground ' + R.lastWave.noGround +
       ', summon rejected/cancelled ' + R.lastWave.summonFailed + ', removed on spawn ' + R.lastWave.removedOnSpawn + ')' : ' | No wave yet') +
+    (R.diff.growBy ? ' | Waves so far: ' + (R.waveCount || 0) + ' (next: ' + waveSize(R) + ' mobs)' : '') +
     ' | Escorts: ' + kills.join(', '))
   return 1
 }
@@ -2599,7 +2613,7 @@ ServerEvents.commandRegistry(event => {
       .then(Commands.literal('wave').executes(safe(ctx => {
         if (S.phase != 'running') { reply(ctx, 'No event is running.'); return 0 }
         S.run.nextWaveTick = 0
-        maybeSpawnWave(ctx.source.server)
+        maybeSpawnWave(ctx.source.server, true)
         const w = S.run.lastWave
         reply(ctx, 'Wave: ' + w.spawned + '/' + w.wanted + ' spawned. Failed attempts: no usable ground ' + w.noGround +
           ', /summon rejected or cancelled by another mod ' + w.summonFailed + ', removed as it spawned ' + w.removedOnSpawn + '.')

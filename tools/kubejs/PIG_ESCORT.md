@@ -63,9 +63,19 @@ Nothing ever travels through the event portal.
   | hard | 30 s | 6, **+2 every other wave, up to 16** | 24 | piglins, marksmen, hoglins, brutes (about 29%, rising to about 41% in the second half) |
 
   - **Hard with 5 Escorts:** 8, 8, 10, 10, 12, 12, 14, 14, then 16 per wave from the 9th wave, about 4½ minutes in.
+  - **Hard raiders are elite** (`ELITE_RAIDERS`, the same as the portal ambush mobs). Easy and medium raiders keep gold gear and vanilla stats.
+
+    | kind | weapon | health | attack | armor | toughness | knockback res. |
+    |---|---|---|---|---|---|---|
+    | piglin | netherite sword, Sharpness V, Fire Aspect II | 40 | 9 | 10 | 4 | 0.3 |
+    | marksman | crossbow, Quick Charge III, Multishot | 40 | – | 10 | 4 | 0.3 |
+    | brute | netherite axe, Sharpness V | 90 | 14 | 16 | 8 | 0.6 |
+    | hoglin | – | 60 | 10 | 8 | 4 | 0.8 |
+
+    They drop nothing, gear included. Players take their full damage. Their hits on the pig are scaled down (×0.4), so a hit on the pig is about 7–8, not about 19.
   - **Tuning the growth:** `growBy`, `growEveryWaves` and `maxWaveSize`. `/pigescort wave` doesn't count towards it, and `/pigescort status` shows the wave count and the next wave's size.
 - **The pig:**
-  - Only event mobs can damage it, scaled by difficulty: ×0.25 / ×0.5 / ×0.75.
+  - Only event mobs can damage it, scaled by difficulty: ×0.25 / ×0.5 / ×0.4 (hard's elite raiders hit much harder to start with).
   - It regenerates 1 HP every 3 s and is immune to all effects.
   - The only right-clicks allowed are a lead, or an empty hand to unhook it from yourself. Feeding is blocked, because it would heal the pig.
   - It can't be ridden or put in vehicles.
@@ -284,7 +294,7 @@ Test on a **copy of the world**. A test is announced to everyone online, and the
    - Run `/execute as @e[tag=pig_escort_ambassador] run data merge entity @s {Pos:[0d,120d,0d]}` (pick coordinates far away). This moves the pig without firing an event.
    - Within a second: "Tampering … detected", the pig reappears where it was, and you (the last player who touched it) glow and are slowed for 30 s.
 8. **Raiders.** Test in **survival**: mobs ignore creative players, although they still go for the pig. The world must not be on Peaceful, or the event refuses to start.
-   - After 20 s (or right away with `/pigescort wave`), a wave appears 10–15 blocks from the pig. The mobs glow red and carry gold swords, crossbows or gold axes.
+   - After 20 s (or right away with `/pigescort wave`), a wave appears 10–15 blocks from the pig. The mobs glow red and carry gold swords, crossbows or gold axes. On hard they carry enchanted netherite swords and axes, or enchanted crossbows, and take far more hits to kill. `/pigescort status` says "(elite raiders)".
    - They head for the pig. If you (in survival) get within 8 blocks of one, it turns on you instead. With `USE_CLEAN_APIS = true`, hoglins target the pig too; with the fallbacks, hoglins only attack players near them.
    - Wait more than 15 s: piglins must **not** turn into zombified piglins.
    - Kill one: the chat says "Escort … has neutralized a Piglin".

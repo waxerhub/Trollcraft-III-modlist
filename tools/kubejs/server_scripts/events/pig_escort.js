@@ -84,15 +84,27 @@ const DEFAULT_DIFFICULTY = 'medium'
 // mix / lateMix = relative chance of each kind; lateMix is added after half the time has passed.
 // growBy / growEveryWaves / maxWaveSize (optional): waves get growBy bigger every growEveryWaves timed waves, up to
 // maxWaveSize. On hard with 5 Escorts: 8, 8, 10, 10, 12, 12, 14, 14, then 16.
-// Kinds: piglin (gold sword), marksman (piglin with crossbow), brute (piglin brute, gold axe), hoglin.
+// Kinds: piglin (gold sword), marksman (piglin with crossbow), brute (piglin brute, gold axe), hoglin
+// (on a difficulty with elite: true, the gear and stats in ELITE_RAIDERS instead).
 const DIFFICULTIES = {
   easy:   { waveEverySeconds: 60, mobsPerWave: 2, maxAlive: 6,  pigDamageMultiplier: 0.25,
             mix: { piglin: 8, hoglin: 2 }, lateMix: {} },
   medium: { waveEverySeconds: 45, mobsPerWave: 3, maxAlive: 10, pigDamageMultiplier: 0.5,
             mix: { piglin: 5, marksman: 2, hoglin: 3 }, lateMix: { brute: 2 } },
-  hard:   { waveEverySeconds: 30, mobsPerWave: 6, maxAlive: 24, pigDamageMultiplier: 0.75,
+  hard:   { waveEverySeconds: 30, mobsPerWave: 6, maxAlive: 24, pigDamageMultiplier: 0.4, elite: true,
             growBy: 2, growEveryWaves: 2, maxWaveSize: 16,
             mix: { piglin: 4, marksman: 3, hoglin: 3, brute: 4 }, lateMix: { brute: 3 } },
+}
+// elite: true (hard) = raiders with the gear and stats below instead of gold gear, for diamond/netherite players
+// (the same as the portal ambush mobs). Their hits on the pig are still scaled by pigDamageMultiplier.
+const ELITE_RAIDERS = {
+  piglin:   { weapon: { item: 'minecraft:netherite_sword', enchants: { sharpness: 5, fire_aspect: 2 } },
+              stats: { health: 40, damage: 9, armor: 10, toughness: 4, knockback: 0.3 } },
+  marksman: { weapon: { item: 'minecraft:crossbow', enchants: { quick_charge: 3, multishot: 1 } },
+              stats: { health: 40, armor: 10, toughness: 4, knockback: 0.3 } },
+  brute:    { weapon: { item: 'minecraft:netherite_axe', enchants: { sharpness: 5 } },
+              stats: { health: 90, damage: 14, armor: 16, toughness: 8, knockback: 0.6 } },
+  hoglin:   { stats: { health: 60, damage: 10, armor: 8, toughness: 4, knockback: 0.8 } },
 }
 const EXTRA_MOB_PER_PLAYERS = 2        // each wave gets +1 mob per this many Escorts
 const FIRST_WAVE_DELAY_SECONDS = 20    // grace period before the first wave
@@ -951,15 +963,36 @@ function pushOut(server, player) {
 
 // ===================== RAIDER MOBS =====================
 
-function mobNbt(kind) {
+function mobNbt(kind, elite) {
   let nbt = '{PersistenceRequired:1b,IsImmuneToZombification:1b,DeathLootTable:"minecraft:empty",Tags:["' + TAG_MOB + '"]' +
-    (RAIDER_MOBS_GLOW ? ',Glowing:1b' : '') +
-    ',Attributes:[{Name:"minecraft:generic.follow_range",Base:48d}]'
+    (RAIDER_MOBS_GLOW ? ',Glowing:1b' : '')
+  const E = elite ? ELITE_RAIDERS[kind] : null
+  if (E) {
+    nbt += ',Attributes:' + eliteAttributesNbt(E.stats) + (E.stats.health ? ',Health:' + E.stats.health + 'f' : '')
+    if (E.weapon) nbt += ',HandItems:[' + weaponNbt(E.weapon) + ',{}],HandDropChances:[0f,0f]'
+    return nbt + '}'
+  }
+  nbt += ',Attributes:[{Name:"minecraft:generic.follow_range",Base:48d}]'
   // /summon with NBT skips the normal equipment roll, so weapons are given here.
   if (kind == 'piglin') nbt += ',HandItems:[{id:"minecraft:golden_sword",Count:1b},{}],HandDropChances:[0f,0f]'
   if (kind == 'marksman') nbt += ',HandItems:[{id:"minecraft:crossbow",Count:1b},{}],HandDropChances:[0f,0f]'
   if (kind == 'brute') nbt += ',HandItems:[{id:"minecraft:golden_axe",Count:1b},{}],HandDropChances:[0f,0f]'
   return nbt + '}'
+}
+
+// An item with enchantments, for HandItems.
+function weaponNbt(w) {
+  const ench = Object.keys(w.enchants || {}).map(e => '{id:"minecraft:' + e + '",lvl:' + w.enchants[e] + 's}')
+  return '{id:"' + w.item + '",Count:1b' + (ench.length ? ',tag:{Enchantments:[' + ench.join(',') + ']}' : '') + '}'
+}
+function eliteAttributesNbt(st) {
+  const list = ['{Name:"minecraft:generic.follow_range",Base:48d}']
+  if (st.health) list.push('{Name:"minecraft:generic.max_health",Base:' + st.health + 'd}')
+  if (st.damage) list.push('{Name:"minecraft:generic.attack_damage",Base:' + st.damage + 'd}')
+  if (st.armor) list.push('{Name:"minecraft:generic.armor",Base:' + st.armor + 'd}')
+  if (st.toughness) list.push('{Name:"minecraft:generic.armor_toughness",Base:' + st.toughness + 'd}')
+  if (st.knockback) list.push('{Name:"minecraft:generic.knockback_resistance",Base:' + st.knockback + 'd}')
+  return '[' + list.join(',') + ']'
 }
 
 function pickKind(R, server) {
@@ -1003,7 +1036,7 @@ function spawnRaider(server, kind) {
     S.expectMob = true
     let result = 0
     try {
-      result = runOW(server, 'summon ' + MOB_TYPES[kind] + ' ' + spot.x + ' ' + spot.y + ' ' + spot.z + ' ' + mobNbt(kind))
+      result = runOW(server, 'summon ' + MOB_TYPES[kind] + ' ' + spot.x + ' ' + spot.y + ' ' + spot.z + ' ' + mobNbt(kind, R.diff.elite))
     } finally {
       S.expectMob = false
     }
@@ -2461,7 +2494,7 @@ function status(ctx) {
   const kills = Object.keys(R.participants).map(n => n + ' (' + R.participants[n].kills + ' kills, ' + R.participants[n].deaths + ' incidents)')
   reply(ctx, 'Running | Time left: ' + clock(secs) + ' | Pig: ' + Math.ceil(R.pig.getHealth()) + '/' + PIG_MAX_HEALTH +
     ' at ' + Math.floor(ex(R.pig)) + ' ' + Math.floor(ey(R.pig)) + ' ' + Math.floor(ez(R.pig)) +
-    ' | Portal: ' + describeSite(R.site) + ' | Difficulty: ' + R.difficulty + ' | Raiders alive: ' + aliveMobs().length +
+    ' | Portal: ' + describeSite(R.site) + ' | Difficulty: ' + R.difficulty + (R.diff.elite ? ' (elite raiders)' : '') + ' | Raiders alive: ' + aliveMobs().length +
     ' | Checkpoints: ' + R.cpSecured + '/' + R.checkpoints.length + ' | Tampering: ' + R.tampers +
     (R.lastWave ? ' | Last wave: ' + R.lastWave.spawned + '/' + R.lastWave.wanted + ' spawned (no ground ' + R.lastWave.noGround +
       ', summon rejected/cancelled ' + R.lastWave.summonFailed + ', removed on spawn ' + R.lastWave.removedOnSpawn + ')' : ' | No wave yet') +

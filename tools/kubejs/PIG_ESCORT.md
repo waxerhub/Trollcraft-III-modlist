@@ -87,7 +87,7 @@ The escort plays exactly as before. Only the ending changes. All the texts, titl
 
 | Ending A (delivered) | Ending B (lost, or out of time) |
 |---|---|
-| T+0 gold fireworks above the portal. [MINISTRY] "The Swine has been delivered…" | T+0 the escort party is brought to the portal (see below). [MINISTRY] "The Swine has been lost…" |
+| T+0 the escort party is brought to the portal (see below). Gold fireworks above the portal. [MINISTRY] "The Swine has been delivered…" | T+0 the escort party is brought to the portal (see below). [MINISTRY] "The Swine has been lost…" |
 | T+5 [MINISTRY] Form 88-D | T+4 [MINISTRY] "Nether access is denied indefinitely…" |
 | T+9 the portal hum gets louder; 3 s of Darkness for everyone within 48 blocks | T+8 red dust rises from where the pig died (at most 20 blocks out) and drifts into the portal (particles only) |
 | T+11 [SIGNAL HIJACKED] "Thank you for the escort." (scrambled characters around it) | T+11 [SIGNAL HIJACKED] "Spilled blood still pays the toll." (scrambled) |
@@ -95,11 +95,15 @@ The escort plays exactly as before. Only the ending changes. All the texts, titl
 | T+17 [SIGNAL HIJACKED] "The Ministry wanted one door…" | T+17 [SIGNAL HIJACKED] "They would have kept him behind a wall of laws…" |
 | T+21 **the reveal** | T+21 **the reveal** |
 
-**Ending B brings the party to the portal** (the `gather` step, `FINALE_GATHER`), so they see the finale even if the pig died far away:
+**Both endings bring the party to the portal** (the `gather` step, `FINALE_GATHER`), so everyone sees the finale, even escorts left far behind or the whole party after a far-off death:
 - **Who:** escorts who are online, in the Overworld, and more than 16 blocks from the portal. Players who weren't in the event aren't moved, and nor are escorts already close by.
-- **Where:** 10 blocks in front of the portal, on the side the pig died on, side by side 2 blocks apart, facing the portal. Each one is told "All Escorts are to report to the portal for the inquiry."
-- **Tests:** in a `/pigescort finale test fail`, only the op who ran it is brought, and only if they're more than 16 blocks away.
-- **Turning it off:** remove the `{ at: 0, action: 'gather' }` line from `ENDING_FAIL`. Ending A has no gather step, since the party is already at the portal.
+- **Where:** 10 blocks in front of the portal, side by side 2 blocks apart, facing the portal.
+  - On a delivery, that's the side the route came from. After a death, it's the side the pig died on.
+- **Messages:**
+  - on a delivery, "All Escorts are to report to the portal for the commendation ceremony. Attendance is mandatory." (`successMessage`);
+  - after a death, "All Escorts are to report to the portal for the inquiry. You have been reported." (`message`).
+- **Tests:** in `/pigescort finale test success|fail`, only the op who ran it is brought, and only if they're more than 16 blocks away.
+- **Turning it off:** remove the `{ at: 0, action: 'gather' }` line from `ENDING_SUCCESS` and/or `ENDING_FAIL`.
 
 **The explosion is visual only:**
 - **Effects:** `explosion_emitter` particles at the frame's four corners and centre, plus smoke and lava particles. The explode and Wither-spawn sounds play for everyone within 96 blocks.
@@ -193,7 +197,7 @@ Test on a **copy of the world**. A test is announced to everyone online, and the
 0. **Lightning first:** run `/aura <yourself>`. You should see flashes and hear thunder, with no fire and no damage. The finale's lightning is made the same way.
 1. **Test at the event's own portal (no config needed).**
    - Run `/pigescort setup`, then stand somewhere flat and run `/pigescort setportal`.
-   - Run `/pigescort finale test success`. The portal is built, and the whole of Ending A plays. Check each step against the table above.
+   - Stand more than 16 blocks from the portal and run `/pigescort finale test success`. The portal is built, you're brought 10 blocks in front of it, and the whole of Ending A plays. Check each step against the table above.
    - At T+14 the frame turns to crying obsidian, the portal goes out, and lightning strikes it and around it. Stand within 6 blocks to feel the push and check you take no damage, nothing catches fire, and there are no "Visual-only lightning failed" warnings in the server log.
    - After the reveal, the land at the site is put back exactly, and the setup is still staged (`/pigescort status`).
    - `/pigescort nether status` still says Locked, because tests never unlock. Ops are told "Test run: the Nether was NOT unlocked".

@@ -202,6 +202,7 @@ const VOICE_HIJACK = { tag: '[SIGNAL HIJACKED]', tagColor: 'dark_red', textColor
 //   { at, action: 'name' }                    one of the actions set up below
 // Ending A: from the moment the pig enters the portal.
 const ENDING_SUCCESS = [
+  { at: 0, action: 'gather' },
   { at: 0, action: 'fireworks' },
   { at: 0, ministry: 'The Swine has been delivered. Nether access is hereby authorized. Celebration is permitted for thirty (30) seconds.' },
   { at: 5, ministry: 'Each Escort will receive Form 88-D (Commendation, Pending) within 6 to 8 business weeks.' },
@@ -247,11 +248,13 @@ const FINALE_PORTAL_HUM = { sound: 'minecraft:block.portal.trigger', volume: 1, 
 const FINALE_DARKNESS = { seconds: 3, radius: 48 }
 // gather: the escort party is brought to the portal to watch the rest. Escorts online in the Overworld and more
 // than minDistance blocks from the portal are teleported `distance` blocks in front of it (on the side the pig
-// came from, so the blood trail passes them), side by side `spacing` blocks apart, facing it.
+// came from: on a delivery the side of the route's start, after a death the side it died on, so the blood trail
+// passes them), side by side `spacing` blocks apart, facing it. successMessage on a delivery, message otherwise.
 // In a test (/pigescort finale test) only the op who ran it is brought.
 const FINALE_GATHER = {
   distance: 10, spacing: 2, minDistance: 16,
   message: 'All Escorts are to report to the portal for the inquiry. You have been reported.',
+  successMessage: 'All Escorts are to report to the portal for the commendation ceremony. Attendance is mandatory.',
 }
 // blood_trail: red dust rising from where the pig died and drifting to the portal (particles only). If the pig
 // died further away than maxDistance, the trail starts maxDistance blocks out, in the direction it died.
@@ -1628,7 +1631,9 @@ function gatherParty(server) {
   const players = onlinePlayers(server).filter(p => names.indexOf(nameOf(p)) >= 0 && dimOf(p) == OVERWORLD &&
     horizDist(ex(p), ez(p), c.x, c.z) > G.minDistance)
   if (!players.length) return
-  const along = F.from ? (fr.axis == 'x' ? F.from.z - c.z : F.from.x - c.x) : 1
+  // On a real delivery the pig is in the portal, so the route's start says which side they came from.
+  const ref = F.kind == 'success' && !F.test && S.run && S.run.start ? S.run.start : F.from
+  const along = ref ? (fr.axis == 'x' ? ref.z - c.z : ref.x - c.x) : 1
   const base = frontOf(fr, (along >= 0 ? 1 : -1) * G.distance), level = overworldOf(server)
   players.forEach((p, i) => {
     let off = (i - (players.length - 1) / 2) * G.spacing
@@ -1636,7 +1641,7 @@ function gatherParty(server) {
     let spot = safeSpot(level, { x: x, y: base.y, z: z })
     runOW(server, 'tp ' + uuidOf(p) + ' ' + (x + 0.5) + ' ' + (spot ? spot.y : base.y) + ' ' + (z + 0.5) +
       ' facing ' + num(c.x) + ' ' + num(c.y) + ' ' + num(c.z))
-    tell(server, nameOf(p), G.message, 'yellow')
+    tell(server, nameOf(p), F.kind == 'success' ? G.successMessage : G.message, 'yellow')
   })
   console.info('[PigEscort] Brought ' + players.length + ' escort' + (players.length == 1 ? '' : 's') + ' to the portal')
 }

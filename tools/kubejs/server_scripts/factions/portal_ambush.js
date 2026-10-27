@@ -6,7 +6,7 @@
 //                                  met by a patrol (vindicators and pillagers) that only hunts syndicate players.
 //                                  Secrecy rule: never in front of anyone who isn't in the syndicate.
 //  Mechanic 3 - Random Raids:      while a player stays in the dimension hostile to their faction, a per-player
-//                                  countdown occasionally sends the same kind of group after them.
+//                                  10-minute countdown rolls for a light, moderate or lethal group (RAID_TIERS).
 //
 // Mob names and every message are settings below; none of them names a faction, because the factions haven't
 // been revealed to players yet.
@@ -52,13 +52,25 @@ const PATROL_BASE_SIZE = 2
 const PATROL_MAX_SIZE = 6
 
 // --- Mechanic 3: random raids ---
-const RAID_CHANCE = 0.35                // rolled each time a player's countdown reaches zero
-const RAID_MINUTES = {}                 // countdown length (random between min and max), per hostile dimension
-RAID_MINUTES[NETHER] = [30, 60]
-RAID_MINUTES[OVERWORLD] = [45, 90]
-const RAID_SIZE = {}                    // random size before the +1 per extra target
-RAID_SIZE[NETHER] = [2, 5]
-RAID_SIZE[OVERWORLD] = [2, 4]
+const RAID_MINUTES = {}                 // countdown length (random between min and max), per hostile dimension.
+RAID_MINUTES[NETHER] = [10, 10]         // It only runs while the player is in their hostile dimension and not
+RAID_MINUTES[OVERWORLD] = [10, 10]      // fighting a group, and restarts when a raid starts.
+// What a countdown reaching zero brings: one roll, at most one tier (chances add up to 0.85, so 15% = nothing).
+// The post-ambush cooldown doesn't apply to these rolls (it still does to portal arrivals).
+//   size     mobs (random between min and max), +1 per extra target, never more than GROUP_MAX_MOBS
+//   health / damage   multiply the mob kinds' stats below
+//   strength Strength level the mobs get for as long as they live (0 = none; 1 = Strength I, +3 melee damage)
+//   mix      which mobs, per hostile dimension (nether / overworld); no mix = the war party's or patrol's own
+//   maxEvokers  at most this many evokers in one group (their summoned vexes join the group too)
+//   lethal   true = the lethal warning instead of the usual one
+const RAID_TIERS = [
+  { id: 'light', chance: 0.50, size: [2, 3], health: 0.75, damage: 0.75, strength: 0,
+    mix: { nether: [['piglin', 1]], overworld: [['vindicator', 0.5], ['pillager', 0.5]] } },
+  { id: 'moderate', chance: 0.25, size: [3, 5], health: 1, damage: 1, strength: 0 },
+  { id: 'lethal', chance: 0.10, size: [6, 8], health: 1.5, damage: 1.25, strength: 1, maxEvokers: 2, lethal: true,
+    mix: { nether: [['brute', 0.45], ['piglin', 0.25], ['evoker', 0.15], ['vex', 0.15]],
+           overworld: [['vindicator', 0.45], ['pillager', 0.15], ['evoker', 0.2], ['vex', 0.2]] } },
+]
 const RAID_SPAWN_MIN = 18               // spawn distance from the player
 const RAID_SPAWN_MAX = 32
 const RAID_SPOT_TRIES = 10              // spots checked for one out of the player's line of sight
@@ -139,6 +151,17 @@ const MOB_KINDS = {
     ammo: { item: 'minecraft:tipped_arrow', potion: 'minecraft:harming', count: 64 },   // 3 hearts, ignores armour (not Protection)
     stats: { health: 36, damage: 5, armor: 8, toughness: 4, knockback: 0.2 },
   },
+  // Lethal raids only (RAID_TIERS). An evoker's own summoned vexes join its group.
+  evoker: {
+    id: 'minecraft:evoker', illager: true,
+    weapons: [],
+    stats: { health: 60, armor: 8, toughness: 4, knockback: 0.3 },
+  },
+  vex: {
+    id: 'minecraft:vex',
+    weapons: [[{ item: 'minecraft:iron_sword', enchants: { sharpness: 3 } }, 1]],
+    stats: { health: 20, damage: 6 },
+  },
 }
 
 // --- Messages (only the targeted players see them) ---
@@ -149,12 +172,15 @@ const MESSAGES = {
   return_inspection: { voice: VOICE_MINISTRY, text: 'Routine border inspection. Please do not resist.', sound: 'minecraft:event.raid.horn' },
   raid_warning_nether: { voice: VOICE_SIGNAL, text: 'The Blood God has found you.', sound: 'minecraft:entity.piglin.angry' },
   raid_warning_overworld: { voice: VOICE_MINISTRY, text: 'Inspectors have been dispatched to your location.', sound: 'minecraft:block.bell.use' },
+  lethal_warning_nether: { voice: VOICE_SIGNAL, text: 'The Blood God demands your blood.', sound: 'minecraft:entity.elder_guardian.curse' },
+  lethal_warning_overworld: { voice: VOICE_MINISTRY, text: 'Lethal force has been authorised.', sound: 'minecraft:event.raid.horn' },
 }
 
 
 // ===================== STATE =====================
 
 const TAG = 'portal_ambush'
+const TAG_SUMMONED = 'portal_ambush_summoned'
 const DATA_KEY = 'portal_ambush'
 const SAVE_EVERY_SECONDS = 15
 const TWO_PI = 6.283185307179586   // Math.PI is missing in the server's script engine
@@ -284,7 +310,7 @@ function sendMessage(server, players, key) {
 
 
 // ===================== SAVED DATA =====================
-// server.persistentData['portal_ambush'] = JSON { v, enabled, cooldowns: { uuid: untilMs }, raid: { uuid: { left, postpones } } }
+// server.persistentData['portal_ambush'] = JSON { v, enabled, cooldowns: { uuid: untilMs }, raid: { uuid: { left, postpones, tier } } }
 // Only this key is ever touched. Raid countdowns are seconds left, so logging out or restarting doesn't reset
 // them or set them off early. Cooldowns are real-time end times.
 
@@ -304,6 +330,9 @@ function db() {
   DB = parsed && parsed.v ? parsed : { v: 1, enabled: ENABLED_BY_DEFAULT }
   if (!DB.cooldowns) DB.cooldowns = {}
   if (!DB.raid) DB.raid = {}
+  // Countdowns saved under longer settings are cut to the longest one now.
+  const longest = Math.max.apply(null, Object.keys(RAID_MINUTES).map(d => RAID_MINUTES[d][1])) * 60
+  Object.keys(DB.raid).forEach(u => { if (DB.raid[u] && DB.raid[u].left > longest) DB.raid[u].left = longest })
   if (typeof DB.enabled != 'boolean') DB.enabled = ENABLED_BY_DEFAULT
   return DB
 }
@@ -329,8 +358,26 @@ function startCooldown(uuid) {
   dirty = true
 }
 function newRaidTimer(dim) {
-  const r = RAID_MINUTES[dim] || [30, 60]
+  const r = RAID_MINUTES[dim] || [10, 10]
   return { left: Math.round((r[0] + Math.random() * (r[1] - r[0])) * 60), postpones: 0, postponed: false }
+}
+function tierById(id) { return RAID_TIERS.filter(t => t.id == id)[0] || null }
+// One roll for a countdown that reached zero: a tier, or null (nothing this time).
+// anyTier (the test command): never nothing, the tiers in proportion to their chances.
+function pickTier(anyTier) {
+  let total = 0
+  RAID_TIERS.forEach(t => { total += t.chance })
+  let roll = Math.random() * (anyTier ? total : 1)
+  for (let i = 0; i < RAID_TIERS.length; i++) {
+    if (roll < RAID_TIERS[i].chance) return RAID_TIERS[i]
+    roll -= RAID_TIERS[i].chance
+  }
+  return null
+}
+function tierOdds() {
+  let none = 1
+  RAID_TIERS.forEach(t => { none -= t.chance })
+  return RAID_TIERS.map(t => t.id + ' ' + Math.round(t.chance * 100) + '%').join(', ') + ', nothing ' + Math.max(0, Math.round(none * 100)) + '%'
 }
 
 
@@ -385,8 +432,8 @@ function eligible(server, p, factionId, opts) {
 function witnesses(server, dim, pos) {
   return onlinePlayers(server).filter(p => dimOf(p) == dim && !isSpectator(p) && factionOf(p) != 'syndicate' && dist(posOf(p), pos) <= SECRECY_RADIUS)
 }
-function nearbyEligible(server, factionId, dim, pos, radius, exclude) {
-  return onlinePlayers(server).filter(p => exclude.indexOf(uuidOf(p)) < 0 && dimOf(p) == dim && dist(posOf(p), pos) <= radius && eligible(server, p, factionId))
+function nearbyEligible(server, factionId, dim, pos, radius, exclude, opts) {
+  return onlinePlayers(server).filter(p => exclude.indexOf(uuidOf(p)) < 0 && dimOf(p) == dim && dist(posOf(p), pos) <= radius && eligible(server, p, factionId, opts))
 }
 
 
@@ -470,14 +517,23 @@ function attributesNbt(st) {
   return '[' + list.join(',') + ']'
 }
 
-function mobNbt(kindName, def, groupId) {
+// A raid tier's health and damage multipliers on a mob kind's stats.
+function scaledStats(st, tier) {
+  if (!tier) return st
+  const out = {}
+  Object.keys(st).forEach(k => { out[k] = st[k] })
+  if (out.health) out.health = Math.round(out.health * (tier.health || 1))
+  if (out.damage) out.damage = Math.round(out.damage * (tier.damage || 1))
+  return out
+}
+function mobNbt(kindName, def, groupId, tier) {
   const kind = MOB_KINDS[kindName]
-  const weapon = pickWeighted(kind.weapons)
-  const stats = kind.stats || {}
+  const weapon = kind.weapons.length ? pickWeighted(kind.weapons) : null
+  const stats = scaledStats(kind.stats || {}, tier)
   let nbt = '{PersistenceRequired:1b,CanPickUpLoot:0b,DeathLootTable:"minecraft:empty"' +
     ',Tags:["' + TAG + '","' + TAG + '_g_' + groupId + '"]' +
     ',CustomName:' + snbtString(JSON.stringify({ text: def.name, color: def.nameColor, italic: false })) + ',CustomNameVisible:1b' +
-    ',HandItems:[' + weaponNbt(weapon) + ',' + (weapon.item == 'minecraft:crossbow' ? ammoNbt(kind.ammo) : '{}') + '],HandDropChances:[0f,0f]' +
+    ',HandItems:[' + (weapon ? weaponNbt(weapon) : '{}') + ',' + (weapon && weapon.item == 'minecraft:crossbow' ? ammoNbt(kind.ammo) : '{}') + '],HandDropChances:[0f,0f]' +
     ',ArmorItems:[{},{},{id:"minecraft:leather_chestplate",Count:1b,tag:{display:{color:' + def.chestplateColor + '}}},{}]' +
     ',ArmorDropChances:[0f,0f,0f,0f]' +
     ',Attributes:' + attributesNbt(stats) + (stats.health ? ',Health:' + stats.health + 'f' : '')
@@ -487,12 +543,12 @@ function mobNbt(kindName, def, groupId) {
 }
 
 // Summons one mob and returns it (caught as it joins the world), or null.
-function summonMob(server, dim, kindName, def, groupId, spot) {
+function summonMob(server, dim, kindName, def, groupId, spot, tier) {
   S.lastMob = null
   S.expectMob = true
   let result = 0
   try {
-    result = server.runCommandSilent('execute in ' + dim + ' run summon ' + MOB_KINDS[kindName].id + ' ' + spot.x + ' ' + spot.y + ' ' + spot.z + ' ' + mobNbt(kindName, def, groupId))
+    result = server.runCommandSilent('execute in ' + dim + ' run summon ' + MOB_KINDS[kindName].id + ' ' + spot.x + ' ' + spot.y + ' ' + spot.z + ' ' + mobNbt(kindName, def, groupId, tier))
   } finally {
     S.expectMob = false
   }
@@ -521,7 +577,8 @@ function updateHookState() {
 }
 
 // Creates a group around center and spawns up to `size` mobs. targets: player objects. Returns the group or null.
-function startGroup(server, mechanic, dim, center, targets, size, minD, maxD, hideFrom) {
+// tier (raids): RAID_TIERS entry for the mix, stats, Strength and evoker cap.
+function startGroup(server, mechanic, dim, center, targets, size, minD, maxD, hideFrom, tier) {
   const level = levelOf(targets[0])
   const room = Math.min(size, GROUP_MAX_MOBS, SERVER_MAX_MOBS - aliveAmbushMobs())
   if (room <= 0) return null
@@ -530,16 +587,28 @@ function startGroup(server, mechanic, dim, center, targets, size, minD, maxD, hi
   const def = defFor(mechanic, dim)
   const g = {
     id: id, mechanic: mechanic, dim: dim, center: center, start: Date.now(), lostSince: null,
-    targets: targets.map(uuidOf), names: {}, mobs: {}, mobTarget: {},
+    targets: targets.map(uuidOf), names: {}, mobs: {}, mobTarget: {}, tier: tier ? tier.id : null,
   }
+  const mix = tier && tier.mix ? tier.mix[dim == NETHER ? 'nether' : 'overworld'] || def.mix : def.mix
+  let evokers = 0
   targets.forEach(p => { g.names[uuidOf(p)] = nameOf(p) })
   S.groups[id] = g     // registered first, so the spawn guard and hooks accept its mobs
   for (let i = 0; i < room; i++) {
     let spot = pickSpot(level, dim, center, minD, maxD, hideFrom)
     if (!spot) continue
     let m = null
-    try { m = summonMob(server, dim, pickWeighted(def.mix), def, id, spot) } catch (e) { console.error('[PortalAmbush] Spawn failed: ' + e) }
+    let kind = pickWeighted(mix)
+    if (kind == 'evoker' && tier && tier.maxEvokers != null && evokers >= tier.maxEvokers) {
+      let others = mix.filter(x => x[0] != 'evoker')
+      kind = others.length ? pickWeighted(others) : null
+    }
+    if (!kind) continue
+    try { m = summonMob(server, dim, kind, def, id, spot, tier) } catch (e) { console.error('[PortalAmbush] Spawn failed: ' + e) }
     if (!m) continue
+    if (kind == 'evoker') evokers++
+    if (tier && tier.strength > 0) {
+      try { server.runCommandSilent('effect give ' + uuidOf(m) + ' minecraft:strength infinite ' + (tier.strength - 1) + ' true') } catch (e) { }
+    }
     g.mobs[uuidOf(m)] = m
     S.mobGroup[uuidOf(m)] = id
   }
@@ -820,15 +889,17 @@ function resetRaidTimer(uuid, dim) {
 }
 
 // Starts (or postpones) a raid on p. Returns a short description for the test command.
-function attemptRaid(server, p, forced) {
+function attemptRaid(server, p, forced, tier) {
   const dim = dimOf(p), uuid = uuidOf(p)
   const factionId = factionHuntedIn(dim)
   const r = db().raid[uuid] || newRaidTimer(dim)
   db().raid[uuid] = r
+  tier = tier || tierById(r.tier) || tierById('moderate') || RAID_TIERS[0]
   if (dim == OVERWORLD && witnesses(server, dim, posOf(p)).length) {
     if (r.postpones < RAID_MAX_POSTPONES) {
       r.postpones++
       r.postponed = true
+      r.tier = tier.id
       r.left = randInt(RAID_POSTPONE_MINUTES[0] * 60, RAID_POSTPONE_MINUTES[1] * 60)
       dirty = true
       return 'postponed (someone outside the faction is within ' + SECRECY_RADIUS + ' blocks); retry ' + r.postpones + '/' + RAID_MAX_POSTPONES + ' in ' + clock(r.left)
@@ -837,13 +908,11 @@ function attemptRaid(server, p, forced) {
     return 'given up after ' + RAID_MAX_POSTPONES + ' postponements; new countdown started'
   }
   resetRaidTimer(uuid, dim)
-  const targets = [p].concat(nearbyEligible(server, factionId, dim, posOf(p), RETARGET_RADIUS, [uuid]))
+  const targets = [p].concat(nearbyEligible(server, factionId, dim, posOf(p), RETARGET_RADIUS, [uuid], { ignoreCooldown: true }))
   const extras = targets.filter(t => t !== p && dist(posOf(t), posOf(p)) <= EXTRA_TARGET_RADIUS).length
-  const sizeRange = RAID_SIZE[dim] || [2, 4]
-  const cap = dim == NETHER ? NETHER_AMBUSH_MAX_SIZE : PATROL_MAX_SIZE
-  const size = Math.min(cap, randInt(sizeRange[0], sizeRange[1]) + extras)
+  const size = Math.min(GROUP_MAX_MOBS, randInt(tier.size[0], tier.size[1]) + extras)
   targets.forEach(t => { S.inGroup[uuidOf(t)] = 'pending' })   // nothing else targets them during the warning
-  sendMessage(server, targets, dim == NETHER ? 'raid_warning_nether' : 'raid_warning_overworld')
+  sendMessage(server, targets, (tier.lethal ? 'lethal_warning_' : 'raid_warning_') + (dim == NETHER ? 'nether' : 'overworld'))
   const token = S.token
   server.scheduleInTicks(RAID_WARNING_SECONDS * 20, () => {
     targets.forEach(t => { if (S.inGroup[uuidOf(t)] == 'pending') delete S.inGroup[uuidOf(t)] })
@@ -853,10 +922,10 @@ function attemptRaid(server, p, forced) {
       if (!still.length) return
       if (dim == OVERWORLD && !forced && witnesses(server, dim, posOf(still[0])).length) return   // someone walked up during the warning
       let eyes = still.map(t => { let q = posOf(t); return { x: q.x, y: q.y + 1.62, z: q.z } })
-      startGroup(server, 'raid', dim, posOf(still[0]), still, size, RAID_SPAWN_MIN, RAID_SPAWN_MAX, eyes)
+      startGroup(server, 'raid', dim, posOf(still[0]), still, size, RAID_SPAWN_MIN, RAID_SPAWN_MAX, eyes, tier)
     } catch (e) { console.error('[PortalAmbush] Raid spawn failed: ' + e) }
   })
-  return 'warning sent; ' + size + ' mob(s) arriving in ' + RAID_WARNING_SECONDS + ' s'
+  return tier.id + ' raid: warning sent; ' + size + ' mob(s) arriving in ' + RAID_WARNING_SECONDS + ' s'
 }
 
 // Once a second: advance the countdown of every online player who is in their hostile dimension.
@@ -872,9 +941,10 @@ function tickRaids(server) {
     r.left--
     dirty = true
     if (r.left > 0) return
-    if (cooldownLeftMs(uuid) > 0) { resetRaidTimer(uuid, dim); return }
-    if (!r.postponed && Math.random() >= RAID_CHANCE) { resetRaidTimer(uuid, dim); return }
-    attemptRaid(server, p, false)
+    // A postponed raid keeps its tier; otherwise roll (no cooldown check: the countdown already paused in fights).
+    const tier = r.postponed ? tierById(r.tier) : pickTier(false)
+    if (!tier) { resetRaidTimer(uuid, dim); return }
+    attemptRaid(server, p, false, tier)
   })
 }
 
@@ -1002,6 +1072,7 @@ EntityEvents.death(event => {
   delete S.mobGroup[u]
   if (!g) return
   delete g.mobs[u]
+  if (hasTag(e, TAG_SUMMONED)) return   // an evoker's vex: no reward (evokers can summon them endlessly)
   const def = defFor(g.mechanic, g.dim)
   const n = randInt(def.reward.min, def.reward.max)
   if (n <= 0) return
@@ -1018,6 +1089,7 @@ EntityEvents.death(event => {
 EntityEvents.spawned(event => {
   const e = event.entity
   const tags = e.getTags()
+  if (tags.isEmpty() && !S.expectMob) { adoptSummonedVex(e); return }
   if (tags.isEmpty() || !tags.contains(TAG)) return
   if (S.expectMob) { S.lastMob = e; return }
   const u = uuidOf(e)
@@ -1025,6 +1097,32 @@ EntityEvents.spawned(event => {
   if (g) { g.mobs[u] = e; return }
   event.cancel()
 })
+
+// A vex summoned by one of our evokers joins the evoker's group: tagged, kept on the group's targets (so it can't
+// go after anyone else) and removed with the group. Vanilla gives summoned vexes a short life anyway.
+function adoptSummonedVex(e) {
+  let owner = null
+  try {
+    if (typeOf(e) != 'minecraft:vex') return
+    owner = e.getOwner()
+  } catch (err) { return }
+  if (!owner) return
+  const gid = S.mobGroup[uuidOf(owner)]
+  const g = gid ? S.groups[gid] : null
+  if (!g) return
+  const u = uuidOf(e)
+  try {
+    e.addTag(TAG)
+    e.addTag(TAG + '_g_' + gid)
+    e.addTag(TAG_SUMMONED)
+  } catch (err) {
+    console.warn('[PortalAmbush] Could not tag an evoker\'s vex (it stays a plain vex): ' + err)
+    return
+  }
+  g.mobs[u] = e
+  S.mobGroup[u] = gid
+  updateHookState()
+}
 
 // Server start: clear leftovers in the loaded chunks, then start the loop if anyone needs it.
 ServerEvents.loaded(event => {
@@ -1073,22 +1171,30 @@ ServerEvents.commandRegistry(event => {
       (mechanic == 'return_inspection' ? ' (secrecy check skipped for this test).' : '.'))
   })
 
+  // /ambush test raid <player> [light|moderate|lethal]: no tier = one rolled by the odds (never nothing).
+  const testRaid = (ctx, tierId) => {
+    const server = ctx.source.server, p = target(ctx)
+    const dim = huntedDimOf(p)
+    if (!dim) return reply(ctx, nameOf(p) + ' is not in a faction that has a hostile dimension.', true)
+    if (dimOf(p) != dim) return reply(ctx, nameOf(p) + ' must be in ' + dim + ' for a raid.', true)
+    if (S.inGroup[uuidOf(p)]) return reply(ctx, nameOf(p) + ' is already in an active group.', true)
+    if (!canBeTargeted(p)) return reply(ctx, nameOf(p) + ' is in creative or spectator. Switch to survival.', true)
+    const tier = tierId ? tierById(tierId) : pickTier(true)
+    if (!tier) return reply(ctx, 'No raid tier called ' + tierId + '.', true)
+    const result = attemptRaid(server, p, true, tier)
+    startLoop(server)
+    return reply(ctx, 'Raid on ' + nameOf(p) + ': ' + result + '.')
+  }
+
   event.register(Commands.literal('ambush')
     .requires(source => source.hasPermission(2))
     .then(Commands.literal('test')
       .then(Commands.literal('nether').then(Commands.argument('player', Arguments.PLAYER.create(event)).executes(testArrival('nether_ambush'))))
       .then(Commands.literal('overworld').then(Commands.argument('player', Arguments.PLAYER.create(event)).executes(testArrival('return_inspection'))))
-      .then(Commands.literal('raid').then(Commands.argument('player', Arguments.PLAYER.create(event)).executes(safe(ctx => {
-        const server = ctx.source.server, p = target(ctx)
-        const dim = huntedDimOf(p)
-        if (!dim) return reply(ctx, nameOf(p) + ' is not in a faction that has a hostile dimension.', true)
-        if (dimOf(p) != dim) return reply(ctx, nameOf(p) + ' must be in ' + dim + ' for a raid.', true)
-        if (S.inGroup[uuidOf(p)]) return reply(ctx, nameOf(p) + ' is already in an active group.', true)
-        if (!canBeTargeted(p)) return reply(ctx, nameOf(p) + ' is in creative or spectator. Switch to survival.', true)
-        const result = attemptRaid(server, p, true)
-        startLoop(server)
-        return reply(ctx, 'Raid on ' + nameOf(p) + ': ' + result + '.')
-      })))))
+      .then(Commands.literal('raid').then(Commands.argument('player', Arguments.PLAYER.create(event)).executes(safe(ctx => testRaid(ctx, null)))
+        .then(Commands.literal('light').executes(safe(ctx => testRaid(ctx, 'light'))))
+        .then(Commands.literal('moderate').executes(safe(ctx => testRaid(ctx, 'moderate'))))
+        .then(Commands.literal('lethal').executes(safe(ctx => testRaid(ctx, 'lethal')))))))
     .then(Commands.literal('timer').then(Commands.argument('player', Arguments.PLAYER.create(event)).executes(safe(ctx => {
       const p = target(ctx), u = uuidOf(p)
       const r = db().raid[u]
@@ -1096,7 +1202,8 @@ ServerEvents.commandRegistry(event => {
       const cd = cooldownLeftMs(u)
       return reply(ctx, nameOf(p) + ': ' +
         (dim ? 'hostile dimension ' + dim + (dimOf(p) == dim ? ' (there now)' : ' (not there)') : 'no hostile dimension') +
-        '; raid countdown ' + (r ? clock(r.left) + (r.postponed ? ' (postponed raid, ' + r.postpones + '/' + RAID_MAX_POSTPONES + ')' : '') : 'not started') +
+        '; raid countdown ' + (r ? clock(r.left) + (r.postponed ? ' (postponed ' + (r.tier || '') + ' raid, ' + r.postpones + '/' + RAID_MAX_POSTPONES + ')' : '') : 'not started') +
+        ' (then: ' + tierOdds() + ')' +
         '; cooldown ' + (cd ? clock(cd / 1000) : 'none') +
         (S.inGroup[u] ? '; in an active group' : '') + '.' +
         (S.lastArrival[u] ? ' Last trip (' + clock((Date.now() - S.lastArrival[u].time) / 1000) + ' ago): ' + S.lastArrival[u].trip + ': ' + (S.lastArrival[u].text || 'no result') + '.' :
@@ -1109,10 +1216,11 @@ ServerEvents.commandRegistry(event => {
         ' | hooks: ' + (global.portalAmbushHooksInstalled ? 'loaded' : 'NOT loaded (restart after adding portal_ambush_hooks.js)') +
         (global.factionsHooksInstalled ? '' : ' | factions_hooks.js NOT loaded: portal arrivals can\'t be detected') +
         (S.coreOutdated ? ' | factions_core.js is OUTDATED: portal arrivals can\'t be detected, update it' : '') +
-        ' | groups: ' + ids.length + ' | ambush mobs: ' + aliveAmbushMobs() + '/' + SERVER_MAX_MOBS)
+        ' | groups: ' + ids.length + ' | ambush mobs: ' + aliveAmbushMobs() + '/' + SERVER_MAX_MOBS +
+        ' | raid roll every ' + RAID_MINUTES[NETHER][0] + ' min in the hostile dimension: ' + tierOdds())
       ids.forEach(id => {
         let g = S.groups[id]
-        reply(ctx, '  ' + g.mechanic + ' in ' + g.dim + ': ' + Object.keys(g.mobs).length + ' mob(s), targets ' +
+        reply(ctx, '  ' + g.mechanic + (g.tier ? ' (' + g.tier + ')' : '') + ' in ' + g.dim + ': ' + Object.keys(g.mobs).length + ' mob(s), targets ' +
           g.targets.map(u => g.names[u] || u).join(', ') + ', ' + clock((Date.now() - g.start) / 1000) + ' old' +
           (g.lostSince ? ', targets lost for ' + clock((Date.now() - g.lostSince) / 1000) : ''))
       })

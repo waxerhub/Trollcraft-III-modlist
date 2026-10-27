@@ -21,8 +21,8 @@ Copy them and run `/reload`; no restart is needed. With no vendor spots set up t
 
 ## Blood Coins
 
-- A Blood Coin is a **gold nugget** with hidden NBT (`{trollcraft:{coin:1b}}`), a dark red "Blood Coin" name and the lore "Accepted where questions are not."
-- **Only items with that NBT count.** An anvil can't add NBT, so renaming a normal nugget doesn't make a coin.
+- A Blood Coin is a **gold nugget** with hidden NBT (`{trollcraft:{coin:1b}}`), a dark red "Blood Coin" name, the lore "Accepted where questions are not." and the **enchantment glint**. The enchantment, Unbreaking I, is hidden from the tooltip; it only makes the coin shimmer.
+- **Only items with that NBT count.** An anvil can't add NBT, so renaming a normal nugget doesn't make a coin. A renamed nugget has no glint either, so a real coin is easy to tell apart.
 - Coins stack normally, and can be dropped, stolen, looted and kept in chests. There is no command-only balance.
 - **Payment** comes from the main inventory and hotbar only, never from shulker boxes, ender chests or bags.
 - **Earning coins:**

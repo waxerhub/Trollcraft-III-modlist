@@ -296,8 +296,10 @@ function displayNbt(name, color, lore) {
   return 'display:{Name:' + snbtString(JSON.stringify({ text: name, color: color, italic: false })) +
     ',Lore:[' + lore.map(l => snbtString(JSON.stringify({ text: l.text, color: l.color || 'gray', italic: !!l.italic }))).join(',') + ']}'
 }
+// The enchantment is only there for the glint, and hidden from the tooltip (HideFlags:1).
 function coinStack(n) {
-  return Item.of(COIN_ITEM, n, '{trollcraft:{coin:1b},' + displayNbt(COIN_NAME, 'dark_red', [{ text: COIN_LORE, color: 'dark_gray', italic: true }]) + '}')
+  return Item.of(COIN_ITEM, n, '{trollcraft:{coin:1b},' + displayNbt(COIN_NAME, 'dark_red', [{ text: COIN_LORE, color: 'dark_gray', italic: true }]) +
+    ',Enchantments:[{id:"minecraft:unbreaking",lvl:1s}],HideFlags:1}')
 }
 function contractStack(c, id) {
   const def = contractDef(c.tier)

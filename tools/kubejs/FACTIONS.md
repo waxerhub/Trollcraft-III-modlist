@@ -236,6 +236,21 @@ Both also need `factions_core.js` and `factions_hooks.js`, which is how portal a
 - **Saved data:** cooldowns and countdowns are stored by UUID in `persistentData["portal_ambush"]`, so logging out, `/reload` and restarts don't reset them. A countdown keeps its remaining time when the player leaves and comes back.
 - **Leftovers:** ambush mobs from before a restart or `/reload` are removed as they load.
 
+## API for other scripts
+
+`global.PortalAmbush` is refreshed on every load, and `economy/black_market.js` uses it for Ambush Contracts:
+- `startGroup({ targets: [uuid], mechanic, dim, size, def, tier, onEnd, contractId })` spawns a group the way a raid does, 18–32 blocks out of sight, and returns it, or null if nothing spawned.
+  - `onEnd(group, reason)` runs once when the group ends, with `killed_all`, `timeout`, `targets_lost`, `cleared` or `reload`.
+  - A `contract` group's mobs are also tagged `contract_ambush`.
+  - The reward comes from `def` if one is given.
+- `cooldownLeftMs(uuid)` and `startCooldown(uuid)`: the shared cooldown.
+- `inGroup(uuid)` and `groupOf(entity)`.
+- `inSafeZone(server, dim, pos)` and `isPigEscortParticipant(player)`.
+- `isEnabled()` and `isPeaceful(server)`.
+- `mobRoom()`, `groupMax` and `tiers` (`RAID_TIERS`).
+
+Nothing about portal arrivals or raids changed.
+
 ## Commands (op level 2)
 
 | Command | |

@@ -526,12 +526,12 @@ function scaledStats(st, tier) {
   if (out.damage) out.damage = Math.round(out.damage * (tier.damage || 1))
   return out
 }
-function mobNbt(kindName, def, groupId, tier) {
+function mobNbt(kindName, def, groupId, tier, extraTag) {
   const kind = MOB_KINDS[kindName]
   const weapon = kind.weapons.length ? pickWeighted(kind.weapons) : null
   const stats = scaledStats(kind.stats || {}, tier)
   let nbt = '{PersistenceRequired:1b,CanPickUpLoot:0b,DeathLootTable:"minecraft:empty"' +
-    ',Tags:["' + TAG + '","' + TAG + '_g_' + groupId + '"]' +
+    ',Tags:["' + TAG + '","' + TAG + '_g_' + groupId + '"' + (extraTag ? ',"' + extraTag + '"' : '') + ']' +
     ',CustomName:' + snbtString(JSON.stringify({ text: def.name, color: def.nameColor, italic: false })) + ',CustomNameVisible:1b' +
     ',HandItems:[' + (weapon ? weaponNbt(weapon) : '{}') + ',' + (weapon && weapon.item == 'minecraft:crossbow' ? ammoNbt(kind.ammo) : '{}') + '],HandDropChances:[0f,0f]' +
     ',ArmorItems:[{},{},{id:"minecraft:leather_chestplate",Count:1b,tag:{display:{color:' + def.chestplateColor + '}}},{}]' +
@@ -543,12 +543,12 @@ function mobNbt(kindName, def, groupId, tier) {
 }
 
 // Summons one mob and returns it (caught as it joins the world), or null.
-function summonMob(server, dim, kindName, def, groupId, spot, tier) {
+function summonMob(server, dim, kindName, def, groupId, spot, tier, extraTag) {
   S.lastMob = null
   S.expectMob = true
   let result = 0
   try {
-    result = server.runCommandSilent('execute in ' + dim + ' run summon ' + MOB_KINDS[kindName].id + ' ' + spot.x + ' ' + spot.y + ' ' + spot.z + ' ' + mobNbt(kindName, def, groupId, tier))
+    result = server.runCommandSilent('execute in ' + dim + ' run summon ' + MOB_KINDS[kindName].id + ' ' + spot.x + ' ' + spot.y + ' ' + spot.z + ' ' + mobNbt(kindName, def, groupId, tier, extraTag))
   } finally {
     S.expectMob = false
   }
@@ -566,6 +566,8 @@ function aliveAmbushMobs() {
 
 // ===================== GROUPS =====================
 
+// The group definition: given by the caller (API, e.g. contracts), or by mechanic and dimension.
+function defOf(g) { return g.def || defFor(g.mechanic, g.dim) }
 function defFor(mechanic, dim) {
   if (mechanic == 'nether_ambush') return WAR_PARTY
   if (mechanic == 'return_inspection') return PATROL
@@ -578,16 +580,19 @@ function updateHookState() {
 
 // Creates a group around center and spawns up to `size` mobs. targets: player objects. Returns the group or null.
 // tier (raids): RAID_TIERS entry for the mix, stats, Strength and evoker cap.
-function startGroup(server, mechanic, dim, center, targets, size, minD, maxD, hideFrom, tier) {
+// opts (global.PortalAmbush.startGroup): { def, onEnd(group, reason), contractId, extraTag }.
+function startGroup(server, mechanic, dim, center, targets, size, minD, maxD, hideFrom, tier, opts) {
+  opts = opts || {}
   const level = levelOf(targets[0])
   const room = Math.min(size, GROUP_MAX_MOBS, SERVER_MAX_MOBS - aliveAmbushMobs())
   if (room <= 0) return null
   S.counter++
   const id = Date.now().toString(36) + S.counter.toString(36)
-  const def = defFor(mechanic, dim)
+  const def = opts.def || defFor(mechanic, dim)
   const g = {
     id: id, mechanic: mechanic, dim: dim, center: center, start: Date.now(), lostSince: null,
     targets: targets.map(uuidOf), names: {}, mobs: {}, mobTarget: {}, tier: tier ? tier.id : null,
+    def: opts.def || null, onEnd: opts.onEnd || null, contractId: opts.contractId || null,
   }
   const mix = tier && tier.mix ? tier.mix[dim == NETHER ? 'nether' : 'overworld'] || def.mix : def.mix
   let evokers = 0
@@ -603,7 +608,7 @@ function startGroup(server, mechanic, dim, center, targets, size, minD, maxD, hi
       kind = others.length ? pickWeighted(others) : null
     }
     if (!kind) continue
-    try { m = summonMob(server, dim, kind, def, id, spot, tier) } catch (e) { console.error('[PortalAmbush] Spawn failed: ' + e) }
+    try { m = summonMob(server, dim, kind, def, id, spot, tier, opts.extraTag) } catch (e) { console.error('[PortalAmbush] Spawn failed: ' + e) }
     if (!m) continue
     if (kind == 'evoker') evokers++
     if (tier && tier.strength > 0) {
@@ -625,7 +630,8 @@ function startGroup(server, mechanic, dim, center, targets, size, minD, maxD, hi
 }
 
 // Removes a group's mobs quietly (no drops) and gives its targets their cooldown.
-function endGroup(server, g, giveCooldowns) {
+// reason (for the API's onEnd): killed_all, timeout, targets_lost, cleared or reload.
+function endGroup(server, g, giveCooldowns, reason) {
   if (!S.groups[g.id]) return
   delete S.groups[g.id]
   S.allowRemoval = true
@@ -646,6 +652,9 @@ function endGroup(server, g, giveCooldowns) {
   })
   updateHookState()
   saveSoon()
+  if (typeof g.onEnd == 'function') {
+    try { g.onEnd(g, reason || 'cleared') } catch (e) { console.error('[PortalAmbush] onEnd failed: ' + e) }
+  }
 }
 
 // A target escapes (went through a portal, or respawned in another dimension): only they leave the group.
@@ -680,8 +689,8 @@ function removeTagged(server) {
   return removed
 }
 
-function endAll(server) {
-  Object.keys(S.groups).forEach(id => endGroup(server, S.groups[id], false))
+function endAll(server, reason) {
+  Object.keys(S.groups).forEach(id => endGroup(server, S.groups[id], false, reason || 'cleared'))
   S.groups = {}
   S.mobGroup = {}
   S.inGroup = {}
@@ -754,14 +763,14 @@ function tickGroup(server, g, now) {
     if (gone) { delete g.mobs[u]; delete S.mobGroup[u]; delete g.mobTarget[u] }
   })
   // Every mob killed: the group is beaten.
-  if (!Object.keys(g.mobs).length) return endGroup(server, g, true)
-  if (now - g.start >= GROUP_MAX_MINUTES * 60000) return endGroup(server, g, true)
+  if (!Object.keys(g.mobs).length) return endGroup(server, g, true, 'killed_all')
+  if (now - g.start >= GROUP_MAX_MINUTES * 60000) return endGroup(server, g, true, 'timeout')
   // Targets who escaped to another dimension (also handled by the leftDimension event).
   g.targets.slice().forEach(u => {
     let p = server.getPlayerList().getPlayer(javaUuidFromString(u))
     if (p && dimOf(p) != g.dim) dropTarget(g, u)
   })
-  if (!g.targets.length) return endGroup(server, g, true)
+  if (!g.targets.length) return endGroup(server, g, true, 'targets_lost')
   // Is any target still alive, online and within range of the group?
   const mobPositions = Object.keys(g.mobs).map(u => posOf(g.mobs[u]))
   const inRange = validTargets(server, g).filter(p => {
@@ -770,7 +779,7 @@ function tickGroup(server, g, now) {
   })
   if (!inRange.length) {
     if (g.lostSince == null) g.lostSince = now
-    if (now - g.lostSince >= TARGET_LOST_SECONDS * 1000) return endGroup(server, g, true)
+    if (now - g.lostSince >= TARGET_LOST_SECONDS * 1000) return endGroup(server, g, true, 'targets_lost')
     return
   }
   g.lostSince = null
@@ -984,6 +993,46 @@ function startLoop(server) {
 }
 
 
+// ===================== API FOR OTHER SCRIPTS =====================
+// global.PortalAmbush, refreshed on every load. Used by economy/black_market.js (Ambush Contracts).
+
+global.PortalAmbush = {
+  // Spawns a group like a raid (18-32 blocks out, out of the targets' sight) around the first target.
+  // o: { targets: [uuid], mechanic, dim, size, def, tier, onEnd(group, reason), contractId, extraTag }.
+  // Targets must be online and in `dim`. A 'contract' group's mobs are also tagged contract_ambush.
+  // Returns the group (g.id, g.mobs, g.targets, g.contractId) or null if nothing could spawn.
+  startGroup: o => {
+    const server = Utils.server
+    if (!server || !o || !o.targets || !o.targets.length) return null
+    const players = []
+    o.targets.forEach(u => {
+      let p = null
+      try { p = server.getPlayerList().getPlayer(javaUuidFromString(u)) } catch (e) { }
+      if (p && dimOf(p) == o.dim && canBeTargeted(p)) players.push(p)
+    })
+    if (!players.length) return null
+    const eyes = players.map(t => { let q = posOf(t); return { x: q.x, y: q.y + 1.62, z: q.z } })
+    const mechanic = o.mechanic || 'contract'
+    const g = startGroup(server, mechanic, o.dim, posOf(players[0]), players, o.size || 1, RAID_SPAWN_MIN, RAID_SPAWN_MAX, eyes, o.tier || null,
+      { def: o.def || null, onEnd: o.onEnd || null, contractId: o.contractId || null, extraTag: o.extraTag || (mechanic == 'contract' ? 'contract_ambush' : null) })
+    if (g) startLoop(server)
+    return g
+  },
+  cooldownLeftMs: uuid => cooldownLeftMs(uuid),
+  startCooldown: uuid => startCooldown(uuid),
+  inGroup: uuid => !!S.inGroup[uuid],                        // in an active group, or about to be (raid warning)
+  groupOf: entity => groupOfMob(entity),                      // the group an ambush mob belongs to, or null
+  inSafeZone: (server, dim, pos) => inSafeZone(server, dim, pos),
+  isPigEscortParticipant: p => isPigEscortParticipant(p),
+  isEnabled: () => isEnabled(),
+  isPeaceful: server => isPeaceful(server),
+  mobRoom: () => Math.max(0, SERVER_MAX_MOBS - aliveAmbushMobs()),
+  groupMax: GROUP_MAX_MOBS,
+  tiers: RAID_TIERS,
+  warParty: WAR_PARTY,
+}
+
+
 // ===================== EVENTS =====================
 
 // Hooks for startup_scripts/portal_ambush_hooks.js. They return at once unless a group is active.
@@ -1073,8 +1122,8 @@ EntityEvents.death(event => {
   if (!g) return
   delete g.mobs[u]
   if (hasTag(e, TAG_SUMMONED)) return   // an evoker's vex: no reward (evokers can summon them endlessly)
-  const def = defFor(g.mechanic, g.dim)
-  const n = randInt(def.reward.min, def.reward.max)
+  const def = defOf(g)
+  const n = def.reward ? randInt(def.reward.min, def.reward.max) : 0
   if (n <= 0) return
   try {
     e.block.popItem(Item.of(def.reward.item, n))
@@ -1133,7 +1182,7 @@ ServerEvents.loaded(event => {
 
 // After a /reload: end the old groups, clear their mobs and restart the loop for online players.
 if (Utils.server) {
-  endAll(Utils.server)
+  endAll(Utils.server, 'reload')
   if (needsLoop(Utils.server)) startLoop(Utils.server)
 }
 

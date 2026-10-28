@@ -161,6 +161,7 @@ S.expectVendor = false
 S.lastVendor = null
 S.lastUse = {}                 // uuid -> server tick of the last contract click (one click can fire two events)
 S.trapLoop = false
+S.guiOpen = {}                 // uuid -> true while their shop window is open (their inventory is away)
 S.lastPos = {}                 // uuid -> where they were at the last Disguised TNT check
 if (!S.afk) S.afk = {}         // uuid -> { key, since }
 
@@ -1319,24 +1320,29 @@ function customDisplay(e) {
   } catch (err) { }
   return st
 }
-// Page changes and closing happen on the next tick, not inside the click that asked for them.
-function nav(p, view) { Utils.server.scheduleInTicks(1, () => { try { showGui(p, view) } catch (e) { console.error('[BlackMarket] Shop window: ' + e) } }) }
+// KubeJS's chest window takes the player's main inventory away while it's open (to keep it out of the window)
+// and hands it back at the end of the tick after the window closes. While it's open the script sees an empty
+// inventory: no coins, nothing in hand. So every page change and purchase closes the window first, waits for the
+// inventory to come back, then acts and opens the next page (whose contents are built before KubeJS takes the
+// inventory again). Closing happens on the next tick, not inside the click that asked for it.
 function closeGui(p) { Utils.server.scheduleInTicks(1, () => { try { p.closeContainer() } catch (e) { } }) }
+function withWindowClosed(p, fn) {
+  closeGui(p)
+  Utils.server.scheduleInTicks(2, () => { try { fn() } catch (e) { console.error('[BlackMarket] Shop window: ' + e) } })
+}
+function nav(p, view) { withWindowClosed(p, () => showGui(p, view)) }
 function filler() { return guiItem('minecraft:gray_stained_glass_pane', ' ', 'gray', []) }
 
-// What a click does: check the shop is open and the player still at the merchant, act, say the result,
-// then reopen the window (fresh coin count) unless `close`.
+// What a click does, with the window closed and the inventory back: check the shop is open and the player still
+// at the merchant, act, say the result, then reopen the window (with the new coin count).
 function guiAct(p, fn, view) {
-  const server = Utils.server
-  if (!isEnabled() || !nearVendor(p)) {
-    say(p, VOICE_MARKET, 'The merchant is not here.')
-    closeGui(p)
-    return
-  }
-  let r = null
-  try { r = fn() } catch (e) { r = 'Something went wrong.'; console.error('[BlackMarket] Shop window: ' + e) }
-  if (r) say(p, VOICE_MARKET, r)
-  server.scheduleInTicks(1, () => { try { showGui(p, view || { kind: 'main' }) } catch (e) { } })
+  withWindowClosed(p, () => {
+    if (!isEnabled() || !nearVendor(p)) { say(p, VOICE_MARKET, 'The merchant is not here.'); return }
+    let r = null
+    try { r = fn() } catch (e) { r = 'Something went wrong.'; console.error('[BlackMarket] Shop window: ' + e) }
+    if (r) say(p, VOICE_MARKET, r)
+    showGui(p, view || { kind: 'main' })
+  })
 }
 
 // Opens the shop: the window if SHOP_MENU is 'gui' and it works, otherwise the chat menu.
@@ -1351,7 +1357,10 @@ function openShopFor(p) {
 function showGui(p, view) {
   const titles = { main: 'Hooded Merchant', contract: 'Ambush Contract: who?', summons: 'Anonymous Summons: who?', custom: 'Under the counter',
     bounty: 'Bounty: whose head?', bountyAmount: 'Bounty on ' + view.name + ': how much?', bountyCancel: 'Cancel your bounty on ' + view.name + '?', wanted: 'Wanted' }
+  const u = uuidOf(p)
   p.openChestGUI(comp([{ text: titles[view.kind] || 'Hooded Merchant', color: 'dark_purple' }]), 6, gui => {
+    S.guiOpen[u] = true
+    gui.closed = () => { delete S.guiOpen[u] }
     const cells = []
     for (let i = 0; i < 54; i++) cells.push(i)
     cells.forEach(i => gui.slot(i % 9, Math.floor(i / 9), s => { s.item = filler() }))
@@ -1393,7 +1402,7 @@ function fillMain(gui, p) {
     { text: 'Hold the block, then click', color: 'dark_gray', italic: true }]), () => guiAct(p, () => buyTnt(p)))
   guiButton(gui, 4, 2, guiItem('minecraft:ender_pearl', 'Teleport Trap', 'dark_purple', ['Turns ONE of the blocks in your main hand', 'into a trap that looks exactly like it.',
     'Whoever steps on it first is teleported', 'to the place you name, you included.', { text: TP_TRAP.price + ' ' + COIN_PLURAL + ' per block', color: 'gold' },
-    { text: 'Click: how to name the place', color: 'dark_gray', italic: true }]), () => { closeGui(p); tpHowTo(p) })
+    { text: 'Click: how to name the place', color: 'dark_gray', italic: true }]), () => withWindowClosed(p, () => tpHowTo(p)))
   guiButton(gui, 3, 2, guiItem('minecraft:chest', 'Mimic Chest', 'dark_purple', ['A chest like any other.', 'The first person to open it (not you) gets bitten.',
     { text: MIMIC_CHEST.price + ' ' + COIN_PLURAL, color: 'gold' }]), () => guiAct(p, () => buyMimic(p)))
   guiLabel(gui, 3, 'minecraft:purple_stained_glass_pane', 'Pranks', 'light_purple')
@@ -1410,7 +1419,7 @@ function fillMain(gui, p) {
   ids.slice(0, 6).forEach((id, i) => guiButton(gui, 2 + i, 4, customDisplay(custom[id]), () => guiAct(p, () => buyCustom(p, id))))
   if (ids.length > 6) guiButton(gui, 8, 4, guiItem('minecraft:arrow', 'More…', 'white', [(ids.length - 6) + ' more']), () => nav(p, { kind: 'custom', page: 0 }))
   guiButton(gui, 0, 5, guiItem(COIN_ITEM, 'You carry ' + coinText(coins), 'dark_red', ['Main inventory and hotbar.'], { glint: true, count: Math.max(1, Math.min(64, coins)) }), () => { })
-  if (SELL_LIST.length) guiButton(gui, 4, 5, guiItem('minecraft:hopper', 'Sell to him', 'green', ['Opens his buying list in chat.']), () => { closeGui(p); openShop(p) })
+  if (SELL_LIST.length) guiButton(gui, 4, 5, guiItem('minecraft:hopper', 'Sell to him', 'green', ['Opens his buying list in chat.']), () => withWindowClosed(p, () => openShop(p)))
   guiButton(gui, 8, 5, guiItem('minecraft:barrier', 'Close', 'red', []), () => closeGui(p))
 }
 function pager(gui, p, view, total, per) {
@@ -1573,7 +1582,14 @@ ItemEvents.entityInteracted(event => {
 })
 
 EntityEvents.hurt(event => {
-  if (!hasTag(event.entity, TAG_VENDOR)) return
+  const e = event.entity
+  // Hurt while the shop window is open: close it, so the inventory is back before a fight goes on (KubeJS keeps it
+  // away while the window is open, so it wouldn't drop on death, and a Writ of Protection wouldn't count).
+  if (e.isPlayer()) {
+    if (S.guiOpen[uuidOf(e)]) { try { e.closeContainer() } catch (err) { } }
+    return
+  }
+  if (!hasTag(e, TAG_VENDOR)) return
   event.cancel()   // the vendor can't be hurt
 })
 

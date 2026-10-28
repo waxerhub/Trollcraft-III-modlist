@@ -119,7 +119,7 @@ It survives restarts and `/reload`.
 
 ## What couldn't be verified for KubeJS 6 on 1.20.1
 
-The mock-server test (shared with the black market, 227 checks) covers placing, stacking, every refusal, cancelling from chat and the window, the Wanted list, collecting, the deaths that don't pay, the Pig Escort, the rival bonus and each of its limits, offline targets, the op clear with offline refunds, `/reload`, the black market being closed, and `/bounty toggle`. These parts depend on the real game:
+The mock-server test (shared with the black market, 232 checks) covers placing, stacking, every refusal, cancelling from chat and the window, the Wanted list, collecting, the deaths that don't pay, the Pig Escort, the rival bonus and each of its limits, offline targets, the op clear with offline refunds, `/reload`, the black market being closed, and `/bounty toggle`. These parts depend on the real game:
 - `event.source.actual` being the killing player on a player's death (also used by the black market's contracts). Arrows and tridents count as the player who shot them.
 - Offline names through `server.getProfileCache().get(name)`, and player heads showing skins for offline players (`SkullOwner` by name).
 - Brigadier choosing `/bounty list`, `cancel`, `clear`, `toggle` and `log` over a player with that name (a player literally called "list" can still be targeted from the window).

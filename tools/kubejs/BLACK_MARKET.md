@@ -26,7 +26,6 @@ Copy them and run `/reload`; no restart is needed. With no vendor spots set up t
 - Coins stack normally, and can be dropped, stolen, looted and kept in chests. There is no command-only balance.
 - **Payment** comes from the main inventory and hotbar only, never from shulker boxes, ender chests or bags.
 - **Earning coins:**
-  - **Selling to the merchant**: see the table below.
   - `/coins give <player> <amount>` (op).
   - **Other scripts**: `global.Economy.giveCoins(player, amount, reason)`. Anything that doesn't fit drops at the player's feet.
   - **Ambush mob drops** (`AMBUSH_COIN_DROPS`, off by default): portal-ambush mobs killed by a player drop 0–2 coins.
@@ -34,15 +33,9 @@ Copy them and run `/reload`; no restart is needed. With no vendor spots set up t
   - **Vanilla piglins pick up gold nuggets**, so coins dropped near them can be lost (ambush piglins can't pick anything up).
   - **Crafting:** with `BLOCK_COIN_CRAFTING = true` (the default), vanilla crafting-table recipes only take plain gold nuggets, so coins can't be crafted into gold ingots or golden carrots by accident. Recipes that ask for the gold nugget *tag*, and modded machines, still accept coins.
 
-**What the merchant buys** (`SELL_LIST`), plain items only (anything renamed or enchanted is left alone):
-
-| Item | Coins |
-|---|---|
-| Diamond | 2 each |
-| Netherite scrap | 6 each |
-| Rotten flesh | 1 per 32 |
-
-**ProjectE warning:** any item with an EMC value would be an endless coin source if transmutation were allowed, because a transmuted diamond is just a diamond. ProjectE is switched off here (`disable_projecte.js`). If it's ever switched back on, take anything transmutable off `SELL_LIST`.
+**The merchant buys nothing from players.** Magical Crops, ProjectE and similar mods make most items farmable, so anything he bought would be an endless coin source.
+- `SELL_LIST` at the top of the script can still be filled in, but only with things nobody can farm.
+- With entries, a "He buys" section appears in the shop. Plain items only; anything renamed or enchanted is left alone.
 
 ## The merchant
 
@@ -151,7 +144,7 @@ Ops can sell **any item exactly as it is**, NBT included, for example an item th
 | Command | Who | |
 |---|---|---|
 | `/blackmarket shop` | anyone at the merchant | Opens the shop menu (same as right-clicking him) |
-| `/blackmarket buy contract <tier> [player]`, `buy writ`, `buy custom <id>`, `sell <item>` | anyone at the merchant | What the menu buttons run. Tiers: `tipoff`, `squad`, `warparty`. |
+| `/blackmarket buy contract <tier> [player]`, `buy writ`, `buy custom <id>`, `sell <item>` | anyone at the merchant | What the menu buttons run. Tiers: `tipoff`, `squad`, `warparty`. `sell` only works if `SELL_LIST` has entries. |
 | `/blackmarket inspect` | op | While holding a contract: target, **buyer's name** (even if they're offline), tier, issue date, status. For Ministry trials: a confiscated contract proves who ordered the hit. |
 | `/blackmarket contracts` | op | The 20 most recent contracts: id, tier, target, buyer, status |
 | `/blackmarket heat <player> [reset]` | op | Their heat and contract cooldown, or reset the heat |
@@ -182,7 +175,7 @@ Logging out, `/reload` and restarts never reset a cooldown or reuse a contract i
 | `MAX_CALL_RANGE` | 0 | 0 = any distance; otherwise the caller must be this close to the target, in the same dimension |
 | `BLOCK_COIN_CRAFTING` | true | Coins can't be used in vanilla crafting recipes |
 | `AMBUSH_COIN_DROPS` | off, 0–2 | Coins from portal-ambush mobs killed by players |
-| `SELL_LIST` | diamonds, netherite scrap, rotten flesh | What the merchant buys |
+| `SELL_LIST` | none | What the merchant buys from players (keep it to things nobody can farm) |
 | `VENDOR_LOCATIONS` | none | Spots in the script (or use `/bm vendor addspot`) |
 | `VENDOR_STAY_MINUTES` / `VENDOR_GONE_MINUTES` | 90 / 30 | His rotation |
 | `NIGHT_ONLY` | false | Only at Overworld night |
@@ -247,7 +240,7 @@ Logging out, `/reload` and restarts never reset a cooldown or reuse a contract i
 
 ## What couldn't be verified for KubeJS 6 on 1.20.1
 
-A mock-server test passed all 81 checks: coins, the merchant, the shop, range, contracts and every refusal, the writ, dupes and forgeries, heat, outcomes, `/reload`, custom stock, selling and the rotation. These parts depend on the real game:
+A mock-server test passed all 85 checks: coins, the merchant, the shop, range, contracts and every refusal, the writ, dupes and forgeries, heat, outcomes, `/reload`, custom stock, selling (refused by default; working when SELL_LIST has entries) and the rotation. These parts depend on the real game:
 
 - **The shop menu:**
   - whether the clickable chat menu opens on the first right-click, and `ItemEvents.entityInteracted` cancelling the wandering trader's trade screen;

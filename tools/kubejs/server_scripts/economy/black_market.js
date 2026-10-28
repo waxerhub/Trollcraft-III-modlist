@@ -37,16 +37,12 @@ const BLOCK_COIN_CRAFTING = true       // vanilla crafting recipes won't take co
 // Ambush mobs killed by a player drop this many coins (portal_ambush.js groups). Off by default.
 const AMBUSH_COIN_DROPS = { enabled: false, min: 0, max: 2 }
 
-// What the merchant buys. key: what /blackmarket sell <key> uses; item: exact item id (plain items only, no NBT);
-// per: how many items make one sale; coins: paid per sale.
-// ProjectE: any item with an EMC value would be an endless coin source if transmutation were allowed (a
-// transmuted diamond is just a diamond). ProjectE is switched off on this server (server_scripts/
-// disable_projecte.js). If it is ever switched back on, remove anything transmutable from this list.
-const SELL_LIST = [
-  { key: 'diamond', item: 'minecraft:diamond', per: 1, coins: 2 },
-  { key: 'netherite_scrap', item: 'minecraft:netherite_scrap', per: 1, coins: 6 },
-  { key: 'rotten_flesh', item: 'minecraft:rotten_flesh', per: 32, coins: 1 },
-]
+// What the merchant buys from players. EMPTY on purpose: Magical Crops, ProjectE and similar mods make most
+// items farmable, so anything sellable would be an endless coin source. Only add things nobody can farm.
+// Entry: { key: what /blackmarket sell <key> uses, item: exact item id (plain items only, no NBT),
+//          per: how many items make one sale, coins: paid per sale }
+//   e.g. { key: 'dragon_egg', item: 'minecraft:dragon_egg', per: 1, coins: 50 }
+const SELL_LIST = []
 
 // --- The vendor ---
 const VENDOR_ENTITY = 'minecraft:wandering_trader'
@@ -797,7 +793,7 @@ function openShop(p) {
         { text: ' - ' + e.price + ' coins' + (e.stock > 0 ? ' (' + e.stock + ' left) ' : ' '), color: 'gray' }, button('[BUY]', 'gold', '/blackmarket buy custom ' + id, 'Buy ' + e.name)])
     })
   }
-  menuLine(p, [{ text: ' He buys', color: 'dark_green', bold: true }])
+  if (SELL_LIST.length) menuLine(p, [{ text: ' He buys', color: 'dark_green', bold: true }])
   SELL_LIST.forEach(s => {
     menuLine(p, [{ text: '  ' + s.item.replace(/^[^:]*:/, '').replace(/_/g, ' '), color: 'green' },
       { text: ' - ' + s.coins + ' coin' + (s.coins == 1 ? '' : 's') + ' per ' + s.per + ' ', color: 'gray' }, button('[SELL]', 'green', '/blackmarket sell ' + s.key, 'Sell all you carry')])
@@ -868,6 +864,7 @@ function buyCustom(p, id) {
   return 'Bought ' + e.name + (e.count > 1 ? ' x' + e.count : '') + ' for ' + e.price + ' coins.'
 }
 function sell(p, key) {
+  if (!SELL_LIST.length) return 'He isn\'t buying anything.'
   const s = SELL_LIST.filter(x => x.key == key)[0]
   if (!s) return 'He doesn\'t buy that.'
   const inv = p.inventory

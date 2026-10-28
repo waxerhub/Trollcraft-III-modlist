@@ -57,7 +57,7 @@ Copy them and run `/reload`; no restart is needed. With no vendor spots set up t
 - **Rumors:** when he appears, every online player gets "[RUMOR] A hooded merchant has been seen near *name*." It's sent to each player, so it doesn't reach Discord.
   - `RUMORS_TO_DISCORD = true` sends it with `tellraw @a` instead, which Simple Discord Link posts.
   - `WHISPER_COORDS_TO`, a list of faction ids, also gives those factions' members the exact coordinates.
-- **The shop:** right-click him for a clickable chat menu.
+- **The shop:** right-click him to open the **shop window**, a chest-style screen (see [The shop window](#the-shop-window)). `/bm chatshop` opens the older clickable chat menu instead.
   - Every buy and sell is checked on the server: you must be within **6 blocks** of him (`VENDOR_RANGE`), in the same dimension. Otherwise: "The merchant is not here." Typing the commands from home doesn't work.
 
 ## Shop
@@ -68,7 +68,65 @@ Copy them and run `/reload`; no restart is needed. With no vendor spots set up t
 | Ambush Contract: Squad | 20 | 4 mobs, moderate-raid strength |
 | Ambush Contract: War Party | 45 | 6–8 mobs, lethal-raid strength (1.5× health, 1.25× damage, Strength I), brutes or vindicators among them, no evokers |
 | Writ of Protection | 15 | Turns away the next contract called on you (see below) |
+| Disguised TNT | 25 per block | Turns one block in your hand into a trap (see [Traps](#traps)) |
+| Mimic Chest | 12 | A chest that bites the first person to open it |
+| Itching Powder | 4 for 4 | Snowballs; whoever is hit itches |
+| Cursed Snack | 3 | A normal-looking cookie that isn't |
+| Anonymous Summons | 5 | A fake [MINISTRY] notice for a player of your choice |
 | Custom stock | set by ops | Anything an op adds with `/bm hand add` |
+
+## The shop window
+
+Right-clicking the merchant opens a chest-style window. It's a vanilla chest screen built with KubeJS's own `openChestGUI`, so players don't need a modpack update.
+- **Items in it can't be taken out:** a click buys.
+- **After each purchase** the window reopens with your new coin count, and the result is also said in chat.
+
+| Row | |
+|---|---|
+| Contracts | Tip-off, Squad, War Party. Clicking one opens a page of player heads with each player's price; click a head to buy. |
+| Protection | Writ of Protection |
+| Traps | Disguised TNT, Mimic Chest |
+| Pranks | Itching Powder, Cursed Snack, Anonymous Summons (clicking it opens the player heads) |
+| Under the counter | Custom stock: the real item with its own tooltip and the price added at the end. More than six entries: an arrow opens the full list. |
+| Bottom | Your Blood Coins, and Close. "Sell to him" appears only if `SELL_LIST` has entries. |
+
+- **Range:** every click is checked like the commands. Away from the merchant you get "The merchant is not here." and the window closes.
+- **Fallback:** `SHOP_MENU = 'chat'` makes right-click open the chat menu instead. If the window can't be opened, the chat menu is used automatically and the log says why.
+
+## Traps
+
+**Disguised TNT** (`DISGUISED_TNT`):
+- **Buying:** hold a stack of a normal placeable block (stone, grass, planks…) in your main hand and buy it. **One** of those blocks becomes Disguised TNT. It keeps its name; the lore line saying "Disguised TNT" is only visible in your inventory.
+  - **Refused:** items that aren't blocks, blocks that hold things (chests, furnaces…), and named or enchanted blocks. Nothing is paid.
+- **Once placed** it looks exactly like that block.
+- **The first player to step on it sets it off. That includes the player who placed it.**
+  - The blast is **power 8**, about four TNT going off at once, with no fire. It breaks blocks like real TNT.
+  - **Inside protected areas** (`protected_areas.js`), within 64 blocks of world spawn or the Pig Escort portal, and in portal_ambush safe zones, it still goes off and hurts, but breaks nothing.
+  - Players in creative or spectator don't set it off.
+  - Jumping high over it doesn't count; walking or sprinting across does. The path walked since the last check is followed block by block.
+- **Defusing:** breaking the block removes the trap, and the normal block drops. If the block is replaced or moved by a piston, the trap is gone too.
+- **Limit:** 10 placed per player (`maxPerPlayer`). The 11th is refused.
+- **Timing:** checked every 10 ticks (`checkTicks`) while any Disguised TNT is placed, and not at all otherwise.
+
+**Mimic Chest** (`MIMIC_CHEST`):
+- A chest with no visible difference once placed.
+- **The first person to open it who isn't its owner** gets 6 silverfish around them and a "[???] Hahahaha. You should have read the label."
+- After that it's an ordinary chest, and its contents are untouched.
+- 10 per player. Creative and spectator players don't trigger it.
+
+**For ops** (evidence for Ministry trials):
+- `/bm traps near` lists traps within 32 blocks of you, with owner and date.
+- `/bm traps list <player>` lists everything that player has placed.
+- `/bm traps clear <player>` defuses all their traps; the blocks stay.
+- `/bm traps log` shows the last traps that went off: who placed it, who set it off, where.
+
+## Pranks
+
+- **Itching Powder:** 4 snowballs named "Itching Powder". A player hit by one gets Nausea, Slowness and Glowing for 30 s (`ITCHING_POWDER`).
+- **Cursed Snack:** a cookie with **no name or lore**, so it looks like any other cookie. Eating it gives Levitation (6 s), Hunger (30 s) and Nausea. It won't stack with plain cookies, so keep your own apart.
+- **Anonymous Summons:** a very official [MINISTRY] notice sent to the player you choose, picked at random from `SUMMONS.messages` (a tax audit, a fine for Unlicensed Standing…).
+  - It's sent only to them, never to Discord, and it doesn't name you.
+  - The server log records who sent it, for ops.
 
 - **Contract strength:** contracts use the health, damage and Strength of portal_ambush.js's `RAID_TIERS`, so balancing stays in one place. Size and mob mix are set per contract in `CONTRACTS`.
 - **Heat:**
@@ -143,7 +201,10 @@ Ops can sell **any item exactly as it is**, NBT included, for example an item th
 
 | Command | Who | |
 |---|---|---|
-| `/blackmarket shop` | anyone at the merchant | Opens the shop menu (same as right-clicking him) |
+| `/blackmarket shop` | anyone at the merchant | Opens the shop window (same as right-clicking him) |
+| `/blackmarket chatshop` | anyone at the merchant | Opens the chat menu |
+| `/blackmarket buy tnt`, `mimic`, `itching`, `snack`, `summons [player]` | anyone at the merchant | The traps and pranks, from chat |
+| `/blackmarket traps near`, `list <player>`, `clear <player>`, `log` | op | Find, list or defuse traps; see the last ones that went off |
 | `/blackmarket buy contract <tier> [player]`, `buy writ`, `buy custom <id>`, `sell <item>` | anyone at the merchant | What the menu buttons run. Tiers: `tipoff`, `squad`, `warparty`. `sell` only works if `SELL_LIST` has entries. |
 | `/blackmarket inspect` | op | While holding a contract: target, **buyer's name** (even if they're offline), tier, issue date, status. For Ministry trials: a confiscated contract proves who ordered the hit. |
 | `/blackmarket contracts` | op | The 20 most recent contracts: id, tier, target, buyer, status |
@@ -184,6 +245,12 @@ Logging out, `/reload` and restarts never reset a cooldown or reuse a contract i
 | `WHISPER_COORDS_TO` | none | Factions that get his exact coordinates |
 | `CONTRACTS` | tipoff 8, squad 20, warparty 45 | Price, size, raid tier and mob mix per contract |
 | `WRIT_PRICE` | 15 | |
+| `SHOP_MENU` | 'gui' | 'gui' = the shop window; 'chat' = the chat menu |
+| `DISGUISED_TNT` | 25 coins, power 8, 10 per player, checked every 10 ticks | |
+| `MIMIC_CHEST` | 12 coins, 6 silverfish, 10 per player | |
+| `ITCHING_POWDER` | 4 coins for 4, 30 s | |
+| `CURSED_SNACK` | 3 coins, cookie | |
+| `SUMMONS` | 5 coins, 5 messages | |
 | `TOKEN_EXPIRY_DAYS` | 7 | |
 | `CONTRACT_COOLDOWN_MINUTES` | 45 | |
 | `HEAT_WINDOW_HOURS` / `HEAT_PRICE_STEP` | 24 / 0.5 | |
@@ -237,10 +304,40 @@ Logging out, `/reload` and restarts never reset a cooldown or reuse a contract i
     - `/bm hand add` with an empty hand, a coin, a contract or a writ is refused, and a non-op can't use `/bm hand`;
     - try `/bm hand price`, `/bm hand remove`, and `/bm hand add 5 1`, which sells once and then disappears.
 14. **Rotation:** `/bm vendor where`, then `/bm vendor move`. He vanishes in smoke and appears at another spot, if you have two.
+15. **The window:**
+    - right-click the merchant: the window opens, and nothing can be taken out of it (try dragging, shift-clicking, number keys and Q);
+    - buy a writ: the coin count updates;
+    - click a contract, then B's head;
+    - step 10 blocks away and click: "The merchant is not here." and the window closes.
+16. **Disguised TNT:**
+    - hold 5 stone and buy it: 4 stone plus 1 stone with a "Disguised TNT" lore line;
+    - place it somewhere expendable, then have B walk over it: a big blast;
+    - try sprinting across another one, placing one and stepping on it yourself, and breaking one, which defuses it with no blast;
+    - place one near world spawn: it hurts but breaks nothing;
+    - `/bm traps near` and `/bm traps log` show who placed what.
+17. **Mimic Chest:** place it; you open it and nothing happens; B opens it, gets silverfish and the laugh, and the next time it's a normal chest.
+18. **Pranks:**
+    - hit B with Itching Powder: Nausea, Slowness and Glowing;
+    - B eats the Cursed Snack: up B goes;
+    - send B an Anonymous Summons from the window: B gets a [MINISTRY] notice that doesn't name you.
 
 ## What couldn't be verified for KubeJS 6 on 1.20.1
 
-A mock-server test passed all 85 checks: coins, the merchant, the shop, range, contracts and every refusal, the writ, dupes and forgeries, heat, outcomes, `/reload`, custom stock, selling (refused by default; working when SELL_LIST has entries) and the rotation. These parts depend on the real game:
+A mock-server test passed all 124 checks: coins, the merchant, the shop window and the chat menu, range, contracts and every refusal, the writ, dupes and forgeries, heat, outcomes, `/reload`, custom stock, selling (refused by default; working when SELL_LIST has entries), the rotation, Disguised TNT (sprinting across, jumping over, owner, protected areas, replaced blocks, breaking, the limit), the Mimic Chest and the three pranks. These parts depend on the real game:
+
+- **The shop window** (`player.openChestGUI`, in your KubeJS 2001.6.5):
+  - that every way of taking items out of it is blocked (KubeJS's menu handles the clicks);
+  - that reopening the window after a purchase is smooth;
+  - that player heads show skins (`SkullOwner` by name);
+  - that custom stock shows its price line (added with `getOrCreateTagElement('display')`; without it, the item still shows, just with no price line).
+- **Disguised TNT:**
+  - `level.createExplosion(...).strength(8).explosionMode(...)` and the `Level$ExplosionInteraction` NONE/TNT modes (if it fails, a plain primed TNT is used, power 4);
+  - `stack.getItem().getBlock()` and `hasBlockEntity()` for what can be disguised;
+  - `BlockEvents.placed` still seeing the trap item in the player's hand.
+- **The Mimic Chest:** `PlayerEvents.chestOpened` giving the chest's block. With a double chest, only the half the mimic was placed as counts.
+- **Itching Powder:** a thrown snowball keeping its NBT (`getItem()` on the projectile), and the hurt event firing for a snowball's zero damage.
+- **The Cursed Snack:** `ItemEvents.foodEaten`'s `item` still carrying the NBT.
+- **Protected areas:** read from `protected_areas.js`'s `PROTECTED_AREAS` through KubeJS's shared script scope. If that isn't visible, only spawn, the Pig Escort portal and portal_ambush safe zones count.
 
 - **The shop menu:**
   - whether the clickable chat menu opens on the first right-click, and `ItemEvents.entityInteracted` cancelling the wandering trader's trade screen;

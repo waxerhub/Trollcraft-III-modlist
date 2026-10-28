@@ -76,6 +76,32 @@ const CONTRACTS = [
     mix: { nether: [['brute', 0.5], ['piglin', 0.5]], overworld: [['vindicator', 0.6], ['pillager', 0.4]] } },
 ]
 const WRIT_PRICE = 15
+
+// --- The shop window ---
+const SHOP_MENU = 'gui'                // 'gui' = a chest-style window; 'chat' = the clickable chat menu.
+                                       // If the window can't be opened, the chat menu is used instead.
+
+// --- Troll items (all vanilla items with hidden NBT; no modpack update) ---
+// Disguised TNT: buying it turns ONE of the blocks you're holding into a trap. Placed, it looks like that block;
+// the first player to step on it (its owner included) sets it off. power: explosion strength (one TNT = 4).
+// It breaks blocks like real TNT, except inside protected_areas.js areas, near world spawn and near the Pig
+// Escort portal, where it only hurts.
+const DISGUISED_TNT = { price: 25, power: 8, maxPerPlayer: 10, checkTicks: 10 }
+// Mimic Chest: a normal-looking chest. Whoever opens it first (not its owner) gets a burst of silverfish.
+const MIMIC_CHEST = { price: 12, silverfish: 6, maxPerPlayer: 10,
+  laugh: 'Hahahaha. You should have read the label.', sound: 'minecraft:entity.witch.celebrate' }
+// Itching Powder: snowballs; a player hit by one gets Nausea, Slowness and Glowing.
+const ITCHING_POWDER = { price: 4, count: 4, seconds: 30 }
+// Cursed Snack: looks like a plain cookie (no name, no lore); eating it gives Levitation, Hunger and Nausea.
+const CURSED_SNACK = { price: 3, item: 'minecraft:cookie', levitationSeconds: 6, hungerSeconds: 30, nauseaSeconds: 10 }
+// Anonymous Summons: a fake [MINISTRY] notice sent to the chosen player (one of these, at random).
+const SUMMONS = { price: 5, sound: 'minecraft:block.bell.use', messages: [
+  'You have been selected for a random tax audit. Remain where you are. An inspector will be with you shortly.',
+  'Our records show an unpaid fine for Unlicensed Standing. Payment is due immediately.',
+  'Your residence has been reclassified as a pig sanctuary. Please vacate within the hour.',
+  'A complaint has been filed against you by a concerned neighbour. The neighbour wishes to remain concerned.',
+  'Congratulations. You have been volunteered for the Ministry Night Watch. Attendance is mandatory.',
+] }
 const TOKEN_EXPIRY_DAYS = 7            // real days a contract stays valid
 const CONTRACT_COOLDOWN_MINUTES = 45   // after a contract is called on someone, no new contract on them this long
 const HEAT_WINDOW_HOURS = 24           // heat = contracts called on a player in this window
@@ -97,6 +123,8 @@ const VOICE_CONTRACT = { tag: '[CONTRACT]', tagColor: 'dark_gray', textColor: 'r
 const VOICE_CALLER = { tag: '[CONTRACT]', tagColor: 'dark_gray', textColor: 'gray' }
 const VOICE_RUMOR = { tag: '[RUMOR]', tagColor: 'dark_purple', textColor: 'gray' }
 const VOICE_MARKET = { tag: '[BLACK MARKET]', tagColor: 'dark_red', textColor: 'gray' }
+const VOICE_TRICK = { tag: '[???]', tagColor: 'dark_purple', textColor: 'light_purple' }
+const VOICE_MINISTRY = { tag: '[MINISTRY]', tagColor: 'gold', textColor: 'yellow' }
 const WARNING_SOUND = 'minecraft:entity.wither.ambient'
 
 
@@ -120,6 +148,8 @@ S.vendor = null                // the live vendor entity
 S.expectVendor = false
 S.lastVendor = null
 S.lastUse = {}                 // uuid -> server tick of the last contract click (one click can fire two events)
+S.trapLoop = false
+S.lastPos = {}                 // uuid -> where they were at the last Disguised TNT check
 if (!S.afk) S.afk = {}         // uuid -> { key, since }
 
 let Serializer = null, StringArg = null
@@ -782,6 +812,18 @@ function openShop(p) {
   })
   menuLine(p, [{ text: '  Writ of Protection', color: 'gold', hoverEvent: { action: 'show_text', contents: 'Keep it on you: the next contract called on you is refused, and the writ is used up.' } },
     { text: ' - ' + WRIT_PRICE + ' coins ', color: 'gray' }, button('[BUY]', 'gold', '/blackmarket buy writ', 'Buy a Writ of Protection')])
+  menuLine(p, [{ text: ' Traps', color: 'gold', bold: true }])
+  menuLine(p, [{ text: '  Disguised TNT', color: 'dark_red', hoverEvent: { action: 'show_text', contents: 'Turns ONE block in your main hand into TNT that looks like it. The first to step on it sets it off, you included.' } },
+    { text: ' - ' + DISGUISED_TNT.price + ' coins ', color: 'gray' }, button('[BUY]', 'gold', '/blackmarket buy tnt', 'Hold the block first')])
+  menuLine(p, [{ text: '  Mimic Chest', color: 'dark_purple', hoverEvent: { action: 'show_text', contents: 'A chest like any other. It bites the first person who opens it (not you).' } },
+    { text: ' - ' + MIMIC_CHEST.price + ' coins ', color: 'gray' }, button('[BUY]', 'gold', '/blackmarket buy mimic', 'Buy a Mimic Chest')])
+  menuLine(p, [{ text: ' Pranks', color: 'light_purple', bold: true }])
+  menuLine(p, [{ text: '  Itching Powder x' + ITCHING_POWDER.count, color: 'light_purple', hoverEvent: { action: 'show_text', contents: 'Snowballs. Whoever gets hit gets Nausea, Slowness and Glowing.' } },
+    { text: ' - ' + ITCHING_POWDER.price + ' coins ', color: 'gray' }, button('[BUY]', 'gold', '/blackmarket buy itching', 'Buy Itching Powder')])
+  menuLine(p, [{ text: '  Cursed Snack', color: 'light_purple', hoverEvent: { action: 'show_text', contents: 'Looks like a normal cookie. Eating it: a short flight and a long hunger.' } },
+    { text: ' - ' + CURSED_SNACK.price + ' coins ', color: 'gray' }, button('[BUY]', 'gold', '/blackmarket buy snack', 'Buy a Cursed Snack')])
+  menuLine(p, [{ text: '  Anonymous Summons', color: 'gold', hoverEvent: { action: 'show_text', contents: 'A very official [MINISTRY] notice for the player of your choice.' } },
+    { text: ' - ' + SUMMONS.price + ' coins ', color: 'gray' }, button('[BUY]', 'gold', '/blackmarket buy summons', 'Choose who gets it')])
   const custom = db().shop.custom, ids = Object.keys(custom)
   if (ids.length) {
     menuLine(p, [{ text: ' Under the counter', color: 'dark_purple', bold: true }])
@@ -798,6 +840,14 @@ function openShop(p) {
     menuLine(p, [{ text: '  ' + s.item.replace(/^[^:]*:/, '').replace(/_/g, ' '), color: 'green' },
       { text: ' - ' + s.coins + ' coin' + (s.coins == 1 ? '' : 's') + ' per ' + s.per + ' ', color: 'gray' }, button('[SELL]', 'green', '/blackmarket sell ' + s.key, 'Sell all you carry')])
   })
+}
+function openSummonsMenu(p) {
+  menuLine(p, voiceParts(VOICE_MARKET, 'Who should receive the Anonymous Summons?'))
+  const server = p.server || Utils.server
+  const others = onlinePlayers(server).filter(o => uuidOf(o) != uuidOf(p))
+  if (!others.length) menuLine(p, [{ text: '  Nobody else is around.', color: 'gray' }])
+  others.forEach(o => menuLine(p, [button('  ' + nameOf(o), 'gold', '/blackmarket buy summons ' + nameOf(o), 'Send it to ' + nameOf(o)),
+    { text: ' - ' + SUMMONS.price + ' coins', color: 'gray' }]))
 }
 function openTargetMenu(p, def) {
   menuLine(p, voiceParts(VOICE_MARKET, 'Who is the Ambush Contract (' + def.name + ') for?'))
@@ -886,6 +936,347 @@ function sell(p, key) {
 }
 
 
+// ===================== TROLL ITEMS =====================
+
+// 'tnt', 'mimic', 'itching', 'snack' or null.
+function trollKind(stack) {
+  const t = trollcraftTag(stack)
+  if (t == null) return null
+  if (t.contains('trap')) return String(t.getString('trap'))
+  if (t.contains('prank')) return String(t.getString('prank'))
+  return null
+}
+function loreNbt(lore) {
+  return 'display:{Lore:[' + lore.map(l => snbtString(JSON.stringify({ text: l.text, color: l.color || 'gray', italic: !!l.italic }))).join(',') + ']}'
+}
+function disguisedStack(id) {
+  return Item.of(id, 1, '{trollcraft:{trap:"tnt"},' + loreNbt([{ text: 'Disguised TNT', color: 'dark_red' },
+    { text: 'Explodes when anyone steps on it. Anyone.', color: 'dark_gray', italic: true }]) + '}')
+}
+function mimicStack() {
+  return Item.of('minecraft:chest', 1, '{trollcraft:{trap:"mimic"},' + loreNbt([{ text: 'Mimic Chest', color: 'dark_purple' },
+    { text: 'Bites the first person who opens it (not you).', color: 'dark_gray', italic: true }]) + '}')
+}
+function itchingStack(n) {
+  return Item.of('minecraft:snowball', n, '{trollcraft:{prank:"itching"},' + displayNbt('Itching Powder', 'light_purple',
+    [{ text: 'Throw it at someone. They will regret standing still.', color: 'dark_gray', italic: true }]) + '}')
+}
+// No name, no lore: it has to look like any other cookie.
+function snackStack() { return Item.of(CURSED_SNACK.item, 1, '{trollcraft:{prank:"snack"}}') }
+
+// Can the held stack become Disguised TNT? null, or why not.
+function whyNotDisguisable(stack) {
+  if (!stack || stack.isEmpty()) return 'Hold the block you want disguised in your main hand.'
+  if (stack.nbt != null) return 'It has to be a plain block (no name, enchantment or contents).'
+  let block = null
+  try { block = stack.getItem().getBlock() } catch (e) { }
+  if (!block) return 'That isn\'t a block you can place.'
+  try { if (block.defaultBlockState().hasBlockEntity()) return 'That block can\'t be disguised (it holds things).' } catch (e) { }
+  return null
+}
+
+function pay(p, price, item) {
+  if (countCoins(p) < price) return false
+  takeCoins(p, price)
+  if (item) p.give(item)
+  return true
+}
+function buyTnt(p) {
+  const held = p.mainHandItem
+  const why = whyNotDisguisable(held)
+  if (why) return why
+  if (countCoins(p) < DISGUISED_TNT.price) return 'Disguised TNT costs ' + DISGUISED_TNT.price + ' Blood Coins. You have ' + countCoins(p) + '.'
+  const item = disguisedStack(String(held.id))
+  let name = String(held.id)
+  try { name = String(held.getHoverName().getString()) } catch (e) { }
+  takeCoins(p, DISGUISED_TNT.price)
+  held.shrink(1)
+  p.give(item)
+  return 'One ' + name + ' is now Disguised TNT. It goes off under the first person to step on it, you included.'
+}
+function buyMimic(p) {
+  return pay(p, MIMIC_CHEST.price, mimicStack()) ? 'Mimic Chest bought. It bites the first person who opens it (but not you).'
+    : 'A Mimic Chest costs ' + MIMIC_CHEST.price + ' Blood Coins. You have ' + countCoins(p) + '.'
+}
+function buyItching(p) {
+  return pay(p, ITCHING_POWDER.price, itchingStack(ITCHING_POWDER.count)) ? ITCHING_POWDER.count + ' Itching Powder bought.'
+    : 'Itching Powder costs ' + ITCHING_POWDER.price + ' Blood Coins. You have ' + countCoins(p) + '.'
+}
+function buySnack(p) {
+  return pay(p, CURSED_SNACK.price, snackStack()) ? 'One cursed cookie. It looks like any other cookie, so keep it apart from yours.'
+    : 'A Cursed Snack costs ' + CURSED_SNACK.price + ' Blood Coins. You have ' + countCoins(p) + '.'
+}
+function buySummons(server, p, targetName) {
+  const target = playerByName(server, targetName)
+  if (!target) return 'Summons are only delivered to people who are around.'
+  if (!pay(p, SUMMONS.price, null)) return 'An Anonymous Summons costs ' + SUMMONS.price + ' Blood Coins. You have ' + countCoins(p) + '.'
+  say(target, VOICE_MINISTRY, SUMMONS.messages[Math.floor(Math.random() * SUMMONS.messages.length)])
+  sound(server, target, SUMMONS.sound, 1)
+  console.info('[BlackMarket] Anonymous Summons from ' + nameOf(p) + ' to ' + nameOf(target))
+  return 'Your summons to ' + nameOf(target) + ' has been delivered. Nobody will know it was you.'
+}
+
+
+// ===================== TRAPS =====================
+// Placed traps live in DB.traps: "dim|x|y|z" -> { kind, block, owner, ownerName, placed }.
+
+let ExplosionInteraction = null
+try { ExplosionInteraction = Java.loadClass('net.minecraft.world.level.Level$ExplosionInteraction') } catch (e) { }
+
+function trapKey(dim, x, y, z) { return dim + '|' + x + '|' + y + '|' + z }
+function traps() {
+  const D = db()
+  if (!D.traps) D.traps = {}
+  return D.traps
+}
+function trapsOwned(uuid, kind) {
+  const t = traps()
+  return Object.keys(t).filter(k => t[k].owner == uuid && t[k].kind == kind).length
+}
+function hasTntTraps() {
+  const t = traps()
+  return Object.keys(t).some(k => t[k].kind == 'tnt')
+}
+function logTrap(text) {
+  const D = db()
+  if (!D.trapLog) D.trapLog = []
+  D.trapLog.push(dateText(Date.now()) + ': ' + text)
+  if (D.trapLog.length > 50) D.trapLog.splice(0, D.trapLog.length - 50)
+  console.info('[BlackMarket] ' + text)
+}
+// Inside a protected_areas.js area, a portal_ambush safe zone, near world spawn or the Pig Escort portal?
+function isProtectedSpot(server, dim, pos) {
+  try {
+    if (typeof PROTECTED_AREAS != 'undefined') {
+      let hit = PROTECTED_AREAS.some(a => a.dim == dim &&
+        pos.x >= Math.min(a.x1, a.x2) && pos.x <= Math.max(a.x1, a.x2) &&
+        pos.y >= Math.min(a.y1, a.y2) && pos.y <= Math.max(a.y1, a.y2) &&
+        pos.z >= Math.min(a.z1, a.z2) && pos.z <= Math.max(a.z1, a.z2))
+      if (hit) return true
+    }
+  } catch (e) { }
+  const pa = PA()
+  try { if (pa && pa.inSafeZone(server, dim, pos)) return true } catch (e) { }
+  return false
+}
+
+// Disguised TNT goes off under player p.
+function triggerTnt(server, p, key) {
+  const t = traps()[key]
+  if (!t) return
+  const parts = key.split('|')
+  const dim = parts[0], x = Number(parts[1]), y = Number(parts[2]), z = Number(parts[3])
+  const level = levelOf(p)
+  let blockId = ''
+  try { blockId = String(level.getBlock(x, y, z).id) } catch (e) { }
+  delete traps()[key]
+  if (blockId && blockId != t.block) { save(); return }   // moved by a piston or replaced: the trap is gone
+  const prot = isProtectedSpot(server, dim, { x: x, y: y, z: z })
+  logTrap('Disguised TNT (' + t.block + ') placed by ' + t.ownerName + ' went off under ' + nameOf(p) + ' at ' + dim + ' ' + x + ' ' + y + ' ' + z + (prot ? ' (protected: no block damage)' : ''))
+  save()
+  try {
+    let ex = level.createExplosion(x + 0.5, y + 0.5, z + 0.5).strength(DISGUISED_TNT.power).causesFire(false)
+    if (ExplosionInteraction) ex = ex.explosionMode(prot ? ExplosionInteraction.NONE : ExplosionInteraction.TNT)
+    ex.explode()
+  } catch (e) {
+    console.error('[BlackMarket] Disguised TNT explosion failed, using a primed TNT instead: ' + e)
+    try { server.runCommandSilent('execute in ' + dim + ' run summon minecraft:tnt ' + (x + 0.5) + ' ' + (y + 1) + ' ' + (z + 0.5) + ' {Fuse:0}') } catch (e2) { }
+  }
+}
+
+// Every checkTicks while any Disguised TNT is placed: the path each player walked since the last check (so a
+// sprint across a trap isn't missed), checked block by block for a trap under their feet.
+function checkSteps(server) {
+  const t = traps()
+  onlinePlayers(server).forEach(p => {
+    let u = uuidOf(p), d = dimOf(p), q = posOf(p)
+    let prev = S.lastPos[u]
+    S.lastPos[u] = { d: d, x: q.x, y: q.y, z: q.z }
+    let skip = false
+    try { skip = p.isSpectator() || p.isCreative() } catch (e) { }
+    if (skip) return
+    let pts = []
+    if (prev && prev.d == d && dist(prev, q) <= 16) {
+      let n = Math.max(1, Math.ceil(dist(prev, q) / 0.3))
+      for (let i = 1; i <= n; i++) pts.push({ x: prev.x + (q.x - prev.x) * i / n, y: prev.y + (q.y - prev.y) * i / n, z: prev.z + (q.z - prev.z) * i / n })
+    } else {
+      pts.push(q)
+    }
+    let hit = null
+    pts.forEach(pt => {
+      if (hit) return
+      let key = trapKey(d, Math.floor(pt.x), Math.floor(pt.y - 0.2), Math.floor(pt.z))
+      if (t[key] && t[key].kind == 'tnt') hit = key
+    })
+    if (hit) triggerTnt(server, p, hit)
+  })
+}
+function startTrapLoop(server) {
+  if (S.trapLoop || !hasTntTraps()) return
+  S.trapLoop = true
+  S.lastPos = {}
+  const token = S.token
+  const step = () => {
+    if (token != S.token) return
+    if (!hasTntTraps()) { S.trapLoop = false; return }
+    try { checkSteps(server) } catch (e) { console.error('[BlackMarket] ' + e) }
+    server.scheduleInTicks(DISGUISED_TNT.checkTicks, step)
+  }
+  server.scheduleInTicks(DISGUISED_TNT.checkTicks, step)
+}
+
+function mimicBite(server, p, key, block) {
+  const t = traps()[key]
+  delete traps()[key]
+  const dim = key.split('|')[0]
+  logTrap('Mimic Chest placed by ' + t.ownerName + ' bit ' + nameOf(p) + ' at ' + key.split('|').slice(1).join(' '))
+  save()
+  say(p, VOICE_TRICK, MIMIC_CHEST.laugh)
+  sound(server, p, MIMIC_CHEST.sound, 1)
+  const bx = Number(key.split('|')[1]), by = Number(key.split('|')[2]), bz = Number(key.split('|')[3])
+  const spots = []
+  for (let i = 0; i < MIMIC_CHEST.silverfish; i++) spots.push({ x: bx + 0.5 + (Math.random() * 3 - 1.5), y: by + 1, z: bz + 0.5 + (Math.random() * 3 - 1.5) })
+  spots.forEach(sp => {
+    try { server.runCommandSilent('execute in ' + dim + ' run summon minecraft:silverfish ' + num2(sp.x) + ' ' + sp.y + ' ' + num2(sp.z)) } catch (e) { }
+  })
+}
+function num2(n) { return String(Math.round(n * 100) / 100) }
+
+
+// ===================== THE SHOP WINDOW =====================
+// A chest-style window (KubeJS's player.openChestGUI). Items in it can't be taken; a click buys.
+
+let StringTag = null
+try { StringTag = Java.loadClass('net.minecraft.nbt.StringTag') } catch (e) { }
+
+function guiItem(id, name, color, lore, opts) {
+  opts = opts || {}
+  const parts = ['display:{Name:' + snbtString(JSON.stringify({ text: name, color: color, italic: false, bold: !!opts.bold })) +
+    ',Lore:[' + lore.map(l => snbtString(JSON.stringify(typeof l == 'string' ? { text: l, color: 'gray', italic: false } : { text: l.text, color: l.color || 'gray', italic: !!l.italic }))).join(',') + ']}']
+  if (opts.glint) parts.push('Enchantments:[{id:"minecraft:unbreaking",lvl:1s}]')
+  parts.push('HideFlags:127')
+  if (opts.extra) parts.push(opts.extra)
+  return Item.of(id, opts.count || 1, '{' + parts.join(',') + '}')
+}
+// A custom-stock item as it really is, with its price added at the end of its tooltip.
+function customDisplay(e) {
+  const st = e.snbt ? Item.of(e.item, e.count, e.snbt) : Item.of(e.item, e.count)
+  try {
+    let list = st.getOrCreateTagElement('display').getList('Lore', 8)
+    let had = list.size()
+    list.add(StringTag.valueOf(JSON.stringify({ text: e.price + ' Blood Coins' + (e.stock > 0 ? ' (' + e.stock + ' left)' : ''), color: 'gold', italic: false })))
+    if (!had) st.getOrCreateTagElement('display').put('Lore', list)
+  } catch (err) { }
+  return st
+}
+// Page changes and closing happen on the next tick, not inside the click that asked for them.
+function nav(p, view) { Utils.server.scheduleInTicks(1, () => { try { showGui(p, view) } catch (e) { console.error('[BlackMarket] Shop window: ' + e) } }) }
+function closeGui(p) { Utils.server.scheduleInTicks(1, () => { try { p.closeContainer() } catch (e) { } }) }
+function filler() { return guiItem('minecraft:gray_stained_glass_pane', ' ', 'gray', []) }
+
+// What a click does: check the shop is open and the player still at the merchant, act, say the result,
+// then reopen the window (fresh coin count) unless `close`.
+function guiAct(p, fn, view) {
+  const server = Utils.server
+  if (!isEnabled() || !nearVendor(p)) {
+    say(p, VOICE_MARKET, 'The merchant is not here.')
+    closeGui(p)
+    return
+  }
+  let r = null
+  try { r = fn() } catch (e) { r = 'Something went wrong.'; console.error('[BlackMarket] Shop window: ' + e) }
+  if (r) say(p, VOICE_MARKET, r)
+  server.scheduleInTicks(1, () => { try { showGui(p, view || { kind: 'main' }) } catch (e) { } })
+}
+
+// Opens the shop: the window if SHOP_MENU is 'gui' and it works, otherwise the chat menu.
+function openShopFor(p) {
+  if (SHOP_MENU == 'gui') {
+    try { showGui(p, { kind: 'main' }); return } catch (e) { console.warn('[BlackMarket] Shop window failed, using the chat menu: ' + e) }
+  }
+  openShop(p)
+}
+
+function showGui(p, view) {
+  const titles = { main: 'Hooded Merchant', contract: 'Ambush Contract: who?', summons: 'Anonymous Summons: who?', custom: 'Under the counter' }
+  p.openChestGUI(comp([{ text: titles[view.kind] || 'Hooded Merchant', color: 'dark_purple' }]), 6, gui => {
+    const cells = []
+    for (let i = 0; i < 54; i++) cells.push(i)
+    cells.forEach(i => gui.slot(i % 9, Math.floor(i / 9), s => { s.item = filler() }))
+    if (view.kind == 'main') fillMain(gui, p)
+    else if (view.kind == 'custom') fillCustom(gui, p, view)
+    else fillTargets(gui, p, view)
+  })
+}
+function guiButton(gui, x, y, item, onClick) {
+  gui.slot(x, y, s => {
+    s.item = item
+    s.leftClicked = e => onClick()
+    s.rightClicked = e => onClick()
+  })
+}
+function guiLabel(gui, y, pane, name, color, lore) { guiButton(gui, 0, y, guiItem(pane, name, color, lore || [], { bold: true }), () => { }) }
+
+function fillMain(gui, p) {
+  const server = Utils.server, coins = countCoins(p)
+  guiLabel(gui, 0, 'minecraft:red_stained_glass_pane', 'Contracts', 'red', ['Hired hands, called in with a right-click.'])
+  CONTRACTS.forEach((d, i) => guiButton(gui, 2 + i, 0, guiItem('minecraft:skull_banner_pattern', 'Ambush Contract: ' + d.name, 'red',
+    [d.desc, { text: 'From ' + d.price + ' Blood Coins (more for a target with heat)', color: 'gold' }, { text: 'Click to choose the target', color: 'dark_gray', italic: true }], { glint: true }),
+    () => nav(p, { kind: 'contract', tier: d.id, page: 0 })))
+  guiLabel(gui, 1, 'minecraft:white_stained_glass_pane', 'Protection', 'white')
+  guiButton(gui, 2, 1, guiItem('minecraft:paper', 'Writ of Protection', 'gold', ['Keep it on you: the next contract called', 'on you is refused, and the writ is used up.',
+    { text: WRIT_PRICE + ' Blood Coins', color: 'gold' }], { glint: true }), () => guiAct(p, () => buyWrit(p)))
+  guiLabel(gui, 2, 'minecraft:orange_stained_glass_pane', 'Traps', 'gold')
+  guiButton(gui, 2, 2, guiItem('minecraft:tnt', 'Disguised TNT', 'dark_red', ['Turns ONE of the blocks in your main hand', 'into TNT that looks exactly like it.',
+    'Whoever steps on it first sets it off, you included.', { text: DISGUISED_TNT.price + ' Blood Coins per block', color: 'gold' },
+    { text: 'Hold the block, then click', color: 'dark_gray', italic: true }]), () => guiAct(p, () => buyTnt(p)))
+  guiButton(gui, 3, 2, guiItem('minecraft:chest', 'Mimic Chest', 'dark_purple', ['A chest like any other.', 'The first person to open it (not you) gets bitten.',
+    { text: MIMIC_CHEST.price + ' Blood Coins', color: 'gold' }]), () => guiAct(p, () => buyMimic(p)))
+  guiLabel(gui, 3, 'minecraft:purple_stained_glass_pane', 'Pranks', 'light_purple')
+  guiButton(gui, 2, 3, guiItem('minecraft:snowball', 'Itching Powder', 'light_purple', [ITCHING_POWDER.count + ' snowballs. Whoever gets hit itches:', 'Nausea, Slowness and Glowing for ' + ITCHING_POWDER.seconds + ' s.',
+    { text: ITCHING_POWDER.price + ' Blood Coins', color: 'gold' }], { count: ITCHING_POWDER.count }), () => guiAct(p, () => buyItching(p)))
+  guiButton(gui, 3, 3, guiItem(CURSED_SNACK.item, 'Cursed Snack', 'light_purple', ['Looks like a normal cookie. Eating it is', 'a short flight and a long hunger.',
+    { text: CURSED_SNACK.price + ' Blood Coins', color: 'gold' }]), () => guiAct(p, () => buySnack(p)))
+  guiButton(gui, 4, 3, guiItem('minecraft:bell', 'Anonymous Summons', 'gold', ['A very official [MINISTRY] notice,', 'sent to the player of your choice.',
+    { text: SUMMONS.price + ' Blood Coins', color: 'gold' }, { text: 'Click to choose who gets it', color: 'dark_gray', italic: true }]), () => nav(p, { kind: 'summons', page: 0 }))
+  const custom = db().shop.custom, ids = Object.keys(custom)
+  guiLabel(gui, 4, 'minecraft:black_stained_glass_pane', 'Under the counter', 'dark_gray', [ids.length ? 'Whatever fell off the back of a cart.' : 'Nothing today.'])
+  ids.slice(0, 6).forEach((id, i) => guiButton(gui, 2 + i, 4, customDisplay(custom[id]), () => guiAct(p, () => buyCustom(p, id))))
+  if (ids.length > 6) guiButton(gui, 8, 4, guiItem('minecraft:arrow', 'More…', 'white', [(ids.length - 6) + ' more']), () => nav(p, { kind: 'custom', page: 0 }))
+  guiButton(gui, 0, 5, guiItem(COIN_ITEM, 'You carry ' + coins + ' Blood Coin' + (coins == 1 ? '' : 's'), 'dark_red', ['Main inventory and hotbar.'], { glint: true, count: Math.max(1, Math.min(64, coins)) }), () => { })
+  if (SELL_LIST.length) guiButton(gui, 4, 5, guiItem('minecraft:hopper', 'Sell to him', 'green', ['Opens his buying list in chat.']), () => { closeGui(p); openShop(p) })
+  guiButton(gui, 8, 5, guiItem('minecraft:barrier', 'Close', 'red', []), () => closeGui(p))
+}
+function pager(gui, p, view, total, per) {
+  const pages = Math.max(1, Math.ceil(total / per))
+  guiButton(gui, 0, 5, guiItem('minecraft:arrow', 'Back', 'white', []), () => nav(p, { kind: 'main' }))
+  if (view.page > 0) guiButton(gui, 3, 5, guiItem('minecraft:spectral_arrow', 'Previous page', 'white', []), () => nav(p, { kind: view.kind, tier: view.tier, page: view.page - 1 }))
+  if (view.page < pages - 1) guiButton(gui, 5, 5, guiItem('minecraft:spectral_arrow', 'Next page', 'white', [(view.page + 2) + ' / ' + pages]), () => nav(p, { kind: view.kind, tier: view.tier, page: view.page + 1 }))
+}
+function fillTargets(gui, p, view) {
+  const server = Utils.server
+  const def = view.kind == 'contract' ? contractDef(view.tier) : null
+  const others = onlinePlayers(server).filter(o => uuidOf(o) != uuidOf(p))
+  const per = 45
+  others.slice(view.page * per, view.page * per + per).forEach((o, i) => {
+    let n = nameOf(o)
+    let lore = def ? [{ text: priceFor(def, uuidOf(o)) + ' Blood Coins' + (heatOf(uuidOf(o)) ? ' (heat ' + heatOf(uuidOf(o)) + ')' : ''), color: 'gold' }]
+      : [{ text: SUMMONS.price + ' Blood Coins', color: 'gold' }]
+    guiButton(gui, i % 9, Math.floor(i / 9), guiItem('minecraft:player_head', n, 'red', lore, { extra: 'SkullOwner:' + snbtString(n) }),
+      () => guiAct(p, () => def ? buyContract(server, p, def.id, n) : buySummons(server, p, n)))
+  })
+  if (!others.length) guiButton(gui, 4, 2, guiItem('minecraft:structure_void', 'Nobody else is around', 'gray',
+    def ? ['Someone offline the server knows can be typed:', '/bm buy contract ' + def.id + ' <name>'] : ['Summons only reach people who are online.']), () => { })
+  pager(gui, p, view, others.length, per)
+}
+function fillCustom(gui, p, view) {
+  const custom = db().shop.custom, ids = Object.keys(custom), per = 45
+  ids.slice(view.page * per, view.page * per + per).forEach((id, i) => guiButton(gui, i % 9, Math.floor(i / 9), customDisplay(custom[id]),
+    () => guiAct(p, () => buyCustom(p, id), { kind: 'custom', page: view.page })))
+  pager(gui, p, view, ids.length, per)
+}
+
+
 // ===================== API FOR OTHER SCRIPTS =====================
 
 global.Economy = {
@@ -943,7 +1334,7 @@ ItemEvents.entityInteracted(event => {
   try { hand = String(event.hand) } catch (e) { }
   if (!hand || hand.indexOf('MAIN') >= 0) {
     try {
-      if (isEnabled()) openShop(event.player)
+      if (isEnabled()) openShopFor(event.player)
       else say(event.player, VOICE_MARKET, 'The merchant ignores you.')
     } catch (e) { console.error('[BlackMarket] Shop failed: ' + e) }
   }
@@ -953,6 +1344,82 @@ ItemEvents.entityInteracted(event => {
 EntityEvents.hurt(event => {
   if (!hasTag(event.entity, TAG_VENDOR)) return
   event.cancel()   // the vendor can't be hurt
+})
+
+// Itching Powder: a player hit by one of its snowballs.
+EntityEvents.hurt(event => {
+  const victim = event.entity
+  if (!victim.isPlayer()) return
+  let imm = null
+  try { imm = event.source.getDirectEntity() } catch (e) { try { imm = event.source.immediate } catch (e2) { } }
+  if (!imm) return
+  let kind = null
+  try { if (String(imm.getEncodeId()) == 'minecraft:snowball') kind = trollKind(imm.getItem()) } catch (e) { }
+  if (kind != 'itching') return
+  const server = Utils.server, u = uuidOf(victim), sec = ITCHING_POWDER.seconds
+  ;['minecraft:nausea 1', 'minecraft:slowness 1', 'minecraft:glowing 0'].forEach(eff => {
+    let parts = eff.split(' ')
+    try { server.runCommandSilent('effect give ' + u + ' ' + parts[0] + ' ' + sec + ' ' + parts[1]) } catch (e) { }
+  })
+  say(victim, VOICE_TRICK, 'You\'re covered in itching powder.')
+})
+
+// Cursed Snack: eaten.
+ItemEvents.foodEaten(event => {
+  if (trollKind(event.item) != 'snack') return
+  const p = event.entity
+  if (!p || !p.isPlayer()) return
+  const server = Utils.server, u = uuidOf(p), C = CURSED_SNACK
+  try {
+    server.runCommandSilent('effect give ' + u + ' minecraft:levitation ' + C.levitationSeconds + ' 1')
+    server.runCommandSilent('effect give ' + u + ' minecraft:hunger ' + C.hungerSeconds + ' 2')
+    server.runCommandSilent('effect give ' + u + ' minecraft:nausea ' + C.nauseaSeconds + ' 0')
+  } catch (e) { }
+  say(p, VOICE_TRICK, 'That cookie tasted... wrong.')
+})
+
+// Traps: placing one registers it (Disguised TNT or Mimic Chest); breaking it removes it.
+BlockEvents.placed(event => {
+  const p = event.entity
+  if (!p || !p.isPlayer()) return
+  const b = event.block
+  const id = String(b.id)
+  let kind = null
+  ;[p.mainHandItem, p.offHandItem].forEach(st => {
+    if (kind || !st || st.isEmpty() || String(st.id) != id) return
+    let k = trollKind(st)
+    if (k == 'tnt' || k == 'mimic') kind = k
+  })
+  if (!kind) return
+  const max = kind == 'tnt' ? DISGUISED_TNT.maxPerPlayer : MIMIC_CHEST.maxPerPlayer
+  if (trapsOwned(uuidOf(p), kind) >= max) {
+    say(p, VOICE_MARKET, 'You already have ' + max + ' of those placed. Spring one first.')
+    event.cancel()   // last
+    return
+  }
+  const dim = String(b.getDimension())
+  traps()[trapKey(dim, b.x, b.y, b.z)] = { kind: kind, block: id, owner: uuidOf(p), ownerName: nameOf(p), placed: Date.now() }
+  save()
+  if (kind == 'tnt') startTrapLoop(Utils.server)
+})
+BlockEvents.broken(event => {
+  const b = event.block
+  const key = trapKey(String(b.getDimension()), b.x, b.y, b.z)
+  if (!traps()[key]) return
+  delete traps()[key]
+  save()
+})
+// Mimic Chest: the first person to open it who isn't its owner.
+PlayerEvents.chestOpened(event => {
+  const p = event.player
+  let b = null
+  try { b = event.block } catch (e) { }
+  if (!p || !b) return
+  const key = trapKey(String(b.getDimension()), b.x, b.y, b.z)
+  const t = traps()[key]
+  if (!t || t.kind != 'mimic' || t.owner == uuidOf(p)) return
+  try { if (p.isCreative() || p.isSpectator()) return } catch (e) { }
+  mimicBite(Utils.server, p, key, b)
 })
 
 // A contract target killed by their contract's mobs = fulfilled. Ambush mobs killed by players may drop coins.
@@ -1017,6 +1484,7 @@ function startUp(server) {
   // After everything has loaded (and portal_ambush has ended its old groups on a /reload).
   server.scheduleInTicks(2, () => { try { sweepContracts(server) } catch (e) { console.error('[BlackMarket] ' + e) } })
   startSlowLoop(server)
+  startTrapLoop(server)
 }
 ServerEvents.loaded(event => startUp(event.server))
 if (Utils.server) startUp(Utils.server)
@@ -1055,11 +1523,18 @@ ServerEvents.commandRegistry(event => {
   })
 
   const root = Commands.literal('blackmarket')
-    .then(Commands.literal('shop').executes(atVendor((ctx, p) => { openShop(p); return null })))
+    .then(Commands.literal('shop').executes(atVendor((ctx, p) => { openShopFor(p); return null })))
+    .then(Commands.literal('chatshop').executes(atVendor((ctx, p) => { openShop(p); return null })))
     .then(Commands.literal('buy')
       .then(Commands.literal('contract').then(word('tier').executes(atVendor((ctx, p) => buyContract(ctx.source.server, p, str(ctx, 'tier'), null)))
         .then(word('target').executes(atVendor((ctx, p) => buyContract(ctx.source.server, p, str(ctx, 'tier'), str(ctx, 'target')))))))
       .then(Commands.literal('writ').executes(atVendor((ctx, p) => buyWrit(p))))
+      .then(Commands.literal('tnt').executes(atVendor((ctx, p) => buyTnt(p))))
+      .then(Commands.literal('mimic').executes(atVendor((ctx, p) => buyMimic(p))))
+      .then(Commands.literal('itching').executes(atVendor((ctx, p) => buyItching(p))))
+      .then(Commands.literal('snack').executes(atVendor((ctx, p) => buySnack(p))))
+      .then(Commands.literal('summons').executes(atVendor((ctx, p) => { openSummonsMenu(p); return null }))
+        .then(word('target').executes(atVendor((ctx, p) => buySummons(ctx.source.server, p, str(ctx, 'target'))))))
       .then(Commands.literal('custom').then(word('id').executes(atVendor((ctx, p) => buyCustom(p, str(ctx, 'id')))))))
     .then(Commands.literal('sell').then(word('item').executes(atVendor((ctx, p) => sell(p, str(ctx, 'item'))))))
     // --- op ---
@@ -1133,6 +1608,39 @@ ServerEvents.commandRegistry(event => {
       p.give(made.stack)
       return reply(ctx, 'Free Ambush Contract (' + def.name + ') on ' + t.name + ' (' + made.id + ').')
     }))))))
+    .then(Commands.literal('traps').requires(op)
+      .then(Commands.literal('near').executes(safe(ctx => {
+        const p = me(ctx)
+        if (!p) return reply(ctx, 'Players only.', true)
+        const t = traps(), d = dimOf(p), q = posOf(p)
+        const near = Object.keys(t).filter(k => {
+          let a = k.split('|')
+          return a[0] == d && dist({ x: Number(a[1]), y: Number(a[2]), z: Number(a[3]) }, q) <= 32
+        })
+        if (!near.length) return reply(ctx, 'No traps within 32 blocks.')
+        near.forEach(k => { let a = k.split('|'); reply(ctx, t[k].kind + ' (' + t[k].block + ') at ' + a[1] + ' ' + a[2] + ' ' + a[3] + ', placed by ' + t[k].ownerName + ' ' + dateText(t[k].placed)) })
+        return 1
+      })))
+      .then(Commands.literal('list').then(word('player').executes(safe(ctx => {
+        const n = str(ctx, 'player').toLowerCase(), t = traps()
+        const mine = Object.keys(t).filter(k => String(t[k].ownerName).toLowerCase() == n)
+        if (!mine.length) return reply(ctx, 'No traps placed by ' + str(ctx, 'player') + '.')
+        mine.forEach(k => { let a = k.split('|'); reply(ctx, t[k].kind + ' (' + t[k].block + ') at ' + a[0] + ' ' + a[1] + ' ' + a[2] + ' ' + a[3]) })
+        return 1
+      }))))
+      .then(Commands.literal('clear').then(word('player').executes(safe(ctx => {
+        const n = str(ctx, 'player').toLowerCase(), t = traps()
+        let c = 0
+        Object.keys(t).forEach(k => { if (String(t[k].ownerName).toLowerCase() == n) { delete t[k]; c++ } })
+        save()
+        return reply(ctx, c + ' trap(s) by ' + str(ctx, 'player') + ' defused (the blocks stay, harmless).')
+      }))))
+      .then(Commands.literal('log').executes(safe(ctx => {
+        const log = db().trapLog || []
+        if (!log.length) return reply(ctx, 'No traps have gone off yet.')
+        log.slice(-10).forEach(l => reply(ctx, l))
+        return 1
+      }))))
     .then(Commands.literal('toggle').requires(op).executes(safe(ctx => {
       db().enabled = !db().enabled
       save()

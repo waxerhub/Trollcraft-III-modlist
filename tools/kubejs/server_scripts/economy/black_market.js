@@ -1325,10 +1325,26 @@ function customDisplay(e) {
 // inventory: no coins, nothing in hand. So every page change and purchase closes the window first, waits for the
 // inventory to come back, then acts and opens the next page (whose contents are built before KubeJS takes the
 // inventory again). Closing happens on the next tick, not inside the click that asked for it.
-function closeGui(p) { Utils.server.scheduleInTicks(1, () => { try { p.closeContainer() } catch (e) { } }) }
+// Closes whatever window the player has open. KubeJS gives scripts Minecraft's closeContainer() as closeMenu();
+// the other names are fallbacks. Returns '' or why it failed.
+const CLOSE_WAYS = [p => p.closeMenu(), p => p.closeContainer(), p => p.m_6915_()]
+function closeWindow(p) {
+  let why = ''
+  for (let i = 0; i < CLOSE_WAYS.length; i++) {
+    try { CLOSE_WAYS[i](p); return '' } catch (e) { if (!why) why = String(e) }
+  }
+  console.error('[BlackMarket] Could not close ' + nameOf(p) + '\'s window: ' + why)
+  return why || 'no way to close it'
+}
+function windowStillOpen(p) { return menuName(p) == 'CustomChestMenu' }
+function closeGui(p) { Utils.server.scheduleInTicks(1, () => closeWindow(p)) }
 function withWindowClosed(p, fn) {
   closeGui(p)
-  Utils.server.scheduleInTicks(2, () => { try { fn() } catch (e) { console.error('[BlackMarket] Shop window: ' + e) } })
+  Utils.server.scheduleInTicks(2, () => {
+    // Never act on the empty inventory KubeJS leaves while its window is open.
+    if (windowStillOpen(p)) { say(p, VOICE_MARKET, 'The window didn\'t close properly. Press Esc and right-click the merchant again.'); return }
+    try { fn() } catch (e) { console.error('[BlackMarket] Shop window: ' + e) }
+  })
 }
 function nav(p, view) { withWindowClosed(p, () => showGui(p, view)) }
 function filler() { return guiItem('minecraft:gray_stained_glass_pane', ' ', 'gray', []) }
@@ -1378,14 +1394,15 @@ function debugWindow(p) {
   try { showGui(p, { kind: 'main' }); snap('window opened') } catch (e) { line('opening FAILED: ' + e) }
   server.scheduleInTicks(1, () => {
     snap('tick 1')
-    try { p.closeContainer(); line('closeContainer() ran') } catch (e) { line('closeContainer() FAILED: ' + e) }
+    let why = closeWindow(p)
+    line(why ? 'closing FAILED: ' + why : 'window closed')
     snap('tick 1, after close')
   })
   server.scheduleInTicks(2, () => {
     snap('tick 2')
     try { showGui(p, { kind: 'main' }); snap('tick 2, reopened') } catch (e) { line('reopen FAILED: ' + e) }
   })
-  server.scheduleInTicks(3, () => { try { p.closeContainer() } catch (e) { } })
+  server.scheduleInTicks(3, () => closeWindow(p))
   server.scheduleInTicks(4, () => snap('tick 4, closed again'))
 }
 
@@ -1630,7 +1647,7 @@ EntityEvents.hurt(event => {
   // Hurt while the shop window is open: close it, so the inventory is back before a fight goes on (KubeJS keeps it
   // away while the window is open, so it wouldn't drop on death, and a Writ of Protection wouldn't count).
   if (e.isPlayer()) {
-    if (S.guiOpen[uuidOf(e)]) { try { e.closeContainer() } catch (err) { } }
+    if (S.guiOpen[uuidOf(e)]) closeWindow(e)
     return
   }
   if (!hasTag(e, TAG_VENDOR)) return

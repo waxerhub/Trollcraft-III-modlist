@@ -86,6 +86,7 @@ Right-clicking the merchant opens a chest-style window. It's a vanilla chest scr
 - **Items in it can't be taken out:** a click buys.
 - **After each purchase** the window reopens with your new coin count, and the result is also said in chat.
 - **Every click closes the window for a moment and reopens it** (you'll see a short flicker and the cursor recentre). That's because KubeJS takes your main inventory away while one of its windows is open and only hands it back the tick after the window closes. While it's away the server sees no coins and nothing in your hand, so the script closes the window, waits for your inventory, then acts and reopens.
+- **If the window can't be closed** (scripts close it with KubeJS's `closeMenu()`), the click does nothing and you're told to press Esc and right-click him again, so nothing is bought from the empty inventory. `/bm debug window` (op) shows step by step what the server sees.
 - **Taking damage closes the window,** so your inventory is back for the fight: otherwise it wouldn't drop if you died, and a Writ of Protection wouldn't count.
 
 | Row | |
@@ -355,7 +356,7 @@ Logging out, `/reload` and restarts never reset a cooldown or reuse a contract i
 
 ## What couldn't be verified for KubeJS 6 on 1.20.1
 
-A mock-server test passed all 232 checks (with bounties.js loaded): coins, the merchant, the shop window and the chat menu, range, contracts and every refusal, the writ, dupes and forgeries, heat, outcomes, `/reload`, custom stock, selling (refused by default; working when SELL_LIST has entries), the rotation, Disguised TNT (sprinting across, jumping over, owner, protected areas, replaced blocks, breaking, the limit), the Teleport Trap (every refusal, the Nether lock, landing, owner, Pig Escort, reload, replaced blocks, the limit), the Mimic Chest, the four pranks, bounties, the coin rename (old coins swapped) and the ambush coin drops. These parts depend on the real game:
+A mock-server test passed all 235 checks (with bounties.js loaded): coins, the merchant, the shop window and the chat menu, range, contracts and every refusal, the writ, dupes and forgeries, heat, outcomes, `/reload`, custom stock, selling (refused by default; working when SELL_LIST has entries), the rotation, Disguised TNT (sprinting across, jumping over, owner, protected areas, replaced blocks, breaking, the limit), the Teleport Trap (every refusal, the Nether lock, landing, owner, Pig Escort, reload, replaced blocks, the limit), the Mimic Chest, the four pranks, bounties, the coin rename (old coins swapped) and the ambush coin drops. These parts depend on the real game:
 
 - **The shop window** (`player.openChestGUI`, in your KubeJS 2001.6.5):
   - that every way of taking items out of it is blocked (KubeJS's menu handles the clicks);

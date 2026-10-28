@@ -1,6 +1,6 @@
-// Black Market: Blood Coins, a wandering Hooded Merchant, Ambush Contracts and Writs of Protection.
+// Black Market: Hush Coins, a wandering Hooded Merchant, Ambush Contracts and Writs of Protection.
 //
-//  - Blood Coins are real items (gold nuggets with hidden NBT): they can be dropped, stolen and looted.
+//  - Hush Coins are real items (gold nuggets with hidden NBT): they can be dropped, stolen and looted.
 //  - The Hooded Merchant appears at one of the VENDOR_LOCATIONS for a while, then vanishes and turns up
 //    somewhere else. Right-click him for the shop (a clickable chat menu). Everyone can trade with him.
 //  - Ambush Contracts call an ambush (portal_ambush.js's mobs) on a chosen player when right-clicked.
@@ -31,13 +31,15 @@ const ALLOW_SAME_FACTION = true        // contracts on players of your own facti
 const MAX_CALL_RANGE = 0               // 0 = a contract works from any distance; otherwise the caller must be
                                        // within this many blocks of the target, in the same dimension
 
-// --- Blood Coins ---
+// --- Hush Coins ---
 const COIN_ITEM = 'minecraft:gold_nugget'
-const COIN_NAME = 'Blood Coin'
+const COIN_NAME = 'Hush Coin'
+const COIN_PLURAL = 'Hush Coins'
 const COIN_LORE = 'Accepted where questions are not.'
 const BLOCK_COIN_CRAFTING = true       // vanilla crafting recipes won't take coins as gold nuggets (see the docs)
-// Ambush mobs killed by a player drop this many coins (portal_ambush.js groups). Off by default.
-const AMBUSH_COIN_DROPS = { enabled: false, min: 0, max: 2 }
+// Every ambush mob (portal_ambush.js: Nether Ambushes, Return Inspections, Random Raids and contract mobs) killed
+// by a player has `chance` to drop `amount` coins. Vexes summoned by evokers drop nothing.
+const AMBUSH_COIN_DROPS = { enabled: true, chance: 0.25, amount: 1 }
 
 // What the merchant buys from players. EMPTY on purpose: Magical Crops, ProjectE and similar mods make most
 // items farmable, so anything sellable would be an endless coin source. Only add things nobody can farm.
@@ -214,6 +216,7 @@ function dateText(ms) {
   const two = n => (n < 10 ? '0' : '') + n
   return d.getUTCFullYear() + '-' + two(d.getUTCMonth() + 1) + '-' + two(d.getUTCDate()) + ' ' + two(d.getUTCHours()) + ':' + two(d.getUTCMinutes()) + ' UTC'
 }
+function coinText(n) { return n + ' ' + (n == 1 ? COIN_NAME : COIN_PLURAL) }
 function shortId() { return (Date.now() % 1679616).toString(36) + Math.floor(Math.random() * 1296).toString(36) }
 
 // Text components: JSON (the /tellraw format) read by Minecraft's own reader. fromJsonLenient, not fromJson:
@@ -388,6 +391,18 @@ function giveCoins(p, n) {
     p.give(coinStack(k))
     left -= k
   }
+}
+// Coins made before a rename keep their old name (and wouldn't stack with new ones): swap them for current coins.
+// Runs on login, when the shop opens and every SLOW_LOOP_SECONDS. Coins in chests change once someone carries them.
+function refreshCoins(p) {
+  const inv = p.inventory
+  invSlots(true).forEach(i => {
+    let s = inv.getItem(i)
+    if (!isCoin(s)) return
+    let name = ''
+    try { name = String(s.getHoverName().getString()) } catch (e) { return }
+    if (name != COIN_NAME) inv.setItem(i, coinStack(s.getCount()))
+  })
 }
 function findSlot(p, test, withOffhand) {
   const inv = p.inventory, slots = invSlots(withOffhand)
@@ -760,6 +775,7 @@ function nearVendor(p) {
 // Once every SLOW_LOOP_SECONDS: AFK samples, the vendor's comings and goings, pruning, saving.
 function slowTick(server) {
   sampleAfk(server)
+  onlinePlayers(server).forEach(p => { try { refreshCoins(p) } catch (e) { } })
   const D = db(), v = D.vendor, now = Date.now()
   if (!isEnabled()) {
     if (v.present) vendorLeave(server, false)
@@ -808,8 +824,9 @@ function startFastLoop(server) {
 
 function menuLine(p, parts) { try { p.tell(comp(parts)) } catch (e) { } }
 function openShop(p) {
+  try { refreshCoins(p) } catch (e) { }
   const coins = countCoins(p)
-  menuLine(p, voiceParts(VOICE_MARKET, 'The Hooded Merchant lowers his voice. You carry ' + coins + ' Blood Coin' + (coins == 1 ? '' : 's') + '.'))
+  menuLine(p, voiceParts(VOICE_MARKET, 'The Hooded Merchant lowers his voice. You carry ' + coinText(coins) + '.'))
   menuLine(p, [{ text: ' Contracts', color: 'dark_red', bold: true }])
   CONTRACTS.forEach(d => {
     menuLine(p, [{ text: '  Ambush Contract: ' + d.name, color: 'red', hoverEvent: { action: 'show_text', contents: d.desc + ' Price rises with the target\'s heat.' } },
@@ -833,7 +850,7 @@ function openShop(p) {
     { text: ' - ' + SUMMONS.price + ' coins ', color: 'gray' }, button('[BUY]', 'gold', '/blackmarket buy summons', 'Choose who gets it')])
   if (BOUNTIES()) {
     menuLine(p, [{ text: ' Bounties', color: 'dark_red', bold: true }])
-    menuLine(p, [{ text: '  Put Blood Coins on someone\'s head ', color: 'red', hoverEvent: { action: 'show_text', contents: 'Whoever kills them collects. Pots stack; your name stays secret.' } },
+    menuLine(p, [{ text: '  Put ' + COIN_PLURAL + ' on someone\'s head ', color: 'red', hoverEvent: { action: 'show_text', contents: 'Whoever kills them collects. Pots stack; your name stays secret.' } },
       button('[PLACE]', 'gold', '/bounty', 'Choose a player'), ' ', button('[WANTED]', 'gold', '/bounty list', 'The prices on heads')])
   }
   const custom = db().shop.custom, ids = Object.keys(custom)
@@ -898,14 +915,14 @@ function buyContract(server, p, tierId, targetName) {
     if (tp && factionOf(tp) == factionOf(p) && factionOf(p) && factionOf(p) != 'unregistered') return 'Contracts on your own people are not accepted.'
   }
   const price = priceFor(def, t.uuid)
-  if (countCoins(p) < price) return 'That costs ' + price + ' Blood Coins. You have ' + countCoins(p) + '.'
+  if (countCoins(p) < price) return 'That costs ' + price + ' ' + COIN_PLURAL + '. You have ' + countCoins(p) + '.'
   const made = createContract(def.id, t, p, price)   // the item first, so nothing is paid if it can't be made
   takeCoins(p, price)
   p.give(made.stack)
   return 'Ambush Contract (' + def.name + ') on ' + t.name + ' bought for ' + price + ' coins. Right-click it to call it in.'
 }
 function buyWrit(p) {
-  if (countCoins(p) < WRIT_PRICE) return 'A writ costs ' + WRIT_PRICE + ' Blood Coins. You have ' + countCoins(p) + '.'
+  if (countCoins(p) < WRIT_PRICE) return 'A writ costs ' + WRIT_PRICE + ' ' + COIN_PLURAL + '. You have ' + countCoins(p) + '.'
   const item = writStack()
   takeCoins(p, WRIT_PRICE)
   p.give(item)
@@ -914,7 +931,7 @@ function buyWrit(p) {
 function buyCustom(p, id) {
   const D = db(), e = D.shop.custom[id]
   if (!e) return 'That isn\'t for sale any more.'
-  if (countCoins(p) < e.price) return e.name + ' costs ' + e.price + ' Blood Coins. You have ' + countCoins(p) + '.'
+  if (countCoins(p) < e.price) return e.name + ' costs ' + e.price + ' ' + COIN_PLURAL + '. You have ' + countCoins(p) + '.'
   const item = e.snbt ? Item.of(e.item, e.count, e.snbt) : Item.of(e.item, e.count)
   takeCoins(p, e.price)
   p.give(item)
@@ -944,7 +961,7 @@ function sell(p, key) {
     left -= k
   })
   giveCoins(p, sales * s.coins)
-  return 'Sold ' + sales * s.per + ' for ' + sales * s.coins + ' Blood Coins.'
+  return 'Sold ' + sales * s.per + ' for ' + sales * s.coins + ' ' + COIN_PLURAL + '.'
 }
 
 
@@ -1001,7 +1018,7 @@ function buyTnt(p) {
   const held = p.mainHandItem
   const why = whyNotDisguisable(held)
   if (why) return why
-  if (countCoins(p) < DISGUISED_TNT.price) return 'Disguised TNT costs ' + DISGUISED_TNT.price + ' Blood Coins. You have ' + countCoins(p) + '.'
+  if (countCoins(p) < DISGUISED_TNT.price) return 'Disguised TNT costs ' + DISGUISED_TNT.price + ' ' + COIN_PLURAL + '. You have ' + countCoins(p) + '.'
   const item = disguisedStack(String(held.id))
   let name = String(held.id)
   try { name = String(held.getHoverName().getString()) } catch (e) { }
@@ -1012,24 +1029,24 @@ function buyTnt(p) {
 }
 function buyMimic(p) {
   return pay(p, MIMIC_CHEST.price, mimicStack()) ? 'Mimic Chest bought. It bites the first person who opens it (but not you).'
-    : 'A Mimic Chest costs ' + MIMIC_CHEST.price + ' Blood Coins. You have ' + countCoins(p) + '.'
+    : 'A Mimic Chest costs ' + MIMIC_CHEST.price + ' ' + COIN_PLURAL + '. You have ' + countCoins(p) + '.'
 }
 function buyItching(p) {
   return pay(p, ITCHING_POWDER.price, itchingStack(ITCHING_POWDER.count)) ? ITCHING_POWDER.count + ' Itching Powder bought.'
-    : 'Itching Powder costs ' + ITCHING_POWDER.price + ' Blood Coins. You have ' + countCoins(p) + '.'
+    : 'Itching Powder costs ' + ITCHING_POWDER.price + ' ' + COIN_PLURAL + '. You have ' + countCoins(p) + '.'
 }
 function buyButterfingers(p) {
   return pay(p, BUTTERFINGERS.price, butterfingersStack(BUTTERFINGERS.count)) ? BUTTERFINGERS.count + ' Butterfingers eggs bought.'
-    : 'Butterfingers costs ' + BUTTERFINGERS.price + ' Blood Coins. You have ' + countCoins(p) + '.'
+    : 'Butterfingers costs ' + BUTTERFINGERS.price + ' ' + COIN_PLURAL + '. You have ' + countCoins(p) + '.'
 }
 function buySnack(p) {
   return pay(p, CURSED_SNACK.price, snackStack()) ? 'One cursed cookie. It looks like any other cookie, so keep it apart from yours.'
-    : 'A Cursed Snack costs ' + CURSED_SNACK.price + ' Blood Coins. You have ' + countCoins(p) + '.'
+    : 'A Cursed Snack costs ' + CURSED_SNACK.price + ' ' + COIN_PLURAL + '. You have ' + countCoins(p) + '.'
 }
 function buySummons(server, p, targetName) {
   const target = playerByName(server, targetName)
   if (!target) return 'Summons are only delivered to people who are around.'
-  if (!pay(p, SUMMONS.price, null)) return 'An Anonymous Summons costs ' + SUMMONS.price + ' Blood Coins. You have ' + countCoins(p) + '.'
+  if (!pay(p, SUMMONS.price, null)) return 'An Anonymous Summons costs ' + SUMMONS.price + ' ' + COIN_PLURAL + '. You have ' + countCoins(p) + '.'
   say(target, VOICE_MINISTRY, SUMMONS.messages[Math.floor(Math.random() * SUMMONS.messages.length)])
   sound(server, target, SUMMONS.sound, 1)
   console.info('[BlackMarket] Anonymous Summons from ' + nameOf(p) + ' to ' + nameOf(target))
@@ -1184,7 +1201,7 @@ function customDisplay(e) {
   try {
     let list = st.getOrCreateTagElement('display').getList('Lore', 8)
     let had = list.size()
-    list.add(StringTag.valueOf(JSON.stringify({ text: e.price + ' Blood Coins' + (e.stock > 0 ? ' (' + e.stock + ' left)' : ''), color: 'gold', italic: false })))
+    list.add(StringTag.valueOf(JSON.stringify({ text: e.price + ' ' + COIN_PLURAL + (e.stock > 0 ? ' (' + e.stock + ' left)' : ''), color: 'gold', italic: false })))
     if (!had) st.getOrCreateTagElement('display').put('Lore', list)
   } catch (err) { }
   return st
@@ -1211,6 +1228,7 @@ function guiAct(p, fn, view) {
 
 // Opens the shop: the window if SHOP_MENU is 'gui' and it works, otherwise the chat menu.
 function openShopFor(p) {
+  try { refreshCoins(p) } catch (e) { }
   if (SHOP_MENU == 'gui') {
     try { showGui(p, { kind: 'main' }); return } catch (e) { console.warn('[BlackMarket] Shop window failed, using the chat menu: ' + e) }
   }
@@ -1246,36 +1264,36 @@ function fillMain(gui, p) {
   const server = Utils.server, coins = countCoins(p)
   guiLabel(gui, 0, 'minecraft:red_stained_glass_pane', 'Contracts', 'red', ['Hired hands, called in with a right-click.'])
   CONTRACTS.forEach((d, i) => guiButton(gui, 2 + i, 0, guiItem('minecraft:skull_banner_pattern', 'Ambush Contract: ' + d.name, 'red',
-    [d.desc, { text: 'From ' + d.price + ' Blood Coins (more for a target with heat)', color: 'gold' }, { text: 'Click to choose the target', color: 'dark_gray', italic: true }], { glint: true }),
+    [d.desc, { text: 'From ' + d.price + ' ' + COIN_PLURAL + ' (more for a target with heat)', color: 'gold' }, { text: 'Click to choose the target', color: 'dark_gray', italic: true }], { glint: true }),
     () => nav(p, { kind: 'contract', tier: d.id, page: 0 })))
   if (BOUNTIES()) {
-    guiButton(gui, 6, 0, guiItem('minecraft:wither_skeleton_skull', 'Place a Bounty', 'dark_red', ['Blood Coins on someone\'s head.', 'Whoever kills them collects. Pots stack,', 'and your name stays secret.',
+    guiButton(gui, 6, 0, guiItem('minecraft:wither_skeleton_skull', 'Place a Bounty', 'dark_red', [COIN_PLURAL + ' on someone\'s head.', 'Whoever kills them collects. Pots stack,', 'and your name stays secret.',
       { text: 'Any amount you carry', color: 'gold' }, { text: 'Click to choose the player', color: 'dark_gray', italic: true }]), () => nav(p, { kind: 'bounty', page: 0 }))
     guiButton(gui, 7, 0, guiItem('minecraft:paper', 'Wanted', 'gold', ['The prices on heads right now.']), () => nav(p, { kind: 'wanted', page: 0 }))
   }
   guiLabel(gui, 1, 'minecraft:white_stained_glass_pane', 'Protection', 'white')
   guiButton(gui, 2, 1, guiItem('minecraft:paper', 'Writ of Protection', 'gold', ['Keep it on you: the next contract called', 'on you is refused, and the writ is used up.',
-    { text: WRIT_PRICE + ' Blood Coins', color: 'gold' }], { glint: true }), () => guiAct(p, () => buyWrit(p)))
+    { text: WRIT_PRICE + ' ' + COIN_PLURAL, color: 'gold' }], { glint: true }), () => guiAct(p, () => buyWrit(p)))
   guiLabel(gui, 2, 'minecraft:orange_stained_glass_pane', 'Traps', 'gold')
   guiButton(gui, 2, 2, guiItem('minecraft:tnt', 'Disguised TNT', 'dark_red', ['Turns ONE of the blocks in your main hand', 'into TNT that looks exactly like it.',
-    'Whoever steps on it first sets it off, you included.', { text: DISGUISED_TNT.price + ' Blood Coins per block', color: 'gold' },
+    'Whoever steps on it first sets it off, you included.', { text: DISGUISED_TNT.price + ' ' + COIN_PLURAL + ' per block', color: 'gold' },
     { text: 'Hold the block, then click', color: 'dark_gray', italic: true }]), () => guiAct(p, () => buyTnt(p)))
   guiButton(gui, 3, 2, guiItem('minecraft:chest', 'Mimic Chest', 'dark_purple', ['A chest like any other.', 'The first person to open it (not you) gets bitten.',
-    { text: MIMIC_CHEST.price + ' Blood Coins', color: 'gold' }]), () => guiAct(p, () => buyMimic(p)))
+    { text: MIMIC_CHEST.price + ' ' + COIN_PLURAL, color: 'gold' }]), () => guiAct(p, () => buyMimic(p)))
   guiLabel(gui, 3, 'minecraft:purple_stained_glass_pane', 'Pranks', 'light_purple')
   guiButton(gui, 2, 3, guiItem('minecraft:snowball', 'Itching Powder', 'light_purple', [ITCHING_POWDER.count + ' snowballs. Whoever gets hit itches:', 'Nausea, Slowness and Glowing for ' + ITCHING_POWDER.seconds + ' s.',
-    { text: ITCHING_POWDER.price + ' Blood Coins', color: 'gold' }], { count: ITCHING_POWDER.count }), () => guiAct(p, () => buyItching(p)))
+    { text: ITCHING_POWDER.price + ' ' + COIN_PLURAL, color: 'gold' }], { count: ITCHING_POWDER.count }), () => guiAct(p, () => buyItching(p)))
   guiButton(gui, 3, 3, guiItem(CURSED_SNACK.item, 'Cursed Snack', 'light_purple', ['Looks like a normal cookie. Eating it is', 'a short flight and a long hunger.',
-    { text: CURSED_SNACK.price + ' Blood Coins', color: 'gold' }]), () => guiAct(p, () => buySnack(p)))
+    { text: CURSED_SNACK.price + ' ' + COIN_PLURAL, color: 'gold' }]), () => guiAct(p, () => buySnack(p)))
   guiButton(gui, 5, 3, guiItem('minecraft:egg', 'Butterfingers', 'light_purple', [BUTTERFINGERS.count + ' eggs. Whoever gets hit drops', 'whatever is in their hand.',
-    { text: BUTTERFINGERS.price + ' Blood Coins', color: 'gold' }], { count: BUTTERFINGERS.count }), () => guiAct(p, () => buyButterfingers(p)))
+    { text: BUTTERFINGERS.price + ' ' + COIN_PLURAL, color: 'gold' }], { count: BUTTERFINGERS.count }), () => guiAct(p, () => buyButterfingers(p)))
   guiButton(gui, 4, 3, guiItem('minecraft:bell', 'Anonymous Summons', 'gold', ['A very official [MINISTRY] notice,', 'sent to the player of your choice.',
-    { text: SUMMONS.price + ' Blood Coins', color: 'gold' }, { text: 'Click to choose who gets it', color: 'dark_gray', italic: true }]), () => nav(p, { kind: 'summons', page: 0 }))
+    { text: SUMMONS.price + ' ' + COIN_PLURAL, color: 'gold' }, { text: 'Click to choose who gets it', color: 'dark_gray', italic: true }]), () => nav(p, { kind: 'summons', page: 0 }))
   const custom = db().shop.custom, ids = Object.keys(custom)
   guiLabel(gui, 4, 'minecraft:black_stained_glass_pane', 'Under the counter', 'dark_gray', [ids.length ? 'Whatever fell off the back of a cart.' : 'Nothing today.'])
   ids.slice(0, 6).forEach((id, i) => guiButton(gui, 2 + i, 4, customDisplay(custom[id]), () => guiAct(p, () => buyCustom(p, id))))
   if (ids.length > 6) guiButton(gui, 8, 4, guiItem('minecraft:arrow', 'More…', 'white', [(ids.length - 6) + ' more']), () => nav(p, { kind: 'custom', page: 0 }))
-  guiButton(gui, 0, 5, guiItem(COIN_ITEM, 'You carry ' + coins + ' Blood Coin' + (coins == 1 ? '' : 's'), 'dark_red', ['Main inventory and hotbar.'], { glint: true, count: Math.max(1, Math.min(64, coins)) }), () => { })
+  guiButton(gui, 0, 5, guiItem(COIN_ITEM, 'You carry ' + coinText(coins), 'dark_red', ['Main inventory and hotbar.'], { glint: true, count: Math.max(1, Math.min(64, coins)) }), () => { })
   if (SELL_LIST.length) guiButton(gui, 4, 5, guiItem('minecraft:hopper', 'Sell to him', 'green', ['Opens his buying list in chat.']), () => { closeGui(p); openShop(p) })
   guiButton(gui, 8, 5, guiItem('minecraft:barrier', 'Close', 'red', []), () => closeGui(p))
 }
@@ -1298,8 +1316,8 @@ function fillTargets(gui, p, view) {
   const per = 45
   others.slice(view.page * per, view.page * per + per).forEach((o, i) => {
     let n = nameOf(o)
-    let lore = def ? [{ text: priceFor(def, uuidOf(o)) + ' Blood Coins' + (heatOf(uuidOf(o)) ? ' (heat ' + heatOf(uuidOf(o)) + ')' : ''), color: 'gold' }]
-      : [{ text: SUMMONS.price + ' Blood Coins', color: 'gold' }]
+    let lore = def ? [{ text: priceFor(def, uuidOf(o)) + ' ' + COIN_PLURAL + (heatOf(uuidOf(o)) ? ' (heat ' + heatOf(uuidOf(o)) + ')' : ''), color: 'gold' }]
+      : [{ text: SUMMONS.price + ' ' + COIN_PLURAL, color: 'gold' }]
     guiButton(gui, i % 9, Math.floor(i / 9), guiItem('minecraft:player_head', n, 'red', lore, { extra: 'SkullOwner:' + snbtString(n) }),
       () => guiAct(p, () => def ? buyContract(server, p, def.id, n) : buySummons(server, p, n)))
   })
@@ -1316,7 +1334,7 @@ function fillBountyTargets(gui, p, view) {
   const all = B.targets(p), per = 45
   all.slice(view.page * per, view.page * per + per).forEach((t, i) => {
     let pot = B.potOf(t.uuid), mine = B.myPart(p, t.uuid)
-    let lore = [{ text: pot ? pot + ' Blood Coins on their head' : 'No price on their head yet', color: pot ? 'gold' : 'gray' }]
+    let lore = [{ text: pot ? pot + ' ' + COIN_PLURAL + ' on their head' : 'No price on their head yet', color: pot ? 'gold' : 'gray' }]
     if (!t.online) lore.push({ text: '(offline: the pot waits for them)', color: 'dark_gray', italic: true })
     if (mine) lore.push({ text: 'Your bounty: ' + mine + ' coins. Click to cancel it.', color: 'red' })
     else lore.push({ text: 'Click to choose how much', color: 'dark_gray', italic: true })
@@ -1330,24 +1348,24 @@ function fillBountyAmount(gui, p, view) {
   const B = BOUNTIES()
   if (!B) return bountyBack(gui, p, { kind: 'main' })
   const coins = countCoins(p), pot = B.potOf(view.uuid)
-  guiButton(gui, 4, 0, headItem(view.name, 'red', [{ text: pot ? pot + ' Blood Coins on their head' : 'No price on their head yet', color: 'gold' }]), () => { })
+  guiButton(gui, 4, 0, headItem(view.name, 'red', [{ text: pot ? pot + ' ' + COIN_PLURAL + ' on their head' : 'No price on their head yet', color: 'gold' }]), () => { })
   const amounts = B.presetsFor(p)
   amounts.forEach((n, i) => {
     let all = n == coins && i == amounts.length - 1
-    guiButton(gui, 1 + i, 2, guiItem(COIN_ITEM, (all ? 'All ' : '') + n + ' Blood Coin' + (n == 1 ? '' : 's'), 'gold',
+    guiButton(gui, 1 + i, 2, guiItem(COIN_ITEM, (all ? 'All ' : '') + coinText(n), 'gold',
       ['Put ' + n + ' on ' + view.name + '\'s head.', { text: 'Pot after: ' + (pot + n), color: 'gold' }], { glint: true, count: Math.max(1, Math.min(64, n)) }),
       () => guiAct(p, () => B.place(p, view.name, n).text))
   })
-  if (!amounts.length) guiButton(gui, 4, 2, guiItem('minecraft:structure_void', 'You carry no Blood Coins', 'gray', []), () => { })
+  if (!amounts.length) guiButton(gui, 4, 2, guiItem('minecraft:structure_void', 'You carry no ' + COIN_PLURAL, 'gray', []), () => { })
   guiButton(gui, 4, 4, guiItem('minecraft:name_tag', 'Another amount?', 'white', ['Type /bounty ' + view.name + ' <amount>']), () => { })
-  guiButton(gui, 0, 5, guiItem(COIN_ITEM, 'You carry ' + coins + ' Blood Coin' + (coins == 1 ? '' : 's'), 'dark_red', [], { glint: true, count: Math.max(1, Math.min(64, coins)) }), () => { })
+  guiButton(gui, 0, 5, guiItem(COIN_ITEM, 'You carry ' + coinText(coins), 'dark_red', [], { glint: true, count: Math.max(1, Math.min(64, coins)) }), () => { })
   guiButton(gui, 8, 5, guiItem('minecraft:arrow', 'Back', 'white', []), () => nav(p, { kind: 'bounty', page: 0 }))
 }
 function fillBountyCancel(gui, p, view) {
   const B = BOUNTIES()
   if (!B) return bountyBack(gui, p, { kind: 'main' })
   const mine = B.myPart(p, view.uuid)
-  guiButton(gui, 4, 0, headItem(view.name, 'red', [{ text: B.potOf(view.uuid) + ' Blood Coins on their head', color: 'gold' }]), () => { })
+  guiButton(gui, 4, 0, headItem(view.name, 'red', [{ text: B.potOf(view.uuid) + ' ' + COIN_PLURAL + ' on their head', color: 'gold' }]), () => { })
   guiButton(gui, 3, 2, guiItem('minecraft:red_wool', 'Cancel my bounty', 'red', ['Withdraw your ' + mine + ' coins from the pot.', 'You get them back; nobody is told.']),
     () => guiAct(p, () => B.cancel(p, view.name).text, { kind: 'bounty', page: 0 }))
   guiButton(gui, 5, 2, guiItem('minecraft:lime_wool', 'Keep it', 'green', ['Leave the bounty where it is.']), () => nav(p, { kind: 'bounty', page: 0 }))
@@ -1356,7 +1374,7 @@ function fillWanted(gui, p, view) {
   const B = BOUNTIES()
   const all = B ? B.wanted() : [], per = 45
   all.slice(view.page * per, view.page * per + per).forEach((w, i) => guiButton(gui, i % 9, Math.floor(i / 9), headItem(w.name, 'red',
-    [{ text: w.total + ' Blood Coins on their head', color: 'gold' }].concat(w.online ? [] : [{ text: '(offline)', color: 'dark_gray', italic: true }])), () => { }))
+    [{ text: w.total + ' ' + COIN_PLURAL + ' on their head', color: 'gold' }].concat(w.online ? [] : [{ text: '(offline)', color: 'dark_gray', italic: true }])), () => { }))
   if (!all.length) guiButton(gui, 4, 2, guiItem('minecraft:structure_void', 'Nobody has a price on their head', 'gray', []), () => { })
   pager(gui, p, view, all.length, per)
 }
@@ -1379,6 +1397,9 @@ global.Economy = {
   countCoins: player => countCoins(player),
   takeCoins: (player, amount) => takeCoins(player, amount),
   isCoin: stack => isCoin(stack),
+  coinName: COIN_NAME,
+  coinPlural: COIN_PLURAL,
+  coinText: n => coinText(n),                                 // "1 Hush Coin", "5 Hush Coins"
   // fn(buyerUuid, targetUuid, contractId), called when a contract's target is killed by its mobs.
   onContractFulfilled: fn => { if (typeof fn == 'function') listeners.push(fn) },
   _groupEnded: (id, reason) => groupEnded(id, reason),
@@ -1531,7 +1552,7 @@ PlayerEvents.chestOpened(event => {
   mimicBite(Utils.server, p, key, b)
 })
 
-// A contract target killed by their contract's mobs = fulfilled. Ambush mobs killed by players may drop coins.
+// A contract target killed by their contract's mobs = fulfilled. Ambush mobs killed by players may drop a coin.
 EntityEvents.death(event => {
   const e = event.entity
   let attacker = null
@@ -1548,8 +1569,8 @@ EntityEvents.death(event => {
   if (!AMBUSH_COIN_DROPS.enabled || !hasTag(e, 'portal_ambush') || hasTag(e, 'portal_ambush_summoned')) return
   if (global.portalAmbushState && global.portalAmbushState.allowRemoval) return
   if (!attacker || !attacker.isPlayer()) return
-  const n = randInt(AMBUSH_COIN_DROPS.min, AMBUSH_COIN_DROPS.max)
-  if (n > 0) { try { e.block.popItem(coinStack(n)) } catch (err) { } }
+  if (Math.random() >= AMBUSH_COIN_DROPS.chance) return
+  try { e.block.popItem(coinStack(AMBUSH_COIN_DROPS.amount)) } catch (err) { }
 })
 
 // Vendors: catch ours as it's summoned; keep the current one if its chunk reloads; remove any other.
@@ -1565,6 +1586,7 @@ EntityEvents.spawned(event => {
 
 PlayerEvents.loggedIn(event => {
   const p = event.player, u = uuidOf(p)
+  try { refreshCoins(p) } catch (e) { }
   const n = db().notices[u]
   if (n && n.length) {
     n.forEach(x => say(p, VOICE_CALLER, x.text))
@@ -1795,7 +1817,7 @@ ServerEvents.commandRegistry(event => {
     if (!stack || stack.isEmpty()) return reply(ctx, 'Hold the item to sell in your main hand.', true)
     if (price < 1) return reply(ctx, 'The price must be at least 1.', true)
     if (stock < 0) return reply(ctx, 'The stock can\'t be negative (0 = unlimited).', true)
-    if (isCoin(stack) || contractIdOf(stack) != null || isWrit(stack)) return reply(ctx, 'Blood Coins, contracts and writs can\'t be sold this way (copies would be fake or void).', true)
+    if (isCoin(stack) || contractIdOf(stack) != null || isWrit(stack)) return reply(ctx, COIN_PLURAL + ', contracts and writs can\'t be sold this way (copies would be fake or void).', true)
     const id = String(stack.id), nbt = stack.nbt
     let name = id
     try { name = String(stack.getHoverName().getString()) } catch (e) { }
@@ -1819,17 +1841,17 @@ ServerEvents.commandRegistry(event => {
       if (n < 1) return reply(ctx, 'The amount must be at least 1.', true)
       giveCoins(p, n)
       console.info('[BlackMarket] /coins give ' + nameOf(p) + ' ' + n)
-      return reply(ctx, 'Gave ' + nameOf(p) + ' ' + n + ' Blood Coins.')
+      return reply(ctx, 'Gave ' + nameOf(p) + ' ' + n + ' ' + COIN_PLURAL + '.')
     })))))
     .then(Commands.literal('take').then(Commands.argument('player', Arguments.PLAYER.create(event)).then(int('amount').executes(safe(ctx => {
       const p = Arguments.PLAYER.getResult(ctx, 'player'), n = num(ctx, 'amount')
       const have = countCoins(p)
       takeCoins(p, Math.min(n, have))
-      return reply(ctx, 'Took ' + Math.min(n, have) + ' Blood Coins from ' + nameOf(p) + (have < n ? ' (all they had).' : '.'))
+      return reply(ctx, 'Took ' + Math.min(n, have) + ' ' + COIN_PLURAL + ' from ' + nameOf(p) + (have < n ? ' (all they had).' : '.'))
     })))))
     .then(Commands.literal('check').then(Commands.argument('player', Arguments.PLAYER.create(event)).executes(safe(ctx => {
       const p = Arguments.PLAYER.getResult(ctx, 'player')
-      return reply(ctx, nameOf(p) + ' carries ' + countCoins(p) + ' Blood Coins (main inventory and hotbar).')
+      return reply(ctx, nameOf(p) + ' carries ' + countCoins(p) + ' ' + COIN_PLURAL + ' (main inventory and hotbar).')
     })))))
 })
 

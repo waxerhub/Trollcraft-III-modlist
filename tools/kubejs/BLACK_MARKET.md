@@ -1,7 +1,7 @@
 # Black Market (add-on)
 
 A black market economy:
-- Players earn **Blood Coins**, which are real items.
+- Players earn **Hush Coins**, which are real items.
 - They spend them at a wandering **Hooded Merchant**.
 - They can buy **Ambush Contracts** that send hired killers after a chosen player.
 
@@ -20,16 +20,17 @@ Players don't need a modpack update: everything is a vanilla item with custom NB
 
 Copy them and run `/reload`; no restart is needed. With no vendor spots set up the merchant never appears, so add one first (see [The merchant](#the-merchant)).
 
-## Blood Coins
+## Hush Coins
 
-- A Blood Coin is a **gold nugget** with hidden NBT (`{trollcraft:{coin:1b}}`), a dark red "Blood Coin" name, the lore "Accepted where questions are not." and the **enchantment glint**. The enchantment, Unbreaking I, is hidden from the tooltip; it only makes the coin shimmer.
+- A Hush Coin is a **gold nugget** with hidden NBT (`{trollcraft:{coin:1b}}`), a dark red "Hush Coin" name, the lore "Accepted where questions are not." and the **enchantment glint**. The enchantment, Unbreaking I, is hidden from the tooltip; it only makes the coin shimmer.
+- **Renamed from "Blood Coin"** (so the money doesn't lean toward either faction). Old coins still count as money. Any old coins a player carries (inventory, hotbar, offhand) are swapped for Hush Coins of the same count: on login, when they open the shop, and every 30 seconds. They then stack with new ones. Old coins in chests change the next time someone carries them.
 - **Only items with that NBT count.** An anvil can't add NBT, so renaming a normal nugget doesn't make a coin. A renamed nugget has no glint either, so a real coin is easy to tell apart.
 - Coins stack normally, and can be dropped, stolen, looted and kept in chests. There is no command-only balance.
 - **Payment** comes from the main inventory and hotbar only, never from shulker boxes, ender chests or bags.
 - **Earning coins:**
   - `/coins give <player> <amount>` (op).
   - **Other scripts**: `global.Economy.giveCoins(player, amount, reason)`. Anything that doesn't fit drops at the player's feet.
-  - **Ambush mob drops** (`AMBUSH_COIN_DROPS`, off by default): portal-ambush mobs killed by a player drop 0–2 coins.
+  - **Ambush mob drops** (`AMBUSH_COIN_DROPS`): every ambush mob a player kills has a **25% chance to drop 1 coin**. That's Nether Ambush, Return Inspection, Random Raid and Ambush Contract mobs. Vexes summoned by evokers, Pig Escort mobs and mobs killed by anything other than a player drop nothing. A contract earns back about half a coin on average, far below its price, so contracts can't be used to farm coins.
 - **Things to know:**
   - **Vanilla piglins pick up gold nuggets**, so coins dropped near them can be lost (ambush piglins can't pick anything up).
   - **Crafting:** with `BLOCK_COIN_CRAFTING = true` (the default), vanilla crafting-table recipes only take plain gold nuggets, so coins can't be crafted into gold ingots or golden carrots by accident. Recipes that ask for the gold nugget *tag*, and modded machines, still accept coins.
@@ -75,7 +76,7 @@ Copy them and run `/reload`; no restart is needed. With no vendor spots set up t
 | Butterfingers | 5 for 3 | Eggs; whoever is hit drops what they're holding |
 | Cursed Snack | 3 | A normal-looking cookie that isn't |
 | Anonymous Summons | 5 | A fake [MINISTRY] notice for a player of your choice |
-| Bounty | any amount | Blood Coins on a player's head; whoever kills them collects ([BOUNTIES.md](BOUNTIES.md)) |
+| Bounty | any amount | Hush Coins on a player's head; whoever kills them collects ([BOUNTIES.md](BOUNTIES.md)) |
 | Custom stock | set by ops | Anything an op adds with `/bm hand add` |
 
 ## The shop window
@@ -91,7 +92,7 @@ Right-clicking the merchant opens a chest-style window. It's a vanilla chest scr
 | Traps | Disguised TNT, Mimic Chest |
 | Pranks | Itching Powder, Cursed Snack, Anonymous Summons (clicking it opens the player heads), Butterfingers |
 | Under the counter | Custom stock: the real item with its own tooltip and the price added at the end. More than six entries: an arrow opens the full list. |
-| Bottom | Your Blood Coins, and Close. "Sell to him" appears only if `SELL_LIST` has entries. |
+| Bottom | Your Hush Coins, and Close. "Sell to him" appears only if `SELL_LIST` has entries. |
 
 - **Range:** every click is checked like the commands. Away from the merchant you get "The merchant is not here." and the window closes.
 - **Fallback:** `SHOP_MENU = 'chat'` makes right-click open the chat menu instead. If the window can't be opened, the chat menu is used automatically and the log says why.
@@ -194,7 +195,7 @@ Ops can sell **any item exactly as it is**, NBT included, for example an item th
 - **`/bm hand add <price> [stock]`:** sells the item in your main hand, with its whole stack (count and full NBT), for `<price>` coins.
   - The stock (optional) is how many can be sold before it disappears; the default is unlimited.
   - The black market only stores and hands out the item. It never runs anything from its NBT.
-  - **Refused:** an empty hand, a price below 1, and Blood Coins, contracts and writs.
+  - **Refused:** an empty hand, a price below 1, and Hush Coins, contracts and writs.
   - **Allowed with a warning:** shulker boxes and bundles, whose contents are sold with them.
 - **`/bm hand list`:** the entries, each with a [REMOVE] button. `/bm hand remove <id>` and `/bm hand price <id> <price>` change them.
 - **In the shop:** custom stock has its own section. Hovering shows the item's real tooltip.
@@ -242,7 +243,8 @@ Logging out, `/reload` and restarts never reset a cooldown or reuse a contract i
 | `ALLOW_SAME_FACTION` | true | Contracts on your own faction |
 | `MAX_CALL_RANGE` | 0 | 0 = any distance; otherwise the caller must be this close to the target, in the same dimension |
 | `BLOCK_COIN_CRAFTING` | true | Coins can't be used in vanilla crafting recipes |
-| `AMBUSH_COIN_DROPS` | off, 0–2 | Coins from portal-ambush mobs killed by players |
+| `COIN_NAME` / `COIN_PLURAL` | Hush Coin / Hush Coins | The currency's name, used everywhere (bounties.js too). Coins already in players' inventories are renamed automatically. |
+| `AMBUSH_COIN_DROPS` | on, 25%, 1 coin | The chance an ambush mob killed by a player drops a coin, and how many |
 | `SELL_LIST` | none | What the merchant buys from players (keep it to things nobody can farm) |
 | `VENDOR_LOCATIONS` | none | Spots in the script (or use `/bm vendor addspot`) |
 | `VENDOR_STAY_MINUTES` / `VENDOR_GONE_MINUTES` | 90 / 30 | His rotation |
@@ -278,7 +280,7 @@ Logging out, `/reload` and restarts never reset a cooldown or reuse a contract i
    - hit him and nothing happens;
    - right-click him and the shop opens, with no trade screen.
 2. **Range:** walk 10 blocks away and click a [BUY] button, or type `/bm buy writ`: "The merchant is not here." Go back and it works.
-3. **Counterfeits:** rename a plain gold nugget "Blood Coin" on an anvil and try to pay with only that. It's refused.
+3. **Counterfeits:** rename a plain gold nugget "Hush Coin" on an anvil and try to pay with only that. It's refused.
 4. **Buying a contract:** [BUY] on Squad lists B with a price. Click B: 20 coins are taken and a contract appears. Hover over it: the buyer isn't shown anywhere.
 5. **Using it:**
    - A right-clicks, once in the air and once on a block. Nothing is placed, and each click counts once.
@@ -332,7 +334,7 @@ Logging out, `/reload` and restarts never reset a cooldown or reuse a contract i
 
 ## What couldn't be verified for KubeJS 6 on 1.20.1
 
-A mock-server test passed all 188 checks (with bounties.js loaded): coins, the merchant, the shop window and the chat menu, range, contracts and every refusal, the writ, dupes and forgeries, heat, outcomes, `/reload`, custom stock, selling (refused by default; working when SELL_LIST has entries), the rotation, Disguised TNT (sprinting across, jumping over, owner, protected areas, replaced blocks, breaking, the limit), the Mimic Chest, the four pranks and bounties. These parts depend on the real game:
+A mock-server test passed all 202 checks (with bounties.js loaded): coins, the merchant, the shop window and the chat menu, range, contracts and every refusal, the writ, dupes and forgeries, heat, outcomes, `/reload`, custom stock, selling (refused by default; working when SELL_LIST has entries), the rotation, Disguised TNT (sprinting across, jumping over, owner, protected areas, replaced blocks, breaking, the limit), the Mimic Chest, the four pranks, bounties, the coin rename (old coins swapped) and the ambush coin drops. These parts depend on the real game:
 
 - **The shop window** (`player.openChestGUI`, in your KubeJS 2001.6.5):
   - that every way of taking items out of it is blocked (KubeJS's menu handles the clicks);
@@ -346,6 +348,7 @@ A mock-server test passed all 188 checks (with bounties.js loaded): coins, the m
 - **The Mimic Chest:** `PlayerEvents.chestOpened` giving the chest's block. With a double chest, only the half the mimic was placed as counts.
 - **Itching Powder:** a thrown snowball keeping its NBT (`getItem()` on the projectile), and the hurt event firing for a snowball's zero damage.
 - **Butterfingers:** a thrown egg keeping its NBT (`getItem()` on the egg), the hurt event firing for an egg's zero damage, and `player.drop(stack, false)` throwing the item (if it returns nothing, the item is popped at the player's feet instead).
+- **Renaming old coins:** reading a coin's name with `getHoverName()` and swapping the stack with `inventory.setItem`. If either fails, old coins simply keep their old name (they're still money).
 - **The Cursed Snack:** `ItemEvents.foodEaten`'s `item` still carrying the NBT.
 - **Protected areas:** read from `protected_areas.js`'s `PROTECTED_AREAS` through KubeJS's shared script scope. If that isn't visible, only spawn, the Pig Escort portal and portal_ambush safe zones count.
 

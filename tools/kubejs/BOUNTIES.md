@@ -1,11 +1,11 @@
 # Bounties (add-on)
 
-Players put **Blood Coins** on another player's head. Whoever kills that player collects the whole pot.
+Players put **Hush Coins** on another player's head. Whoever kills that player collects the whole pot.
 
 - **Pots stack:** everyone who places a bounty on the same player adds to one pot.
 - **One part per placer:** you can have only one bounty on a given player until it's collected (or you cancel yours).
 - **Any amount** from 1 up to the coins you carry. The pot is exactly what was placed; nothing is added.
-- **Public pots, secret placers:** everyone sees "[WANTED] Bob - 37 Blood Coins on their head". Players never see who paid; ops can.
+- **Public pots, secret placers:** everyone sees "[WANTED] Bob - 37 Hush Coins on their head". Players never see who paid; ops can.
 - **Any player who kills the target collects,** placers included. Deaths from mobs, falls and so on pay nothing.
 - **Never expires.** Offline players can be targeted; the pot waits until someone kills them.
 - **Cancelling:** you can withdraw your own part at any time before it's collected and get your coins back. Nobody is told; the pot just shrinks.
@@ -16,7 +16,7 @@ Players put **Blood Coins** on another player's head. Whoever kills that player 
 | File | Where it goes | What it does |
 |---|---|---|
 | `server_scripts/economy/bounties.js` | `kubejs/server_scripts/economy/` | Bounties. All settings are at the top. |
-| `server_scripts/economy/black_market.js` | `kubejs/server_scripts/economy/` | Needed: Blood Coins, the Hooded Merchant, and the shop window's bounty pages. |
+| `server_scripts/economy/black_market.js` | `kubejs/server_scripts/economy/` | Needed: Hush Coins, the Hooded Merchant, and the shop window's bounty pages. |
 | `server_scripts/factions/factions_core.js` | `kubejs/server_scripts/factions/` | Used for the rival bonus. Without it there's no bonus; everything else works. |
 | `server_scripts/factions/portal_ambush.js` | `kubejs/server_scripts/factions/` | Used to skip Pig Escort deaths. |
 
@@ -33,7 +33,7 @@ Copy them and run `/reload`. Bounties are their own script so they keep working 
   - a player the server has never seen;
   - less than 1, or more coins than you carry (main inventory and hotbar);
   - a player you already have a bounty on: "It stays until someone collects it (or you cancel it)."
-- **When it's placed:** the coins are taken, and everyone online is told "[WANTED] *Bob* - *N* Blood Coins on their head." with the new pot. It's sent to each player, so it doesn't reach Discord. The placer is never named.
+- **When it's placed:** the coins are taken, and everyone online is told "[WANTED] *Bob* - *N* Hush Coins on their head." with the new pot. It's sent to each player, so it doesn't reach Discord. The placer is never named.
 
 ## Collecting
 
@@ -105,7 +105,7 @@ It survives restarts and `/reload`.
 ## Test plan (three accounts in survival: A and C place, B is the target)
 
 1. Give A and C some coins (`/coins give`). Go to the merchant.
-2. A: window → Place a Bounty → B's head → 5. Everyone sees "[WANTED] B - 5 Blood Coins on their head"; A isn't named.
+2. A: window → Place a Bounty → B's head → 5. Everyone sees "[WANTED] B - 5 Hush Coins on their head"; A isn't named.
 3. C: `/bounty B 10`. The pot is 15.
 4. A: try 5 more on B: refused, no coins taken. Try more than A carries: refused.
 5. A: walk away from the merchant and try `/bounty cancel B`: refused. Go back, cancel from the window: 5 coins back, pot 10, nobody told. Place again.
@@ -119,7 +119,7 @@ It survives restarts and `/reload`.
 
 ## What couldn't be verified for KubeJS 6 on 1.20.1
 
-The mock-server test (shared with the black market, 188 checks) covers placing, stacking, every refusal, cancelling from chat and the window, the Wanted list, collecting, the deaths that don't pay, the Pig Escort, the rival bonus and each of its limits, offline targets, the op clear with offline refunds, `/reload`, the black market being closed, and `/bounty toggle`. These parts depend on the real game:
+The mock-server test (shared with the black market, 202 checks) covers placing, stacking, every refusal, cancelling from chat and the window, the Wanted list, collecting, the deaths that don't pay, the Pig Escort, the rival bonus and each of its limits, offline targets, the op clear with offline refunds, `/reload`, the black market being closed, and `/bounty toggle`. These parts depend on the real game:
 - `event.source.actual` being the killing player on a player's death (also used by the black market's contracts). Arrows and tridents count as the player who shot them.
 - Offline names through `server.getProfileCache().get(name)`, and player heads showing skins for offline players (`SkullOwner` by name).
 - Brigadier choosing `/bounty list`, `cancel`, `clear`, `toggle` and `log` over a player with that name (a player literally called "list" can still be targeted from the window).

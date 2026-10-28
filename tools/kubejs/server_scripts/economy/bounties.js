@@ -1,9 +1,9 @@
-// Bounties: Blood Coins on a player's head. Whoever kills them collects the lot.
+// Bounties: Hush Coins on a player's head. Whoever kills them collects the lot.
 //
 //  - Bounties stack: every player who places one adds to the same pot. Each player can have only ONE part
 //    of a player's bounty at a time; once it's collected (or they cancel their part), they can place again.
 //  - Any amount from 1 up to the coins you carry. The pot is exactly what was placed.
-//  - Pots are public ("[WANTED] Bob - 37 Blood Coins on their head"); who paid is never shown to players
+//  - Pots are public ("[WANTED] Bob - 37 Hush Coins on their head"); who paid is never shown to players
 //    (ops can see it with /bounty list).
 //  - Collected when a PLAYER kills the target (placers included). Mobs, falls and Pig Escort deaths pay nothing.
 //    Bounties never expire, and offline players can be targeted (the pot waits for them).
@@ -85,7 +85,13 @@ function dateText(ms) {
   const two = n => (n < 10 ? '0' : '') + n
   return d.getUTCFullYear() + '-' + two(d.getUTCMonth() + 1) + '-' + two(d.getUTCDate()) + ' ' + two(d.getUTCHours()) + ':' + two(d.getUTCMinutes()) + ' UTC'
 }
-function coins(n) { return n + ' Blood Coin' + (n == 1 ? '' : 's') }
+// The currency's name comes from black_market.js (COIN_NAME), so a rename there reaches here too.
+function coins(n) {
+  const e = E()
+  if (e && e.coinText) return String(e.coinText(n))
+  return n + ' Hush Coin' + (n == 1 ? '' : 's')
+}
+function plural() { const e = E(); return e && e.coinPlural ? String(e.coinPlural) : 'Hush Coins' }
 
 function comp(parts) {
   const json = JSON.stringify([''].concat(parts))
@@ -217,7 +223,7 @@ const result = (ok, text) => ({ ok: ok, text: text })
 function place(p, targetName, amount) {
   const server = Utils.server, e = E()
   if (!isEnabled()) return result(false, 'Bounties are closed.')
-  if (!e) return result(false, 'Nobody is taking Blood Coins right now.')
+  if (!e) return result(false, 'Nobody is taking ' + plural() + ' right now.')
   const where = whyNotHere(p)
   if (where) return result(false, where)
   const t = resolve(server, targetName)
@@ -225,7 +231,7 @@ function place(p, targetName, amount) {
   const me = uuidOf(p)
   if (t.uuid == me) return result(false, 'You can\'t put a bounty on your own head.')
   amount = Math.floor(Number(amount))
-  if (!(amount >= 1)) return result(false, 'A bounty is at least 1 Blood Coin.')
+  if (!(amount >= 1)) return result(false, 'A bounty is at least ' + coins(1) + '.')
   const D = db()
   const b = D.bounties[t.uuid]
   if (b && b.placers[me]) return result(false, 'You already have ' + coins(b.placers[me].amount) + ' on ' + t.name + '. It stays until someone collects it (or you cancel it).')
@@ -246,7 +252,7 @@ function place(p, targetName, amount) {
 
 function cancel(p, targetName) {
   const server = Utils.server, e = E()
-  if (!e) return result(false, 'Nobody is taking Blood Coins right now.')
+  if (!e) return result(false, 'Nobody is taking ' + plural() + ' right now.')
   const where = whyNotHere(p)
   if (where) return result(false, where)
   const t = resolve(server, targetName)
@@ -365,7 +371,7 @@ function chatAmounts(p, name) {
   }
   const parts = voiceParts(VOICE_BOUNTY, 'How much on ' + t.name + '? (pot ' + potOf(t.uuid) + ') ')
   const btns = amountButtons(p, t.name)
-  if (!btns.length) return 'You carry no Blood Coins.'
+  if (!btns.length) return 'You carry no ' + plural() + '.'
   btns.forEach(b => parts.push(b, ' '))
   menuLine(p, parts)
   return null

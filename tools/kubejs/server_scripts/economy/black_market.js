@@ -7,13 +7,13 @@
 //    The buyer is never shown to players; ops can read it with /blackmarket inspect (for Ministry trials).
 //  - A Writ of Protection turns away the next contract called on its holder.
 //  - Ops can sell any item, NBT and all, with /bm hand add <price>.
-//  - Traps and pranks (Disguised TNT, Mimic Chest, Itching Powder, Butterfingers, Cursed Snack, Anonymous Summons).
+//  - Traps and pranks (Disguised TNT, Teleport Trap, Mimic Chest, Itching Powder, Butterfingers, Cursed Snack, Anonymous Summons).
 //  - Bounties live in economy/bounties.js; the shop window has their Place a Bounty and Wanted pages.
 //
 // Needs: factions/factions_core.js (global.Factions) and factions/portal_ambush.js (global.PortalAmbush).
 // No new items are registered, so players don't need a modpack update. See tools/kubejs/BLACK_MARKET.md.
 //
-// Commands: /blackmarket (or /bm) for players at the vendor; /coins and most /blackmarket subcommands are
+// Commands: /blackmarket (or /bm; /bmbuy = /blackmarket buy) for players at the vendor; /coins and most /blackmarket subcommands are
 // op level 2. Copy to <server>/kubejs/server_scripts/economy/ and run /reload.
 //
 // KubeJS 6 notes: no template strings (strings are joined with +); `let` inside nested blocks; closures made in
@@ -91,6 +91,12 @@ const SHOP_MENU = 'gui'                // 'gui' = a chest-style window; 'chat' =
 // It breaks blocks like real TNT, except inside protected_areas.js areas, near world spawn and near the Pig
 // Escort portal, where it only hurts.
 const DISGUISED_TNT = { price: 25, power: 8, maxPerPlayer: 10, checkTicks: 10 }
+// Teleport Trap: like Disguised TNT, buying it turns ONE of the blocks you're holding into a trap that looks like
+// that block. The first player to step on it (its owner included) is teleported to the coordinates, and dimension,
+// given when buying it (/bmbuy tpblock <x> <y> <z> [overworld|nether|end]); the block vanishes.
+// safeLanding: a destination inside blocks moves up to the first 2-block gap (lava, a drop or the open air stay
+// the troll's choice). netherNeedsUnlock: no Nether destinations while the Pig Escort's Nether lock is on.
+const TP_TRAP = { price: 20, maxPerPlayer: 10, safeLanding: true, netherNeedsUnlock: true }
 // Mimic Chest: a normal-looking chest. Whoever opens it first (not its owner) gets a burst of silverfish.
 const MIMIC_CHEST = { price: 12, silverfish: 6, maxPerPlayer: 10,
   laugh: 'Hahahaha. You should have read the label.', sound: 'minecraft:entity.witch.celebrate' }
@@ -837,6 +843,8 @@ function openShop(p) {
   menuLine(p, [{ text: ' Traps', color: 'gold', bold: true }])
   menuLine(p, [{ text: '  Disguised TNT', color: 'dark_red', hoverEvent: { action: 'show_text', contents: 'Turns ONE block in your main hand into TNT that looks like it. The first to step on it sets it off, you included.' } },
     { text: ' - ' + DISGUISED_TNT.price + ' coins ', color: 'gray' }, button('[BUY]', 'gold', '/blackmarket buy tnt', 'Hold the block first')])
+  menuLine(p, [{ text: '  Teleport Trap', color: 'dark_purple', hoverEvent: { action: 'show_text', contents: 'Turns ONE block in your main hand into a trap that teleports the first person to step on it (you included) to the place you name.' } },
+    { text: ' - ' + TP_TRAP.price + ' coins ', color: 'gray' }, { text: '[BUY]', color: 'gold', bold: true, clickEvent: { action: 'suggest_command', value: '/bmbuy tpblock ' }, hoverEvent: { action: 'show_text', contents: '/bmbuy tpblock <x> <y> <z> [overworld|nether|end]' } }])
   menuLine(p, [{ text: '  Mimic Chest', color: 'dark_purple', hoverEvent: { action: 'show_text', contents: 'A chest like any other. It bites the first person who opens it (not you).' } },
     { text: ' - ' + MIMIC_CHEST.price + ' coins ', color: 'gray' }, button('[BUY]', 'gold', '/blackmarket buy mimic', 'Buy a Mimic Chest')])
   menuLine(p, [{ text: ' Pranks', color: 'light_purple', bold: true }])
@@ -967,7 +975,7 @@ function sell(p, key) {
 
 // ===================== TROLL ITEMS =====================
 
-// 'tnt', 'mimic', 'itching', 'butterfingers', 'snack' or null.
+// 'tnt', 'tp', 'mimic', 'itching', 'butterfingers', 'snack' or null.
 function trollKind(stack) {
   const t = trollcraftTag(stack)
   if (t == null) return null
@@ -981,6 +989,20 @@ function loreNbt(lore) {
 function disguisedStack(id) {
   return Item.of(id, 1, '{trollcraft:{trap:"tnt"},' + loreNbt([{ text: 'Disguised TNT', color: 'dark_red' },
     { text: 'Explodes when anyone steps on it. Anyone.', color: 'dark_gray', italic: true }]) + '}')
+}
+function tpTrapStack(id, dest) {
+  return Item.of(id, 1, '{trollcraft:{trap:"tp",tp:{dim:"' + dest.dim + '",x:' + dest.x + ',y:' + dest.y + ',z:' + dest.z + '}},' +
+    loreNbt([{ text: 'Teleport Trap', color: 'dark_purple' },
+      { text: 'Sends whoever steps on it to ' + dest.x + ' ' + dest.y + ' ' + dest.z + ' (' + dimLabel(dest.dim) + ').', color: 'gray' },
+      { text: 'Anyone. Including you.', color: 'dark_gray', italic: true }]) + '}')
+}
+// The destination stored on a Teleport Trap item, or null.
+function tpDestOf(stack) {
+  const t = trollcraftTag(stack)
+  if (t == null || !t.contains('tp')) return null
+  const c = t.getCompound('tp')
+  const d = { dim: String(c.getString('dim')), x: Number(c.getInt('x')), y: Number(c.getInt('y')), z: Number(c.getInt('z')) }
+  return TP_DIMS[d.dim] && isFinite(d.x) && isFinite(d.y) && isFinite(d.z) ? d : null
 }
 function mimicStack() {
   return Item.of('minecraft:chest', 1, '{trollcraft:{trap:"mimic"},' + loreNbt([{ text: 'Mimic Chest', color: 'dark_purple' },
@@ -1027,6 +1049,54 @@ function buyTnt(p) {
   p.give(item)
   return 'One ' + name + ' is now Disguised TNT. It goes off under the first person to step on it, you included.'
 }
+// Dimensions a Teleport Trap can send people to: id -> [short name, lowest y, highest y].
+const TP_DIMS = { 'minecraft:overworld': ['Overworld', -64, 319], 'minecraft:the_nether': ['Nether', 0, 255], 'minecraft:the_end': ['End', 0, 255] }
+const TP_DIM_WORDS = { overworld: 'minecraft:overworld', nether: 'minecraft:the_nether', the_nether: 'minecraft:the_nether', end: 'minecraft:the_end', the_end: 'minecraft:the_end' }
+function dimLabel(dim) { return TP_DIMS[dim] ? TP_DIMS[dim][0] : dim }
+function netherUnlocked(server) {
+  if (global.netherPortalsUnlocked === true) return true
+  try { return !!server.persistentData.getBoolean('trollcraft_nether_unlocked') } catch (e) { return false }
+}
+function levelById(server, dim) {
+  try { return server.getLevel(dim) } catch (e) { return null }
+}
+// Within the destination's world border? true if it can't be checked.
+function insideBorder(server, dim, x, z) {
+  try { return !!levelById(server, dim).getWorldBorder().isWithinBounds(x + 0.5, z + 0.5) } catch (e) { return true }
+}
+// /bmbuy tpblock x y z [dimension]: no dimension = the one you're standing in.
+function buyTp(server, p, x, y, z, dimWord) {
+  let dim = dimOf(p)
+  if (dimWord) {
+    let w = String(dimWord).toLowerCase()
+    dim = TP_DIM_WORDS[w] || TP_DIM_WORDS[w.replace(/^minecraft:/, '')] || ''
+    if (!dim) return 'Unknown dimension "' + dimWord + '". Use overworld, nether or end.'
+  }
+  const range = TP_DIMS[dim]
+  if (!range) return 'Teleport Traps only go to the Overworld, the Nether or the End.'
+  if (dim == 'minecraft:the_nether' && TP_TRAP.netherNeedsUnlock && !netherUnlocked(server)) return 'The Nether is still sealed. No Nether destinations yet.'
+  if (y < range[1] || y > range[2]) return 'The height must be between ' + range[1] + ' and ' + range[2] + ' in the ' + range[0] + '.'
+  if (Math.abs(x) > 29999000 || Math.abs(z) > 29999000 || !insideBorder(server, dim, x, z)) return 'That spot is outside the world border.'
+  const held = p.mainHandItem
+  const why = whyNotDisguisable(held)
+  if (why) return why
+  if (countCoins(p) < TP_TRAP.price) return 'A Teleport Trap costs ' + TP_TRAP.price + ' ' + COIN_PLURAL + '. You have ' + countCoins(p) + '.'
+  const dest = { dim: dim, x: x, y: y, z: z }
+  const item = tpTrapStack(String(held.id), dest)
+  let name = String(held.id)
+  try { name = String(held.getHoverName().getString()) } catch (e) { }
+  takeCoins(p, TP_TRAP.price)
+  held.shrink(1)
+  p.give(item)
+  return 'One ' + name + ' is now a Teleport Trap to ' + x + ' ' + y + ' ' + z + ' (' + range[0] + '). The first person to step on it goes there, you included.'
+}
+// The shop window and chat menu can't take coordinates: this puts the command in the player's chat box.
+function tpHowTo(p) {
+  menuLine(p, voiceParts(VOICE_MARKET, 'Hold the block you want turned into a Teleport Trap, then name the place: '))
+  menuLine(p, [{ text: '  /bmbuy tpblock <x> <y> <z> [overworld|nether|end] ', color: 'gold' },
+    { text: '[TYPE IT]', color: 'light_purple', bold: true, clickEvent: { action: 'suggest_command', value: '/bmbuy tpblock ' }, hoverEvent: { action: 'show_text', contents: 'Puts the command in your chat box' } }])
+  menuLine(p, [{ text: '  ' + TP_TRAP.price + ' ' + COIN_PLURAL + ' per block. No dimension = the one you\'re in.', color: 'gray' }])
+}
 function buyMimic(p) {
   return pay(p, MIMIC_CHEST.price, mimicStack()) ? 'Mimic Chest bought. It bites the first person who opens it (but not you).'
     : 'A Mimic Chest costs ' + MIMIC_CHEST.price + ' ' + COIN_PLURAL + '. You have ' + countCoins(p) + '.'
@@ -1070,9 +1140,11 @@ function trapsOwned(uuid, kind) {
   const t = traps()
   return Object.keys(t).filter(k => t[k].owner == uuid && t[k].kind == kind).length
 }
-function hasTntTraps() {
+// Traps set off by walking over them (Disguised TNT, Teleport Traps).
+function isStepTrap(kind) { return kind == 'tnt' || kind == 'tp' }
+function hasStepTraps() {
   const t = traps()
-  return Object.keys(t).some(k => t[k].kind == 'tnt')
+  return Object.keys(t).some(k => isStepTrap(t[k].kind))
 }
 function logTrap(text) {
   const D = db()
@@ -1121,7 +1193,46 @@ function triggerTnt(server, p, key) {
   }
 }
 
-// Every checkTicks while any Disguised TNT is placed: the path each player walked since the last check (so a
+// A Teleport Trap under player p: off they go, and the block vanishes. Pig Escort players are left alone (the
+// trap waits for someone else).
+function triggerTp(server, p, key) {
+  const t = traps()[key]
+  if (!t || !t.dest) return
+  const pa = PA()
+  try { if (pa && pa.isPigEscortParticipant(p)) return } catch (e) { }
+  const parts = key.split('|')
+  const dim = parts[0], x = Number(parts[1]), y = Number(parts[2]), z = Number(parts[3])
+  let blockId = ''
+  try { blockId = String(levelOf(p).getBlock(x, y, z).id) } catch (e) { }
+  delete traps()[key]
+  if (blockId && blockId != t.block) { save(); return }   // moved or replaced: the trap is gone
+  const d = t.dest
+  let ty = d.y
+  if (TP_TRAP.safeLanding) ty = landingY(server, d)
+  const u = uuidOf(p), q = posOf(p)
+  try {
+    server.runCommandSilent('execute in ' + dim + ' run particle minecraft:portal ' + num2(q.x) + ' ' + num2(q.y + 1) + ' ' + num2(q.z) + ' 0.4 0.8 0.4 0.5 80')
+    server.runCommandSilent('execute in ' + dim + ' run playsound minecraft:entity.enderman.teleport player @a ' + num2(q.x) + ' ' + num2(q.y) + ' ' + num2(q.z) + ' 1 0.8')
+    server.runCommandSilent('execute in ' + d.dim + ' run tp ' + u + ' ' + (d.x + 0.5) + ' ' + ty + ' ' + (d.z + 0.5))
+    server.runCommandSilent('execute in ' + dim + ' run setblock ' + x + ' ' + y + ' ' + z + ' minecraft:air')
+    server.runCommandSilent('execute in ' + d.dim + ' run particle minecraft:reverse_portal ' + (d.x + 0.5) + ' ' + (ty + 1) + ' ' + (d.z + 0.5) + ' 0.4 0.8 0.4 0.2 80')
+    server.runCommandSilent('execute in ' + d.dim + ' run playsound minecraft:entity.enderman.teleport player @a ' + (d.x + 0.5) + ' ' + ty + ' ' + (d.z + 0.5) + ' 1 1.2')
+  } catch (e) { console.error('[BlackMarket] Teleport Trap failed: ' + e) }
+  logTrap('Teleport Trap (' + t.block + ') placed by ' + t.ownerName + ' sent ' + nameOf(p) + ' from ' + dim + ' ' + x + ' ' + y + ' ' + z + ' to ' + d.dim + ' ' + d.x + ' ' + ty + ' ' + d.z)
+  save()
+  say(p, VOICE_TRICK, 'The ground had other plans for you.')
+}
+// The destination's y, moved up to the first 2-block gap if it's inside blocks. Unchanged if it can't be read.
+function landingY(server, d) {
+  const level = levelById(server, d.dim)
+  if (!level) return d.y
+  const top = TP_DIMS[d.dim] ? TP_DIMS[d.dim][2] : d.y + 64
+  const solid = y => { try { return !!level.getBlock(d.x, y, d.z).blockState.blocksMotion() } catch (e) { return false } }
+  for (let y = d.y; y < top; y++) if (!solid(y) && !solid(y + 1)) return y
+  return d.y
+}
+
+// Every checkTicks while any Disguised TNT or Teleport Trap is placed: the path each player walked since the last check (so a
 // sprint across a trap isn't missed), checked block by block for a trap under their feet.
 function checkSteps(server) {
   const t = traps()
@@ -1143,19 +1254,20 @@ function checkSteps(server) {
     pts.forEach(pt => {
       if (hit) return
       let key = trapKey(d, Math.floor(pt.x), Math.floor(pt.y - 0.2), Math.floor(pt.z))
-      if (t[key] && t[key].kind == 'tnt') hit = key
+      if (t[key] && isStepTrap(t[key].kind)) hit = key
     })
-    if (hit) triggerTnt(server, p, hit)
+    if (hit && t[hit].kind == 'tp') triggerTp(server, p, hit)
+    else if (hit) triggerTnt(server, p, hit)
   })
 }
 function startTrapLoop(server) {
-  if (S.trapLoop || !hasTntTraps()) return
+  if (S.trapLoop || !hasStepTraps()) return
   S.trapLoop = true
   S.lastPos = {}
   const token = S.token
   const step = () => {
     if (token != S.token) return
-    if (!hasTntTraps()) { S.trapLoop = false; return }
+    if (!hasStepTraps()) { S.trapLoop = false; return }
     try { checkSteps(server) } catch (e) { console.error('[BlackMarket] ' + e) }
     server.scheduleInTicks(DISGUISED_TNT.checkTicks, step)
   }
@@ -1177,6 +1289,7 @@ function mimicBite(server, p, key, block) {
     try { server.runCommandSilent('execute in ' + dim + ' run summon minecraft:silverfish ' + num2(sp.x) + ' ' + sp.y + ' ' + num2(sp.z)) } catch (e) { }
   })
 }
+function destText(t) { return t.dest ? ', sends to ' + t.dest.dim + ' ' + t.dest.x + ' ' + t.dest.y + ' ' + t.dest.z : '' }
 function num2(n) { return String(Math.round(n * 100) / 100) }
 
 
@@ -1278,6 +1391,9 @@ function fillMain(gui, p) {
   guiButton(gui, 2, 2, guiItem('minecraft:tnt', 'Disguised TNT', 'dark_red', ['Turns ONE of the blocks in your main hand', 'into TNT that looks exactly like it.',
     'Whoever steps on it first sets it off, you included.', { text: DISGUISED_TNT.price + ' ' + COIN_PLURAL + ' per block', color: 'gold' },
     { text: 'Hold the block, then click', color: 'dark_gray', italic: true }]), () => guiAct(p, () => buyTnt(p)))
+  guiButton(gui, 4, 2, guiItem('minecraft:ender_pearl', 'Teleport Trap', 'dark_purple', ['Turns ONE of the blocks in your main hand', 'into a trap that looks exactly like it.',
+    'Whoever steps on it first is teleported', 'to the place you name, you included.', { text: TP_TRAP.price + ' ' + COIN_PLURAL + ' per block', color: 'gold' },
+    { text: 'Click: how to name the place', color: 'dark_gray', italic: true }]), () => { closeGui(p); tpHowTo(p) })
   guiButton(gui, 3, 2, guiItem('minecraft:chest', 'Mimic Chest', 'dark_purple', ['A chest like any other.', 'The first person to open it (not you) gets bitten.',
     { text: MIMIC_CHEST.price + ' ' + COIN_PLURAL, color: 'gold' }]), () => guiAct(p, () => buyMimic(p)))
   guiLabel(gui, 3, 'minecraft:purple_stained_glass_pane', 'Pranks', 'light_purple')
@@ -1514,14 +1630,15 @@ BlockEvents.placed(event => {
   if (!p || !p.isPlayer()) return
   const b = event.block
   const id = String(b.id)
-  let kind = null
+  let kind = null, dest = null
   ;[p.mainHandItem, p.offHandItem].forEach(st => {
     if (kind || !st || st.isEmpty() || String(st.id) != id) return
     let k = trollKind(st)
     if (k == 'tnt' || k == 'mimic') kind = k
+    if (k == 'tp') { dest = tpDestOf(st); if (dest) kind = k }
   })
   if (!kind) return
-  const max = kind == 'tnt' ? DISGUISED_TNT.maxPerPlayer : MIMIC_CHEST.maxPerPlayer
+  const max = kind == 'tnt' ? DISGUISED_TNT.maxPerPlayer : kind == 'tp' ? TP_TRAP.maxPerPlayer : MIMIC_CHEST.maxPerPlayer
   if (trapsOwned(uuidOf(p), kind) >= max) {
     say(p, VOICE_MARKET, 'You already have ' + max + ' of those placed. Spring one first.')
     event.cancel()   // last
@@ -1529,8 +1646,9 @@ BlockEvents.placed(event => {
   }
   const dim = String(b.getDimension())
   traps()[trapKey(dim, b.x, b.y, b.z)] = { kind: kind, block: id, owner: uuidOf(p), ownerName: nameOf(p), placed: Date.now() }
+  if (dest) traps()[trapKey(dim, b.x, b.y, b.z)].dest = dest
   save()
-  if (kind == 'tnt') startTrapLoop(Utils.server)
+  if (isStepTrap(kind)) startTrapLoop(Utils.server)
 })
 BlockEvents.broken(event => {
   const b = event.block
@@ -1661,6 +1779,10 @@ ServerEvents.commandRegistry(event => {
         .then(word('target').executes(atVendor((ctx, p) => buyContract(ctx.source.server, p, str(ctx, 'tier'), str(ctx, 'target')))))))
       .then(Commands.literal('writ').executes(atVendor((ctx, p) => buyWrit(p))))
       .then(Commands.literal('tnt').executes(atVendor((ctx, p) => buyTnt(p))))
+      .then(Commands.literal('tpblock').executes(atVendor((ctx, p) => { tpHowTo(p); return null }))
+        .then(int('x').then(int('y').then(int('z')
+          .executes(atVendor((ctx, p) => buyTp(ctx.source.server, p, num(ctx, 'x'), num(ctx, 'y'), num(ctx, 'z'), null)))
+          .then(word('dimension').executes(atVendor((ctx, p) => buyTp(ctx.source.server, p, num(ctx, 'x'), num(ctx, 'y'), num(ctx, 'z'), str(ctx, 'dimension')))))))))
       .then(Commands.literal('mimic').executes(atVendor((ctx, p) => buyMimic(p))))
       .then(Commands.literal('itching').executes(atVendor((ctx, p) => buyItching(p))))
       .then(Commands.literal('butterfingers').executes(atVendor((ctx, p) => buyButterfingers(p))))
@@ -1750,14 +1872,14 @@ ServerEvents.commandRegistry(event => {
           return a[0] == d && dist({ x: Number(a[1]), y: Number(a[2]), z: Number(a[3]) }, q) <= 32
         })
         if (!near.length) return reply(ctx, 'No traps within 32 blocks.')
-        near.forEach(k => { let a = k.split('|'); reply(ctx, t[k].kind + ' (' + t[k].block + ') at ' + a[1] + ' ' + a[2] + ' ' + a[3] + ', placed by ' + t[k].ownerName + ' ' + dateText(t[k].placed)) })
+        near.forEach(k => { let a = k.split('|'); reply(ctx, t[k].kind + ' (' + t[k].block + ') at ' + a[1] + ' ' + a[2] + ' ' + a[3] + ', placed by ' + t[k].ownerName + ' ' + dateText(t[k].placed) + destText(t[k])) })
         return 1
       })))
       .then(Commands.literal('list').then(word('player').executes(safe(ctx => {
         const n = str(ctx, 'player').toLowerCase(), t = traps()
         const mine = Object.keys(t).filter(k => String(t[k].ownerName).toLowerCase() == n)
         if (!mine.length) return reply(ctx, 'No traps placed by ' + str(ctx, 'player') + '.')
-        mine.forEach(k => { let a = k.split('|'); reply(ctx, t[k].kind + ' (' + t[k].block + ') at ' + a[0] + ' ' + a[1] + ' ' + a[2] + ' ' + a[3]) })
+        mine.forEach(k => { let a = k.split('|'); reply(ctx, t[k].kind + ' (' + t[k].block + ') at ' + a[0] + ' ' + a[1] + ' ' + a[2] + ' ' + a[3] + destText(t[k])) })
         return 1
       }))))
       .then(Commands.literal('clear').then(word('player').executes(safe(ctx => {
@@ -1833,6 +1955,11 @@ ServerEvents.commandRegistry(event => {
 
   const node = event.register(root)
   event.register(Commands.literal('bm').redirect(node))
+  // /bmbuy <item> ... = /blackmarket buy <item> ... (e.g. /bmbuy tpblock 100 64 -200 nether)
+  let buyNode = null
+  try { buyNode = node.getChild('buy') } catch (e) { }
+  if (buyNode) event.register(Commands.literal('bmbuy').redirect(buyNode))
+  else console.warn('[BlackMarket] /bmbuy could not be registered; use /bm buy instead.')
 
   // /coins give|take <player> <amount>, /coins check <player>
   event.register(Commands.literal('coins').requires(op)

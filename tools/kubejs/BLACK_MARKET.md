@@ -71,6 +71,7 @@ Copy them and run `/reload`; no restart is needed. With no vendor spots set up t
 | Ambush Contract: War Party | 45 | 6–8 mobs, lethal-raid strength (1.5× health, 1.25× damage, Strength I), brutes or vindicators among them, no evokers |
 | Writ of Protection | 15 | Turns away the next contract called on you (see below) |
 | Disguised TNT | 25 per block | Turns one block in your hand into a trap (see [Traps](#traps)) |
+| Teleport Trap | 20 per block | Turns one block in your hand into a trap that teleports whoever steps on it to the place you name (`/bmbuy tpblock x y z [dimension]`) |
 | Mimic Chest | 12 | A chest that bites the first person to open it |
 | Itching Powder | 4 for 4 | Snowballs; whoever is hit itches |
 | Butterfingers | 5 for 3 | Eggs; whoever is hit drops what they're holding |
@@ -89,7 +90,7 @@ Right-clicking the merchant opens a chest-style window. It's a vanilla chest scr
 |---|---|
 | Contracts | Tip-off, Squad, War Party. Clicking one opens a page of player heads with each player's price; click a head to buy. Then **Place a Bounty** and **Wanted** (with bounties.js; see [BOUNTIES.md](BOUNTIES.md#the-shop-window)). |
 | Protection | Writ of Protection |
-| Traps | Disguised TNT, Mimic Chest |
+| Traps | Disguised TNT, Mimic Chest, Teleport Trap (clicking it closes the window and puts `/bmbuy tpblock ` in your chat box, since the window can't take coordinates) |
 | Pranks | Itching Powder, Cursed Snack, Anonymous Summons (clicking it opens the player heads), Butterfingers |
 | Under the counter | Custom stock: the real item with its own tooltip and the price added at the end. More than six entries: an arrow opens the full list. |
 | Bottom | Your Hush Coins, and Close. "Sell to him" appears only if `SELL_LIST` has entries. |
@@ -112,6 +113,17 @@ Right-clicking the merchant opens a chest-style window. It's a vanilla chest scr
 - **Limit:** 10 placed per player (`maxPerPlayer`). The 11th is refused.
 - **Timing:** checked every 10 ticks (`checkTicks`) while any Disguised TNT is placed, and not at all otherwise.
 
+**Teleport Trap** (`TP_TRAP`):
+- **Buying:** hold a plain block, like Disguised TNT, and run **`/bmbuy tpblock <x> <y> <z> [overworld|nether|end]`** at the merchant (`/bm buy tpblock ...` works too). **One** of the blocks becomes a Teleport Trap, 20 coins. Its lore, only visible in your inventory, shows where it sends people.
+  - No dimension = the one you're standing in.
+  - **Refused, nothing paid:** the same blocks Disguised TNT refuses; an unknown dimension; a height outside the dimension (Overworld -64 to 319, Nether and End 0 to 255); a spot outside the world border; the Nether while the Pig Escort's Nether lock is on (`netherNeedsUnlock`).
+- **Once placed** it looks exactly like that block.
+- **The first player to step on it** (its owner included) is teleported to the destination, with portal particles and an enderman sound at both ends, and gets "[???] The ground had other plans for you." **The block vanishes**: it's used up.
+  - **Landing:** if the destination is inside blocks, they land at the first 2-block gap above it, so nobody suffocates (`safeLanding`). Lava, a long drop or the open sky are left as the troll chose.
+  - Players in creative or spectator don't set it off, and **Pig Escort players are left alone** (the trap waits for someone else), so it can't wreck the event.
+  - Arriving in the Nether this way doesn't count as coming through a portal, so it doesn't trigger a portal ambush. Raid rolls work as usual once someone's there.
+- **Defusing, limit and timing:** as Disguised TNT. Breaking it removes the trap (a plain block drops); 10 per player; checked every 10 ticks.
+
 **Mimic Chest** (`MIMIC_CHEST`):
 - A chest with no visible difference once placed.
 - **The first person to open it who isn't its owner** gets 6 silverfish around them and a "[???] Hahahaha. You should have read the label."
@@ -119,7 +131,7 @@ Right-clicking the merchant opens a chest-style window. It's a vanilla chest scr
 - 10 per player. Creative and spectator players don't trigger it.
 
 **For ops** (evidence for Ministry trials):
-- `/bm traps near` lists traps within 32 blocks of you, with owner and date.
+- `/bm traps near` lists traps within 32 blocks of you, with owner and date (and, for Teleport Traps, where they send people).
 - `/bm traps list <player>` lists everything that player has placed.
 - `/bm traps clear <player>` defuses all their traps; the blocks stay.
 - `/bm traps log` shows the last traps that went off: who placed it, who set it off, where.
@@ -211,6 +223,7 @@ Ops can sell **any item exactly as it is**, NBT included, for example an item th
 | `/blackmarket shop` | anyone at the merchant | Opens the shop window (same as right-clicking him) |
 | `/blackmarket chatshop` | anyone at the merchant | Opens the chat menu |
 | `/blackmarket buy tnt`, `mimic`, `itching`, `butterfingers`, `snack`, `summons [player]` | anyone at the merchant | The traps and pranks, from chat |
+| `/bmbuy tpblock <x> <y> <z> [overworld\|nether\|end]` | anyone at the merchant | A Teleport Trap. `/bmbuy <item>` is short for `/blackmarket buy <item>`, for every item. |
 | `/bounty ...` | see [BOUNTIES.md](BOUNTIES.md#commands) | Bounties |
 | `/blackmarket traps near`, `list <player>`, `clear <player>`, `log` | op | Find, list or defuse traps; see the last ones that went off |
 | `/blackmarket buy contract <tier> [player]`, `buy writ`, `buy custom <id>`, `sell <item>` | anyone at the merchant | What the menu buttons run. Tiers: `tipoff`, `squad`, `warparty`. `sell` only works if `SELL_LIST` has entries. |
@@ -256,6 +269,7 @@ Logging out, `/reload` and restarts never reset a cooldown or reuse a contract i
 | `WRIT_PRICE` | 15 | |
 | `SHOP_MENU` | 'gui' | 'gui' = the shop window; 'chat' = the chat menu |
 | `DISGUISED_TNT` | 25 coins, power 8, 10 per player, checked every 10 ticks | |
+| `TP_TRAP` | 20 coins, 10 per player, safe landing on, Nether only after unlock | |
 | `MIMIC_CHEST` | 12 coins, 6 silverfish, 10 per player | |
 | `ITCHING_POWDER` | 4 coins for 4, 30 s | |
 | `BUTTERFINGERS` | 5 coins for 3 | |
@@ -325,8 +339,13 @@ Logging out, `/reload` and restarts never reset a cooldown or reuse a contract i
     - try sprinting across another one, placing one and stepping on it yourself, and breaking one, which defuses it with no blast;
     - place one near world spawn: it hurts but breaks nothing;
     - `/bm traps near` and `/bm traps log` show who placed what.
-17. **Mimic Chest:** place it; you open it and nothing happens; B opens it, gets silverfish and the laugh, and the next time it's a normal chest.
-18. **Pranks:**
+17. **Teleport Trap:**
+    - hold 3 stone and run `/bmbuy tpblock <x> <y> <z> nether` with somewhere safe in the Nether: 2 stone plus 1 with "Teleport Trap" lore;
+    - place it, have B walk over it: B is in the Nether at that spot and the block is gone;
+    - buy one aimed underground (a y inside stone): B lands on the first open space above it;
+    - `/bmbuy tpblock 0 999 0` is refused (height).
+18. **Mimic Chest:** place it; you open it and nothing happens; B opens it, gets silverfish and the laugh, and the next time it's a normal chest.
+19. **Pranks:**
     - hit B with Itching Powder: Nausea, Slowness and Glowing;
     - B holds a sword; hit B with Butterfingers: the sword drops in front of B and B's hand is empty;
     - B eats the Cursed Snack: up B goes;
@@ -334,7 +353,7 @@ Logging out, `/reload` and restarts never reset a cooldown or reuse a contract i
 
 ## What couldn't be verified for KubeJS 6 on 1.20.1
 
-A mock-server test passed all 202 checks (with bounties.js loaded): coins, the merchant, the shop window and the chat menu, range, contracts and every refusal, the writ, dupes and forgeries, heat, outcomes, `/reload`, custom stock, selling (refused by default; working when SELL_LIST has entries), the rotation, Disguised TNT (sprinting across, jumping over, owner, protected areas, replaced blocks, breaking, the limit), the Mimic Chest, the four pranks, bounties, the coin rename (old coins swapped) and the ambush coin drops. These parts depend on the real game:
+A mock-server test passed all 227 checks (with bounties.js loaded): coins, the merchant, the shop window and the chat menu, range, contracts and every refusal, the writ, dupes and forgeries, heat, outcomes, `/reload`, custom stock, selling (refused by default; working when SELL_LIST has entries), the rotation, Disguised TNT (sprinting across, jumping over, owner, protected areas, replaced blocks, breaking, the limit), the Teleport Trap (every refusal, the Nether lock, landing, owner, Pig Escort, reload, replaced blocks, the limit), the Mimic Chest, the four pranks, bounties, the coin rename (old coins swapped) and the ambush coin drops. These parts depend on the real game:
 
 - **The shop window** (`player.openChestGUI`, in your KubeJS 2001.6.5):
   - that every way of taking items out of it is blocked (KubeJS's menu handles the clicks);
@@ -345,6 +364,7 @@ A mock-server test passed all 202 checks (with bounties.js loaded): coins, the m
   - `level.createExplosion(...).strength(8).explosionMode(...)` and the `Level$ExplosionInteraction` NONE/TNT modes (if it fails, a plain primed TNT is used, power 4);
   - `stack.getItem().getBlock()` and `hasBlockEntity()` for what can be disguised;
   - `BlockEvents.placed` still seeing the trap item in the player's hand.
+- **The Teleport Trap:** `execute in <dim> run tp <uuid> x y z` across dimensions; `server.getLevel(id)` for the world border and the landing check (`getWorldBorder().isWithinBounds`, `blockState.blocksMotion()`); if those can't be read, the coordinates are used as typed. Brigadier accepting `/bmbuy` as a redirect to `/blackmarket buy` (if it fails, the log says so and `/bm buy tpblock ...` still works).
 - **The Mimic Chest:** `PlayerEvents.chestOpened` giving the chest's block. With a double chest, only the half the mimic was placed as counts.
 - **Itching Powder:** a thrown snowball keeping its NBT (`getItem()` on the projectile), and the hurt event firing for a snowball's zero damage.
 - **Butterfingers:** a thrown egg keeping its NBT (`getItem()` on the egg), the hurt event firing for an egg's zero damage, and `player.drop(stack, false)` throwing the item (if it returns nothing, the item is popped at the player's feet instead).

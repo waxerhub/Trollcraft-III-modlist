@@ -69,6 +69,9 @@ const RAID_TIERS = [
     mix: { nether: [['brute', 0.45], ['piglin', 0.25], ['evoker', 0.15], ['vex', 0.15]],
            overworld: [['vindicator', 0.45], ['pillager', 0.15], ['evoker', 0.2], ['vex', 0.2]] } },
 ]
+// Vexes in an ambush group (lethal raids' own, and the ones their evokers summon) get these effects for as long as
+// they live, instead of the tier's Strength. Levels: 3 = Strength III (+9 melee damage) and Speed III. 0 = none.
+const VEX_EFFECTS = { strength: 3, speed: 3 }
 const RAID_SPOT_TRIES = 16              // spots checked for one out of the player's line of sight
 const RAID_WARNING_SECONDS = 3          // the warning comes this long before the raid arrives
 const RAID_POSTPONE_MINUTES = [2, 5]    // Overworld raid with a witness nearby: try again after this long...
@@ -611,7 +614,8 @@ function startGroup(server, mechanic, dim, center, targets, size, minD, maxD, hi
     try { m = summonMob(server, dim, kind, def, id, spot, tier, opts.extraTag) } catch (e) { console.error('[PortalAmbush] Spawn failed: ' + e) }
     if (!m) continue
     if (kind == 'evoker') evokers++
-    if (tier && tier.strength > 0) {
+    if (kind == 'vex') giveVexEffects(server, uuidOf(m))
+    else if (tier && tier.strength > 0) {
       try { server.runCommandSilent('effect give ' + uuidOf(m) + ' minecraft:strength infinite ' + (tier.strength - 1) + ' true') } catch (e) { }
     }
     g.mobs[uuidOf(m)] = m
@@ -1149,6 +1153,12 @@ EntityEvents.spawned(event => {
 
 // A vex summoned by one of our evokers joins the evoker's group: tagged, kept on the group's targets (so it can't
 // go after anyone else) and removed with the group. Vanilla gives summoned vexes a short life anyway.
+function giveVexEffects(server, uuid) {
+  Object.keys(VEX_EFFECTS).forEach(eff => {
+    let lvl = VEX_EFFECTS[eff]
+    if (lvl > 0) { try { server.runCommandSilent('effect give ' + uuid + ' minecraft:' + eff + ' infinite ' + (lvl - 1) + ' true') } catch (e) { } }
+  })
+}
 function adoptSummonedVex(e) {
   let owner = null
   try {
@@ -1171,6 +1181,9 @@ function adoptSummonedVex(e) {
   g.mobs[u] = e
   S.mobGroup[u] = gid
   updateHookState()
+  // A tick later: the vex is still joining the world now, so /effect can't find it yet.
+  const token = S.token, server = Utils.server
+  if (server) server.scheduleInTicks(1, () => { if (token == S.token && S.mobGroup[u] == gid) giveVexEffects(server, u) })
 }
 
 // Server start: clear leftovers in the loaded chunks, then start the loop if anyone needs it.

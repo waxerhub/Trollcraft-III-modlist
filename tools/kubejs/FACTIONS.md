@@ -179,6 +179,7 @@ Punishes faction members for travelling into the dimension hostile to their fact
 
 - **Evokers and vexes** come only in lethal raids, with the group's name and leather chestplate.
 - **Summoned vexes:** the vexes an evoker summons join its group. They only go after the group's targets, are removed with it, and drop no reward. Vanilla also gives them a short life.
+- **Vexes hit hard:** every vex in a group, both the raid's own and the ones its evokers summon, gets **Strength III** (+9 melee damage) and **Speed III** for as long as it lives, instead of the tier's Strength I (`VEX_EFFECTS` in portal_ambush.js).
 - **Base stats:** evokers have 60 health, vexes 20 with a Sharpness III iron sword. Lethal raids multiply these too.
 - **Odds and timing:** change `chance` in `RAID_TIERS` and `RAID_MINUTES`.
 
@@ -282,7 +283,7 @@ Set up as an op: `/faction set A ministry` and `/faction set B syndicate`. Keep 
 
 ## Not verified on a real server
 
-The mock-server test passed all 92 checks, including the raid tiers (the roll, sizes, stats, Strength, evoker cap, lethal warnings, evoker vexes joining their group, no cooldown, postponed raids keeping their tier, old countdowns being shortened): mob gear and stats (the summon NBT is parsed), portal travel versus `/tp` versus respawn, shared rolls, secrecy skips and postponements, sizes and caps, target and damage filtering, rewards, quiet despawning, escapes, cooldowns, persistence across `/reload`, Peaceful, toggle and stray removal. These parts depend on the real game:
+The mock-server test passed all 94 checks, including the raid tiers (the roll, sizes, stats, Strength, evoker cap, lethal warnings, evoker vexes joining their group, no cooldown, postponed raids keeping their tier, old countdowns being shortened): mob gear and stats (the summon NBT is parsed), portal travel versus `/tp` versus respawn, shared rolls, secrecy skips and postponements, sizes and caps, target and damage filtering, rewards, quiet despawning, escapes, cooldowns, persistence across `/reload`, Peaceful, toggle and stray removal. These parts depend on the real game:
 
 - **Whether Forge's `LivingChangeTargetEvent` also covers the piglin brain's own target choice.** If it doesn't, piglins are still re-aimed every second, and their hits on anyone else are cancelled.
 - **Whether the change-target cancel holds against vanilla "revenge" targeting** (mobs turning on whoever hit them). Same safety net as above.

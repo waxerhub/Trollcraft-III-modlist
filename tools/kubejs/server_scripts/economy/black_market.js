@@ -1345,6 +1345,50 @@ function guiAct(p, fn, view) {
   })
 }
 
+// /bm debug window (op): opens, closes and reopens the shop window on the op over a few ticks and reports what the
+// server sees at each step (coins, filled slots, the open menu, KubeJS's own copy of the inventory) in chat and the log.
+function menuName(p) {
+  try { return String(p.containerMenu.getClass().getSimpleName()) } catch (e) { }
+  try { return String(p.openInventory.getClass().getSimpleName()) } catch (e) { }
+  return '?'
+}
+function capturedCoins(p) {
+  try {
+    let inv = p.containerMenu.data.capturedInventory, n = 0
+    if (!inv) return 'none'
+    for (let i = 0; i < inv.getContainerSize(); i++) { let s = inv.getItem(i); if (isCoin(s)) n += s.getCount() }
+    return String(n)
+  } catch (e) { return 'n/a' }
+}
+function heldAway(p) {
+  let m = null
+  try { m = Utils.server.restoreInventories } catch (e) { }
+  try { if (typeof m == 'function') m = Utils.server.restoreInventories() } catch (e) { }
+  try { return m ? (m.containsKey(p.getUuid()) ? 'yes' : 'no') : 'n/a' } catch (e) { return 'n/a' }
+}
+function debugWindow(p) {
+  const server = Utils.server
+  const line = t => { try { p.tell(Text.of('[BM debug] ' + t)) } catch (e) { } console.info('[BlackMarket] debug ' + nameOf(p) + ': ' + t) }
+  const snap = label => {
+    let filled = 0
+    try { invSlots(false).forEach(i => { if (!p.inventory.getItem(i).isEmpty()) filled++ }) } catch (e) { }
+    line(label + ': coins ' + countCoins(p) + ', filled slots ' + filled + ', menu ' + menuName(p) + ', coins in KubeJS copy ' + capturedCoins(p) + ', held by KubeJS ' + heldAway(p))
+  }
+  snap('before')
+  try { showGui(p, { kind: 'main' }); snap('window opened') } catch (e) { line('opening FAILED: ' + e) }
+  server.scheduleInTicks(1, () => {
+    snap('tick 1')
+    try { p.closeContainer(); line('closeContainer() ran') } catch (e) { line('closeContainer() FAILED: ' + e) }
+    snap('tick 1, after close')
+  })
+  server.scheduleInTicks(2, () => {
+    snap('tick 2')
+    try { showGui(p, { kind: 'main' }); snap('tick 2, reopened') } catch (e) { line('reopen FAILED: ' + e) }
+  })
+  server.scheduleInTicks(3, () => { try { p.closeContainer() } catch (e) { } })
+  server.scheduleInTicks(4, () => snap('tick 4, closed again'))
+}
+
 // Opens the shop: the window if SHOP_MENU is 'gui' and it works, otherwise the chat menu.
 function openShopFor(p) {
   try { refreshCoins(p) } catch (e) { }
@@ -1878,6 +1922,12 @@ ServerEvents.commandRegistry(event => {
       p.give(made.stack)
       return reply(ctx, 'Free Ambush Contract (' + def.name + ') on ' + t.name + ' (' + made.id + ').')
     }))))))
+    .then(Commands.literal('debug').requires(op).then(Commands.literal('window').executes(safe(ctx => {
+      const p = me(ctx)
+      if (!p) return reply(ctx, 'Players only.', true)
+      debugWindow(p)
+      return reply(ctx, 'Window test running: the window opens and closes twice; read the [BM debug] lines in chat afterwards.')
+    }))))
     .then(Commands.literal('traps').requires(op)
       .then(Commands.literal('near').executes(safe(ctx => {
         const p = me(ctx)

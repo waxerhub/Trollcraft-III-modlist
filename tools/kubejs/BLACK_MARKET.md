@@ -183,7 +183,7 @@ Hold it and right-click, in the air or on a block. Nothing is placed, and one cl
    - The target is told their writ turned a contract away.
 5. **Otherwise:**
    - The target gets **"[CONTRACT] Someone has paid for your death."** with a sound.
-   - 3 seconds later the mobs spawn 18–32 blocks away, out of sight where possible.
+   - 3 seconds later the mobs spawn 8–10 blocks away, out of sight where possible.
    - Only once they've spawned is the contract used up and 1 heat added. The caller then gets "Your contract has been called in."
    - If the spawn fails (no safe ground, the target logged off), the contract stays valid and the caller gets "The contract could not be carried out."
    - Nobody else is told anything.

@@ -44,8 +44,6 @@ const ARRIVAL_GROUP_SECONDS = 10        // players coming through the same porta
 const ARRIVAL_GROUP_RADIUS = 8          // ...if they arrive within this many blocks of each other
 const PORTAL_CHECK_RADIUS = 2           // a nether_portal block this close to the arrival point = came through a portal
 const AMBUSH_DELAY_SECONDS = 3          // pause between arriving and the group appearing
-const AMBUSH_SPAWN_MIN = 6              // spawn distance from the arrival point
-const AMBUSH_SPAWN_MAX = 12
 const NETHER_AMBUSH_BASE_SIZE = 3       // +1 per extra target, up to the cap
 const NETHER_AMBUSH_MAX_SIZE = 8
 const PATROL_BASE_SIZE = 2
@@ -71,14 +69,16 @@ const RAID_TIERS = [
     mix: { nether: [['brute', 0.45], ['piglin', 0.25], ['evoker', 0.15], ['vex', 0.15]],
            overworld: [['vindicator', 0.45], ['pillager', 0.15], ['evoker', 0.2], ['vex', 0.2]] } },
 ]
-const RAID_SPAWN_MIN = 18               // spawn distance from the player
-const RAID_SPAWN_MAX = 32
-const RAID_SPOT_TRIES = 10              // spots checked for one out of the player's line of sight
+const RAID_SPOT_TRIES = 16              // spots checked for one out of the player's line of sight
 const RAID_WARNING_SECONDS = 3          // the warning comes this long before the raid arrives
 const RAID_POSTPONE_MINUTES = [2, 5]    // Overworld raid with a witness nearby: try again after this long...
 const RAID_MAX_POSTPONES = 3            // ...this many times, then start a new countdown
 
 // --- Shared ---
+// How far away every group spawns: [min, max] blocks from the player (raids, contracts) or from the arrival
+// point (portal ambushes). Raids and contracts prefer spots out of the player's sight; this close there often
+// isn't one, and then a mob can appear in view.
+const SPAWN_DISTANCE = [8, 10]
 const EXTRA_TARGET_RADIUS = 24          // other same-faction players this close join the group (and add a mob each)
 const RETARGET_RADIUS = 32              // mobs only chase targets this close; raid targets are picked within this
 const SECRECY_RADIUS = 48               // syndicate rule: nobody outside the syndicate this close, or no patrol
@@ -487,7 +487,7 @@ function hiddenFrom(level, eye, spot) {
 
 function pickSpot(level, dim, center, minD, maxD, hideFrom) {
   let fallback = null
-  for (let i = 0; i < (hideFrom ? RAID_SPOT_TRIES : 6); i++) {
+  for (let i = 0; i < (hideFrom ? RAID_SPOT_TRIES : 12); i++) {
     let s = randomSpot(level, dim, center, minD, maxD)
     if (!s) continue
     if (!hideFrom) return s
@@ -882,7 +882,7 @@ function spawnArrivalGroup(server, b, opts) {
   const base = b.mechanic == 'nether_ambush' ? NETHER_AMBUSH_BASE_SIZE : PATROL_BASE_SIZE
   const cap = b.mechanic == 'nether_ambush' ? NETHER_AMBUSH_MAX_SIZE : PATROL_MAX_SIZE
   const size = Math.min(cap, base + targets.length - 1)
-  const g = startGroup(server, b.mechanic, b.dim, b.pos, targets, size, AMBUSH_SPAWN_MIN, AMBUSH_SPAWN_MAX, null)
+  const g = startGroup(server, b.mechanic, b.dim, b.pos, targets, size, SPAWN_DISTANCE[0], SPAWN_DISTANCE[1], null)
   if (!g) return null
   b.groupId = g.id
   sendMessage(server, targets, b.mechanic)
@@ -931,7 +931,7 @@ function attemptRaid(server, p, forced, tier) {
       if (!still.length) return
       if (dim == OVERWORLD && !forced && witnesses(server, dim, posOf(still[0])).length) return   // someone walked up during the warning
       let eyes = still.map(t => { let q = posOf(t); return { x: q.x, y: q.y + 1.62, z: q.z } })
-      startGroup(server, 'raid', dim, posOf(still[0]), still, size, RAID_SPAWN_MIN, RAID_SPAWN_MAX, eyes, tier)
+      startGroup(server, 'raid', dim, posOf(still[0]), still, size, SPAWN_DISTANCE[0], SPAWN_DISTANCE[1], eyes, tier)
     } catch (e) { console.error('[PortalAmbush] Raid spawn failed: ' + e) }
   })
   return tier.id + ' raid: warning sent; ' + size + ' mob(s) arriving in ' + RAID_WARNING_SECONDS + ' s'
@@ -997,7 +997,7 @@ function startLoop(server) {
 // global.PortalAmbush, refreshed on every load. Used by economy/black_market.js (Ambush Contracts).
 
 global.PortalAmbush = {
-  // Spawns a group like a raid (18-32 blocks out, out of the targets' sight) around the first target.
+  // Spawns a group like a raid (SPAWN_DISTANCE blocks out, out of the targets' sight where possible) around the first target.
   // o: { targets: [uuid], mechanic, dim, size, def, tier, onEnd(group, reason), contractId, extraTag }.
   // Targets must be online and in `dim`. A 'contract' group's mobs are also tagged contract_ambush.
   // Returns the group (g.id, g.mobs, g.targets, g.contractId) or null if nothing could spawn.
@@ -1013,7 +1013,7 @@ global.PortalAmbush = {
     if (!players.length) return null
     const eyes = players.map(t => { let q = posOf(t); return { x: q.x, y: q.y + 1.62, z: q.z } })
     const mechanic = o.mechanic || 'contract'
-    const g = startGroup(server, mechanic, o.dim, posOf(players[0]), players, o.size || 1, RAID_SPAWN_MIN, RAID_SPAWN_MAX, eyes, o.tier || null,
+    const g = startGroup(server, mechanic, o.dim, posOf(players[0]), players, o.size || 1, SPAWN_DISTANCE[0], SPAWN_DISTANCE[1], eyes, o.tier || null,
       { def: o.def || null, onEnd: o.onEnd || null, contractId: o.contractId || null, extraTag: o.extraTag || (mechanic == 'contract' ? 'contract_ambush' : null) })
     if (g) startLoop(server)
     return g

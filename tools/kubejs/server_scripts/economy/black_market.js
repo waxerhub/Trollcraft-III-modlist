@@ -7,7 +7,7 @@
 //    The buyer is never shown to players; ops can read it with /blackmarket inspect (for Ministry trials).
 //  - A Writ of Protection turns away the next contract called on its holder.
 //  - Ops can sell any item, NBT and all, with /bm hand add <price>.
-//  - Traps and pranks (Disguised TNT, Teleport Trap, Mimic Chest, Itching Powder, Butterfingers, Cursed Snack, Anonymous Summons).
+//  - Traps and pranks (Disguised TNT, Teleport Trap, Mimic Chest, Itching Powder, Butterfingers, Cursed Food, Anonymous Summons).
 //  - Bounties live in economy/bounties.js; the shop window has their Place a Bounty and Wanted pages.
 //
 // Needs: factions/factions_core.js (global.Factions) and factions/portal_ambush.js (global.PortalAmbush).
@@ -104,8 +104,22 @@ const MIMIC_CHEST = { price: 12, silverfish: 6, maxPerPlayer: 10,
 const ITCHING_POWDER = { price: 4, count: 4, seconds: 30 }
 // Butterfingers: eggs; a player hit by one drops whatever is in their main hand.
 const BUTTERFINGERS = { price: 5, count: 3 }
-// Cursed Snack: looks like a plain cookie (no name, no lore); eating it gives Levitation, Hunger and Nausea.
-const CURSED_SNACK = { price: 3, item: 'minecraft:cookie', levitationSeconds: 6, hungerSeconds: 30, nauseaSeconds: 10 }
+// Cursed Food: everyday food that looks exactly like the real thing (no name, no lore). Eating it brings 1-3
+// random curses (CURSES below). The cursed apples give none of their usual buffs.
+// The "Enchanted Golden Apple" is a golden apple dressed up as one (same name, colour and glint), never the real
+// item, so whatever is done to it, it can't become a cheap Enchanted Golden Apple.
+const CURSED_FOOD = { price: 8,
+  foods: [
+    { id: 'steak', item: 'minecraft:cooked_beef', name: 'Steak' },
+    { id: 'mutton', item: 'minecraft:cooked_mutton', name: 'Cooked Mutton' },
+    { id: 'bread', item: 'minecraft:bread', name: 'Bread' },
+    { id: 'golden_carrot', item: 'minecraft:golden_carrot', name: 'Golden Carrot' },
+    { id: 'golden_apple', item: 'minecraft:golden_apple', name: 'Golden Apple', apple: true },
+    { id: 'enchanted_golden_apple', item: 'minecraft:golden_apple', name: 'Enchanted Golden Apple', apple: true, fake: true },
+  ],
+  curseCount: [[1, 0.6], [2, 0.3], [3, 0.1]],     // how many different curses one bite brings, and how likely
+  stripEffects: ['regeneration', 'absorption', 'resistance', 'fire_resistance'],   // removed after a cursed apple
+}
 // Anonymous Summons: a fake [MINISTRY] notice sent to the chosen player (one of these, at random).
 const SUMMONS = { price: 5, sound: 'minecraft:block.bell.use', messages: [
   'You have been selected for a random tax audit. Remain where you are. An inspector will be with you shortly.',
@@ -853,8 +867,9 @@ function openShop(p) {
     { text: ' - ' + ITCHING_POWDER.price + ' coins ', color: 'gray' }, button('[BUY]', 'gold', '/blackmarket buy itching', 'Buy Itching Powder')])
   menuLine(p, [{ text: '  Butterfingers x' + BUTTERFINGERS.count, color: 'light_purple', hoverEvent: { action: 'show_text', contents: 'Eggs. Whoever gets hit drops what they are holding.' } },
     { text: ' - ' + BUTTERFINGERS.price + ' coins ', color: 'gray' }, button('[BUY]', 'gold', '/blackmarket buy butterfingers', 'Buy Butterfingers')])
-  menuLine(p, [{ text: '  Cursed Snack', color: 'light_purple', hoverEvent: { action: 'show_text', contents: 'Looks like a normal cookie. Eating it: a short flight and a long hunger.' } },
-    { text: ' - ' + CURSED_SNACK.price + ' coins ', color: 'gray' }, button('[BUY]', 'gold', '/blackmarket buy snack', 'Buy a Cursed Snack')])
+  menuLine(p, [{ text: '  Cursed Food', color: 'light_purple', hoverEvent: { action: 'show_text', contents: 'Looks exactly like the real thing. Whoever eats it gets one or more nasty surprises.' } },
+    { text: ' - ' + CURSED_FOOD.price + ' coins each:', color: 'gray' }])
+  menuLine(p, ['    '].concat(foodButtons()))
   menuLine(p, [{ text: '  Anonymous Summons', color: 'gold', hoverEvent: { action: 'show_text', contents: 'A very official [MINISTRY] notice for the player of your choice.' } },
     { text: ' - ' + SUMMONS.price + ' coins ', color: 'gray' }, button('[BUY]', 'gold', '/blackmarket buy summons', 'Choose who gets it')])
   if (BOUNTIES()) {
@@ -976,7 +991,7 @@ function sell(p, key) {
 
 // ===================== TROLL ITEMS =====================
 
-// 'tnt', 'tp', 'mimic', 'itching', 'butterfingers', 'snack' or null.
+// 'tnt', 'tp', 'mimic', 'itching', 'butterfingers', 'food', 'snack' (cursed cookies sold before) or null.
 function trollKind(stack) {
   const t = trollcraftTag(stack)
   if (t == null) return null
@@ -1017,8 +1032,19 @@ function butterfingersStack(n) {
   return Item.of('minecraft:egg', n, '{trollcraft:{prank:"butterfingers"},' + displayNbt('Butterfingers', 'light_purple',
     [{ text: 'Throw it at someone holding something nice.', color: 'dark_gray', italic: true }]) + '}')
 }
-// No name, no lore: it has to look like any other cookie.
-function snackStack() { return Item.of(CURSED_SNACK.item, 1, '{trollcraft:{prank:"snack"}}') }
+// No name, no lore: it has to look like any other food of its kind. The fake Enchanted Golden Apple gets the real
+// one's name, colour and glint on a golden apple.
+function foodById(id) { return CURSED_FOOD.foods.filter(f => f.id == String(id).toLowerCase())[0] || null }
+function foodStack(f) {
+  const tag = 'trollcraft:{prank:"food",food:"' + f.id + '"}'
+  if (f.fake) return Item.of(f.item, 1, '{' + tag + ',display:{Name:' + snbtString(JSON.stringify({ text: f.name, color: 'light_purple', italic: false })) +
+    '},Enchantments:[{id:"minecraft:unbreaking",lvl:1s}],HideFlags:1}')
+  return Item.of(f.item, 1, '{' + tag + '}')
+}
+function foodIdOf(stack) {
+  const t = trollcraftTag(stack)
+  return t != null && t.contains('food') ? String(t.getString('food')) : ''
+}
 
 // Can the held stack become Disguised TNT? null, or why not.
 function whyNotDisguisable(stack) {
@@ -1110,9 +1136,20 @@ function buyButterfingers(p) {
   return pay(p, BUTTERFINGERS.price, butterfingersStack(BUTTERFINGERS.count)) ? BUTTERFINGERS.count + ' Butterfingers eggs bought.'
     : 'Butterfingers costs ' + BUTTERFINGERS.price + ' ' + COIN_PLURAL + '. You have ' + countCoins(p) + '.'
 }
-function buySnack(p) {
-  return pay(p, CURSED_SNACK.price, snackStack()) ? 'One cursed cookie. It looks like any other cookie, so keep it apart from yours.'
-    : 'A Cursed Snack costs ' + CURSED_SNACK.price + ' ' + COIN_PLURAL + '. You have ' + countCoins(p) + '.'
+function buyFood(p, id) {
+  const f = foodById(id)
+  if (!f) return 'He has no cursed ' + id + '. Ask for: ' + CURSED_FOOD.foods.map(x => x.id).join(', ') + '.'
+  return pay(p, CURSED_FOOD.price, foodStack(f)) ? 'One cursed ' + f.name + '. It looks exactly like the real thing, so keep it apart from yours.'
+    : 'Cursed food costs ' + CURSED_FOOD.price + ' ' + COIN_PLURAL + '. You have ' + countCoins(p) + '.'
+}
+function foodButtons() {
+  const out = []
+  CURSED_FOOD.foods.forEach(f => { out.push(button('[' + f.name + ']', 'gold', '/blackmarket buy food ' + f.id, 'Buy a cursed ' + f.name)); out.push(' ') })
+  return out
+}
+function foodHowTo(p) {
+  menuLine(p, voiceParts(VOICE_MARKET, 'Cursed food, ' + CURSED_FOOD.price + ' ' + COIN_PLURAL + ' each: '))
+  menuLine(p, ['  '].concat(foodButtons()))
 }
 function buySummons(server, p, targetName) {
   const target = playerByName(server, targetName)
@@ -1416,7 +1453,7 @@ function openShopFor(p) {
 }
 
 function showGui(p, view) {
-  const titles = { main: 'Hooded Merchant', contract: 'Ambush Contract: who?', summons: 'Anonymous Summons: who?', custom: 'Under the counter',
+  const titles = { main: 'Hooded Merchant', contract: 'Ambush Contract: who?', summons: 'Anonymous Summons: who?', custom: 'Under the counter', food: 'Cursed Food',
     bounty: 'Bounty: whose head?', bountyAmount: 'Bounty on ' + view.name + ': how much?', bountyCancel: 'Cancel your bounty on ' + view.name + '?', wanted: 'Wanted' }
   const u = uuidOf(p)
   p.openChestGUI(comp([{ text: titles[view.kind] || 'Hooded Merchant', color: 'dark_purple' }]), 6, gui => {
@@ -1427,6 +1464,7 @@ function showGui(p, view) {
     cells.forEach(i => gui.slot(i % 9, Math.floor(i / 9), s => { s.item = filler() }))
     if (view.kind == 'main') fillMain(gui, p)
     else if (view.kind == 'custom') fillCustom(gui, p, view)
+    else if (view.kind == 'food') fillFood(gui, p, view)
     else if (view.kind == 'bounty') fillBountyTargets(gui, p, view)
     else if (view.kind == 'bountyAmount') fillBountyAmount(gui, p, view)
     else if (view.kind == 'bountyCancel') fillBountyCancel(gui, p, view)
@@ -1469,8 +1507,9 @@ function fillMain(gui, p) {
   guiLabel(gui, 3, 'minecraft:purple_stained_glass_pane', 'Pranks', 'light_purple')
   guiButton(gui, 2, 3, guiItem('minecraft:snowball', 'Itching Powder', 'light_purple', [ITCHING_POWDER.count + ' snowballs. Whoever gets hit itches:', 'Nausea, Slowness and Glowing for ' + ITCHING_POWDER.seconds + ' s.',
     { text: ITCHING_POWDER.price + ' ' + COIN_PLURAL, color: 'gold' }], { count: ITCHING_POWDER.count }), () => guiAct(p, () => buyItching(p)))
-  guiButton(gui, 3, 3, guiItem(CURSED_SNACK.item, 'Cursed Snack', 'light_purple', ['Looks like a normal cookie. Eating it is', 'a short flight and a long hunger.',
-    { text: CURSED_SNACK.price + ' ' + COIN_PLURAL, color: 'gold' }]), () => guiAct(p, () => buySnack(p)))
+  guiButton(gui, 3, 3, guiItem('minecraft:cooked_beef', 'Cursed Food', 'light_purple', ['Steak, bread, golden apples and more,', 'looking exactly like the real thing.',
+    'Whoever eats one gets a nasty surprise (or three).', { text: CURSED_FOOD.price + ' ' + COIN_PLURAL + ' each', color: 'gold' },
+    { text: 'Click to choose the food', color: 'dark_gray', italic: true }]), () => nav(p, { kind: 'food', page: 0 }))
   guiButton(gui, 5, 3, guiItem('minecraft:egg', 'Butterfingers', 'light_purple', [BUTTERFINGERS.count + ' eggs. Whoever gets hit drops', 'whatever is in their hand.',
     { text: BUTTERFINGERS.price + ' ' + COIN_PLURAL, color: 'gold' }], { count: BUTTERFINGERS.count }), () => guiAct(p, () => buyButterfingers(p)))
   guiButton(gui, 4, 3, guiItem('minecraft:bell', 'Anonymous Summons', 'gold', ['A very official [MINISTRY] notice,', 'sent to the player of your choice.',
@@ -1563,6 +1602,15 @@ function fillWanted(gui, p, view) {
     [{ text: w.total + ' ' + COIN_PLURAL + ' on their head', color: 'gold' }].concat(w.online ? [] : [{ text: '(offline)', color: 'dark_gray', italic: true }])), () => { }))
   if (!all.length) guiButton(gui, 4, 2, guiItem('minecraft:structure_void', 'Nobody has a price on their head', 'gray', []), () => { })
   pager(gui, p, view, all.length, per)
+}
+function fillFood(gui, p, view) {
+  CURSED_FOOD.foods.forEach((f, i) => guiButton(gui, 1 + i, 2, guiItem(f.item, 'Cursed ' + f.name, f.fake ? 'light_purple' : 'white',
+    ['Looks exactly like the real thing.', 'Whoever eats it gets 1-3 random curses' + (f.apple ? ',' : '.')].concat(f.apple ? ['and none of the apple\'s usual buffs.'] : [])
+      .concat([{ text: CURSED_FOOD.price + ' ' + COIN_PLURAL, color: 'gold' }]), { glint: !!f.fake }),
+    () => guiAct(p, () => buyFood(p, f.id), { kind: 'food', page: 0 })))
+  const coins = countCoins(p)
+  guiButton(gui, 8, 5, guiItem(COIN_ITEM, 'You carry ' + coinText(coins), 'dark_red', [], { glint: true, count: Math.max(1, Math.min(64, coins)) }), () => { })
+  pager(gui, p, view, CURSED_FOOD.foods.length, 45)
 }
 function fillCustom(gui, p, view) {
   const custom = db().shop.custom, ids = Object.keys(custom), per = 45
@@ -1675,7 +1723,7 @@ EntityEvents.hurt(event => {
 })
 
 // Drops the victim's main-hand item in front of them (the usual 2 s before anyone can pick it up).
-function butterfingers(victim) {
+function butterfingers(victim, message) {
   try { if (victim.isCreative() || victim.isSpectator()) return } catch (e) { }
   const held = victim.mainHandItem
   if (!held || held.isEmpty()) return
@@ -1684,21 +1732,66 @@ function butterfingers(victim) {
   let dropped = null
   try { dropped = victim.drop(copy, false) } catch (e) { }
   if (!dropped) { try { victim.block.popItem(copy) } catch (e) { } }
-  say(victim, VOICE_TRICK, 'Butterfingers!')
+  say(victim, VOICE_TRICK, message || 'Butterfingers!')
 }
 
-// Cursed Snack: eaten.
+// The curses a cursed food can bring: (server, player, uuid) => what the eater is told.
+function effects(server, u, list) {
+  list.forEach(e => { try { server.runCommandSilent('effect give ' + u + ' minecraft:' + e[0] + ' ' + e[1] + ' ' + e[2]) } catch (err) { } })
+}
+function atPlayer(server, u, command) { try { server.runCommandSilent('execute as ' + u + ' at @s run ' + command) } catch (e) { } }
+const CURSES = {
+  launch: (server, p, u) => { effects(server, u, [['levitation', 6, 1]]); return 'Your stomach feels very light.' },
+  lights_out: (server, p, u) => { effects(server, u, [['blindness', 10, 0], ['slowness', 10, 1]]); return 'Everything goes dark.' },
+  food_poisoning: (server, p, u) => { effects(server, u, [['nausea', 15, 0], ['hunger', 30, 2]]); return 'Your stomach turns.' },
+  weak_knees: (server, p, u) => { effects(server, u, [['weakness', 30, 0], ['mining_fatigue', 30, 0]]); return 'Your arms feel like jelly.' },
+  // a short hop to somewhere nearby, on ground below their head height (never onto the Nether roof)
+  wrong_turn: (server, p, u) => { atPlayer(server, u, 'spreadplayers ~ ~ 4 16 under ' + (Math.floor(posOf(p).y) + 8) + ' false @s'); return 'Where... are you?' },
+  slippery_fingers: (server, p, u) => { butterfingers(p, 'Your fingers are covered in grease.'); return '' },
+  loud: (server, p, u) => {
+    effects(server, u, [['glowing', 30, 0]])
+    atPlayer(server, u, 'playsound minecraft:item.goat_horn.sound.0 player @a ~ ~ ~ 4 1')
+    atPlayer(server, u, 'playsound minecraft:entity.pig.death player @a ~ ~ ~ 4 0.6')
+    return 'Everyone heard that.'
+  },
+}
+function pickCurses() {
+  const roll = Math.random()
+  let n = 1, acc = 0
+  for (let i = 0; i < CURSED_FOOD.curseCount.length; i++) {
+    acc += CURSED_FOOD.curseCount[i][1]
+    if (roll < acc) { n = CURSED_FOOD.curseCount[i][0]; break }
+    n = CURSED_FOOD.curseCount[i][0]
+  }
+  const pool = Object.keys(CURSES), out = []
+  while (out.length < n && pool.length) out.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0])
+  return out
+}
+function stripAppleBuffs(server, u) {
+  CURSED_FOOD.stripEffects.forEach(e => { try { server.runCommandSilent('effect clear ' + u + ' minecraft:' + e) } catch (err) { } })
+}
+
+// Cursed Food (and Cursed Snacks sold before the food menu): eaten.
 ItemEvents.foodEaten(event => {
-  if (trollKind(event.item) != 'snack') return
+  const kind = trollKind(event.item)
+  if (kind != 'food' && kind != 'snack') return
   const p = event.entity
   if (!p || !p.isPlayer()) return
-  const server = Utils.server, u = uuidOf(p), C = CURSED_SNACK
-  try {
-    server.runCommandSilent('effect give ' + u + ' minecraft:levitation ' + C.levitationSeconds + ' 1')
-    server.runCommandSilent('effect give ' + u + ' minecraft:hunger ' + C.hungerSeconds + ' 2')
-    server.runCommandSilent('effect give ' + u + ' minecraft:nausea ' + C.nauseaSeconds + ' 0')
-  } catch (e) { }
-  say(p, VOICE_TRICK, 'That cookie tasted... wrong.')
+  const server = Utils.server, u = uuidOf(p)
+  const f = foodById(foodIdOf(event.item))
+  if (f && f.apple) {
+    // now and a tick later, in case the apple's own effects land after this event
+    stripAppleBuffs(server, u)
+    server.scheduleInTicks(1, () => stripAppleBuffs(server, u))
+  }
+  say(p, VOICE_TRICK, 'That tasted... wrong.')
+  const picked = pickCurses()
+  picked.forEach(c => {
+    let msg = ''
+    try { msg = CURSES[c](server, p, u) } catch (e) { console.error('[BlackMarket] Curse ' + c + ' failed: ' + e) }
+    if (msg) say(p, VOICE_TRICK, msg)
+  })
+  console.info('[BlackMarket] ' + nameOf(p) + ' ate a cursed ' + (f ? f.name : 'cookie') + ': ' + picked.join(', '))
 })
 
 // Traps: placing one registers it (Disguised TNT or Mimic Chest); breaking it removes it.
@@ -1863,7 +1956,8 @@ ServerEvents.commandRegistry(event => {
       .then(Commands.literal('mimic').executes(atVendor((ctx, p) => buyMimic(p))))
       .then(Commands.literal('itching').executes(atVendor((ctx, p) => buyItching(p))))
       .then(Commands.literal('butterfingers').executes(atVendor((ctx, p) => buyButterfingers(p))))
-      .then(Commands.literal('snack').executes(atVendor((ctx, p) => buySnack(p))))
+      .then(Commands.literal('food').executes(atVendor((ctx, p) => { foodHowTo(p); return null }))
+        .then(word('food').executes(atVendor((ctx, p) => buyFood(p, str(ctx, 'food'))))))
       .then(Commands.literal('summons').executes(atVendor((ctx, p) => { openSummonsMenu(p); return null }))
         .then(word('target').executes(atVendor((ctx, p) => buySummons(ctx.source.server, p, str(ctx, 'target'))))))
       .then(Commands.literal('custom').then(word('id').executes(atVendor((ctx, p) => buyCustom(p, str(ctx, 'id')))))))

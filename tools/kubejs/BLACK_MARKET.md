@@ -75,7 +75,7 @@ Copy them and run `/reload`; no restart is needed. With no vendor spots set up t
 | Mimic Chest | 12 | A chest that bites the first person to open it |
 | Itching Powder | 4 for 4 | Snowballs; whoever is hit itches |
 | Butterfingers | 5 for 3 | Eggs; whoever is hit drops what they're holding |
-| Cursed Snack | 3 | A normal-looking cookie that isn't |
+| Cursed Food | 8 each | Steak, cooked mutton, bread, golden carrot, golden apple or "Enchanted Golden Apple" that look like the real thing and curse whoever eats them |
 | Anonymous Summons | 5 | A fake [MINISTRY] notice for a player of your choice |
 | Bounty | any amount | Hush Coins on a player's head; whoever kills them collects ([BOUNTIES.md](BOUNTIES.md)) |
 | Custom stock | set by ops | Anything an op adds with `/bm hand add` |
@@ -94,7 +94,7 @@ Right-clicking the merchant opens a chest-style window. It's a vanilla chest scr
 | Contracts | Tip-off, Squad, War Party. Clicking one opens a page of player heads with each player's price; click a head to buy. Then **Place a Bounty** and **Wanted** (with bounties.js; see [BOUNTIES.md](BOUNTIES.md#the-shop-window)). |
 | Protection | Writ of Protection |
 | Traps | Disguised TNT, Mimic Chest, Teleport Trap (clicking it closes the window and puts `/bmbuy tpblock ` in your chat box, since the window can't take coordinates) |
-| Pranks | Itching Powder, Cursed Snack, Anonymous Summons (clicking it opens the player heads), Butterfingers |
+| Pranks | Itching Powder, Cursed Food (opens its own page of six foods), Anonymous Summons (clicking it opens the player heads), Butterfingers |
 | Under the counter | Custom stock: the real item with its own tooltip and the price added at the end. More than six entries: an arrow opens the full list. |
 | Bottom | Your Hush Coins, and Close. "Sell to him" appears only if `SELL_LIST` has entries. |
 
@@ -145,7 +145,18 @@ Right-clicking the merchant opens a chest-style window. It's a vanilla chest scr
 - **Butterfingers:** 3 eggs named "Butterfingers" (`BUTTERFINGERS`). A player hit by one drops whatever is in their main hand, thrown a little way in front of them like pressing Q, with the usual 2 s before anyone can pick it up.
   - Players in creative or spectator keep their item; an empty hand means nothing happens.
   - It's still an egg: now and then a chick hatches.
-- **Cursed Snack:** a cookie with **no name or lore**, so it looks like any other cookie. Eating it gives Levitation (6 s), Hunger (30 s) and Nausea. It won't stack with plain cookies, so keep your own apart.
+- **Cursed Food** (`CURSED_FOOD`, 8 coins each, its own page in the window): a **steak, cooked mutton, bread, golden carrot, golden apple or Enchanted Golden Apple** that looks exactly like the real thing (no name, no lore). It won't stack with normal food, so keep your own apart.
+  - **Whoever eats one** gets "That tasted... wrong." and **1 curse (60%), 2 (30%) or 3 (10%)**, never the same one twice:
+    - **Launch:** Levitation II, 6 s.
+    - **Lights out:** Blindness and Slowness II, 10 s.
+    - **Food poisoning:** Nausea 15 s and Hunger III 30 s.
+    - **Weak knees:** Weakness and Mining Fatigue, 30 s.
+    - **Wrong turn:** a hop to a random spot 4–16 blocks away, on ground no higher than their head (never onto the Nether roof).
+    - **Slippery fingers:** they drop what they're holding.
+    - **Loud:** Glowing for 30 s, plus a goat horn and a pig squeal everyone within about 64 blocks hears.
+  - **The cursed apples give no buffs.** Right after eating one, Regeneration, Absorption, Resistance and Fire Resistance are cleared (including any the eater already had from a potion or beacon).
+  - **The "Enchanted Golden Apple" is a golden apple in disguise:** the same name, colour and glint, but the item is `minecraft:golden_apple`. The shop never sells a real Enchanted Golden Apple, so nothing done to it (renaming, wiping its data, using it in a recipe) can turn 8 coins into one. A sharp-eyed player can spot it with advanced tooltips (F3+H) or JEI.
+  - Cursed cookies bought before this change still curse whoever eats them.
 - **Anonymous Summons:** a very official [MINISTRY] notice sent to the player you choose, picked at random from `SUMMONS.messages` (a tax audit, a fine for Unlicensed Standing…).
   - It's sent only to them, never to Discord, and it doesn't name you.
   - The server log records who sent it, for ops.
@@ -225,7 +236,7 @@ Ops can sell **any item exactly as it is**, NBT included, for example an item th
 |---|---|---|
 | `/blackmarket shop` | anyone at the merchant | Opens the shop window (same as right-clicking him) |
 | `/blackmarket chatshop` | anyone at the merchant | Opens the chat menu |
-| `/blackmarket buy tnt`, `mimic`, `itching`, `butterfingers`, `snack`, `summons [player]` | anyone at the merchant | The traps and pranks, from chat |
+| `/blackmarket buy tnt`, `mimic`, `itching`, `butterfingers`, `food <food>`, `summons [player]` | anyone at the merchant | The traps and pranks, from chat. Foods: `steak`, `mutton`, `bread`, `golden_carrot`, `golden_apple`, `enchanted_golden_apple`. |
 | `/bmbuy tpblock <x> <y> <z> [overworld\|nether\|end]` | anyone at the merchant | A Teleport Trap. `/bmbuy <item>` is short for `/blackmarket buy <item>`, for every item. |
 | `/bounty ...` | see [BOUNTIES.md](BOUNTIES.md#commands) | Bounties |
 | `/blackmarket traps near`, `list <player>`, `clear <player>`, `log` | op | Find, list or defuse traps; see the last ones that went off |
@@ -276,7 +287,7 @@ Logging out, `/reload` and restarts never reset a cooldown or reuse a contract i
 | `MIMIC_CHEST` | 12 coins, 6 silverfish, 10 per player | |
 | `ITCHING_POWDER` | 4 coins for 4, 30 s | |
 | `BUTTERFINGERS` | 5 coins for 3 | |
-| `CURSED_SNACK` | 3 coins, cookie | |
+| `CURSED_FOOD` | 8 coins, six foods, 1/2/3 curses at 60/30/10%, apple buffs stripped | The curses themselves are `CURSES`, just below the shop code |
 | `SUMMONS` | 5 coins, 5 messages | |
 | `TOKEN_EXPIRY_DAYS` | 7 | |
 | `CONTRACT_COOLDOWN_MINUTES` | 45 | |
@@ -351,12 +362,12 @@ Logging out, `/reload` and restarts never reset a cooldown or reuse a contract i
 19. **Pranks:**
     - hit B with Itching Powder: Nausea, Slowness and Glowing;
     - B holds a sword; hit B with Butterfingers: the sword drops in front of B and B's hand is empty;
-    - B eats the Cursed Snack: up B goes;
+    - buy a cursed steak and a cursed "Enchanted Golden Apple"; B eats each: "That tasted... wrong." and one or more curses, and the apple gives no Absorption hearts;
     - send B an Anonymous Summons from the window: B gets a [MINISTRY] notice that doesn't name you.
 
 ## What couldn't be verified for KubeJS 6 on 1.20.1
 
-A mock-server test passed all 235 checks (with bounties.js loaded): coins, the merchant, the shop window and the chat menu, range, contracts and every refusal, the writ, dupes and forgeries, heat, outcomes, `/reload`, custom stock, selling (refused by default; working when SELL_LIST has entries), the rotation, Disguised TNT (sprinting across, jumping over, owner, protected areas, replaced blocks, breaking, the limit), the Teleport Trap (every refusal, the Nether lock, landing, owner, Pig Escort, reload, replaced blocks, the limit), the Mimic Chest, the four pranks, bounties, the coin rename (old coins swapped) and the ambush coin drops. These parts depend on the real game:
+A mock-server test passed all 248 checks (with bounties.js loaded): coins, the merchant, the shop window and the chat menu, range, contracts and every refusal, the writ, dupes and forgeries, heat, outcomes, `/reload`, custom stock, selling (refused by default; working when SELL_LIST has entries), the rotation, Disguised TNT (sprinting across, jumping over, owner, protected areas, replaced blocks, breaking, the limit), the Teleport Trap (every refusal, the Nether lock, landing, owner, Pig Escort, reload, replaced blocks, the limit), the Mimic Chest, the four pranks (Cursed Food included), bounties, the coin rename (old coins swapped) and the ambush coin drops. These parts depend on the real game:
 
 - **The shop window** (`player.openChestGUI`, in your KubeJS 2001.6.5):
   - that every way of taking items out of it is blocked (KubeJS's menu handles the clicks);
@@ -372,7 +383,7 @@ A mock-server test passed all 235 checks (with bounties.js loaded): coins, the m
 - **Itching Powder:** a thrown snowball keeping its NBT (`getItem()` on the projectile), and the hurt event firing for a snowball's zero damage.
 - **Butterfingers:** a thrown egg keeping its NBT (`getItem()` on the egg), the hurt event firing for an egg's zero damage, and `player.drop(stack, false)` throwing the item (if it returns nothing, the item is popped at the player's feet instead).
 - **Renaming old coins:** reading a coin's name with `getHoverName()` and swapping the stack with `inventory.setItem`. If either fails, old coins simply keep their old name (they're still money).
-- **The Cursed Snack:** `ItemEvents.foodEaten`'s `item` still carrying the NBT.
+- **Cursed Food:** `ItemEvents.foodEaten`'s `item` still carrying the NBT, and the apple's effects being cleared (they're cleared again a tick later in case they land after the event); `spreadplayers ... under <height>` for the wrong turn.
 - **Protected areas:** read from `protected_areas.js`'s `PROTECTED_AREAS` through KubeJS's shared script scope. If that isn't visible, only spawn, the Pig Escort portal and portal_ambush safe zones count.
 
 - **The shop menu:**

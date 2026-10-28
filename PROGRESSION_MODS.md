@@ -16,6 +16,7 @@ the pack's jars and against its official docs.
 | [MOD_TIERS.md](MOD_TIERS.md) | Each mod's own early, mid and end game stages |
 | [STARTING_MODS.md](STARTING_MODS.md) | Which mods to start with, and which to hold off on |
 | [CROSS_REFERENCE.md](CROSS_REFERENCE.md) | Official docs, in-game guides and sourced step-by-step detail for every mod |
+| [PROGRESSION_GATES.md](PROGRESSION_GATES.md) | Every mod's item ladder with item IDs, recipe counts and bypass routes, for picking recipes to disable or make harder |
 
 **How the tiers are split:** a mod is **Tier 1** if you can start it in the first sessions with Overworld
 materials, or after a first Nether trip, and most of its content comes before the big bosses. A mod is **Tier 2** if

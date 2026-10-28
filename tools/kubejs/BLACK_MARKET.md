@@ -16,6 +16,7 @@ Players don't need a modpack update: everything is a vanilla item with custom NB
 | `server_scripts/economy/black_market.js` | `kubejs/server_scripts/economy/` | The whole add-on. All settings are at the top. |
 | `server_scripts/factions/portal_ambush.js` | `kubejs/server_scripts/factions/` | Needed: contracts use its mobs. This version adds the `global.PortalAmbush` API the black market calls. |
 | `server_scripts/factions/factions_core.js` | `kubejs/server_scripts/factions/` | Needed for factions (friendly fire, coordinate whispers). |
+| `server_scripts/economy/bounties.js` | `kubejs/server_scripts/economy/` | Optional: bounties (see [BOUNTIES.md](BOUNTIES.md)). Without it, the shop window just has no bounty buttons. |
 
 Copy them and run `/reload`; no restart is needed. With no vendor spots set up the merchant never appears, so add one first (see [The merchant](#the-merchant)).
 
@@ -71,8 +72,10 @@ Copy them and run `/reload`; no restart is needed. With no vendor spots set up t
 | Disguised TNT | 25 per block | Turns one block in your hand into a trap (see [Traps](#traps)) |
 | Mimic Chest | 12 | A chest that bites the first person to open it |
 | Itching Powder | 4 for 4 | Snowballs; whoever is hit itches |
+| Butterfingers | 5 for 3 | Eggs; whoever is hit drops what they're holding |
 | Cursed Snack | 3 | A normal-looking cookie that isn't |
 | Anonymous Summons | 5 | A fake [MINISTRY] notice for a player of your choice |
+| Bounty | any amount | Blood Coins on a player's head; whoever kills them collects ([BOUNTIES.md](BOUNTIES.md)) |
 | Custom stock | set by ops | Anything an op adds with `/bm hand add` |
 
 ## The shop window
@@ -83,10 +86,10 @@ Right-clicking the merchant opens a chest-style window. It's a vanilla chest scr
 
 | Row | |
 |---|---|
-| Contracts | Tip-off, Squad, War Party. Clicking one opens a page of player heads with each player's price; click a head to buy. |
+| Contracts | Tip-off, Squad, War Party. Clicking one opens a page of player heads with each player's price; click a head to buy. Then **Place a Bounty** and **Wanted** (with bounties.js; see [BOUNTIES.md](BOUNTIES.md#the-shop-window)). |
 | Protection | Writ of Protection |
 | Traps | Disguised TNT, Mimic Chest |
-| Pranks | Itching Powder, Cursed Snack, Anonymous Summons (clicking it opens the player heads) |
+| Pranks | Itching Powder, Cursed Snack, Anonymous Summons (clicking it opens the player heads), Butterfingers |
 | Under the counter | Custom stock: the real item with its own tooltip and the price added at the end. More than six entries: an arrow opens the full list. |
 | Bottom | Your Blood Coins, and Close. "Sell to him" appears only if `SELL_LIST` has entries. |
 
@@ -123,6 +126,9 @@ Right-clicking the merchant opens a chest-style window. It's a vanilla chest scr
 ## Pranks
 
 - **Itching Powder:** 4 snowballs named "Itching Powder". A player hit by one gets Nausea, Slowness and Glowing for 30 s (`ITCHING_POWDER`).
+- **Butterfingers:** 3 eggs named "Butterfingers" (`BUTTERFINGERS`). A player hit by one drops whatever is in their main hand, thrown a little way in front of them like pressing Q, with the usual 2 s before anyone can pick it up.
+  - Players in creative or spectator keep their item; an empty hand means nothing happens.
+  - It's still an egg: now and then a chick hatches.
 - **Cursed Snack:** a cookie with **no name or lore**, so it looks like any other cookie. Eating it gives Levitation (6 s), Hunger (30 s) and Nausea. It won't stack with plain cookies, so keep your own apart.
 - **Anonymous Summons:** a very official [MINISTRY] notice sent to the player you choose, picked at random from `SUMMONS.messages` (a tax audit, a fine for Unlicensed Standing…).
   - It's sent only to them, never to Discord, and it doesn't name you.
@@ -203,7 +209,8 @@ Ops can sell **any item exactly as it is**, NBT included, for example an item th
 |---|---|---|
 | `/blackmarket shop` | anyone at the merchant | Opens the shop window (same as right-clicking him) |
 | `/blackmarket chatshop` | anyone at the merchant | Opens the chat menu |
-| `/blackmarket buy tnt`, `mimic`, `itching`, `snack`, `summons [player]` | anyone at the merchant | The traps and pranks, from chat |
+| `/blackmarket buy tnt`, `mimic`, `itching`, `butterfingers`, `snack`, `summons [player]` | anyone at the merchant | The traps and pranks, from chat |
+| `/bounty ...` | see [BOUNTIES.md](BOUNTIES.md#commands) | Bounties |
 | `/blackmarket traps near`, `list <player>`, `clear <player>`, `log` | op | Find, list or defuse traps; see the last ones that went off |
 | `/blackmarket buy contract <tier> [player]`, `buy writ`, `buy custom <id>`, `sell <item>` | anyone at the merchant | What the menu buttons run. Tiers: `tipoff`, `squad`, `warparty`. `sell` only works if `SELL_LIST` has entries. |
 | `/blackmarket inspect` | op | While holding a contract: target, **buyer's name** (even if they're offline), tier, issue date, status. For Ministry trials: a confiscated contract proves who ordered the hit. |
@@ -249,6 +256,7 @@ Logging out, `/reload` and restarts never reset a cooldown or reuse a contract i
 | `DISGUISED_TNT` | 25 coins, power 8, 10 per player, checked every 10 ticks | |
 | `MIMIC_CHEST` | 12 coins, 6 silverfish, 10 per player | |
 | `ITCHING_POWDER` | 4 coins for 4, 30 s | |
+| `BUTTERFINGERS` | 5 coins for 3 | |
 | `CURSED_SNACK` | 3 coins, cookie | |
 | `SUMMONS` | 5 coins, 5 messages | |
 | `TOKEN_EXPIRY_DAYS` | 7 | |
@@ -318,12 +326,13 @@ Logging out, `/reload` and restarts never reset a cooldown or reuse a contract i
 17. **Mimic Chest:** place it; you open it and nothing happens; B opens it, gets silverfish and the laugh, and the next time it's a normal chest.
 18. **Pranks:**
     - hit B with Itching Powder: Nausea, Slowness and Glowing;
+    - B holds a sword; hit B with Butterfingers: the sword drops in front of B and B's hand is empty;
     - B eats the Cursed Snack: up B goes;
     - send B an Anonymous Summons from the window: B gets a [MINISTRY] notice that doesn't name you.
 
 ## What couldn't be verified for KubeJS 6 on 1.20.1
 
-A mock-server test passed all 124 checks: coins, the merchant, the shop window and the chat menu, range, contracts and every refusal, the writ, dupes and forgeries, heat, outcomes, `/reload`, custom stock, selling (refused by default; working when SELL_LIST has entries), the rotation, Disguised TNT (sprinting across, jumping over, owner, protected areas, replaced blocks, breaking, the limit), the Mimic Chest and the three pranks. These parts depend on the real game:
+A mock-server test passed all 188 checks (with bounties.js loaded): coins, the merchant, the shop window and the chat menu, range, contracts and every refusal, the writ, dupes and forgeries, heat, outcomes, `/reload`, custom stock, selling (refused by default; working when SELL_LIST has entries), the rotation, Disguised TNT (sprinting across, jumping over, owner, protected areas, replaced blocks, breaking, the limit), the Mimic Chest, the four pranks and bounties. These parts depend on the real game:
 
 - **The shop window** (`player.openChestGUI`, in your KubeJS 2001.6.5):
   - that every way of taking items out of it is blocked (KubeJS's menu handles the clicks);
@@ -336,6 +345,7 @@ A mock-server test passed all 124 checks: coins, the merchant, the shop window a
   - `BlockEvents.placed` still seeing the trap item in the player's hand.
 - **The Mimic Chest:** `PlayerEvents.chestOpened` giving the chest's block. With a double chest, only the half the mimic was placed as counts.
 - **Itching Powder:** a thrown snowball keeping its NBT (`getItem()` on the projectile), and the hurt event firing for a snowball's zero damage.
+- **Butterfingers:** a thrown egg keeping its NBT (`getItem()` on the egg), the hurt event firing for an egg's zero damage, and `player.drop(stack, false)` throwing the item (if it returns nothing, the item is popped at the player's feet instead).
 - **The Cursed Snack:** `ItemEvents.foodEaten`'s `item` still carrying the NBT.
 - **Protected areas:** read from `protected_areas.js`'s `PROTECTED_AREAS` through KubeJS's shared script scope. If that isn't visible, only spawn, the Pig Escort portal and portal_ambush safe zones count.
 

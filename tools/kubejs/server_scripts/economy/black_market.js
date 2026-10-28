@@ -7,6 +7,8 @@
 //    The buyer is never shown to players; ops can read it with /blackmarket inspect (for Ministry trials).
 //  - A Writ of Protection turns away the next contract called on its holder.
 //  - Ops can sell any item, NBT and all, with /bm hand add <price>.
+//  - Traps and pranks (Disguised TNT, Mimic Chest, Itching Powder, Butterfingers, Cursed Snack, Anonymous Summons).
+//  - Bounties live in economy/bounties.js; the shop window has their Place a Bounty and Wanted pages.
 //
 // Needs: factions/factions_core.js (global.Factions) and factions/portal_ambush.js (global.PortalAmbush).
 // No new items are registered, so players don't need a modpack update. See tools/kubejs/BLACK_MARKET.md.
@@ -92,6 +94,8 @@ const MIMIC_CHEST = { price: 12, silverfish: 6, maxPerPlayer: 10,
   laugh: 'Hahahaha. You should have read the label.', sound: 'minecraft:entity.witch.celebrate' }
 // Itching Powder: snowballs; a player hit by one gets Nausea, Slowness and Glowing.
 const ITCHING_POWDER = { price: 4, count: 4, seconds: 30 }
+// Butterfingers: eggs; a player hit by one drops whatever is in their main hand.
+const BUTTERFINGERS = { price: 5, count: 3 }
 // Cursed Snack: looks like a plain cookie (no name, no lore); eating it gives Levitation, Hunger and Nausea.
 const CURSED_SNACK = { price: 3, item: 'minecraft:cookie', levitationSeconds: 6, hungerSeconds: 30, nauseaSeconds: 10 }
 // Anonymous Summons: a fake [MINISTRY] notice sent to the chosen player (one of these, at random).
@@ -203,6 +207,7 @@ function isOp(p) { try { return p.hasPermissions(2) } catch (e) { return false }
 function randInt(min, max) { return min + Math.floor(Math.random() * (max - min + 1)) }
 function factionOf(p) { try { return String(global.Factions.getFaction(p)) } catch (e) { return '' } }
 function PA() { return global.PortalAmbush || null }       // looked up when needed (factions/ loads after economy/)
+function BOUNTIES() { return global.Bounties || null }      // economy/bounties.js
 function snbtString(s) { return "'" + String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'") + "'" }
 function dateText(ms) {
   const d = new Date(ms)
@@ -820,10 +825,17 @@ function openShop(p) {
   menuLine(p, [{ text: ' Pranks', color: 'light_purple', bold: true }])
   menuLine(p, [{ text: '  Itching Powder x' + ITCHING_POWDER.count, color: 'light_purple', hoverEvent: { action: 'show_text', contents: 'Snowballs. Whoever gets hit gets Nausea, Slowness and Glowing.' } },
     { text: ' - ' + ITCHING_POWDER.price + ' coins ', color: 'gray' }, button('[BUY]', 'gold', '/blackmarket buy itching', 'Buy Itching Powder')])
+  menuLine(p, [{ text: '  Butterfingers x' + BUTTERFINGERS.count, color: 'light_purple', hoverEvent: { action: 'show_text', contents: 'Eggs. Whoever gets hit drops what they are holding.' } },
+    { text: ' - ' + BUTTERFINGERS.price + ' coins ', color: 'gray' }, button('[BUY]', 'gold', '/blackmarket buy butterfingers', 'Buy Butterfingers')])
   menuLine(p, [{ text: '  Cursed Snack', color: 'light_purple', hoverEvent: { action: 'show_text', contents: 'Looks like a normal cookie. Eating it: a short flight and a long hunger.' } },
     { text: ' - ' + CURSED_SNACK.price + ' coins ', color: 'gray' }, button('[BUY]', 'gold', '/blackmarket buy snack', 'Buy a Cursed Snack')])
   menuLine(p, [{ text: '  Anonymous Summons', color: 'gold', hoverEvent: { action: 'show_text', contents: 'A very official [MINISTRY] notice for the player of your choice.' } },
     { text: ' - ' + SUMMONS.price + ' coins ', color: 'gray' }, button('[BUY]', 'gold', '/blackmarket buy summons', 'Choose who gets it')])
+  if (BOUNTIES()) {
+    menuLine(p, [{ text: ' Bounties', color: 'dark_red', bold: true }])
+    menuLine(p, [{ text: '  Put Blood Coins on someone\'s head ', color: 'red', hoverEvent: { action: 'show_text', contents: 'Whoever kills them collects. Pots stack; your name stays secret.' } },
+      button('[PLACE]', 'gold', '/bounty', 'Choose a player'), ' ', button('[WANTED]', 'gold', '/bounty list', 'The prices on heads')])
+  }
   const custom = db().shop.custom, ids = Object.keys(custom)
   if (ids.length) {
     menuLine(p, [{ text: ' Under the counter', color: 'dark_purple', bold: true }])
@@ -938,7 +950,7 @@ function sell(p, key) {
 
 // ===================== TROLL ITEMS =====================
 
-// 'tnt', 'mimic', 'itching', 'snack' or null.
+// 'tnt', 'mimic', 'itching', 'butterfingers', 'snack' or null.
 function trollKind(stack) {
   const t = trollcraftTag(stack)
   if (t == null) return null
@@ -960,6 +972,10 @@ function mimicStack() {
 function itchingStack(n) {
   return Item.of('minecraft:snowball', n, '{trollcraft:{prank:"itching"},' + displayNbt('Itching Powder', 'light_purple',
     [{ text: 'Throw it at someone. They will regret standing still.', color: 'dark_gray', italic: true }]) + '}')
+}
+function butterfingersStack(n) {
+  return Item.of('minecraft:egg', n, '{trollcraft:{prank:"butterfingers"},' + displayNbt('Butterfingers', 'light_purple',
+    [{ text: 'Throw it at someone holding something nice.', color: 'dark_gray', italic: true }]) + '}')
 }
 // No name, no lore: it has to look like any other cookie.
 function snackStack() { return Item.of(CURSED_SNACK.item, 1, '{trollcraft:{prank:"snack"}}') }
@@ -1001,6 +1017,10 @@ function buyMimic(p) {
 function buyItching(p) {
   return pay(p, ITCHING_POWDER.price, itchingStack(ITCHING_POWDER.count)) ? ITCHING_POWDER.count + ' Itching Powder bought.'
     : 'Itching Powder costs ' + ITCHING_POWDER.price + ' Blood Coins. You have ' + countCoins(p) + '.'
+}
+function buyButterfingers(p) {
+  return pay(p, BUTTERFINGERS.price, butterfingersStack(BUTTERFINGERS.count)) ? BUTTERFINGERS.count + ' Butterfingers eggs bought.'
+    : 'Butterfingers costs ' + BUTTERFINGERS.price + ' Blood Coins. You have ' + countCoins(p) + '.'
 }
 function buySnack(p) {
   return pay(p, CURSED_SNACK.price, snackStack()) ? 'One cursed cookie. It looks like any other cookie, so keep it apart from yours.'
@@ -1198,13 +1218,18 @@ function openShopFor(p) {
 }
 
 function showGui(p, view) {
-  const titles = { main: 'Hooded Merchant', contract: 'Ambush Contract: who?', summons: 'Anonymous Summons: who?', custom: 'Under the counter' }
+  const titles = { main: 'Hooded Merchant', contract: 'Ambush Contract: who?', summons: 'Anonymous Summons: who?', custom: 'Under the counter',
+    bounty: 'Bounty: whose head?', bountyAmount: 'Bounty on ' + view.name + ': how much?', bountyCancel: 'Cancel your bounty on ' + view.name + '?', wanted: 'Wanted' }
   p.openChestGUI(comp([{ text: titles[view.kind] || 'Hooded Merchant', color: 'dark_purple' }]), 6, gui => {
     const cells = []
     for (let i = 0; i < 54; i++) cells.push(i)
     cells.forEach(i => gui.slot(i % 9, Math.floor(i / 9), s => { s.item = filler() }))
     if (view.kind == 'main') fillMain(gui, p)
     else if (view.kind == 'custom') fillCustom(gui, p, view)
+    else if (view.kind == 'bounty') fillBountyTargets(gui, p, view)
+    else if (view.kind == 'bountyAmount') fillBountyAmount(gui, p, view)
+    else if (view.kind == 'bountyCancel') fillBountyCancel(gui, p, view)
+    else if (view.kind == 'wanted') fillWanted(gui, p, view)
     else fillTargets(gui, p, view)
   })
 }
@@ -1223,6 +1248,11 @@ function fillMain(gui, p) {
   CONTRACTS.forEach((d, i) => guiButton(gui, 2 + i, 0, guiItem('minecraft:skull_banner_pattern', 'Ambush Contract: ' + d.name, 'red',
     [d.desc, { text: 'From ' + d.price + ' Blood Coins (more for a target with heat)', color: 'gold' }, { text: 'Click to choose the target', color: 'dark_gray', italic: true }], { glint: true }),
     () => nav(p, { kind: 'contract', tier: d.id, page: 0 })))
+  if (BOUNTIES()) {
+    guiButton(gui, 6, 0, guiItem('minecraft:wither_skeleton_skull', 'Place a Bounty', 'dark_red', ['Blood Coins on someone\'s head.', 'Whoever kills them collects. Pots stack,', 'and your name stays secret.',
+      { text: 'Any amount you carry', color: 'gold' }, { text: 'Click to choose the player', color: 'dark_gray', italic: true }]), () => nav(p, { kind: 'bounty', page: 0 }))
+    guiButton(gui, 7, 0, guiItem('minecraft:paper', 'Wanted', 'gold', ['The prices on heads right now.']), () => nav(p, { kind: 'wanted', page: 0 }))
+  }
   guiLabel(gui, 1, 'minecraft:white_stained_glass_pane', 'Protection', 'white')
   guiButton(gui, 2, 1, guiItem('minecraft:paper', 'Writ of Protection', 'gold', ['Keep it on you: the next contract called', 'on you is refused, and the writ is used up.',
     { text: WRIT_PRICE + ' Blood Coins', color: 'gold' }], { glint: true }), () => guiAct(p, () => buyWrit(p)))
@@ -1237,6 +1267,8 @@ function fillMain(gui, p) {
     { text: ITCHING_POWDER.price + ' Blood Coins', color: 'gold' }], { count: ITCHING_POWDER.count }), () => guiAct(p, () => buyItching(p)))
   guiButton(gui, 3, 3, guiItem(CURSED_SNACK.item, 'Cursed Snack', 'light_purple', ['Looks like a normal cookie. Eating it is', 'a short flight and a long hunger.',
     { text: CURSED_SNACK.price + ' Blood Coins', color: 'gold' }]), () => guiAct(p, () => buySnack(p)))
+  guiButton(gui, 5, 3, guiItem('minecraft:egg', 'Butterfingers', 'light_purple', [BUTTERFINGERS.count + ' eggs. Whoever gets hit drops', 'whatever is in their hand.',
+    { text: BUTTERFINGERS.price + ' Blood Coins', color: 'gold' }], { count: BUTTERFINGERS.count }), () => guiAct(p, () => buyButterfingers(p)))
   guiButton(gui, 4, 3, guiItem('minecraft:bell', 'Anonymous Summons', 'gold', ['A very official [MINISTRY] notice,', 'sent to the player of your choice.',
     { text: SUMMONS.price + ' Blood Coins', color: 'gold' }, { text: 'Click to choose who gets it', color: 'dark_gray', italic: true }]), () => nav(p, { kind: 'summons', page: 0 }))
   const custom = db().shop.custom, ids = Object.keys(custom)
@@ -1250,8 +1282,14 @@ function fillMain(gui, p) {
 function pager(gui, p, view, total, per) {
   const pages = Math.max(1, Math.ceil(total / per))
   guiButton(gui, 0, 5, guiItem('minecraft:arrow', 'Back', 'white', []), () => nav(p, { kind: 'main' }))
-  if (view.page > 0) guiButton(gui, 3, 5, guiItem('minecraft:spectral_arrow', 'Previous page', 'white', []), () => nav(p, { kind: view.kind, tier: view.tier, page: view.page - 1 }))
-  if (view.page < pages - 1) guiButton(gui, 5, 5, guiItem('minecraft:spectral_arrow', 'Next page', 'white', [(view.page + 2) + ' / ' + pages]), () => nav(p, { kind: view.kind, tier: view.tier, page: view.page + 1 }))
+  if (view.page > 0) guiButton(gui, 3, 5, guiItem('minecraft:spectral_arrow', 'Previous page', 'white', []), () => nav(p, withPage(view, view.page - 1)))
+  if (view.page < pages - 1) guiButton(gui, 5, 5, guiItem('minecraft:spectral_arrow', 'Next page', 'white', [(view.page + 2) + ' / ' + pages]), () => nav(p, withPage(view, view.page + 1)))
+}
+function withPage(view, page) {
+  const v = {}
+  Object.keys(view).forEach(k => { v[k] = view[k] })
+  v.page = page
+  return v
 }
 function fillTargets(gui, p, view) {
   const server = Utils.server
@@ -1268,6 +1306,59 @@ function fillTargets(gui, p, view) {
   if (!others.length) guiButton(gui, 4, 2, guiItem('minecraft:structure_void', 'Nobody else is around', 'gray',
     def ? ['Someone offline the server knows can be typed:', '/bm buy contract ' + def.id + ' <name>'] : ['Summons only reach people who are online.']), () => { })
   pager(gui, p, view, others.length, per)
+}
+// Bounties (economy/bounties.js): the player list, the amount page, the cancel page and the Wanted list.
+function headItem(name, color, lore) { return guiItem('minecraft:player_head', name, color, lore, { extra: 'SkullOwner:' + snbtString(name) }) }
+function bountyBack(gui, p, view) { guiButton(gui, 0, 5, guiItem('minecraft:arrow', 'Back', 'white', []), () => nav(p, view)) }
+function fillBountyTargets(gui, p, view) {
+  const B = BOUNTIES()
+  if (!B) return pager(gui, p, view, 0, 45)
+  const all = B.targets(p), per = 45
+  all.slice(view.page * per, view.page * per + per).forEach((t, i) => {
+    let pot = B.potOf(t.uuid), mine = B.myPart(p, t.uuid)
+    let lore = [{ text: pot ? pot + ' Blood Coins on their head' : 'No price on their head yet', color: pot ? 'gold' : 'gray' }]
+    if (!t.online) lore.push({ text: '(offline: the pot waits for them)', color: 'dark_gray', italic: true })
+    if (mine) lore.push({ text: 'Your bounty: ' + mine + ' coins. Click to cancel it.', color: 'red' })
+    else lore.push({ text: 'Click to choose how much', color: 'dark_gray', italic: true })
+    guiButton(gui, i % 9, Math.floor(i / 9), headItem(t.name, t.online ? 'red' : 'gray', lore),
+      () => nav(p, { kind: mine ? 'bountyCancel' : 'bountyAmount', uuid: t.uuid, name: t.name, page: 0 }))
+  })
+  if (!all.length) guiButton(gui, 4, 2, guiItem('minecraft:structure_void', 'Nobody the server knows', 'gray', []), () => { })
+  pager(gui, p, view, all.length, per)
+}
+function fillBountyAmount(gui, p, view) {
+  const B = BOUNTIES()
+  if (!B) return bountyBack(gui, p, { kind: 'main' })
+  const coins = countCoins(p), pot = B.potOf(view.uuid)
+  guiButton(gui, 4, 0, headItem(view.name, 'red', [{ text: pot ? pot + ' Blood Coins on their head' : 'No price on their head yet', color: 'gold' }]), () => { })
+  const amounts = B.presetsFor(p)
+  amounts.forEach((n, i) => {
+    let all = n == coins && i == amounts.length - 1
+    guiButton(gui, 1 + i, 2, guiItem(COIN_ITEM, (all ? 'All ' : '') + n + ' Blood Coin' + (n == 1 ? '' : 's'), 'gold',
+      ['Put ' + n + ' on ' + view.name + '\'s head.', { text: 'Pot after: ' + (pot + n), color: 'gold' }], { glint: true, count: Math.max(1, Math.min(64, n)) }),
+      () => guiAct(p, () => B.place(p, view.name, n).text))
+  })
+  if (!amounts.length) guiButton(gui, 4, 2, guiItem('minecraft:structure_void', 'You carry no Blood Coins', 'gray', []), () => { })
+  guiButton(gui, 4, 4, guiItem('minecraft:name_tag', 'Another amount?', 'white', ['Type /bounty ' + view.name + ' <amount>']), () => { })
+  guiButton(gui, 0, 5, guiItem(COIN_ITEM, 'You carry ' + coins + ' Blood Coin' + (coins == 1 ? '' : 's'), 'dark_red', [], { glint: true, count: Math.max(1, Math.min(64, coins)) }), () => { })
+  guiButton(gui, 8, 5, guiItem('minecraft:arrow', 'Back', 'white', []), () => nav(p, { kind: 'bounty', page: 0 }))
+}
+function fillBountyCancel(gui, p, view) {
+  const B = BOUNTIES()
+  if (!B) return bountyBack(gui, p, { kind: 'main' })
+  const mine = B.myPart(p, view.uuid)
+  guiButton(gui, 4, 0, headItem(view.name, 'red', [{ text: B.potOf(view.uuid) + ' Blood Coins on their head', color: 'gold' }]), () => { })
+  guiButton(gui, 3, 2, guiItem('minecraft:red_wool', 'Cancel my bounty', 'red', ['Withdraw your ' + mine + ' coins from the pot.', 'You get them back; nobody is told.']),
+    () => guiAct(p, () => B.cancel(p, view.name).text, { kind: 'bounty', page: 0 }))
+  guiButton(gui, 5, 2, guiItem('minecraft:lime_wool', 'Keep it', 'green', ['Leave the bounty where it is.']), () => nav(p, { kind: 'bounty', page: 0 }))
+}
+function fillWanted(gui, p, view) {
+  const B = BOUNTIES()
+  const all = B ? B.wanted() : [], per = 45
+  all.slice(view.page * per, view.page * per + per).forEach((w, i) => guiButton(gui, i % 9, Math.floor(i / 9), headItem(w.name, 'red',
+    [{ text: w.total + ' Blood Coins on their head', color: 'gold' }].concat(w.online ? [] : [{ text: '(offline)', color: 'dark_gray', italic: true }])), () => { }))
+  if (!all.length) guiButton(gui, 4, 2, guiItem('minecraft:structure_void', 'Nobody has a price on their head', 'gray', []), () => { })
+  pager(gui, p, view, all.length, per)
 }
 function fillCustom(gui, p, view) {
   const custom = db().shop.custom, ids = Object.keys(custom), per = 45
@@ -1291,6 +1382,9 @@ global.Economy = {
   // fn(buyerUuid, targetUuid, contractId), called when a contract's target is killed by its mobs.
   onContractFulfilled: fn => { if (typeof fn == 'function') listeners.push(fn) },
   _groupEnded: (id, reason) => groupEnded(id, reason),
+  // For bounties.js: must trades happen at the merchant right now (the market is open and he has spots)?
+  merchantRequired: () => isEnabled() && allSpots().length > 0,
+  atMerchant: player => isEnabled() && nearVendor(player),
 }
 
 
@@ -1346,16 +1440,18 @@ EntityEvents.hurt(event => {
   event.cancel()   // the vendor can't be hurt
 })
 
-// Itching Powder: a player hit by one of its snowballs.
+// Itching Powder and Butterfingers: a player hit by one of their snowballs or eggs.
 EntityEvents.hurt(event => {
   const victim = event.entity
   if (!victim.isPlayer()) return
   let imm = null
   try { imm = event.source.getDirectEntity() } catch (e) { try { imm = event.source.immediate } catch (e2) { } }
   if (!imm) return
-  let kind = null
-  try { if (String(imm.getEncodeId()) == 'minecraft:snowball') kind = trollKind(imm.getItem()) } catch (e) { }
-  if (kind != 'itching') return
+  let kind = null, type = ''
+  try { type = String(imm.getEncodeId()) } catch (e) { }
+  try { if (type == 'minecraft:snowball' || type == 'minecraft:egg') kind = trollKind(imm.getItem()) } catch (e) { }
+  if (kind == 'butterfingers' && type == 'minecraft:egg') return butterfingers(victim)
+  if (kind != 'itching' || type != 'minecraft:snowball') return
   const server = Utils.server, u = uuidOf(victim), sec = ITCHING_POWDER.seconds
   ;['minecraft:nausea 1', 'minecraft:slowness 1', 'minecraft:glowing 0'].forEach(eff => {
     let parts = eff.split(' ')
@@ -1363,6 +1459,19 @@ EntityEvents.hurt(event => {
   })
   say(victim, VOICE_TRICK, 'You\'re covered in itching powder.')
 })
+
+// Drops the victim's main-hand item in front of them (the usual 2 s before anyone can pick it up).
+function butterfingers(victim) {
+  try { if (victim.isCreative() || victim.isSpectator()) return } catch (e) { }
+  const held = victim.mainHandItem
+  if (!held || held.isEmpty()) return
+  const copy = held.copy()
+  held.shrink(held.getCount())
+  let dropped = null
+  try { dropped = victim.drop(copy, false) } catch (e) { }
+  if (!dropped) { try { victim.block.popItem(copy) } catch (e) { } }
+  say(victim, VOICE_TRICK, 'Butterfingers!')
+}
 
 // Cursed Snack: eaten.
 ItemEvents.foodEaten(event => {
@@ -1532,6 +1641,7 @@ ServerEvents.commandRegistry(event => {
       .then(Commands.literal('tnt').executes(atVendor((ctx, p) => buyTnt(p))))
       .then(Commands.literal('mimic').executes(atVendor((ctx, p) => buyMimic(p))))
       .then(Commands.literal('itching').executes(atVendor((ctx, p) => buyItching(p))))
+      .then(Commands.literal('butterfingers').executes(atVendor((ctx, p) => buyButterfingers(p))))
       .then(Commands.literal('snack').executes(atVendor((ctx, p) => buySnack(p))))
       .then(Commands.literal('summons').executes(atVendor((ctx, p) => { openSummonsMenu(p); return null }))
         .then(word('target').executes(atVendor((ctx, p) => buySummons(ctx.source.server, p, str(ctx, 'target'))))))

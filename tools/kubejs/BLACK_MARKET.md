@@ -17,6 +17,7 @@ Players don't need a modpack update: everything is a vanilla item with custom NB
 | `server_scripts/factions/portal_ambush.js` | `kubejs/server_scripts/factions/` | Needed: contracts use its mobs. This version adds the `global.PortalAmbush` API the black market calls. |
 | `server_scripts/factions/factions_core.js` | `kubejs/server_scripts/factions/` | Needed for factions (friendly fire, coordinate whispers). |
 | `server_scripts/economy/bounties.js` | `kubejs/server_scripts/economy/` | Optional: bounties (see [BOUNTIES.md](BOUNTIES.md)). Without it, the shop window just has no bounty buttons. |
+| `server_scripts/factions/trials.js` | `kubejs/server_scripts/factions/` | Optional: trials (see [TRIALS.md](TRIALS.md)). Needed for the Certified Alibi and for Homing Pig charges. Without it, the alibi isn't sold and hurting a Homing Pig is only announced. |
 
 Copy them and run `/reload`; no restart is needed. With no vendor spots set up the merchant never appears, so add one first (see [The merchant](#the-merchant)).
 
@@ -70,6 +71,9 @@ Copy them and run `/reload`; no restart is needed. With no vendor spots set up t
 | Ambush Contract: Squad | 20 | 4 mobs, moderate-raid strength |
 | Ambush Contract: War Party | 45 | 6–8 mobs, lethal-raid strength (1.5× health, 1.25× damage, Strength I), brutes or vindicators among them, no evokers |
 | Writ of Protection | 15 | Turns away the next contract called on you (see below) |
+| Certified Alibi | 50 | Dismisses one open charge at a trial (see [Tracking and alibis](#tracking-and-alibis)) |
+| Tracker Compass | 25 | Points to one online player for 5 minutes once switched on |
+| Homing Pig | 20 | Walks toward a player's bed for 3 minutes. Hurting it breaks the Sanctity of Swine Act |
 | Disguised TNT | 25 per block | Turns one block in your hand into a trap (see [Traps](#traps)) |
 | Teleport Trap | 20 per block | Turns one block in your hand into a trap that teleports whoever steps on it to the place you name (`/bmbuy tpblock x y z [dimension]`) |
 | Mimic Chest | 12 | A chest that bites the first person to open it |
@@ -92,7 +96,7 @@ Right-clicking the merchant opens a chest-style window. It's a vanilla chest scr
 | Row | |
 |---|---|
 | Contracts | Tip-off, Squad, War Party. Clicking one opens a page of player heads with each player's price; click a head to buy. Then **Place a Bounty** and **Wanted** (with bounties.js; see [BOUNTIES.md](BOUNTIES.md#the-shop-window)). |
-| Protection | Writ of Protection |
+| Protection & Tracking | Writ of Protection, Certified Alibi (with trials.js), Tracker Compass and Homing Pig (each opens a page of player heads) |
 | Traps | Disguised TNT, Mimic Chest, Teleport Trap (clicking it closes the window and puts `/bmbuy tpblock ` in your chat box, since the window can't take coordinates) |
 | Pranks | Itching Powder, Cursed Food (opens its own page of six foods), Anonymous Summons (clicking it opens the player heads), Butterfingers |
 | Under the counter | Custom stock: the real item with its own tooltip and the price added at the end. More than six entries: an arrow opens the full list. |
@@ -175,6 +179,49 @@ Right-clicking the merchant opens a chest-style window. It's a vanilla chest scr
 - Its lore: the target, "Right-click to call it in.", and the expiry date (7 real days, `TOKEN_EXPIRY_DAYS`).
 - **The buyer is never on the item.** It's kept only in the server's data, keyed by the contract's id.
 
+## Tracking and alibis
+
+**Tracker Compass** (25 coins, `TRACKER`): a compass for one player, chosen from the **online** players.
+- **Switching it on:** it does nothing until you right-click it, so you can keep it for later. From then it runs for **5 minutes** and points to that player.
+  - The target gets an unsigned "[???] You feel watched." Nothing names you or the item.
+  - One running compass per player at a time (`maxActive`).
+- **While it runs:**
+  - It points to where the target is, updated every second, but only rewritten once they've moved **3 blocks** (`minMove`), so it doesn't keep bobbing in your hand.
+  - It **spins** while the target is offline or in a different dimension from you. The action bar says "Tracking *name*" or "The trail is cold", with the time left.
+  - It's a lodestone compass that isn't bound to a lodestone, so using it on a lodestone does nothing (the click is cancelled).
+- **When it runs out** it becomes a plain "Spent Tracker Compass", even if it was in a chest (it changes the next time someone carries it).
+- **Copies:** each compass has an id on record. A copy of one that has been switched on won't switch on again, and a made-up one is refused.
+
+**Homing Pig** (20 coins, `HOMING_PIG`): a pig spawn egg named "Homing Pig" that knows where one player sleeps.
+- **Whose bed:** their spawn point (a bed, a respawn anchor or `/spawnpoint`).
+  - Offline players can be chosen too: the script remembers each player's spawn point when they log in and out, and every 30 seconds while they're on.
+  - No spawn point known: refused, nothing taken.
+- **Letting it go:** right-click it. A pig named Homing Pig appears at your feet and walks toward that spawn point for **3 minutes**, then vanishes in a puff.
+  - The target gets "You feel watched."
+  - **Refused, the egg kept:**
+    - the target has no spawn point any more;
+    - it's in another dimension ("Wherever *name* sleeps, it isn't in this world");
+    - you already have a pig out (one at a time, `maxActive`).
+  - The egg never hatches an ordinary pig, and can't be used on a spawner.
+- **Walking:** it heads for a point 12 blocks closer each second (`step`), a little faster than a pig's walk (`speed` 1.5), so it covers a few hundred blocks in 3 minutes.
+  - When stuck for 4 seconds, it tries 45° to one side, then the other.
+  - Close to the bed it walks straight to it, stops, oinks and shows hearts until its time is up.
+  - It only walks in loaded chunks, so follow it. A pig left behind waits where it is. Carrots still tempt it.
+- **It can't be hurt, led, ridden, bred or renamed.** `/kill` and the void still work.
+- **The Sanctity of Swine Act:** a player who hurts it is named to everyone online: "[MINISTRY] *name* has struck a Homing Pig in violation of the Sanctity of Swine Act. Charges have been filed."
+  - With trials.js, a charge is filed for the Enforcers (see [TRIALS.md](TRIALS.md)).
+  - The buyer counts too.
+  - Once per pig per player: a flurry of hits is one charge.
+  - Mobs and fire don't count.
+
+**Certified Alibi** (50 coins, `ALIBI`, sold only while trials.js is installed): a paper with a serial number.
+- **Using it:** right-click it to see your open charges, each with a [USE] button (or type `/trial alibi <#>`). The charge is dismissed, everyone is told "Charge #N against *name* is dismissed: alibi certified.", and the paper is used up.
+- **Limits:**
+  - **Only open charges.** It can't undo a verdict, and it can't clear someone else's charge.
+  - **Serial numbers are on record:** a copy of a used alibi ("already used") or a made-up one ("isn't on file") is refused and kept.
+
+**For trials:** `/bm inspect` while holding any of these shows the buyer (and who switched it on or used it), even if they're offline. Like contracts, they can't be put up as custom stock.
+
 ## Calling a contract
 
 Hold it and right-click, in the air or on a block. Nothing is placed, and one click counts once.
@@ -240,8 +287,9 @@ Ops can sell **any item exactly as it is**, NBT included, for example an item th
 | `/bmbuy tpblock <x> <y> <z> [overworld\|nether\|end]` | anyone at the merchant | A Teleport Trap. `/bmbuy <item>` is short for `/blackmarket buy <item>`, for every item. |
 | `/bounty ...` | see [BOUNTIES.md](BOUNTIES.md#commands) | Bounties |
 | `/blackmarket traps near`, `list <player>`, `clear <player>`, `log` | op | Find, list or defuse traps; see the last ones that went off |
+| `/blackmarket buy tracker [player]`, `buy pig [player]`, `buy alibi` | anyone at the merchant | Tracking and alibis. Without a player: the list of players to choose from. |
 | `/blackmarket buy contract <tier> [player]`, `buy writ`, `buy custom <id>`, `sell <item>` | anyone at the merchant | What the menu buttons run. Tiers: `tipoff`, `squad`, `warparty`. `sell` only works if `SELL_LIST` has entries. |
-| `/blackmarket inspect` | op | While holding a contract: target, **buyer's name** (even if they're offline), tier, issue date, status. For Ministry trials: a confiscated contract proves who ordered the hit. |
+| `/blackmarket inspect` | op | While holding a contract: target, **buyer's name** (even if they're offline), tier, issue date, status. For Ministry trials: a confiscated contract proves who ordered the hit. Also for a Tracker Compass, Homing Pig or Certified Alibi: who bought it and who used it. |
 | `/blackmarket contracts` | op | The 20 most recent contracts: id, tier, target, buyer, status |
 | `/blackmarket heat <player> [reset]` | op | Their heat and contract cooldown, or reset the heat |
 | `/blackmarket test contract <tier> <player>` | op | A free contract, no merchant needed |
@@ -259,9 +307,11 @@ Everything is in `persistentData["economy"]` as one JSON string:
 - contract cooldowns;
 - the merchant's state and saved spots;
 - notices waiting for the next login;
-- custom stock.
+- custom stock;
+- Tracker Compasses and Homing Pigs (buyer, target, used or not), the pigs that are out, and each player's last known spawn point;
+- Certified Alibi serial numbers (buyer, used or not).
 
-Logging out, `/reload` and restarts never reset a cooldown or reuse a contract id. Finished contracts and old notices are pruned after 30 days.
+Logging out, `/reload` and restarts never reset a cooldown or reuse a contract id. Finished contracts, old notices, and compasses, pigs and alibis used more than 30 days ago are pruned after 30 days. Unused ones are kept, so a compass or alibi in a chest still works.
 
 ## Settings (top of black_market.js)
 
@@ -289,6 +339,9 @@ Logging out, `/reload` and restarts never reset a cooldown or reuse a contract i
 | `BUTTERFINGERS` | 5 coins for 3 | |
 | `CURSED_FOOD` | 8 coins, six foods, 1/2/3 curses at 60/30/10%, apple buffs stripped | The curses themselves are `CURSES`, just below the shop code |
 | `SUMMONS` | 5 coins, 5 messages | |
+| `TRACKER` | 25 coins, 5 min, rewritten after 3 blocks, 1 running per player | |
+| `HOMING_PIG` | 20 coins, 3 min, speed 1.5, 12-block steps, arrives within 3 blocks, 1 out per player | Also the text of the charge it files |
+| `ALIBI` | 50 coins | |
 | `TOKEN_EXPIRY_DAYS` | 7 | |
 | `CONTRACT_COOLDOWN_MINUTES` | 45 | |
 | `HEAT_WINDOW_HOURS` / `HEAT_PRICE_STEP` | 24 / 0.5 | |
@@ -364,10 +417,26 @@ Logging out, `/reload` and restarts never reset a cooldown or reuse a contract i
     - B holds a sword; hit B with Butterfingers: the sword drops in front of B and B's hand is empty;
     - buy a cursed steak and a cursed "Enchanted Golden Apple"; B eats each: "That tasted... wrong." and one or more curses, and the apple gives no Absorption hearts;
     - send B an Anonymous Summons from the window: B gets a [MINISTRY] notice that doesn't name you.
+20. **Tracker Compass:**
+    - buy one on B from the window (B online);
+    - right-click it: B gets "You feel watched.";
+    - B walks away: the needle follows, and the action bar counts down;
+    - B goes to the Nether: it spins ("The trail is cold"). B comes back: it points again;
+    - after 5 minutes: a Spent Tracker Compass.
+21. **Homing Pig:**
+    - B sleeps in a bed (or uses `/spawnpoint`);
+    - buy a pig on B and right-click the ground: a Homing Pig appears and walks toward B's bed;
+    - follow it to the bed: it stops and shows hearts. After 3 minutes it vanishes;
+    - hit it: it takes no damage, everyone sees the [MINISTRY] line, and `/charges A` shows the Sanctity of Swine Act charge.
+22. **Certified Alibi** (needs trials.js):
+    - buy one;
+    - have an Enforcer `/accuse A Testing`;
+    - A right-clicks the alibi and clicks [USE]: the charge is dismissed and the paper is gone;
+    - `/bm inspect` on a used copy shows who bought it and the charge it cleared.
 
 ## What couldn't be verified for KubeJS 6 on 1.20.1
 
-A mock-server test passed all 248 checks (with bounties.js loaded): coins, the merchant, the shop window and the chat menu, range, contracts and every refusal, the writ, dupes and forgeries, heat, outcomes, `/reload`, custom stock, selling (refused by default; working when SELL_LIST has entries), the rotation, Disguised TNT (sprinting across, jumping over, owner, protected areas, replaced blocks, breaking, the limit), the Teleport Trap (every refusal, the Nether lock, landing, owner, Pig Escort, reload, replaced blocks, the limit), the Mimic Chest, the four pranks (Cursed Food included), bounties, the coin rename (old coins swapped) and the ambush coin drops. These parts depend on the real game:
+A mock-server test passed all 248 checks (with bounties.js loaded), and a second one passed all 84 tracking and trial checks: coins, the merchant, the shop window and the chat menu, range, contracts and every refusal, the writ, dupes and forgeries, heat, outcomes, `/reload`, custom stock, selling (refused by default; working when SELL_LIST has entries), the rotation, Disguised TNT (sprinting across, jumping over, owner, protected areas, replaced blocks, breaking, the limit), the Teleport Trap (every refusal, the Nether lock, landing, owner, Pig Escort, reload, replaced blocks, the limit), the Mimic Chest, the four pranks (Cursed Food included), bounties, the coin rename (old coins swapped) and the ambush coin drops. These parts depend on the real game:
 
 - **The shop window** (`player.openChestGUI`, in your KubeJS 2001.6.5):
   - that every way of taking items out of it is blocked (KubeJS's menu handles the clicks);
@@ -384,6 +453,13 @@ A mock-server test passed all 248 checks (with bounties.js loaded): coins, the m
 - **Butterfingers:** a thrown egg keeping its NBT (`getItem()` on the egg), the hurt event firing for an egg's zero damage, and `player.drop(stack, false)` throwing the item (if it returns nothing, the item is popped at the player's feet instead).
 - **Renaming old coins:** reading a coin's name with `getHoverName()` and swapping the stack with `inventory.setItem`. If either fails, old coins simply keep their old name (they're still money).
 - **Cursed Food:** `ItemEvents.foodEaten`'s `item` still carrying the NBT, and the apple's effects being cleared (they're cleared again a tick later in case they land after the event); `spreadplayers ... under <height>` for the wrong turn.
+- **Tracker Compass:** the client spinning a lodestone compass that has `LodestoneTracked:0b` and a dimension but no position, and the inventory sending the rewritten compass to the player; `player.setStatusMessage` for the action bar (`displayClientMessage` is the fallback).
+- **Homing Pig:**
+  - `getRespawnPosition()` and `getRespawnDimension()` for spawn points;
+  - `pig.getNavigation().moveTo(x, y, z, speed)` steering the pig;
+  - the pig's own goals (wandering, carrots) only now and then interrupting it;
+  - `level.getHeight(MOTION_BLOCKING_NO_LEAVES, x, z)` for the ground ahead (if it can't be read, the pig's own height is used);
+  - `EntityEvents.hurt` firing before the damage (it's cancelled), and `getMsgId()` naming `/kill` (`genericKill`) and the void (`outOfWorld`), so those still work.
 - **Protected areas:** read from `protected_areas.js`'s `PROTECTED_AREAS` through KubeJS's shared script scope. If that isn't visible, only spawn, the Pig Escort portal and portal_ambush safe zones count.
 
 - **The shop menu:**

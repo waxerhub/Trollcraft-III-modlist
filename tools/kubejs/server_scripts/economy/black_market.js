@@ -9,6 +9,9 @@
 //  - Ops can sell any item, NBT and all, with /bm hand add <price>.
 //  - Traps and pranks (Disguised TNT, Teleport Trap, Mimic Chest, Itching Powder, Butterfingers, Cursed Food, Anonymous Summons).
 //  - Bounties live in economy/bounties.js; the shop window has their Place a Bounty and Wanted pages.
+//  - Tracking: the Tracker Compass (points to one player for a few minutes) and the Homing Pig (walks toward a
+//    player's bed; hurting it breaks the Sanctity of Swine Act). The Certified Alibi clears one open charge at a
+//    trial (factions/trials.js).
 //
 // Needs: factions/factions_core.js (global.Factions) and factions/portal_ambush.js (global.PortalAmbush).
 // No new items are registered, so players don't need a modpack update. See tools/kubejs/BLACK_MARKET.md.
@@ -151,6 +154,7 @@ const VOICE_RUMOR = { tag: '[RUMOR]', tagColor: 'dark_purple', textColor: 'gray'
 const VOICE_MARKET = { tag: '[BLACK MARKET]', tagColor: 'dark_red', textColor: 'gray' }
 const VOICE_TRICK = { tag: '[???]', tagColor: 'dark_purple', textColor: 'light_purple' }
 const VOICE_MINISTRY = { tag: '[MINISTRY]', tagColor: 'gold', textColor: 'yellow' }
+const VOICE_TRACK = { tag: '[???]', tagColor: 'dark_gray', textColor: 'gray' }
 const WARNING_SOUND = 'minecraft:entity.wither.ambient'
 
 
@@ -159,10 +163,26 @@ const WARNING_SOUND = 'minecraft:entity.wither.ambient'
 const DATA_KEY = 'economy'
 const TAG_VENDOR = 'black_market_vendor'
 const TAG_CONTRACT_MOB = 'contract_ambush'
+const TAG_PIG = 'homing_pig'
 const SAVE_EVERY_SECONDS = 15
 const SLOW_LOOP_SECONDS = 30
 const OVERWORLD = 'minecraft:overworld'
 const NETHER = 'minecraft:the_nether'
+
+// --- Tracking and the courts ---
+// Tracker Compass: bought for one ONLINE player. Right-click it to switch it on: for `minutes` it points to that
+// player while you're both in the same dimension (it spins otherwise). It's only rewritten after the target has
+// moved minMove blocks, so it doesn't keep bobbing in your hand. maxActive: compasses one buyer can run at once.
+const TRACKER = { price: 25, minutes: 5, minMove: 3, maxActive: 1 }
+// Homing Pig: bought for a player with a spawn point (bed, respawn anchor or /spawnpoint), online or not.
+// Right-click to release it: for `minutes` it walks toward that spawn point, `step` blocks at a time, at `speed`
+// (1 = a pig's normal walk). It can't be hurt, led, ridden or bred. Hurting it breaks the Sanctity of Swine Act:
+// [MINISTRY] names the offender to everyone and a charge is filed (factions/trials.js), once per pig per offender.
+const HOMING_PIG = { price: 20, minutes: 3, speed: 1.5, step: 12, arriveDistance: 3, maxActive: 1,
+  charge: 'Violation of the Sanctity of Swine Act (struck a Homing Pig)' }
+// Certified Alibi: dismisses one OPEN charge at a trial (factions/trials.js). Serial-numbered: copies and used
+// papers are refused. Only sold while trials.js is installed.
+const ALIBI = { price: 50 }
 
 // Kept across /reload (only things that can't be rebuilt from saved data).
 if (!global.blackMarketState) global.blackMarketState = { token: 0 }
@@ -178,6 +198,11 @@ S.trapLoop = false
 S.guiOpen = {}                 // uuid -> true while their shop window is open (their inventory is away)
 S.lastPos = {}                 // uuid -> where they were at the last Disguised TNT check
 if (!S.afk) S.afk = {}         // uuid -> { key, since }
+S.lastItemUse = {}             // uuid -> server tick of the last tracking-item click
+S.watchLoop = false
+S.expectPig = false
+S.lastPig = null
+if (!S.pigs) S.pigs = {}       // homing pig id -> its live entity (kept across /reload: the entities stay loaded)
 
 let Serializer = null, StringArg = null
 try { Serializer = Java.loadClass('net.minecraft.network.chat.Component$Serializer') } catch (e) { }
@@ -231,6 +256,7 @@ function randInt(min, max) { return min + Math.floor(Math.random() * (max - min 
 function factionOf(p) { try { return String(global.Factions.getFaction(p)) } catch (e) { return '' } }
 function PA() { return global.PortalAmbush || null }       // looked up when needed (factions/ loads after economy/)
 function BOUNTIES() { return global.Bounties || null }      // economy/bounties.js
+function TRIALS() { return global.Trials || null }          // factions/trials.js
 function snbtString(s) { return "'" + String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'") + "'" }
 function dateText(ms) {
   const d = new Date(ms)
@@ -266,6 +292,9 @@ function button(label, color, command, hover) {
 //   { v, enabled, nextId, contracts: { id: { tier, target, targetName, buyer, buyerName, issued, status, ... } },
 //     heat: { uuid: [ms] }, cooldowns: { uuid: untilMs }, vendor: { ... }, vendorSpots: [ ... ],
 //     notices: { uuid: [ { text, time } ] }, shop: { custom: { id: { ... } } } }
+//     trackItems: { id: { kind: tracker|pig, buyer, buyerName, target, targetName, bought, used, expires } },
+//     homingPigs: { id: { buyer, target, targetName, dim, bed, released, expires, entity, struck, arrived } },
+//     beds: { uuid: { name, dim, x, y, z } or { name, none } }, alibis: { serial: { buyer, buyerName, bought, used } } }
 // Contract statuses: issued, calling, active, fulfilled, survived, interrupted, refused, expired.
 
 let DB = null
@@ -284,7 +313,7 @@ function db() {
   DB = parsed && parsed.v ? parsed : { v: 1 }
   if (typeof DB.enabled != 'boolean') DB.enabled = ENABLED_BY_DEFAULT
   if (!DB.nextId) DB.nextId = 1
-  ;['contracts', 'heat', 'cooldowns', 'notices'].forEach(k => { if (!DB[k]) DB[k] = {} })
+  ;['contracts', 'heat', 'cooldowns', 'notices', 'trackItems', 'homingPigs', 'beds', 'alibis'].forEach(k => { if (!DB[k]) DB[k] = {} })
   if (!DB.vendor) DB.vendor = { present: false, nextAt: 0 }
   if (!DB.vendorSpots) DB.vendorSpots = []
   if (!DB.shop) DB.shop = {}
@@ -320,6 +349,9 @@ function prune() {
     D.notices[u] = D.notices[u].filter(n => now - n.time < month)
     if (!D.notices[u].length) delete D.notices[u]
   })
+  // Unused tracking items and alibis are kept (the papers in people's chests must still work).
+  Object.keys(D.trackItems).forEach(id => { let t = D.trackItems[id]; if (t.used && now - Math.max(t.used, t.expires || 0) > month) delete D.trackItems[id] })
+  Object.keys(D.alibis).forEach(k => { if (D.alibis[k].used && now - D.alibis[k].used > month) delete D.alibis[k] })
   dirty = true
 }
 
@@ -796,7 +828,10 @@ function nearVendor(p) {
 // Once every SLOW_LOOP_SECONDS: AFK samples, the vendor's comings and goings, pruning, saving.
 function slowTick(server) {
   sampleAfk(server)
-  onlinePlayers(server).forEach(p => { try { refreshCoins(p) } catch (e) { } })
+  onlinePlayers(server).forEach(p => {
+    try { refreshCoins(p) } catch (e) { }
+    try { rememberBed(p) } catch (e) { }
+  })
   const D = db(), v = D.vendor, now = Date.now()
   if (!isEnabled()) {
     if (v.present) vendorLeave(server, false)
@@ -855,6 +890,13 @@ function openShop(p) {
   })
   menuLine(p, [{ text: '  Writ of Protection', color: 'gold', hoverEvent: { action: 'show_text', contents: 'Keep it on you: the next contract called on you is refused, and the writ is used up.' } },
     { text: ' - ' + WRIT_PRICE + ' coins ', color: 'gray' }, button('[BUY]', 'gold', '/blackmarket buy writ', 'Buy a Writ of Protection')])
+  if (TRIALS()) menuLine(p, [{ text: '  Certified Alibi', color: 'aqua', hoverEvent: { action: 'show_text', contents: 'Dismisses one open charge at a trial. Serial-numbered and on file.' } },
+    { text: ' - ' + ALIBI.price + ' coins ', color: 'gray' }, button('[BUY]', 'gold', '/blackmarket buy alibi', 'Buy a Certified Alibi')])
+  menuLine(p, [{ text: ' Tracking', color: 'dark_aqua', bold: true }])
+  menuLine(p, [{ text: '  Tracker Compass', color: 'dark_aqua', hoverEvent: { action: 'show_text', contents: 'Points to one player for ' + TRACKER.minutes + ' minutes once you switch it on. They only feel watched.' } },
+    { text: ' - ' + TRACKER.price + ' coins ', color: 'gray' }, button('[BUY]', 'gold', '/blackmarket buy tracker', 'Choose who')])
+  menuLine(p, [{ text: '  Homing Pig', color: 'light_purple', hoverEvent: { action: 'show_text', contents: 'Walks toward a player\'s bed for ' + HOMING_PIG.minutes + ' minutes. Hurting it breaks the Sanctity of Swine Act.' } },
+    { text: ' - ' + HOMING_PIG.price + ' coins ', color: 'gray' }, button('[BUY]', 'gold', '/blackmarket buy pig', 'Choose whose bed')])
   menuLine(p, [{ text: ' Traps', color: 'gold', bold: true }])
   menuLine(p, [{ text: '  Disguised TNT', color: 'dark_red', hoverEvent: { action: 'show_text', contents: 'Turns ONE block in your main hand into TNT that looks like it. The first to step on it sets it off, you included.' } },
     { text: ' - ' + DISGUISED_TNT.price + ' coins ', color: 'gray' }, button('[BUY]', 'gold', '/blackmarket buy tnt', 'Hold the block first')])
@@ -1162,6 +1204,422 @@ function buySummons(server, p, targetName) {
 }
 
 
+// ===================== TRACKING AND ALIBIS =====================
+// Tracker Compass and Homing Pig items carry their id and target (and the compass its end time); the DB keeps who
+// bought them, for /bm inspect at a trial, and whether they've been used, so a copy can't be used again. A
+// Certified Alibi carries only its serial; the DB says whether it's genuine and unused.
+
+let Heightmap = null
+try { Heightmap = Java.loadClass('net.minecraft.world.level.levelgen.Heightmap$Types') } catch (e) { }
+const PI = 3.141592653589793   // Math.PI is missing in the server's script engine
+
+function newTrackId(prefix) {
+  const D = db()
+  let id = ''
+  do { id = prefix + shortId() } while (D.trackItems[id] || D.homingPigs[id])
+  return id
+}
+function clock(ms) {
+  const s = Math.max(0, Math.ceil(ms / 1000))
+  return Math.floor(s / 60) + ':' + (s % 60 < 10 ? '0' : '') + (s % 60)
+}
+function actionBar(p, parts) {
+  const c = comp(parts)
+  try { p.setStatusMessage(c); return } catch (e) { }
+  try { p.displayClientMessage(c, true) } catch (e) { }
+}
+
+// { id, target, targetName, expires, at } from a Tracker Compass, or null. expires: 0 until it's switched on.
+// at: "dim|x|y|z" it points to now, '' while the trail is cold (it spins).
+function trackerOf(stack) {
+  const t = trollcraftTag(stack)
+  if (t == null || !t.contains('tracker')) return null
+  const c = t.getCompound('tracker')
+  return { id: String(c.getString('id')), target: String(c.getString('target')), targetName: String(c.getString('targetName')),
+    expires: Number(c.getLong('expires')) || 0, at: String(c.getString('at')) }
+}
+// A lodestone compass that isn't bound to a lodestone (LodestoneTracked:0b): it points to LodestonePos, and spins
+// when there's no position or it's in another dimension.
+function trackerStack(t) {
+  let lode = 'LodestoneTracked:0b,LodestoneDimension:"' + OVERWORLD + '"'
+  if (t.at) {
+    let a = t.at.split('|')
+    lode = 'LodestoneTracked:0b,LodestoneDimension:"' + a[0] + '",LodestonePos:{X:' + a[1] + ',Y:' + a[2] + ',Z:' + a[3] + '}'
+  }
+  const lore = t.expires > 0 ? [{ text: 'Tracking ' + t.targetName + '.', color: 'gray' }, { text: 'Spins when the trail is cold.', color: 'dark_gray', italic: true }]
+    : [{ text: 'Points to ' + t.targetName + ' for ' + TRACKER.minutes + ' minutes once switched on.', color: 'gray' }, { text: 'Right-click to switch it on.', color: 'dark_gray', italic: true }]
+  return Item.of('minecraft:compass', 1, '{trollcraft:{tracker:{id:"' + t.id + '",target:"' + t.target + '",targetName:' + snbtString(t.targetName) +
+    ',expires:' + Math.floor(t.expires) + 'L,at:"' + t.at + '"}},' + lode + ',' + displayNbt('Tracker Compass', 'dark_aqua', lore) + '}')
+}
+function spentTrackerStack() {
+  return Item.of('minecraft:compass', 1, '{' + displayNbt('Spent Tracker Compass', 'gray', [{ text: 'It has lost the scent.', color: 'dark_gray', italic: true }]) + '}')
+}
+// { id, target, targetName } from a Homing Pig item, or null.
+function pigItemOf(stack) {
+  const t = trollcraftTag(stack)
+  if (t == null || !t.contains('homingPig')) return null
+  const c = t.getCompound('homingPig')
+  return { id: String(c.getString('id')), target: String(c.getString('target')), targetName: String(c.getString('targetName')) }
+}
+function pigItemStack(id, target) {
+  return Item.of('minecraft:pig_spawn_egg', 1, '{trollcraft:{homingPig:{id:"' + id + '",target:"' + target.uuid + '",targetName:' + snbtString(target.name) + '}},' +
+    displayNbt('Homing Pig', 'light_purple', [
+      { text: 'Knows where ' + target.name + ' sleeps.', color: 'gray' },
+      { text: 'Right-click to let it go: it walks there for ' + HOMING_PIG.minutes + ' minutes.', color: 'gray' },
+      { text: 'Hurting it breaks the Sanctity of Swine Act.', color: 'gold', italic: true },
+    ]) + ',Enchantments:[{id:"minecraft:unbreaking",lvl:1s}],HideFlags:1}')
+}
+function alibiSerialOf(stack) {
+  const t = trollcraftTag(stack)
+  if (t == null || !t.contains('alibi')) return null
+  return String(t.getCompound('alibi').getString('serial'))
+}
+function alibiStack(serial) {
+  return Item.of('minecraft:paper', 1, '{trollcraft:{alibi:{serial:"' + serial + '"}},' + displayNbt('Certified Alibi', 'aqua', [
+    { text: 'Certified by a notary who saw nothing.', color: 'gray' },
+    { text: 'Clears one open charge. Right-click to use it.', color: 'gray' },
+    { text: 'No. ' + serial, color: 'dark_gray' },
+  ]) + ',Enchantments:[{id:"minecraft:unbreaking",lvl:1s}],HideFlags:1}')
+}
+function isTrackingItem(stack) { return trackerOf(stack) != null || pigItemOf(stack) != null || alibiSerialOf(stack) != null }
+
+// --- spawn points (for the Homing Pig) ---
+// A player's spawn point (bed, respawn anchor or /spawnpoint) as { dim, x, y, z }, or null.
+function spawnPointOf(p) {
+  let pos = null, dim = OVERWORLD
+  try { pos = p.getRespawnPosition() } catch (e) { }
+  if (pos == null) return null
+  try { dim = String(p.getRespawnDimension().location()) } catch (e) { }
+  try { return { dim: dim, x: Number(pos.getX()), y: Number(pos.getY()), z: Number(pos.getZ()) } } catch (e) { return null }
+}
+// Kept for offline players: on login and logout and every SLOW_LOOP_SECONDS.
+function rememberBed(p) {
+  const D = db(), u = uuidOf(p), s = spawnPointOf(p)
+  const entry = s ? { name: nameOf(p), dim: s.dim, x: s.x, y: s.y, z: s.z } : { name: nameOf(p), none: true }
+  if (JSON.stringify(D.beds[u]) == JSON.stringify(entry)) return
+  D.beds[u] = entry
+  dirty = true
+}
+function bedOf(server, u) {
+  const p = playerByUuid(server, u)
+  if (p) rememberBed(p)
+  const b = db().beds[u]
+  return b && !b.none ? { dim: b.dim, x: b.x, y: b.y, z: b.z } : null
+}
+// Everyone p could send a pig after: online players, then offline ones whose bed is known. [{ uuid, name, online }]
+function pigTargets(p) {
+  const server = Utils.server, me = uuidOf(p), out = [], seen = {}
+  onlinePlayers(server).forEach(o => {
+    let u = uuidOf(o)
+    if (u == me) return
+    seen[u] = true
+    out.push({ uuid: u, name: nameOf(o), online: true })
+  })
+  const beds = db().beds
+  Object.keys(beds).filter(u => u != me && !seen[u] && !beds[u].none).sort((a, b) => String(beds[a].name).toLowerCase() < String(beds[b].name).toLowerCase() ? -1 : 1)
+    .forEach(u => out.push({ uuid: u, name: beds[u].name, online: false }))
+  return out
+}
+function pigTarget(server, name) {
+  const n = String(name).toLowerCase(), beds = db().beds
+  const known = Object.keys(beds).filter(u => String(beds[u].name).toLowerCase() == n)[0]
+  if (!playerByName(server, name) && known) return { uuid: known, name: beds[known].name }
+  return resolveTarget(server, name)
+}
+
+// --- buying ---
+function buyTracker(server, p, targetName) {
+  const target = targetName ? playerByName(server, targetName) : null
+  if (!target) return 'The compass needs a fresh scent: only people who are around can be tracked.'
+  if (uuidOf(target) == uuidOf(p)) return 'You always know where you are.'
+  if (countCoins(p) < TRACKER.price) return 'A Tracker Compass costs ' + coinText(TRACKER.price) + '. You have ' + countCoins(p) + '.'
+  const id = newTrackId('t'), t = { uuid: uuidOf(target), name: nameOf(target) }
+  const item = trackerStack({ id: id, target: t.uuid, targetName: t.name, expires: 0, at: '' })
+  takeCoins(p, TRACKER.price)
+  p.give(item)
+  db().trackItems[id] = { kind: 'tracker', buyer: uuidOf(p), buyerName: nameOf(p), target: t.uuid, targetName: t.name, bought: Date.now() }
+  save()
+  console.info('[BlackMarket] ' + nameOf(p) + ' bought Tracker Compass ' + id + ' on ' + t.name)
+  return 'Tracker Compass for ' + t.name + ' bought. Right-click it to switch it on; it runs for ' + TRACKER.minutes + ' minutes.'
+}
+function buyPig(server, p, targetName) {
+  const t = targetName ? pigTarget(server, targetName) : null
+  if (!t) return 'Nobody has heard of ' + targetName + '.'
+  if (t.uuid == uuidOf(p)) return 'You know where your own bed is.'
+  if (!bedOf(server, t.uuid)) return 'The pig has nothing to go on: ' + t.name + ' has no bed it knows of.'
+  if (countCoins(p) < HOMING_PIG.price) return 'A Homing Pig costs ' + coinText(HOMING_PIG.price) + '. You have ' + countCoins(p) + '.'
+  const id = newTrackId('p')
+  const item = pigItemStack(id, t)
+  takeCoins(p, HOMING_PIG.price)
+  p.give(item)
+  db().trackItems[id] = { kind: 'pig', buyer: uuidOf(p), buyerName: nameOf(p), target: t.uuid, targetName: t.name, bought: Date.now() }
+  save()
+  console.info('[BlackMarket] ' + nameOf(p) + ' bought Homing Pig ' + id + ' on ' + t.name)
+  return 'A Homing Pig that knows where ' + t.name + ' sleeps. Right-click it to let it go, then follow it.'
+}
+function buyAlibi(p) {
+  if (!TRIALS()) return 'Nobody is holding trials, so nobody needs an alibi.'
+  if (countCoins(p) < ALIBI.price) return 'A Certified Alibi costs ' + coinText(ALIBI.price) + '. You have ' + countCoins(p) + '.'
+  const D = db()
+  let serial = ''
+  do { serial = shortId().toUpperCase() } while (D.alibis[serial])
+  const item = alibiStack(serial)
+  takeCoins(p, ALIBI.price)
+  p.give(item)
+  D.alibis[serial] = { buyer: uuidOf(p), buyerName: nameOf(p), bought: Date.now() }
+  save()
+  console.info('[BlackMarket] ' + nameOf(p) + ' bought Certified Alibi ' + serial)
+  return 'Certified Alibi No. ' + serial + ' bought. When you stand accused, right-click it.'
+}
+// The chat menu's player list for the compass or the pig.
+function openTrackMenu(p, kind) {
+  const pig = kind == 'pig'
+  menuLine(p, voiceParts(VOICE_MARKET, pig ? 'Whose bed should the pig find?' : 'Who should the compass follow?'))
+  const list = pig ? pigTargets(p) : onlinePlayers(p.server || Utils.server).filter(o => uuidOf(o) != uuidOf(p)).map(o => ({ name: nameOf(o), online: true }))
+  if (!list.length) menuLine(p, [{ text: pig ? '  Nobody whose bed is known.' : '  Nobody else is around.', color: 'gray' }])
+  list.slice(0, 30).forEach(t => menuLine(p, [button('  ' + t.name, 'gold', '/blackmarket buy ' + kind + ' ' + t.name, (pig ? 'A Homing Pig for ' : 'A Tracker Compass on ') + t.name),
+    { text: ' - ' + (pig ? HOMING_PIG.price : TRACKER.price) + ' coins' + (t.online ? '' : ' (offline)'), color: 'gray' }]))
+}
+
+// --- the Tracker Compass ---
+function useTracker(server, p, stack) {
+  const t = trackerOf(stack), now = Date.now(), D = db()
+  if (t.expires) return t.expires > now ? 'Tracking ' + t.targetName + ': ' + clock(t.expires - now) + ' left.' : null
+  const rec = D.trackItems[t.id]
+  if (!rec) return 'This compass has never smelled anyone. It\'s no use.'
+  if (rec.used) return 'This compass has already been used.'
+  const u = uuidOf(p)
+  const running = Object.keys(D.trackItems).filter(id => D.trackItems[id].activatedBy == u && D.trackItems[id].expires > now).length
+  if (running >= TRACKER.maxActive) return 'You already have a Tracker Compass running. One trail at a time.'
+  const slot = findSlot(p, s => { let x = trackerOf(s); return x != null && x.id == t.id }, true)
+  if (slot < 0) return null
+  t.expires = now + TRACKER.minutes * 60000
+  p.inventory.setItem(slot, trackerStack(t))
+  rec.used = now
+  rec.expires = t.expires
+  rec.activatedBy = u
+  rec.activatedByName = nameOf(p)
+  save()
+  const target = playerByUuid(server, t.target)
+  if (target) say(target, VOICE_TRACK, 'You feel watched.')
+  updateTrackers(server, p)
+  console.info('[BlackMarket] ' + nameOf(p) + ' switched on Tracker Compass ' + t.id + ' (on ' + t.targetName + ')')
+  return 'The needle twitches. You have ' + TRACKER.minutes + ' minutes.'
+}
+// Every second, for each online player: their running compasses point to the target (or spin), and run out.
+function updateTrackers(server, p) {
+  if (S.guiOpen[uuidOf(p)]) return   // the shop window has their inventory away
+  const inv = p.inventory, now = Date.now(), dim = dimOf(p)
+  invSlots(true).forEach(i => {
+    let s = inv.getItem(i), t = trackerOf(s)
+    if (!t || !t.expires) return
+    if (now >= t.expires) {
+      inv.setItem(i, spentTrackerStack())
+      say(p, VOICE_TRACK, 'Your Tracker Compass has lost the scent of ' + t.targetName + '.')
+      return
+    }
+    let target = playerByUuid(server, t.target), at = ''
+    if (target && dimOf(target) == dim) {
+      let q = posOf(target)
+      let x = Math.floor(q.x), y = Math.floor(q.y), z = Math.floor(q.z)
+      at = dim + '|' + x + '|' + y + '|' + z
+      let a = t.at ? t.at.split('|') : null
+      if (a && a[0] == dim && dist({ x: Number(a[1]), y: Number(a[2]), z: Number(a[3]) }, { x: x, y: y, z: z }) < TRACKER.minMove) at = t.at
+    }
+    if (at != t.at) {
+      t.at = at
+      inv.setItem(i, trackerStack(t))
+    }
+  })
+  const held = trackerOf(p.mainHandItem) || trackerOf(p.offHandItem)
+  if (held && held.expires > now) {
+    actionBar(p, [{ text: held.at ? 'Tracking ' + held.targetName : 'The trail is cold', color: held.at ? 'dark_aqua' : 'gray' },
+      { text: '  ' + clock(held.expires - now), color: 'dark_gray' }])
+  }
+}
+
+// --- the Homing Pig ---
+function pigIdOf(e) {
+  const u = uuidOf(e), D = db()
+  return Object.keys(D.homingPigs).filter(id => D.homingPigs[id].entity == u)[0] || null
+}
+function releasePig(server, p, stack) {
+  const info = pigItemOf(stack), D = db(), u = uuidOf(p), now = Date.now()
+  const rec = D.trackItems[info.id]
+  if (!rec) return 'This pig has no papers. It refuses to move.'
+  if (rec.used) return 'That pig has already been let out.'
+  const out = Object.keys(D.homingPigs).filter(id => D.homingPigs[id].releasedBy == u).length
+  if (out >= HOMING_PIG.maxActive) return 'You already have a Homing Pig out. One pig at a time.'
+  const bed = bedOf(server, info.target)
+  if (!bed) return 'The pig sniffs the air and sits down. ' + info.targetName + ' has no bed to find.'
+  if (bed.dim != dimOf(p)) return 'The pig sniffs the air and sits down. Wherever ' + info.targetName + ' sleeps, it isn\'t in this world.'
+  const q = posOf(p)
+  const nbt = '{PersistenceRequired:1b,CustomName:' + snbtString(JSON.stringify({ text: 'Homing Pig', color: 'light_purple', italic: false })) +
+    ',CustomNameVisible:1b,Tags:["' + TAG_PIG + '"]}'
+  S.lastPig = null
+  S.expectPig = true
+  try { server.runCommandSilent('execute in ' + dimOf(p) + ' run summon minecraft:pig ' + num2(q.x) + ' ' + num2(q.y) + ' ' + num2(q.z) + ' ' + nbt) } finally { S.expectPig = false }
+  const e = S.lastPig
+  S.lastPig = null
+  if (!e) return 'The pig wouldn\'t come out. Try somewhere else.'
+  stack.shrink(1)
+  D.homingPigs[info.id] = { buyer: rec.buyer, releasedBy: u, releasedByName: nameOf(p), target: info.target, targetName: info.targetName, dim: bed.dim,
+    bed: { x: bed.x + 0.5, y: bed.y, z: bed.z + 0.5 }, released: now, expires: now + HOMING_PIG.minutes * 60000, entity: uuidOf(e), struck: {},
+    arrived: false, side: 0, last: { x: q.x, z: q.z, t: now } }
+  S.pigs[info.id] = e
+  rec.used = now
+  rec.expires = D.homingPigs[info.id].expires
+  rec.activatedBy = u
+  rec.activatedByName = nameOf(p)
+  save()
+  const target = playerByUuid(server, info.target)
+  if (target) say(target, VOICE_TRACK, 'You feel watched.')
+  try { server.runCommandSilent('execute in ' + dimOf(p) + ' run playsound minecraft:entity.pig.ambient neutral @a ' + num2(q.x) + ' ' + num2(q.y) + ' ' + num2(q.z) + ' 1 1.2') } catch (err) { }
+  console.info('[BlackMarket] ' + nameOf(p) + ' released Homing Pig ' + info.id + ' toward ' + info.targetName + '\'s bed')
+  return 'The pig sniffs the air and trots off. Follow it. You have ' + HOMING_PIG.minutes + ' minutes.'
+}
+// The ground under (x, z): the surface where it can be read cheaply, otherwise `fallback`.
+function surfaceY(e, x, z, fallback) {
+  if (!Heightmap || dimOf(e) == NETHER) return fallback
+  const level = levelOf(e), bx = Math.floor(x), bz = Math.floor(z)
+  try {
+    if (!level.hasChunk(bx >> 4, bz >> 4)) return fallback
+    return Number(level.getHeight(Heightmap.MOTION_BLOCKING_NO_LEAVES, bx, bz))
+  } catch (err) { return fallback }
+}
+// One second of walking: a waypoint `step` blocks toward the bed (or the bed itself when it's that close). Stuck for
+// 4 s: the next waypoints are 45 degrees to one side, then the other.
+function stepPig(server, h, e, now) {
+  const q = posOf(e), b = h.bed, d = horiz(q, b)
+  const nav = e.getNavigation()
+  if (d <= HOMING_PIG.arriveDistance && Math.abs(q.y - b.y) < 6) {
+    if (!h.arrived) {
+      h.arrived = true
+      dirty = true
+      try { nav.stop() } catch (err) { }
+      try { server.runCommandSilent('execute in ' + h.dim + ' run playsound minecraft:entity.pig.ambient neutral @a ' + num2(q.x) + ' ' + num2(q.y) + ' ' + num2(q.z) + ' 1 1.4') } catch (err) { }
+    }
+    if (Math.floor(now / 1000) % 3 == 0) {
+      try { server.runCommandSilent('execute in ' + h.dim + ' run particle minecraft:heart ' + num2(q.x) + ' ' + num2(q.y + 1) + ' ' + num2(q.z) + ' 0.3 0.2 0.3 0 2') } catch (err) { }
+    }
+    return
+  }
+  h.arrived = false
+  if (now - h.last.t >= 4000) {
+    h.side = horiz(q, h.last) < 1 ? (h.side == 0 ? 1 : h.side == 1 ? -1 : 0) : 0
+    h.last = { x: q.x, z: q.z, t: now }
+  }
+  if (d <= HOMING_PIG.step && h.side == 0) {
+    nav.moveTo(b.x, b.y, b.z, HOMING_PIG.speed)
+    return
+  }
+  const ang = Math.atan2(b.z - q.z, b.x - q.x) + h.side * PI / 4
+  const step = Math.min(HOMING_PIG.step, d)
+  const wx = q.x + Math.cos(ang) * step, wz = q.z + Math.sin(ang) * step
+  nav.moveTo(wx, surfaceY(e, wx, wz, q.y), wz, HOMING_PIG.speed)
+}
+function removePig(server, id, e) {
+  delete db().homingPigs[id]
+  delete S.pigs[id]
+  dirty = true
+  if (!e) return
+  const q = posOf(e)
+  try { server.runCommandSilent('execute in ' + dimOf(e) + ' run particle minecraft:poof ' + num2(q.x) + ' ' + num2(q.y + 0.5) + ' ' + num2(q.z) + ' 0.3 0.3 0.3 0.05 20') } catch (err) { }
+  try { e.discard() } catch (err) { }
+}
+function pigTick(server) {
+  const D = db(), now = Date.now()
+  Object.keys(D.homingPigs).forEach(id => {
+    let h = D.homingPigs[id], e = S.pigs[id], alive = false
+    try { alive = e != null && !e.isRemoved() && e.isAlive() } catch (err) { }
+    if (now >= h.expires) { removePig(server, id, alive ? e : null); return }
+    if (!alive) return   // not loaded: it waits (it can't walk in unloaded chunks anyway)
+    try { stepPig(server, h, e, now) } catch (err) { console.error('[BlackMarket] Homing Pig ' + id + ': ' + err) }
+  })
+}
+// Hurting a Homing Pig: the Ministry names the offender to everyone, and a charge is filed (once per pig per offender).
+function swineCrime(server, pig, p) {
+  const id = pigIdOf(pig), h = id ? db().homingPigs[id] : null, u = uuidOf(p)
+  if (!h || h.struck[u]) return
+  h.struck[u] = Date.now()
+  dirty = true
+  const T = TRIALS()
+  onlinePlayers(server).forEach(o => say(o, VOICE_MINISTRY, nameOf(p) + ' has struck a Homing Pig in violation of the Sanctity of Swine Act. ' +
+    (T ? 'Charges have been filed.' : 'This has been noted.')))
+  if (T) {
+    try { T.fileCharge(u, nameOf(p), HOMING_PIG.charge, 'The Ministry') } catch (e) { console.error('[BlackMarket] Filing the swine charge failed: ' + e) }
+  }
+  console.info('[BlackMarket] ' + nameOf(p) + ' struck Homing Pig ' + id)
+}
+
+// --- the Certified Alibi (used through factions/trials.js) ---
+// Takes one genuine, unused alibi from the player for the charge `label`. { ok, serial } or { ok: false, text }.
+function takeAlibi(p, label) {
+  const D = db(), inv = p.inventory
+  let found = -1, why = ''
+  invSlots(true).forEach(i => {
+    if (found >= 0) return
+    let serial = alibiSerialOf(inv.getItem(i))
+    if (serial == null) return
+    let a = D.alibis[serial]
+    if (!a) { why = 'Alibi No. ' + serial + ' isn\'t on file. Forgery is a crime.'; return }
+    if (a.used) { why = 'Alibi No. ' + serial + ' was already used (' + a.on + '). The Ministry remembers.'; return }
+    found = i
+  })
+  if (found < 0) return { ok: false, text: why || 'You aren\'t carrying a Certified Alibi.' }
+  const serial = alibiSerialOf(inv.getItem(found))
+  inv.getItem(found).shrink(1)
+  D.alibis[serial].used = Date.now()
+  D.alibis[serial].usedBy = nameOf(p)
+  D.alibis[serial].on = String(label)
+  save()
+  console.info('[BlackMarket] ' + nameOf(p) + ' used Certified Alibi ' + serial + ' on ' + label)
+  return { ok: true, serial: serial }
+}
+
+// --- the watch loop: once a second, always (compasses in chests run out by the clock and are swapped when carried) ---
+function startWatchLoop(server) {
+  if (S.watchLoop) return
+  S.watchLoop = true
+  const token = S.token
+  const step = () => {
+    if (token != S.token) return
+    onlinePlayers(server).forEach(p => { try { updateTrackers(server, p) } catch (e) { console.error('[BlackMarket] Tracker: ' + e) } })
+    try { pigTick(server) } catch (e) { console.error('[BlackMarket] ' + e) }
+    server.scheduleInTicks(20, step)
+  }
+  server.scheduleInTicks(20, step)
+}
+
+// Right-clicking a Tracker Compass (switch it on), a Homing Pig (let it go) or a Certified Alibi (pick the charge).
+// Always cancelled, so a compass can't be bound to a lodestone and the egg never hatches an ordinary pig.
+function trackingClick(event) {
+  const p = event.player
+  if (!p) return
+  let hand = ''
+  try { hand = String(event.hand) } catch (e) { }
+  const main = !hand || hand.indexOf('MAIN') >= 0
+  const stack = main ? p.mainHandItem : p.offHandItem
+  if (!isTrackingItem(stack)) return
+  if (main) {
+    let server = p.server || Utils.server
+    let tick = server.tickCount, u = uuidOf(p)
+    if (!(S.lastItemUse[u] != null && tick - S.lastItemUse[u] <= 4)) {
+      S.lastItemUse[u] = tick
+      let r = null
+      try {
+        if (trackerOf(stack)) r = useTracker(server, p, stack)
+        else if (pigItemOf(stack)) r = releasePig(server, p, stack)
+        else if (TRIALS()) TRIALS().alibiMenu(p)
+        else r = 'Nobody is holding trials right now.'
+      } catch (e) { console.error('[BlackMarket] Tracking item: ' + e) }
+      if (r) say(p, VOICE_TRACK, r)
+    }
+  }
+  event.cancel()   // last
+}
+
+
 // ===================== TRAPS =====================
 // Placed traps live in DB.traps: "dim|x|y|z" -> { kind, block, owner, ownerName, placed }.
 
@@ -1454,6 +1912,7 @@ function openShopFor(p) {
 
 function showGui(p, view) {
   const titles = { main: 'Hooded Merchant', contract: 'Ambush Contract: who?', summons: 'Anonymous Summons: who?', custom: 'Under the counter', food: 'Cursed Food',
+    tracker: 'Tracker Compass: who?', pig: 'Homing Pig: whose bed?',
     bounty: 'Bounty: whose head?', bountyAmount: 'Bounty on ' + view.name + ': how much?', bountyCancel: 'Cancel your bounty on ' + view.name + '?', wanted: 'Wanted' }
   const u = uuidOf(p)
   p.openChestGUI(comp([{ text: titles[view.kind] || 'Hooded Merchant', color: 'dark_purple' }]), 6, gui => {
@@ -1492,9 +1951,17 @@ function fillMain(gui, p) {
       { text: 'Any amount you carry', color: 'gold' }, { text: 'Click to choose the player', color: 'dark_gray', italic: true }]), () => nav(p, { kind: 'bounty', page: 0 }))
     guiButton(gui, 7, 0, guiItem('minecraft:paper', 'Wanted', 'gold', ['The prices on heads right now.']), () => nav(p, { kind: 'wanted', page: 0 }))
   }
-  guiLabel(gui, 1, 'minecraft:white_stained_glass_pane', 'Protection', 'white')
+  guiLabel(gui, 1, 'minecraft:white_stained_glass_pane', 'Protection & Tracking', 'white')
   guiButton(gui, 2, 1, guiItem('minecraft:paper', 'Writ of Protection', 'gold', ['Keep it on you: the next contract called', 'on you is refused, and the writ is used up.',
     { text: WRIT_PRICE + ' ' + COIN_PLURAL, color: 'gold' }], { glint: true }), () => guiAct(p, () => buyWrit(p)))
+  if (TRIALS()) guiButton(gui, 3, 1, guiItem('minecraft:paper', 'Certified Alibi', 'aqua', ['Dismisses one open charge at a trial.', 'Serial-numbered and on file.',
+    { text: ALIBI.price + ' ' + COIN_PLURAL, color: 'gold' }], { glint: true }), () => guiAct(p, () => buyAlibi(p)))
+  guiButton(gui, 5, 1, guiItem('minecraft:compass', 'Tracker Compass', 'dark_aqua', ['Points to one player for ' + TRACKER.minutes + ' minutes', 'once you switch it on.',
+    'They only feel watched.', { text: TRACKER.price + ' ' + COIN_PLURAL, color: 'gold' }, { text: 'Click to choose who', color: 'dark_gray', italic: true }], { glint: true }),
+    () => nav(p, { kind: 'tracker', page: 0 }))
+  guiButton(gui, 6, 1, guiItem('minecraft:pig_spawn_egg', 'Homing Pig', 'light_purple', ['Walks toward a player\'s bed', 'for ' + HOMING_PIG.minutes + ' minutes. Follow it.',
+    'Hurting it breaks the Sanctity of Swine Act.', { text: HOMING_PIG.price + ' ' + COIN_PLURAL, color: 'gold' }, { text: 'Click to choose whose bed', color: 'dark_gray', italic: true }]),
+    () => nav(p, { kind: 'pig', page: 0 }))
   guiLabel(gui, 2, 'minecraft:orange_stained_glass_pane', 'Traps', 'gold')
   guiButton(gui, 2, 2, guiItem('minecraft:tnt', 'Disguised TNT', 'dark_red', ['Turns ONE of the blocks in your main hand', 'into TNT that looks exactly like it.',
     'Whoever steps on it first sets it off, you included.', { text: DISGUISED_TNT.price + ' ' + COIN_PLURAL + ' per block', color: 'gold' },
@@ -1534,20 +2001,25 @@ function withPage(view, page) {
   v.page = page
   return v
 }
+// The player-head pages: contracts and summons (online players), the Tracker Compass (online) and the Homing Pig
+// (online, then offline players whose bed is known).
 function fillTargets(gui, p, view) {
-  const server = Utils.server
-  const def = view.kind == 'contract' ? contractDef(view.tier) : null
-  const others = onlinePlayers(server).filter(o => uuidOf(o) != uuidOf(p))
+  const server = Utils.server, kind = view.kind
+  const def = kind == 'contract' ? contractDef(view.tier) : null
+  const others = kind == 'pig' ? pigTargets(p) : onlinePlayers(server).filter(o => uuidOf(o) != uuidOf(p)).map(o => ({ uuid: uuidOf(o), name: nameOf(o), online: true }))
   const per = 45
   others.slice(view.page * per, view.page * per + per).forEach((o, i) => {
-    let n = nameOf(o)
-    let lore = def ? [{ text: priceFor(def, uuidOf(o)) + ' ' + COIN_PLURAL + (heatOf(uuidOf(o)) ? ' (heat ' + heatOf(uuidOf(o)) + ')' : ''), color: 'gold' }]
-      : [{ text: SUMMONS.price + ' ' + COIN_PLURAL, color: 'gold' }]
-    guiButton(gui, i % 9, Math.floor(i / 9), guiItem('minecraft:player_head', n, 'red', lore, { extra: 'SkullOwner:' + snbtString(n) }),
-      () => guiAct(p, () => def ? buyContract(server, p, def.id, n) : buySummons(server, p, n)))
+    let n = o.name
+    let lore = def ? [{ text: priceFor(def, o.uuid) + ' ' + COIN_PLURAL + (heatOf(o.uuid) ? ' (heat ' + heatOf(o.uuid) + ')' : ''), color: 'gold' }]
+      : [{ text: (kind == 'tracker' ? TRACKER.price : kind == 'pig' ? HOMING_PIG.price : SUMMONS.price) + ' ' + COIN_PLURAL, color: 'gold' }]
+    if (!o.online) lore.push({ text: 'offline', color: 'dark_gray', italic: true })
+    guiButton(gui, i % 9, Math.floor(i / 9), guiItem('minecraft:player_head', n, o.online ? 'red' : 'gray', lore, { extra: 'SkullOwner:' + snbtString(n) }),
+      () => guiAct(p, () => def ? buyContract(server, p, def.id, n) : kind == 'tracker' ? buyTracker(server, p, n) : kind == 'pig' ? buyPig(server, p, n) : buySummons(server, p, n)))
   })
-  if (!others.length) guiButton(gui, 4, 2, guiItem('minecraft:structure_void', 'Nobody else is around', 'gray',
-    def ? ['Someone offline the server knows can be typed:', '/bm buy contract ' + def.id + ' <name>'] : ['Summons only reach people who are online.']), () => { })
+  const empty = { contract: def ? ['Someone offline the server knows can be typed:', '/bm buy contract ' + def.id + ' <name>'] : [],
+    tracker: ['The compass needs a fresh scent:', 'only people who are online.'], pig: ['Nobody whose bed is known.', 'Beds are learned when people log in.'],
+    summons: ['Summons only reach people who are online.'] }
+  if (!others.length) guiButton(gui, 4, 2, guiItem('minecraft:structure_void', kind == 'pig' ? 'Nobody to sniff out' : 'Nobody else is around', 'gray', empty[kind] || []), () => { })
   pager(gui, p, view, others.length, per)
 }
 // Bounties (economy/bounties.js): the player list, the amount page, the cancel page and the Wanted list.
@@ -1640,6 +2112,9 @@ global.Economy = {
   // For bounties.js: must trades happen at the merchant right now (the market is open and he has spots)?
   merchantRequired: () => isEnabled() && allSpots().length > 0,
   atMerchant: player => isEnabled() && nearVendor(player),
+  // For factions/trials.js: takes one genuine, unused Certified Alibi for the charge `label`.
+  // { ok: true, serial } or { ok: false, text }.
+  takeAlibi: (player, label) => takeAlibi(player, label),
 }
 
 
@@ -1674,6 +2149,28 @@ function contractClick(event) {
 }
 ItemEvents.rightClicked(event => contractClick(event))
 BlockEvents.rightClicked(event => contractClick(event))
+ItemEvents.rightClicked(event => trackingClick(event))
+BlockEvents.rightClicked(event => trackingClick(event))
+
+// Homing Pigs: no leads, saddles, breeding or name tags.
+ItemEvents.entityInteracted(event => {
+  if (!hasTag(event.target, TAG_PIG)) return
+  event.cancel()   // last
+})
+// Homing Pigs can't be hurt; a player who tries breaks the Sanctity of Swine Act. /kill and the void still work.
+EntityEvents.hurt(event => {
+  const e = event.entity
+  if (!hasTag(e, TAG_PIG)) return
+  let type = ''
+  try { type = String(event.source.getMsgId()) } catch (err) { }
+  if (type == 'genericKill' || type == 'outOfWorld') return
+  let attacker = null
+  try { attacker = event.source.actual } catch (err) { }
+  if (attacker && attacker.isPlayer()) {
+    try { swineCrime(Utils.server, e, attacker) } catch (err) { console.error('[BlackMarket] ' + err) }
+  }
+  event.cancel()   // last
+})
 
 // The vendor: right-click = the shop; nothing else (no trade screen, leads, name tags).
 ItemEvents.entityInteracted(event => {
@@ -1861,6 +2358,23 @@ EntityEvents.death(event => {
   try { e.block.popItem(coinStack(AMBUSH_COIN_DROPS.amount)) } catch (err) { }
 })
 
+// Homing Pigs: catch ours as it's summoned; keep a live one when its chunk reloads; remove leftovers (run out, or
+// from before a restart that lost them).
+EntityEvents.spawned(event => {
+  const e = event.entity
+  if (!hasTag(e, TAG_PIG)) return
+  if (S.expectPig) { S.lastPig = e; return }
+  const id = pigIdOf(e)
+  if (id && Date.now() < db().homingPigs[id].expires) { S.pigs[id] = e; return }
+  event.cancel()   // a leftover
+})
+EntityEvents.death(event => {
+  const e = event.entity
+  if (!hasTag(e, TAG_PIG)) return
+  const id = pigIdOf(e)
+  if (id) removePig(Utils.server, id, null)
+})
+
 // Vendors: catch ours as it's summoned; keep the current one if its chunk reloads; remove any other.
 EntityEvents.spawned(event => {
   const e = event.entity
@@ -1875,6 +2389,7 @@ EntityEvents.spawned(event => {
 PlayerEvents.loggedIn(event => {
   const p = event.player, u = uuidOf(p)
   try { refreshCoins(p) } catch (e) { }
+  try { rememberBed(p) } catch (e) { }
   const n = db().notices[u]
   if (n && n.length) {
     n.forEach(x => say(p, VOICE_CALLER, x.text))
@@ -1883,7 +2398,10 @@ PlayerEvents.loggedIn(event => {
   }
   delete S.afk[u]
 })
-PlayerEvents.loggedOut(event => { if (dirty) save() })
+PlayerEvents.loggedOut(event => {
+  try { rememberBed(event.player) } catch (e) { }
+  if (dirty) save()
+})
 
 function startUp(server) {
   removeVendorEntities(server)
@@ -1904,6 +2422,7 @@ function startUp(server) {
   server.scheduleInTicks(2, () => { try { sweepContracts(server) } catch (e) { console.error('[BlackMarket] ' + e) } })
   startSlowLoop(server)
   startTrapLoop(server)
+  startWatchLoop(server)
 }
 ServerEvents.loaded(event => startUp(event.server))
 if (Utils.server) startUp(Utils.server)
@@ -1948,6 +2467,11 @@ ServerEvents.commandRegistry(event => {
       .then(Commands.literal('contract').then(word('tier').executes(atVendor((ctx, p) => buyContract(ctx.source.server, p, str(ctx, 'tier'), null)))
         .then(word('target').executes(atVendor((ctx, p) => buyContract(ctx.source.server, p, str(ctx, 'tier'), str(ctx, 'target')))))))
       .then(Commands.literal('writ').executes(atVendor((ctx, p) => buyWrit(p))))
+      .then(Commands.literal('alibi').executes(atVendor((ctx, p) => buyAlibi(p))))
+      .then(Commands.literal('tracker').executes(atVendor((ctx, p) => { openTrackMenu(p, 'tracker'); return null }))
+        .then(word('target').executes(atVendor((ctx, p) => buyTracker(ctx.source.server, p, str(ctx, 'target'))))))
+      .then(Commands.literal('pig').executes(atVendor((ctx, p) => { openTrackMenu(p, 'pig'); return null }))
+        .then(word('target').executes(atVendor((ctx, p) => buyPig(ctx.source.server, p, str(ctx, 'target'))))))
       .then(Commands.literal('tnt').executes(atVendor((ctx, p) => buyTnt(p))))
       .then(Commands.literal('tpblock').executes(atVendor((ctx, p) => { tpHowTo(p); return null }))
         .then(int('x').then(int('y').then(int('z')
@@ -1965,9 +2489,23 @@ ServerEvents.commandRegistry(event => {
     // --- op ---
     .then(Commands.literal('inspect').requires(op).executes(safe(ctx => {
       const p = me(ctx)
-      if (!p) return reply(ctx, 'Hold the contract and run this as a player.', true)
-      const id = contractIdOf(p.mainHandItem)
-      if (id == null) return reply(ctx, 'Hold an Ambush Contract in your main hand.', true)
+      if (!p) return reply(ctx, 'Hold the item and run this as a player.', true)
+      const held = p.mainHandItem, D = db()
+      const tr = trackerOf(held) || pigItemOf(held), serial = alibiSerialOf(held)
+      if (tr) {
+        let r = D.trackItems[tr.id], what = trackerOf(held) ? 'Tracker Compass' : 'Homing Pig'
+        if (!r) return reply(ctx, what + ' ' + tr.id + ' (on ' + tr.targetName + '): not on record. Forged.')
+        return reply(ctx, what + ' ' + tr.id + ' on ' + r.targetName + ', bought by ' + r.buyerName + ' on ' + dateText(r.bought) +
+          (r.used ? '; used by ' + (r.activatedByName || '?') + ' on ' + dateText(r.used) : '; not used yet') + '.')
+      }
+      if (serial != null) {
+        let a = D.alibis[serial]
+        if (!a) return reply(ctx, 'Certified Alibi No. ' + serial + ': not on file. Forged.')
+        return reply(ctx, 'Certified Alibi No. ' + serial + ', bought by ' + a.buyerName + ' on ' + dateText(a.bought) +
+          (a.used ? '; used by ' + a.usedBy + ' on ' + a.on + ', ' + dateText(a.used) : '; not used yet') + '.')
+      }
+      const id = contractIdOf(held)
+      if (id == null) return reply(ctx, 'Hold an Ambush Contract, Tracker Compass, Homing Pig or Certified Alibi in your main hand.', true)
       const c = db().contracts[id]
       if (!c) return reply(ctx, 'Contract ' + id + ': not on record (forged or from another world). It is void.')
       return reply(ctx, 'Contract ' + id + ': ' + c.tier + ' on ' + c.targetName + ', bought by ' + c.buyerName + ' on ' + dateText(c.issued) + ' for ' + (c.price || 0) + ' coins. Status: ' + c.status + '.')
@@ -2116,7 +2654,7 @@ ServerEvents.commandRegistry(event => {
     if (!stack || stack.isEmpty()) return reply(ctx, 'Hold the item to sell in your main hand.', true)
     if (price < 1) return reply(ctx, 'The price must be at least 1.', true)
     if (stock < 0) return reply(ctx, 'The stock can\'t be negative (0 = unlimited).', true)
-    if (isCoin(stack) || contractIdOf(stack) != null || isWrit(stack)) return reply(ctx, COIN_PLURAL + ', contracts and writs can\'t be sold this way (copies would be fake or void).', true)
+    if (isCoin(stack) || contractIdOf(stack) != null || isWrit(stack) || isTrackingItem(stack)) return reply(ctx, COIN_PLURAL + ', contracts, writs, compasses, pigs and alibis can\'t be sold this way (copies would be fake or void).', true)
     const id = String(stack.id), nbt = stack.nbt
     let name = id
     try { name = String(stack.getHoverName().getString()) } catch (e) { }

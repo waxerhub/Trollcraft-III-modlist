@@ -10,6 +10,8 @@ Techno's Crownsworn (id `ministry`), The Blood God's Syndicate (id `syndicate`) 
 | `factions_core.js` | `kubejs/server_scripts/factions/` | Storage, commands, chat, dimension tracking, `global.Factions`. |
 | `factions_hooks.js` | `kubejs/startup_scripts/` | Passes Forge's "player changed dimension" event to the core. |
 
+**Trials:** `factions/trials.js` is an optional add-on that uses the ranks: Crownsworn Enforcers and Ministers (and ops) file charges and judge them. See [TRIALS.md](TRIALS.md).
+
 **Install:** copy all three, then **restart the server once** so the startup hook loads. After that, `/reload` is enough for changes to the two server scripts. Until you restart, ops get a reminder on login and dimension events only fire on login, logout and respawn.
 
 **Data:** stored by UUID in `server.persistentData["factions"]`. It survives restarts, `/reload` and name changes. The script never clears it, and only touches its own key (Pig Escort keeps its own key there too). If the saved data is ever unreadable, a copy is kept under `factions_unreadable_<time>` before starting over.

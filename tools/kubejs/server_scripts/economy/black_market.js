@@ -40,7 +40,10 @@ const COIN_ITEM = 'minecraft:gold_nugget'
 const COIN_NAME = 'Hush Coin'
 const COIN_PLURAL = 'Hush Coins'
 const COIN_LORE = 'Accepted where questions are not.'
-const BLOCK_COIN_CRAFTING = true       // vanilla crafting recipes won't take coins as gold nuggets (see the docs)
+// true = crafting-table recipes that take gold nuggets only accept plain ones, not coins. Off: it rewrote every
+// recipe using gold nuggets (mods' too) and broke Ender IO's capacitors. Coins can't be duplicated by crafting
+// either way (a recipe never copies their hidden tag); with it off, coins can just be spent as gold nuggets.
+const BLOCK_COIN_CRAFTING = false
 // Every ambush mob (portal_ambush.js: Nether Ambushes, Return Inspections, Random Raids and contract mobs) killed
 // by a player has `chance` to drop `amount` coins. Vexes summoned by evokers drop nothing.
 const AMBUSH_COIN_DROPS = { enabled: true, chance: 0.25, amount: 1 }

@@ -34,7 +34,8 @@ Copy them and run `/reload`; no restart is needed. With no vendor spots set up t
   - **Ambush mob drops** (`AMBUSH_COIN_DROPS`): every ambush mob a player kills has a **25% chance to drop 1 coin**. That's Nether Ambush, Return Inspection, Random Raid and Ambush Contract mobs. Vexes summoned by evokers, Pig Escort mobs and mobs killed by anything other than a player drop nothing. A contract earns back about half a coin on average, far below its price, so contracts can't be used to farm coins.
 - **Things to know:**
   - **Vanilla piglins pick up gold nuggets**, so coins dropped near them can be lost (ambush piglins can't pick anything up).
-  - **Crafting:** with `BLOCK_COIN_CRAFTING = true` (the default), vanilla crafting-table recipes only take plain gold nuggets, so coins can't be crafted into gold ingots or golden carrots by accident. Recipes that ask for the gold nugget *tag*, and modded machines, still accept coins.
+  - **Crafting:** coins work as gold nuggets in recipes (`BLOCK_COIN_CRAFTING = false`, the default). Crafting **can't duplicate** them: a recipe never copies their hidden tag, so 9 coins make a plain gold ingot, which breaks down into plain nuggets. Players can only spend their own coins as gold.
+    - Turning the block on (`true`) rewrites every crafting-table recipe that takes gold nuggets to accept plain ones only. That includes mods' recipes, and it stopped Ender IO's capacitors from being crafted, so it's off.
 
 **The merchant buys nothing from players.** Magical Crops, ProjectE and similar mods make most items farmable, so anything he bought would be an endless coin source.
 - `SELL_LIST` at the top of the script can still be filled in, but only with things nobody can farm.
@@ -327,7 +328,7 @@ Logging out, `/reload` and restarts never reset a cooldown or reuse a contract i
 |---|---|---|
 | `ALLOW_SAME_FACTION` | true | Contracts on your own faction |
 | `MAX_CALL_RANGE` | 0 | 0 = any distance; otherwise the caller must be this close to the target, in the same dimension |
-| `BLOCK_COIN_CRAFTING` | true | Coins can't be used in vanilla crafting recipes |
+| `BLOCK_COIN_CRAFTING` | false | true = crafting-table recipes refuse coins as gold nuggets (it also broke Ender IO's capacitors, so it's off) |
 | `COIN_NAME` / `COIN_PLURAL` | Hush Coin / Hush Coins | The currency's name, used everywhere (bounties.js too). Coins already in players' inventories are renamed automatically. |
 | `AMBUSH_COIN_DROPS` | on, 25%, 1 coin | The chance an ambush mob killed by a player drops a coin, and how many |
 | `SELL_LIST` | none | What the merchant buys from players (keep it to things nobody can farm) |
@@ -481,4 +482,4 @@ A mock-server test passed all 248 checks (with bounties.js loaded), and a second
 - **Contract hookups:**
   - offline names through `server.getProfileCache().get(name)`;
   - `event.source.actual` on a player's death, which is how a contract is marked fulfilled.
-- **`BLOCK_COIN_CRAFTING`:** `Ingredient.custom` inside `replaceInput` for vanilla crafting recipes. It uses the same `Ingredient.custom` as `enchanted_porkchop.js`. If it fails, an error is logged and coins can still be crafted. Nothing else is affected.
+- **`BLOCK_COIN_CRAFTING`** (off): when on, `Ingredient.custom` inside `replaceInput`. In game it stopped Ender IO's Basic Capacitor (which takes the gold nugget tag) from being crafted, so it's off by default.

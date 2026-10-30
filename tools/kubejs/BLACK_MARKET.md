@@ -74,6 +74,7 @@ Copy them and run `/reload`; no restart is needed. With no vendor spots set up t
 | Certified Alibi | 50 | Dismisses one open charge at a trial (see [Tracking and alibis](#tracking-and-alibis)) |
 | Tracker Compass | 25 | Points to one online player for 5 minutes once switched on |
 | Homing Pig | 20 | Walks toward a player's bed for 3 minutes. Hurting it breaks the Sanctity of Swine Act |
+| Unsanctioned Eye of Ender | 20 each | The only Eye the End Portal frames take during the End Lockdown Initiative (only sold while [end_lockdown.js](END_LOCKDOWN.md) is installed) |
 | Disguised TNT | 25 per block | Turns one block in your hand into a trap (see [Traps](#traps)) |
 | Teleport Trap | 20 per block | Turns one block in your hand into a trap that teleports whoever steps on it to the place you name (`/bmbuy tpblock x y z [dimension]`) |
 | Mimic Chest | 12 | A chest that bites the first person to open it |
@@ -96,7 +97,7 @@ Right-clicking the merchant opens a chest-style window. It's a vanilla chest scr
 | Row | |
 |---|---|
 | Contracts | Tip-off, Squad, War Party. Clicking one opens a page of player heads with each player's price; click a head to buy. Then **Place a Bounty** and **Wanted** (with bounties.js; see [BOUNTIES.md](BOUNTIES.md#the-shop-window)). |
-| Protection & Tracking | Writ of Protection, Certified Alibi (with trials.js), Tracker Compass and Homing Pig (each opens a page of player heads) |
+| Protection & Tracking | Writ of Protection, Certified Alibi (with trials.js), Tracker Compass and Homing Pig (each opens a page of player heads), Unsanctioned Eye of Ender (with end_lockdown.js; a click buys one) |
 | Traps | Disguised TNT, Mimic Chest, Teleport Trap (clicking it closes the window and puts `/bmbuy tpblock ` in your chat box, since the window can't take coordinates) |
 | Pranks | Itching Powder, Cursed Food (opens its own page of six foods), Anonymous Summons (clicking it opens the player heads), Butterfingers |
 | Under the counter | Custom stock: the real item with its own tooltip and the price added at the end. More than six entries: an arrow opens the full list. |
@@ -220,6 +221,11 @@ Right-clicking the merchant opens a chest-style window. It's a vanilla chest scr
   - **Only open charges.** It can't undo a verdict, and it can't clear someone else's charge.
   - **Serial numbers are on record:** a copy of a used alibi ("already used") or a made-up one ("isn't on file") is refused and kept.
 
+**Unsanctioned Eye of Ender** (20 coins each, `UNSANCTIONED_EYE`, sold only while the End Lockdown Initiative is on; see [END_LOCKDOWN.md](END_LOCKDOWN.md)):
+- **Buying:** one per click in the window, or `/bm buy eye <count>` for up to 12 (`maxPerPurchase`). `maxPerPlayer` can cap a player's total (0 = no cap).
+- **Logging:** each purchase is logged with its buyer and count, and its Eyes carry the purchase id. Eyes from one purchase stack together.
+- **Not as custom stock:** `/bm hand add` refuses them, so every sale stays logged.
+
 **For trials:** `/bm inspect` while holding any of these shows the buyer (and who switched it on or used it), even if they're offline. Like contracts, they can't be put up as custom stock.
 
 ## Calling a contract
@@ -288,8 +294,9 @@ Ops can sell **any item exactly as it is**, NBT included, for example an item th
 | `/bounty ...` | see [BOUNTIES.md](BOUNTIES.md#commands) | Bounties |
 | `/blackmarket traps near`, `list <player>`, `clear <player>`, `log` | op | Find, list or defuse traps; see the last ones that went off |
 | `/blackmarket buy tracker [player]`, `buy pig [player]`, `buy alibi` | anyone at the merchant | Tracking and alibis. Without a player: the list of players to choose from. |
+| `/blackmarket buy eye [count]` | anyone at the merchant | Unsanctioned Eyes of Ender (1–12), while the End Lockdown Initiative is on |
 | `/blackmarket buy contract <tier> [player]`, `buy writ`, `buy custom <id>`, `sell <item>` | anyone at the merchant | What the menu buttons run. Tiers: `tipoff`, `squad`, `warparty`. `sell` only works if `SELL_LIST` has entries. |
-| `/blackmarket inspect` | op | While holding a contract: target, **buyer's name** (even if they're offline), tier, issue date, status. For Ministry trials: a confiscated contract proves who ordered the hit. Also for a Tracker Compass, Homing Pig or Certified Alibi: who bought it and who used it. |
+| `/blackmarket inspect` | op | While holding a contract: target, **buyer's name** (even if they're offline), tier, issue date, status. For Ministry trials: a confiscated contract proves who ordered the hit. Also for a Tracker Compass, Homing Pig or Certified Alibi (who bought it and who used it) and an Unsanctioned Eye (who bought it, when, how many). |
 | `/blackmarket contracts` | op | The 20 most recent contracts: id, tier, target, buyer, status |
 | `/blackmarket heat <player> [reset]` | op | Their heat and contract cooldown, or reset the heat |
 | `/blackmarket test contract <tier> <player>` | op | A free contract, no merchant needed |
@@ -309,7 +316,8 @@ Everything is in `persistentData["economy"]` as one JSON string:
 - notices waiting for the next login;
 - custom stock;
 - Tracker Compasses and Homing Pigs (buyer, target, used or not), the pigs that are out, and each player's last known spawn point;
-- Certified Alibi serial numbers (buyer, used or not).
+- Certified Alibi serial numbers (buyer, used or not);
+- Unsanctioned Eye purchases (buyer, count; kept 30 days).
 
 Logging out, `/reload` and restarts never reset a cooldown or reuse a contract id. Finished contracts, old notices, and compasses, pigs and alibis used more than 30 days ago are pruned after 30 days. Unused ones are kept, so a compass or alibi in a chest still works.
 
@@ -342,6 +350,7 @@ Logging out, `/reload` and restarts never reset a cooldown or reuse a contract i
 | `TRACKER` | 25 coins, 5 min, rewritten after 3 blocks, 1 running per player | |
 | `HOMING_PIG` | 20 coins, 3 min, speed 1.5, 12-block steps, arrives within 3 blocks, 1 out per player | Also the text of the charge it files |
 | `ALIBI` | 50 coins | |
+| `UNSANCTIONED_EYE` | 20 coins each, up to 12 per purchase, no per-player cap | Only sold while end_lockdown.js is installed |
 | `TOKEN_EXPIRY_DAYS` | 7 | |
 | `CONTRACT_COOLDOWN_MINUTES` | 45 | |
 | `HEAT_WINDOW_HOURS` / `HEAT_PRICE_STEP` | 24 / 0.5 | |

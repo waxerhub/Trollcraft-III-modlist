@@ -12,6 +12,7 @@
 //  - Tracking: the Tracker Compass (points to one player for a few minutes) and the Homing Pig (walks toward a
 //    player's bed; hurting it breaks the Sanctity of Swine Act). The Certified Alibi clears one open charge at a
 //    trial (factions/trials.js).
+//  - Unsanctioned Eyes of Ender while the End Lockdown Initiative (end_lockdown.js) is on.
 //
 // Needs: factions/factions_core.js (global.Factions) and factions/portal_ambush.js (global.PortalAmbush).
 // No new items are registered, so players don't need a modpack update. See tools/kubejs/BLACK_MARKET.md.
@@ -183,6 +184,10 @@ const HOMING_PIG = { price: 20, minutes: 3, speed: 1.5, step: 12, arriveDistance
 // Certified Alibi: dismisses one OPEN charge at a trial (factions/trials.js). Serial-numbered: copies and used
 // papers are refused. Only sold while trials.js is installed.
 const ALIBI = { price: 50 }
+// Unsanctioned Eye of Ender: the only Eye that works in End Portal frames during the End Lockdown Initiative
+// (end_lockdown.js). Only sold while that script is installed. Every purchase is logged (buyer, count) and the
+// Eyes carry its id, so /bm inspect on a confiscated Eye shows who bought it. maxPerPlayer: 0 = no limit.
+const UNSANCTIONED_EYE = { price: 20, maxPerPurchase: 12, maxPerPlayer: 0 }
 
 // Kept across /reload (only things that can't be rebuilt from saved data).
 if (!global.blackMarketState) global.blackMarketState = { token: 0 }
@@ -257,6 +262,7 @@ function factionOf(p) { try { return String(global.Factions.getFaction(p)) } cat
 function PA() { return global.PortalAmbush || null }       // looked up when needed (factions/ loads after economy/)
 function BOUNTIES() { return global.Bounties || null }      // economy/bounties.js
 function TRIALS() { return global.Trials || null }          // factions/trials.js
+function ELI() { const e = global.EndLockdown; return e && e.active ? e : null }   // end_lockdown.js
 function snbtString(s) { return "'" + String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'") + "'" }
 function dateText(ms) {
   const d = new Date(ms)
@@ -294,7 +300,8 @@ function button(label, color, command, hover) {
 //     notices: { uuid: [ { text, time } ] }, shop: { custom: { id: { ... } } } }
 //     trackItems: { id: { kind: tracker|pig, buyer, buyerName, target, targetName, bought, used, expires } },
 //     homingPigs: { id: { buyer, target, targetName, dim, bed, released, expires, entity, struck, arrived } },
-//     beds: { uuid: { name, dim, x, y, z } or { name, none } }, alibis: { serial: { buyer, buyerName, bought, used } } }
+//     beds: { uuid: { name, dim, x, y, z } or { name, none } }, alibis: { serial: { buyer, buyerName, bought, used } },
+//     eyeBatches: { id: { buyer, buyerName, count, bought } } }
 // Contract statuses: issued, calling, active, fulfilled, survived, interrupted, refused, expired.
 
 let DB = null
@@ -313,7 +320,7 @@ function db() {
   DB = parsed && parsed.v ? parsed : { v: 1 }
   if (typeof DB.enabled != 'boolean') DB.enabled = ENABLED_BY_DEFAULT
   if (!DB.nextId) DB.nextId = 1
-  ;['contracts', 'heat', 'cooldowns', 'notices', 'trackItems', 'homingPigs', 'beds', 'alibis'].forEach(k => { if (!DB[k]) DB[k] = {} })
+  ;['contracts', 'heat', 'cooldowns', 'notices', 'trackItems', 'homingPigs', 'beds', 'alibis', 'eyeBatches'].forEach(k => { if (!DB[k]) DB[k] = {} })
   if (!DB.vendor) DB.vendor = { present: false, nextAt: 0 }
   if (!DB.vendorSpots) DB.vendorSpots = []
   if (!DB.shop) DB.shop = {}
@@ -352,6 +359,7 @@ function prune() {
   // Unused tracking items and alibis are kept (the papers in people's chests must still work).
   Object.keys(D.trackItems).forEach(id => { let t = D.trackItems[id]; if (t.used && now - Math.max(t.used, t.expires || 0) > month) delete D.trackItems[id] })
   Object.keys(D.alibis).forEach(k => { if (D.alibis[k].used && now - D.alibis[k].used > month) delete D.alibis[k] })
+  Object.keys(D.eyeBatches).forEach(k => { if (now - D.eyeBatches[k].bought > month) delete D.eyeBatches[k] })
   dirty = true
 }
 
@@ -897,6 +905,9 @@ function openShop(p) {
     { text: ' - ' + TRACKER.price + ' coins ', color: 'gray' }, button('[BUY]', 'gold', '/blackmarket buy tracker', 'Choose who')])
   menuLine(p, [{ text: '  Homing Pig', color: 'light_purple', hoverEvent: { action: 'show_text', contents: 'Walks toward a player\'s bed for ' + HOMING_PIG.minutes + ' minutes. Hurting it breaks the Sanctity of Swine Act.' } },
     { text: ' - ' + HOMING_PIG.price + ' coins ', color: 'gray' }, button('[BUY]', 'gold', '/blackmarket buy pig', 'Choose whose bed')])
+  if (ELI()) menuLine(p, [{ text: '  Unsanctioned Eye of Ender', color: 'dark_red', hoverEvent: { action: 'show_text', contents: 'The only Eye the End Portal frames still take. Possession is a crime.' } },
+    { text: ' - ' + UNSANCTIONED_EYE.price + ' coins each ', color: 'gray' }, button('[BUY 1]', 'gold', '/blackmarket buy eye 1', 'Buy one Eye'), ' ',
+    button('[BUY ' + UNSANCTIONED_EYE.maxPerPurchase + ']', 'gold', '/blackmarket buy eye ' + UNSANCTIONED_EYE.maxPerPurchase, 'Enough to fill a portal')])
   menuLine(p, [{ text: ' Traps', color: 'gold', bold: true }])
   menuLine(p, [{ text: '  Disguised TNT', color: 'dark_red', hoverEvent: { action: 'show_text', contents: 'Turns ONE block in your main hand into TNT that looks like it. The first to step on it sets it off, you included.' } },
     { text: ' - ' + DISGUISED_TNT.price + ' coins ', color: 'gray' }, button('[BUY]', 'gold', '/blackmarket buy tnt', 'Hold the block first')])
@@ -1371,6 +1382,40 @@ function buyAlibi(p) {
   console.info('[BlackMarket] ' + nameOf(p) + ' bought Certified Alibi ' + serial)
   return 'Certified Alibi No. ' + serial + ' bought. When you stand accused, right-click it.'
 }
+// --- Unsanctioned Eyes of Ender (the End Lockdown Initiative, end_lockdown.js) ---
+// The purchase id on an Unsanctioned Eye ('' for one issued with /endlockdown give), or null if it isn't one.
+function eyeBatchOf(stack) {
+  const t = trollcraftTag(stack)
+  if (t == null || !t.contains('unsanctioned')) return null
+  return String(t.getString('eyebatch'))
+}
+function eyesBoughtBy(u) {
+  const D = db()
+  return Object.keys(D.eyeBatches).filter(k => D.eyeBatches[k].buyer == u).reduce((n, k) => n + D.eyeBatches[k].count, 0)
+}
+function buyEye(p, count) {
+  const eli = ELI()
+  if (!eli) return 'Eyes of Ender are sold everywhere. Nobody pays the merchant for one.'
+  count = Math.floor(Number(count) || 1)
+  if (count < 1 || count > UNSANCTIONED_EYE.maxPerPurchase) return 'He sells 1 to ' + UNSANCTIONED_EYE.maxPerPurchase + ' at a time.'
+  const u = uuidOf(p)
+  if (UNSANCTIONED_EYE.maxPerPlayer > 0 && eyesBoughtBy(u) + count > UNSANCTIONED_EYE.maxPerPlayer) {
+    return 'He has sold you all he will (' + UNSANCTIONED_EYE.maxPerPlayer + ').'
+  }
+  const price = UNSANCTIONED_EYE.price * count
+  if (countCoins(p) < price) return coinText(price) + ' for ' + count + (count == 1 ? ' Eye' : ' Eyes') + '. You have ' + countCoins(p) + '.'
+  const D = db()
+  let id = ''
+  do { id = 'e' + shortId() } while (D.eyeBatches[id])
+  const item = eli.makeUnsanctioned(count, 'eyebatch:"' + id + '"')
+  takeCoins(p, price)
+  p.give(item)
+  D.eyeBatches[id] = { buyer: u, buyerName: nameOf(p), count: count, bought: Date.now() }
+  save()
+  console.info('[BlackMarket] ' + nameOf(p) + ' bought ' + count + ' Unsanctioned Eye(s) of Ender (' + id + ')')
+  return count + ' Unsanctioned ' + (count == 1 ? 'Eye' : 'Eyes') + ' of Ender. You didn\'t get ' + (count == 1 ? 'it' : 'them') + ' from me.'
+}
+
 // The chat menu's player list for the compass or the pig.
 function openTrackMenu(p, kind) {
   const pig = kind == 'pig'
@@ -1962,6 +2007,9 @@ function fillMain(gui, p) {
   guiButton(gui, 6, 1, guiItem('minecraft:pig_spawn_egg', 'Homing Pig', 'light_purple', ['Walks toward a player\'s bed', 'for ' + HOMING_PIG.minutes + ' minutes. Follow it.',
     'Hurting it breaks the Sanctity of Swine Act.', { text: HOMING_PIG.price + ' ' + COIN_PLURAL, color: 'gold' }, { text: 'Click to choose whose bed', color: 'dark_gray', italic: true }]),
     () => nav(p, { kind: 'pig', page: 0 }))
+  if (ELI()) guiButton(gui, 7, 1, guiItem('minecraft:ender_eye', 'Unsanctioned Eye of Ender', 'dark_red', ['The only Eye the End Portal frames still take.',
+    'Possession is a crime.', { text: UNSANCTIONED_EYE.price + ' ' + COIN_PLURAL + ' each', color: 'gold' }, { text: 'Click to buy one (/bm buy eye <count> for more)', color: 'dark_gray', italic: true }],
+    { glint: true }), () => guiAct(p, () => buyEye(p, 1)))
   guiLabel(gui, 2, 'minecraft:orange_stained_glass_pane', 'Traps', 'gold')
   guiButton(gui, 2, 2, guiItem('minecraft:tnt', 'Disguised TNT', 'dark_red', ['Turns ONE of the blocks in your main hand', 'into TNT that looks exactly like it.',
     'Whoever steps on it first sets it off, you included.', { text: DISGUISED_TNT.price + ' ' + COIN_PLURAL + ' per block', color: 'gold' },
@@ -2468,6 +2516,8 @@ ServerEvents.commandRegistry(event => {
         .then(word('target').executes(atVendor((ctx, p) => buyContract(ctx.source.server, p, str(ctx, 'tier'), str(ctx, 'target')))))))
       .then(Commands.literal('writ').executes(atVendor((ctx, p) => buyWrit(p))))
       .then(Commands.literal('alibi').executes(atVendor((ctx, p) => buyAlibi(p))))
+      .then(Commands.literal('eye').executes(atVendor((ctx, p) => buyEye(p, 1)))
+        .then(int('count').executes(atVendor((ctx, p) => buyEye(p, num(ctx, 'count'))))))
       .then(Commands.literal('tracker').executes(atVendor((ctx, p) => { openTrackMenu(p, 'tracker'); return null }))
         .then(word('target').executes(atVendor((ctx, p) => buyTracker(ctx.source.server, p, str(ctx, 'target'))))))
       .then(Commands.literal('pig').executes(atVendor((ctx, p) => { openTrackMenu(p, 'pig'); return null }))
@@ -2491,7 +2541,13 @@ ServerEvents.commandRegistry(event => {
       const p = me(ctx)
       if (!p) return reply(ctx, 'Hold the item and run this as a player.', true)
       const held = p.mainHandItem, D = db()
-      const tr = trackerOf(held) || pigItemOf(held), serial = alibiSerialOf(held)
+      const tr = trackerOf(held) || pigItemOf(held), serial = alibiSerialOf(held), batch = eyeBatchOf(held)
+      if (batch != null) {
+        if (!batch) return reply(ctx, 'Unsanctioned Eye of Ender: issued by the Ministry (/endlockdown give), not sold by the merchant.')
+        let b = D.eyeBatches[batch]
+        if (!b) return reply(ctx, 'Unsanctioned Eye of Ender (' + batch + '): sale not on record (forged, or over 30 days old).')
+        return reply(ctx, 'Unsanctioned Eye of Ender (' + batch + '): ' + b.count + ' sold to ' + b.buyerName + ' on ' + dateText(b.bought) + '.')
+      }
       if (tr) {
         let r = D.trackItems[tr.id], what = trackerOf(held) ? 'Tracker Compass' : 'Homing Pig'
         if (!r) return reply(ctx, what + ' ' + tr.id + ' (on ' + tr.targetName + '): not on record. Forged.')
@@ -2505,7 +2561,7 @@ ServerEvents.commandRegistry(event => {
           (a.used ? '; used by ' + a.usedBy + ' on ' + a.on + ', ' + dateText(a.used) : '; not used yet') + '.')
       }
       const id = contractIdOf(held)
-      if (id == null) return reply(ctx, 'Hold an Ambush Contract, Tracker Compass, Homing Pig or Certified Alibi in your main hand.', true)
+      if (id == null) return reply(ctx, 'Hold an Ambush Contract, Tracker Compass, Homing Pig, Certified Alibi or Unsanctioned Eye in your main hand.', true)
       const c = db().contracts[id]
       if (!c) return reply(ctx, 'Contract ' + id + ': not on record (forged or from another world). It is void.')
       return reply(ctx, 'Contract ' + id + ': ' + c.tier + ' on ' + c.targetName + ', bought by ' + c.buyerName + ' on ' + dateText(c.issued) + ' for ' + (c.price || 0) + ' coins. Status: ' + c.status + '.')
@@ -2655,6 +2711,7 @@ ServerEvents.commandRegistry(event => {
     if (price < 1) return reply(ctx, 'The price must be at least 1.', true)
     if (stock < 0) return reply(ctx, 'The stock can\'t be negative (0 = unlimited).', true)
     if (isCoin(stack) || contractIdOf(stack) != null || isWrit(stack) || isTrackingItem(stack)) return reply(ctx, COIN_PLURAL + ', contracts, writs, compasses, pigs and alibis can\'t be sold this way (copies would be fake or void).', true)
+    if (eyeBatchOf(stack) != null) return reply(ctx, 'Unsanctioned Eyes are already for sale (UNSANCTIONED_EYE, ' + UNSANCTIONED_EYE.price + ' each), with every sale logged.', true)
     const id = String(stack.id), nbt = stack.nbt
     let name = id
     try { name = String(stack.getHoverName().getString()) } catch (e) { }

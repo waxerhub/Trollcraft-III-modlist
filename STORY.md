@@ -113,26 +113,31 @@ Two satirical meters, shown together with `/ministry status` and on event bossba
 7. **The Renunciation:** Tryhard, too powerful to be challenged, lays down his arms and starts from scratch.
 8. **The Pig Escort:** **Ambassador Oinkington** is sent to negotiate and is slaughtered. A voice from the portal accuses the Ministry of betraying Technoblade's legacy. The Ministry denies everything. ✅ (`events/pig_escort.js`)
 9. **The Nether Reopens:** "which was always the plan." Inspectors are dispatched to hunt treasonous thoughts. A scout comes back asleep and covered in red jam. ✅ (Return Inspections and raids: `factions/portal_ambush.js`)
+10. **The Odin Incident and the ELI** (Ministry dispatch, posted on Discord):
+    - The Ministry finally acknowledges the Syndicate, and denies it exists.
+    - It condemns the Syndicate's killing of **Odin**, Goruk_LoHaus's pet dinosaur.
+    - It announces the **End Lockdown Initiative (ELI)**, for vaguely sinister reasons: records overdue for destruction; voices in the void; an archive that has never existed; the Ender Dragon appointed Head of Records Security; and Oinkington having "nothing to do with the End".
+    - ✅ (`end_lockdown.js`: Eyes of Ender confiscated and uncraftable, the End portal-only, **Unsanctioned Eyes of Ender** sold by the Hooded Merchant as the way in)
 
 ### Act II: Inspections
 Starts when the first meter fill is confirmed.
-10. **The Decrees Begin:** the Ministry issues numbered decrees. Each locks a shortcut or a progression tier, and some are just absurd ("Decree 42: all chests must face north"). 🔨 (chapter and decree system)
-11. **The Trolling Licence Act:** all pranks need a permit. Unlicensed trolling becomes a chargeable offence (`/accuse … Unlicensed trolling`), and the black market goes truly underground. ✅ (trials) + 🔨 (the decree)
-12. **The Scout Awakens:** the sleeping scout wakes as an NPC. Each conversation gives a piece of testimony, hinting that **the Ministry staged the Escort**. 🔨
-13. **Treason Hunts:** Inspectors and Blood God raids keep up the pressure on the Syndicate. Now and then Inspectors turn up, do paperwork and leave. ✅ (ambushes, raids, Ambush Contracts)
+11. **The Decrees Begin:** the Ministry issues numbered decrees. Each locks a shortcut or a progression tier, and some are just absurd ("Decree 42: all chests must face north"). 🔨 (chapter and decree system)
+12. **The Trolling Licence Act:** all pranks need a permit. Unlicensed trolling becomes a chargeable offence (`/accuse … Unlicensed trolling`), and the black market goes truly underground. ✅ (trials) + 🔨 (the decree)
+13. **The Scout Awakens:** the sleeping scout wakes as an NPC. Each conversation gives a piece of testimony, hinting that **the Ministry staged the Escort**. 🔨
+14. **Treason Hunts:** Inspectors and Blood God raids keep up the pressure on the Syndicate. Now and then Inspectors turn up, do paperwork and leave. ✅ (ambushes, raids, Ambush Contracts)
 
 ### Act III: The Loyalty Audit
 Starts when the second meter fill is confirmed.
-14. **The Audit:** the Ministry turns on its own Loyalists: inspections of Crownsworn players, Hush Coin tithes, curfews, and (after an Order win) Troll Quotas. 🔨 (decrees, plus ambush settings)
-15. **Show Trials:** Enforcers are pushed to prosecute. Certified Alibis become acts of quiet rebellion. ✅ (`factions/trials.js`, the black market's Certified Alibi)
-16. **The First Defections:** Crownsworn players start to desert. ✅ (faction desertion)
-17. **The Prank Purge:** one announced hour:
+15. **The Audit:** the Ministry turns on its own Loyalists: inspections of Crownsworn players, Hush Coin tithes, curfews, and (after an Order win) Troll Quotas. 🔨 (decrees, plus ambush settings)
+16. **Show Trials:** Enforcers are pushed to prosecute. Certified Alibis become acts of quiet rebellion. ✅ (`factions/trials.js`, the black market's Certified Alibi)
+17. **The First Defections:** Crownsworn players start to desert. ✅ (faction desertion)
+18. **The Prank Purge:** one announced hour:
     - troll items are discounted, and trap limits are off;
     - every raid rolls the lethal tier;
     - contracts cost half, and bounties pay double.
 
     The Ministry calls it "a controlled release of comedic pressure." 🔨 (event scheduler)
-18. **Resistance operations:** story missions, each one a prank on the Ministry, logged as trolls:
+19. **Resistance operations:** story missions, each one a prank on the Ministry, logged as trolls:
     - **Operation Pig Swap:** replace the Ministry statue with a pig in a crown.
     - **Operation Red Tape:** fill a Ministry outpost with Mimic Chests and Disguised TNT.
     - **Operation Return to Sender:** send the Ministry its own Anonymous Summons.
@@ -140,12 +145,12 @@ Starts when the second meter fill is confirmed.
 
     🔨
 
-### Act IV: The End Accord
+### Act IV: The End Lockdown
 Starts when the third meter fill is confirmed.
-19. **The End Accord:** the Ministry seals the End: "There is nothing in the End. The End is closed for paperwork." 🔨 (End lock, like the Nether lock)
-20. **Breaking the Seal:** Loyalists and Syndicate fight the Ender Dragon together, the first act of open rebellion. 🔨 (dragon-kill trigger)
-21. **The Ministry Archives:** End City chests hold Ministry documents: cover-ups, the order that sacrificed Oinkington, and proof the Ministry uses Techno's name for power. 🔨 (books added to End City loot; *TBD*: what exactly they reveal)
-22. **The Realisation:** the Archives reveal that **the Order meter literally powers the Ministry's decrees**. Every Loyalist troll was harvested to control the server.
+20. **The End Lockdown Initiative:** already in force (see 10). "There is nothing in the End." The black-market Unsanctioned Eyes are the Resistance's way in, and every sale is on the merchant's books for a trial. ✅ (`end_lockdown.js`)
+21. **Breaking the Seal:** Loyalists and Syndicate fight the Ender Dragon together, the first act of open rebellion. 🔨 (dragon-kill trigger)
+22. **The Ministry Archives:** End City chests hold Ministry documents: cover-ups, the order that sacrificed Oinkington, and proof the Ministry uses Techno's name for power. 🔨 (books added to End City loot; *TBD*: what exactly they reveal)
+23. **The Realisation:** the Archives reveal that **the Order meter literally powers the Ministry's decrees**. Every Loyalist troll was harvested to control the server.
     - The Loyalists defect, and from then on their trolls count as Chaos.
     - The Resistance forms, with no friendly fire between its members.
 
@@ -158,25 +163,25 @@ Fires on **whichever meter fills last** in Act IV, after an op confirms:
 
 The world ends either way.
 
-23. **The Fake-out:** before the real thing, the Ministry runs a "test of the emergency broadcast system". A full doomsday countdown hits zero, then: "This was a test. Please resume compliance." 🔨
-24. **The Last Decree:** Protocol Clean Slate, with a server-wide countdown bossbar. 🔨 (*TBD*: 72 h, a week, or a live night)
-25. **The World Burns:**
+24. **The Fake-out:** before the real thing, the Ministry runs a "test of the emergency broadcast system". A full doomsday countdown hits zero, then: "This was a test. Please resume compliance." 🔨
+25. **The Last Decree:** Protocol Clean Slate, with a server-wide countdown bossbar. 🔨 (*TBD*: 72 h, a week, or a live night)
+26. **The World Burns:**
     - thunder;
     - back-to-back Purges;
     - raids on everyone;
     - the broadcasts falling apart into static and denial.
 
     🔨
-26. **The Exodus Satchel:** each player chooses a few items to save, filtered against mods Part II drops. They're saved to a file outside the world. 🔨 (*TBD*: slots)
-27. **Beyond the Void:** the Syndicate reveals the only escape, the End's exit portal. Players jump and the **End Poem** plays: the end of Part I. ✅ (vanilla)
-28. **The Last Broadcast:** the Ministry declares victory over an empty world, and the server goes dark.
+27. **The Exodus Satchel:** each player chooses a few items to save, filtered against mods Part II drops. They're saved to a file outside the world. 🔨 (*TBD*: slots)
+28. **Beyond the Void:** the Syndicate reveals the only escape, the End's exit portal. Players jump and the **End Poem** plays: the end of Part I. ✅ (vanilla)
+29. **The Last Broadcast:** the Ministry declares victory over an empty world, and the server goes dark.
 
 ---
 
 ## Intermission: The Rebuild (admin work)
-29. **Archive Part I:** keep the old world as a download or a read-only tour.
-30. **Schematics (WorldEdit):** the old spawn and Ministry HQ (for the Citadel), and famous bases (for ruins): the stronghold group's fortress, Tryhard's alchemy lab, the bastion raid site.
-31. **The Part II modpack:**
+30. **Archive Part I:** keep the old world as a download or a read-only tour.
+31. **Schematics (WorldEdit):** the old spawn and Ministry HQ (for the Citadel), and famous bases (for ruins): the stronghold group's fortress, Tryhard's alchemy lab, the bastion raid site.
+32. **The Part II modpack:**
     - new mods and integrations;
     - the Blood Pool tiers (see Part II);
     - fixes for this season's leaks:
@@ -186,7 +191,7 @@ The world ends either way.
       - Tinkers' Levelling Addon modifier slots.
 
     See [PROGRESSION_GATES.md](PROGRESSION_GATES.md).
-32. **The new world:** the Citadel pasted on an outer End island, and ruins across the Overworld (chests emptied, lore books placed). *TBD*: a new seed, or the same seed regenerated.
+33. **The new world:** the Citadel pasted on an outer End island, and ruins across the Overworld (chests emptied, lore books placed). *TBD*: a new seed, or the same seed regenerated.
 
 ---
 
@@ -226,16 +231,16 @@ Everyone stands together under Techno's banner. There are no Loyalists. The Mini
   - **What each tier unlocks will be ranked once the Part II modpack is put together.** The only fixed point: **Tier 12 is the Siege**, when the Citadel's Bureaucratic Barrier falls.
 
 ### Act I: The Awakening
-33. **Waking Up:** players arrive in the new world, as the End Poem promised. They get back their satchel items and legacy:
+34. **Waking Up:** players arrive in the new world, as the End Poem promised. They get back their satchel items and legacy:
     - titles such as "Survivor of the Clean Slate", "Founder of the Syndicate" and "Grand Trollmaster";
     - their Part I trial records, now evidence of the Ministry's crimes.
 
     🔨
-34. **The Ruins:** the remains of Part I bases are lore sites, with books telling Part I's story. 🔨
-35. **The Shrine:** the scout's last testimony reveals Technoblade's Shrine, and the Blood Pool and the relic hunt begin. 🔨
+35. **The Ruins:** the remains of Part I bases are lore sites, with books telling Part I's story. 🔨
+36. **The Shrine:** the scout's last testimony reveals Technoblade's Shrine, and the Blood Pool and the relic hunt begin. 🔨
 
 ### Act II: The Regalia of the Blade
-36. **The Relic Hunt:** eight relics, restored at the Shrine by the whole server. Progress is tallied server-wide and credited to each contributor (`/regalia`). The amounts are placeholders. 🔨 (*TBD*: whether each relic also needs a Blood offering)
+37. **The Relic Hunt:** eight relics, restored at the Shrine by the whole server. Progress is tallied server-wide and credited to each contributor (`/regalia`). The amounts are placeholders. 🔨 (*TBD*: whether each relic also needs a Blood offering)
 
 | Relic | Techno reference | The grind | Pulls players through |
 |---|---|---|---|
@@ -248,28 +253,28 @@ Everyone stands together under Techno's banner. There are no Loyalists. The Mini
 | The Swine's Oath | The pig with the crown | 10 completed Pig Escorts | The server's own events |
 | The Crown of the Blade | His crown | Awakened Draconium + a Dragon Heart + Gaia Spirit + a Chaos Shard | Draconic and Botania end game (last) |
 
-37. **Shrine Raids:** each relic restored brings Inspectors down on the Shrine. ✅ (raids) + 🔨 (Shrine targeting)
+38. **Shrine Raids:** each relic restored brings Inspectors down on the Shrine. ✅ (raids) + 🔨 (Shrine targeting)
 
 ### Act III: The Seizure
-38. **The Confiscation:** the Ministry "seizes" a relic in a scripted event. Only the Shrine's progress is at stake, never players' items. 🔨
-39. **The Outpost Raid:** players storm a Ministry outpost to take it back. 🔨
+39. **The Confiscation:** the Ministry "seizes" a relic in a scripted event. Only the Shrine's progress is at stake, never players' items. 🔨
+40. **The Outpost Raid:** players storm a Ministry outpost to take it back. 🔨
 
 ### Act IV: Project Chaos
-40. **Prank Purges:** recurring, timed around relic deliveries. 🔨
-41. **Ministry Bounties:** the Ministry posts bounties on the strongest players. ✅ (`economy/bounties.js`) + 🔨 (Ministry-issued)
-42. **Project Chaos Revealed:** the Ministry has kept the Chaos Guardian contained on a Chaos Island. Its shards complete the Crown. ✅ (Draconic Evolution)
+41. **Prank Purges:** recurring, timed around relic deliveries. 🔨
+42. **Ministry Bounties:** the Ministry posts bounties on the strongest players. ✅ (`economy/bounties.js`) + 🔨 (Ministry-issued)
+43. **Project Chaos Revealed:** the Ministry has kept the Chaos Guardian contained on a Chaos Island. Its shards complete the Crown. ✅ (Draconic Evolution)
 
 ### Act V: The Siege
 Needs Blood Pool Tier 12 and the full Regalia.
-43. **The Citadel:** the old Ministry HQ, floating in the void behind the Bureaucratic Barrier. Players bridge or fly to it. 🔨 (WorldEdit schematic)
-44. **The Minister:** a troll war with phases.
+44. **The Citadel:** the old Ministry HQ, floating in the void behind the Bureaucratic Barrier. Players bridge or fly to it. 🔨 (WorldEdit schematic)
+45. **The Minister:** a troll war with phases.
     - **The Minister's tricks:** fake deaths ("he's dead!" … "Phase 2"), hotbar swaps, a Cursed Food buffet, a decoy Minister, and a paperwork phase.
     - **The players' weapon:** trolls landed on him do real damage.
     - **Last phase:** cornered, he releases the Chaos Guardian.
 
     🔨
-45. **The Crown Restored:** the full Regalia set in place, with the Techno Tribute and a server-wide `/superaura`. A single `/fakejoin Technoblade` as the tribute. There's no `/fakesay`, so no words are put in his mouth, and it's posted to Discord. ✅ (`techno_tribute.js`, `smite.js`, `fake_players.js`)
-46. **The Final Broadcast:** *"Technoblade never dies. This is not The End."*
+46. **The Crown Restored:** the full Regalia set in place, with the Techno Tribute and a server-wide `/superaura`. A single `/fakejoin Technoblade` as the tribute. There's no `/fakesay`, so no words are put in his mouth, and it's posted to Discord. ✅ (`techno_tribute.js`, `smite.js`, `fake_players.js`)
+47. **The Final Broadcast:** *"Technoblade never dies. This is not The End."*
 
 ---
 
@@ -279,6 +284,7 @@ Needs Blood Pool Tier 12 and the full Regalia.
 | Factions, ranks, desertion | `factions/factions_core.js`, `factions_config.js` | Loyalists vs Syndicate; the defections; the Resistance |
 | Portal ambushes, raids, "no getting away" | `factions/portal_ambush.js` | Inspector patrols, Blood God war parties, Purges |
 | Pig Escort and the Nether lock | `events/pig_escort.js` | Oinkington; the template for scripted events and dimension locks |
+| The End Lockdown Initiative | `end_lockdown.js` | The End sealed: Eyes confiscated, portal-only entry, Unsanctioned Eyes on the black market |
 | Black market (Hush Coins, contracts, traps, pranks, tracking, alibis) | `economy/black_market.js` | The troll tools behind the Troll Log; the underground economy |
 | Bounties | `economy/bounties.js` | Ministry bounties in Part II |
 | Trials | `factions/trials.js` | Show trials; "unlicensed trolling" charges; trolling vs griefing; records carried into Part II |
@@ -291,7 +297,7 @@ Needs Blood Pool Tier 12 and the full Regalia.
 2. **`trolls.js`:** the Troll Log, scoring, Hush Coin payouts, manual reports (witnesses + admin points), Order and Chaos with op-confirmed fills.
 3. Act II: the **Scout NPC** and his testimony; the Trolling Licence Act.
 4. The **event scheduler** (Prank Purges, Mandatory Fun Day, the Moratorium).
-5. Act IV: the **End lock**, the **Archive documents**, the **dragon-kill trigger**.
+5. Act IV: the **Archive documents** and the **dragon-kill trigger** (the End lock is done: `end_lockdown.js`).
 6. **Protocol Clean Slate:** the fake-out, the countdown, the decay, and exporting satchel and legacy data.
 7. Part II (with the new modpack):
    - the **Blood Pool and tier lockdown**;
@@ -315,4 +321,3 @@ Needs Blood Pool Tier 12 and the full Regalia.
   - whether relics must be restored in order;
   - whether a carrier killed in a Purge loses their delivery;
   - rewards per relic.
-- **The End:** whether it's already open on the server (decides whether the End Accord is new or a retcon).

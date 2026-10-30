@@ -1,12 +1,17 @@
 // Portal Ambush: an add-on for the faction core (factions_core.js, global.Factions).
 //
-//  Mechanic 1 - Nether Ambush:     a ministry player who comes into the Nether THROUGH A NETHER PORTAL may be
+//  Mechanic 1 - Nether Ambush:     a ministry player who comes into the Nether (portal or waystone) may be
 //                                  met by a war party (piglins and brutes) that only hunts ministry players.
-//  Mechanic 2 - Return Inspection: a syndicate player who comes back to the Overworld through a portal may be
+//  Mechanic 2 - Return Inspection: a syndicate player who comes back to the Overworld (portal or waystone) may be
 //                                  met by a patrol (vindicators and pillagers) that only hunts syndicate players.
 //                                  Secrecy rule: never in front of anyone who isn't in the syndicate.
 //  Mechanic 3 - Random Raids:      while a player stays in the dimension hostile to their faction, a per-player
 //                                  10-minute countdown rolls for a light, moderate or lethal group (RAID_TIERS).
+//
+// Arrivals count by portal, waystone or any other trip (ARRIVALS_NEED_PORTAL). Once a group is out, there's no
+// flying away: targets can't morph (Walkers/ReMorphed), the mobs reappear next to a target who gets away, flying
+// pursuers go after anyone out of reach, and the group follows a target into another dimension. It ends when its
+// mobs are dead, its targets are dead or gone, or its time is up.
 //
 // Mob names and every message are settings below; none of them names a faction, because the factions haven't
 // been revealed to players yet.
@@ -85,8 +90,7 @@ const SPAWN_DISTANCE = [8, 10]
 const EXTRA_TARGET_RADIUS = 24          // other same-faction players this close join the group (and add a mob each)
 const RETARGET_RADIUS = 32              // mobs only chase targets this close; raid targets are picked within this
 const SECRECY_RADIUS = 48               // syndicate rule: nobody outside the syndicate this close, or no patrol
-const TARGET_LOST_DISTANCE = 64         // a target further than this from the group counts as gone
-const TARGET_LOST_SECONDS = 60          // group leaves this long after every target is dead, offline or gone
+const TARGET_LOST_SECONDS = 60          // group leaves this long after every target is offline (or in creative/spectator)
 const GROUP_MAX_MINUTES = 10            // group leaves after this long, whatever happens
 const COOLDOWN_MINUTES = 10             // after a group ends, its targets can't be targeted again for this long
 const GROUP_MAX_MOBS = 8                // hard cap per group
@@ -99,6 +103,24 @@ const SAFE_ZONES = [
 ]
 const ZERO_XP = false                   // true = ambush mobs drop no XP (needs portal_ambush_hooks.js)
 const ENABLED_BY_DEFAULT = true         // /ambush toggle changes this and the change is saved
+
+// --- No getting away ---
+// Walkers / ReMorphed: a target is turned back into a human and can't morph (Walkers' player blacklist) until they
+// leave the group: it ends, they die, or they log out and it ends. Without Walkers nothing happens.
+const MORPH_LOCK = true
+// A target further than `distance` blocks from every mob for `seconds`: the mobs that aren't fighting anyone else
+// reappear `spot` blocks from them. Distance never ends a group; its time, deaths and logouts do.
+const FOLLOW = { distance: 24, seconds: 5, spot: [8, 10] }
+// A target out of reach (gliding, flying, aboveGround+ blocks over the ground, or nowhere to stand near them) for
+// airborneSeconds: a flying pursuer joins the group, at most perGroup, one every cooldownSeconds. They're on top of
+// GROUP_MAX_MOBS (SERVER_MAX_MOBS still applies) and get VEX_EFFECTS when they're vexes.
+const FLYERS = { kind: 'vex', perGroup: 2, airborneSeconds: 3, cooldownSeconds: 20, aboveGround: 6 }
+// A target who changes dimension (portal, waystone, /tp) is followed: DIMENSION_DELAY_SECONDS after they arrive,
+// the mobs chasing them reappear next to them there (fresh copies of the same kinds). false = the trip is an escape.
+const FOLLOW_ACROSS_DIMENSIONS = true
+const DIMENSION_DELAY_SECONDS = 2
+// false = any Overworld <-> Nether trip can bring an arrival ambush (waystones, mods); true = only Nether portals.
+const ARRIVALS_NEED_PORTAL = false
 
 // --- The war party (Nether) ---
 const WAR_PARTY = {
@@ -192,6 +214,7 @@ const TWO_PI = 6.283185307179586   // Math.PI is missing in the server's script 
 if (!global.portalAmbushState) global.portalAmbushState = { token: 0, groups: {}, mobGroup: {}, inGroup: {}, buckets: [], counter: 0 }
 const S = global.portalAmbushState
 if (!S.lastArrival) S.lastArrival = {}
+if (!S.parkedGroup) S.parkedGroup = {}   // mob uuid -> group id, for group mobs whose chunk unloaded (see tickGroup)
 S.token++                 // stops loops and timers from before a /reload
 S.loopRunning = false
 S.expectMob = false
@@ -313,7 +336,8 @@ function sendMessage(server, players, key) {
 
 
 // ===================== SAVED DATA =====================
-// server.persistentData['portal_ambush'] = JSON { v, enabled, cooldowns: { uuid: untilMs }, raid: { uuid: { left, postpones, tier } } }
+// server.persistentData['portal_ambush'] = JSON { v, enabled, cooldowns: { uuid: untilMs }, raid: { uuid: { left, postpones, tier } },
+//   morphLocked: { uuid: name } }
 // Only this key is ever touched. Raid countdowns are seconds left, so logging out or restarting doesn't reset
 // them or set them off early. Cooldowns are real-time end times.
 
@@ -333,6 +357,7 @@ function db() {
   DB = parsed && parsed.v ? parsed : { v: 1, enabled: ENABLED_BY_DEFAULT }
   if (!DB.cooldowns) DB.cooldowns = {}
   if (!DB.raid) DB.raid = {}
+  if (!DB.morphLocked) DB.morphLocked = {}   // uuid -> name: players this script has blocked from morphing
   // Countdowns saved under longer settings are cut to the longest one now.
   const longest = Math.max.apply(null, Object.keys(RAID_MINUTES).map(d => RAID_MINUTES[d][1])) * 60
   Object.keys(DB.raid).forEach(u => { if (DB.raid[u] && DB.raid[u].left > longest) DB.raid[u].left = longest })
@@ -592,11 +617,8 @@ function startGroup(server, mechanic, dim, center, targets, size, minD, maxD, hi
   S.counter++
   const id = Date.now().toString(36) + S.counter.toString(36)
   const def = opts.def || defFor(mechanic, dim)
-  const g = {
-    id: id, mechanic: mechanic, dim: dim, center: center, start: Date.now(), lostSince: null,
-    targets: targets.map(uuidOf), names: {}, mobs: {}, mobTarget: {}, tier: tier ? tier.id : null,
-    def: opts.def || null, onEnd: opts.onEnd || null, contractId: opts.contractId || null,
-  }
+  const g = newGroup(id, mechanic, dim, center, Date.now(), tier ? tier.id : null, opts)
+  g.targets = targets.map(uuidOf)
   const mix = tier && tier.mix ? tier.mix[dim == NETHER ? 'nether' : 'overworld'] || def.mix : def.mix
   let evokers = 0
   targets.forEach(p => { g.names[uuidOf(p)] = nameOf(p) })
@@ -614,12 +636,8 @@ function startGroup(server, mechanic, dim, center, targets, size, minD, maxD, hi
     try { m = summonMob(server, dim, kind, def, id, spot, tier, opts.extraTag) } catch (e) { console.error('[PortalAmbush] Spawn failed: ' + e) }
     if (!m) continue
     if (kind == 'evoker') evokers++
-    if (kind == 'vex') giveVexEffects(server, uuidOf(m))
-    else if (tier && tier.strength > 0) {
-      try { server.runCommandSilent('effect give ' + uuidOf(m) + ' minecraft:strength infinite ' + (tier.strength - 1) + ' true') } catch (e) { }
-    }
-    g.mobs[uuidOf(m)] = m
-    S.mobGroup[uuidOf(m)] = id
+    armMob(server, m, kind, tier)
+    addMob(g, m, kind)
   }
   if (!Object.keys(g.mobs).length) {
     delete S.groups[id]
@@ -627,10 +645,33 @@ function startGroup(server, mechanic, dim, center, targets, size, minD, maxD, hi
     return null
   }
   g.targets.forEach(u => { S.inGroup[u] = id })
+  targets.forEach(p => lockMorph(server, p))
   updateHookState()
   retargetGroup(server, g)
   startLoop(server)
   return g
+}
+// A group record. opts: { def, onEnd, contractId, extraTag } (the API's; null for portal ambushes and raids).
+function newGroup(id, mechanic, dim, center, start, tierId, opts) {
+  return {
+    id: id, mechanic: mechanic, dim: dim, center: center, start: start, lostSince: null,
+    targets: [], names: {}, mobs: {}, mobTarget: {}, kinds: {}, tier: tierId,
+    def: opts.def || null, onEnd: opts.onEnd || null, contractId: opts.contractId || null, extraTag: opts.extraTag || null,
+    farSince: {}, airSince: {}, awaySince: {}, awayChasers: {}, noSpot: {}, flyers: 0, lastFlyer: 0, parked: {},
+  }
+}
+function addMob(g, m, kind) {
+  const u = uuidOf(m)
+  g.mobs[u] = m
+  g.kinds[u] = kind
+  S.mobGroup[u] = g.id
+}
+// A new mob's effects: vexes get VEX_EFFECTS, everything else the tier's Strength.
+function armMob(server, m, kind, tier) {
+  if (kind == 'vex') giveVexEffects(server, uuidOf(m))
+  else if (tier && tier.strength > 0) {
+    try { server.runCommandSilent('effect give ' + uuidOf(m) + ' minecraft:strength infinite ' + (tier.strength - 1) + ' true') } catch (e) { }
+  }
 }
 
 // Removes a group's mobs quietly (no drops) and gives its targets their cooldown.
@@ -638,6 +679,7 @@ function startGroup(server, mechanic, dim, center, targets, size, minD, maxD, hi
 function endGroup(server, g, giveCooldowns, reason) {
   if (!S.groups[g.id]) return
   delete S.groups[g.id]
+  Object.keys(g.parked || {}).forEach(u => { delete S.parkedGroup[u] })   // removed as their chunk loads
   S.allowRemoval = true
   try {
     Object.keys(g.mobs).forEach(u => {
@@ -653,6 +695,7 @@ function endGroup(server, g, giveCooldowns, reason) {
   g.targets.forEach(u => {
     if (S.inGroup[u] == g.id) delete S.inGroup[u]
     if (giveCooldowns) startCooldown(u)
+    unlockMorph(server, u)
   })
   updateHookState()
   saveSoon()
@@ -661,13 +704,14 @@ function endGroup(server, g, giveCooldowns, reason) {
   }
 }
 
-// A target escapes (went through a portal, or respawned in another dimension): only they leave the group.
+// A target leaves the group (died, or left the dimension with FOLLOW_ACROSS_DIMENSIONS off): only they go.
 function dropTarget(g, uuid) {
   const i = g.targets.indexOf(uuid)
   if (i < 0) return
   g.targets.splice(i, 1)
   if (S.inGroup[uuid] == g.id) delete S.inGroup[uuid]
   startCooldown(uuid)
+  unlockMorph(Utils.server, uuid)
 }
 
 function groupOfMob(m) {
@@ -697,6 +741,7 @@ function endAll(server, reason) {
   Object.keys(S.groups).forEach(id => endGroup(server, S.groups[id], false, reason || 'cleared'))
   S.groups = {}
   S.mobGroup = {}
+  S.parkedGroup = {}
   S.inGroup = {}
   S.buckets = []
   updateHookState()
@@ -764,30 +809,271 @@ function tickGroup(server, g, now) {
     let m = g.mobs[u]
     let gone = true
     try { gone = m.isRemoved() || !m.isAlive() } catch (e) { }
-    if (gone) { delete g.mobs[u]; delete S.mobGroup[u]; delete g.mobTarget[u] }
+    if (!gone) return
+    // Left behind in a chunk that unloaded (a target who flew off): parked, and replaced next to the target when
+    // the group follows. If its chunk loads first, it simply rejoins (EntityEvents.spawned).
+    if (unloadedNotDead(m) && g.kinds[u]) { g.parked[u] = g.kinds[u]; S.parkedGroup[u] = g.id }
+    delete g.mobs[u]; delete S.mobGroup[u]; delete g.mobTarget[u]
   })
   // Every mob killed: the group is beaten.
-  if (!Object.keys(g.mobs).length) return endGroup(server, g, true, 'killed_all')
+  if (!Object.keys(g.mobs).length && !Object.keys(g.parked).length) return endGroup(server, g, true, 'killed_all')
   if (now - g.start >= GROUP_MAX_MINUTES * 60000) return endGroup(server, g, true, 'timeout')
-  // Targets who escaped to another dimension (also handled by the leftDimension event).
+  // Targets in another dimension: followed there after DIMENSION_DELAY_SECONDS (or dropped, with following off).
   g.targets.slice().forEach(u => {
     let p = server.getPlayerList().getPlayer(javaUuidFromString(u))
-    if (p && dimOf(p) != g.dim) dropTarget(g, u)
+    if (!p || dimOf(p) == g.dim) { delete g.awaySince[u]; delete g.awayChasers[u]; return }
+    if (!FOLLOW_ACROSS_DIMENSIONS) { dropTarget(g, u); return }
+    if (!g.awaySince[u]) {
+      g.awaySince[u] = now
+      // Who was chasing them, before the mobs turn to the targets still here.
+      g.awayChasers[u] = Object.keys(g.mobTarget).filter(m => g.mobTarget[m] == u)
+      return
+    }
+    if (now - g.awaySince[u] >= DIMENSION_DELAY_SECONDS * 1000) {
+      try { followAcross(server, g, p, now) } catch (e) { console.error('[PortalAmbush] Following across dimensions failed: ' + e) }
+    }
   })
+  if (!S.groups[g.id]) return
   if (!g.targets.length) return endGroup(server, g, true, 'targets_lost')
-  // Is any target still alive, online and within range of the group?
-  const mobPositions = Object.keys(g.mobs).map(u => posOf(g.mobs[u]))
-  const inRange = validTargets(server, g).filter(p => {
-    let pp = posOf(p)
-    return mobPositions.some(mp => dist(mp, pp) <= TARGET_LOST_DISTANCE)
-  })
-  if (!inRange.length) {
+  // Any target online, alive and in survival here? Distance doesn't count: the mobs come to them.
+  const players = validTargets(server, g)
+  if (!players.length) {
     if (g.lostSince == null) g.lostSince = now
     if (now - g.lostSince >= TARGET_LOST_SECONDS * 1000) return endGroup(server, g, true, 'targets_lost')
     return
   }
   g.lostSince = null
+  players.forEach(p => lockMorph(server, p))
+  followTargets(server, g, players, now)
+  sendFlyers(server, g, players, now)
   retargetGroup(server, g)
+}
+
+
+// ===================== NO GETTING AWAY =====================
+
+// --- Morphing (Walkers / ReMorphed), through Walkers' own commands ---
+function walkers(server, command) {
+  try { return server.runCommandSilent('walkers ' + command) } catch (e) { return 0 }
+}
+function onlineByUuid(server, u) {
+  try { return server.getPlayerList().getPlayer(javaUuidFromString(u)) } catch (e) { return null }
+}
+// Back to human, and blocked from morphing until unlockMorph.
+function lockMorph(server, p) {
+  if (!MORPH_LOCK) return
+  const u = uuidOf(p), D = db()
+  if (D.morphLocked[u]) return
+  D.morphLocked[u] = nameOf(p)
+  save()   // at once: a crash must not leave them blocked with no record of it
+  walkers(server, 'playerBlacklist add ' + nameOf(p))
+  walkers(server, 'switchShape ' + nameOf(p) + ' normal')
+  try { p.tell(comp([{ text: 'You can\'t change shape while you\'re being hunted.', color: 'gray', italic: true }])) } catch (e) { }
+}
+// Lifted now if they're online, otherwise when they next log in.
+function unlockMorph(server, u) {
+  const D = db()
+  if (!D.morphLocked[u] || !server) return
+  const p = onlineByUuid(server, u)
+  if (!p) return
+  walkers(server, 'playerBlacklist remove ' + nameOf(p))
+  delete D.morphLocked[u]
+  save()
+}
+// Anyone still blocked who isn't in a group (after a crash, a /reload, or a group that ended while they were away).
+function releaseMorphLocks(server) {
+  Object.keys(db().morphLocked).forEach(u => {
+    let id = S.inGroup[u]
+    if (!id || !S.groups[id]) unlockMorph(server, u)
+  })
+}
+
+// --- Following a target who gets away ---
+// Removed because its chunk unloaded (not killed or discarded)?
+function unloadedNotDead(m) {
+  let r = null
+  try { r = m.getRemovalReason() } catch (e) { return false }
+  try { return r != null && !r.shouldDestroy() } catch (e) { return false }
+}
+// Fresh copies of the group's parked mobs (left in unloaded chunks), at spots around target p. Returns how many.
+function recallParked(server, g, p, q, level) {
+  const tier = g.tier ? tierById(g.tier) : null, u = uuidOf(p)
+  let made = 0
+  Object.keys(g.parked).forEach(old => {
+    let spot = followSpot(level, g.dim, q)
+    if (!spot || aliveAmbushMobs() >= SERVER_MAX_MOBS) return
+    let kind = g.parked[old], m = null
+    try { m = summonMob(server, g.dim, kind, defOf(g), g.id, spot, tier, g.extraTag) } catch (e) { console.error('[PortalAmbush] Spawn failed: ' + e) }
+    if (!m) return
+    delete g.parked[old]
+    delete S.parkedGroup[old]   // the old one is removed if its chunk ever loads
+    armMob(server, m, kind, tier)
+    addMob(g, m, kind)
+    g.mobTarget[uuidOf(m)] = u
+    setMobTarget(server, m, p)
+    puff(server, g.dim, spot)
+    made++
+  })
+  if (made) updateHookState()
+  return made
+}
+// A spot to stand FOLLOW.spot blocks from q; for a target high in the air, around the ground below them. Or null.
+function followSpot(level, dim, q) {
+  const s = pickSpot(level, dim, q, FOLLOW.spot[0], FOLLOW.spot[1], null)
+  if (s) return s
+  const below = findGround(level, Math.floor(q.x), Math.floor(q.z), Math.floor(q.y), Math.floor(q.y) - 64)
+  if (!below || below.fluid) return null
+  return pickSpot(level, dim, { x: q.x, y: below.y + 1, z: q.z }, FOLLOW.spot[0], FOLLOW.spot[1], null)
+}
+function puff(server, dim, spot) {
+  try {
+    server.runCommandSilent('execute in ' + dim + ' run particle minecraft:portal ' + spot.x + ' ' + (spot.y + 1) + ' ' + spot.z + ' 0.4 0.8 0.4 0.3 30')
+    server.runCommandSilent('execute in ' + dim + ' run playsound minecraft:entity.enderman.teleport hostile @a ' + spot.x + ' ' + spot.y + ' ' + spot.z + ' 1 0.7')
+  } catch (e) { }
+}
+// A target further than FOLLOW.distance from every mob for FOLLOW.seconds: the mobs that aren't near any target
+// reappear around them. Not into a safe zone (the mobs wait; the group's time keeps running).
+function followTargets(server, g, players, now) {
+  const mobs = Object.keys(g.mobs), mpos = {}
+  mobs.forEach(m => { try { mpos[m] = posOf(g.mobs[m]) } catch (e) { } })
+  const tpos = players.map(p => posOf(p))
+  players.forEach((p, i) => {
+    let u = uuidOf(p), q = tpos[i]
+    if (mobs.some(m => mpos[m] && dist(mpos[m], q) <= FOLLOW.distance)) { delete g.farSince[u]; delete g.noSpot[u]; return }
+    if (!g.farSince[u]) { g.farSince[u] = now; return }
+    if (now - g.farSince[u] < FOLLOW.seconds * 1000) return
+    if (inSafeZone(server, g.dim, q)) return
+    let idle = mobs.filter(m => mpos[m] && !tpos.some(t => dist(mpos[m], t) <= FOLLOW.distance))
+    if (!idle.length && !Object.keys(g.parked).length) return
+    let level = levelOf(p)
+    let first = followSpot(level, g.dim, q)
+    if (!first) { g.noSpot[u] = now; return }   // nowhere to stand: the flyers deal with it
+    delete g.noSpot[u]
+    recallParked(server, g, p, q, level)
+    idle.forEach((m, k) => {
+      let spot = k == 0 ? first : (followSpot(level, g.dim, q) || first)
+      try { server.runCommandSilent('execute in ' + g.dim + ' run tp ' + m + ' ' + spot.x + ' ' + spot.y + ' ' + spot.z) } catch (e) { return }
+      mpos[m] = spot
+      puff(server, g.dim, spot)
+      g.mobTarget[m] = u
+      setMobTarget(server, g.mobs[m], p)
+    })
+    delete g.farSince[u]
+  })
+}
+
+// --- Flying pursuers ---
+function isFlying(p) {
+  try { if (p.isFallFlying()) return true } catch (e) { }
+  try { if (p.getAbilities().flying) return true } catch (e) { }
+  try { if (p.abilities.flying) return true } catch (e) { }
+  return false
+}
+function outOfReach(g, p, q) {
+  if (isFlying(p) || g.noSpot[uuidOf(p)]) return true
+  // Ground within FLYERS.aboveGround blocks below their feet (water counts as ground)?
+  return !findGround(levelOf(p), Math.floor(q.x), Math.floor(q.z), Math.floor(q.y) + 1, Math.floor(q.y) - FLYERS.aboveGround)
+}
+// An open spot for a flyer 4-6 blocks from the target, at their height. Or null.
+function airSpot(level, q) {
+  for (let i = 0; i < 12; i++) {
+    let angle = Math.random() * TWO_PI, d = 4 + Math.random() * 2
+    let x = Math.floor(q.x + Math.cos(angle) * d), y = Math.floor(q.y) + (i % 2), z = Math.floor(q.z + Math.sin(angle) * d)
+    let a = level.getBlock(x, y, z), b = level.getBlock(x, y + 1, z)
+    if (!isSolid(a, String(a.id)) && !isSolid(b, String(b.id)) && !isFluidId(String(a.id))) return { x: x + 0.5, y: y, z: z + 0.5 }
+  }
+  return null
+}
+function sendFlyers(server, g, players, now) {
+  if (!FLYERS.perGroup || !MOB_KINDS[FLYERS.kind]) return
+  players.forEach(p => {
+    let u = uuidOf(p), q = posOf(p)
+    if (!outOfReach(g, p, q)) { delete g.airSince[u]; return }
+    if (!g.airSince[u]) { g.airSince[u] = now; return }
+    if (now - g.airSince[u] < FLYERS.airborneSeconds * 1000) return
+    if (g.flyers >= FLYERS.perGroup || now - g.lastFlyer < FLYERS.cooldownSeconds * 1000) return
+    if (aliveAmbushMobs() >= SERVER_MAX_MOBS || inSafeZone(server, g.dim, q)) return
+    let spot = airSpot(levelOf(p), q)
+    if (!spot) return
+    let tier = g.tier ? tierById(g.tier) : null, m = null
+    try { m = summonMob(server, g.dim, FLYERS.kind, defOf(g), g.id, spot, tier, g.extraTag) } catch (e) { console.error('[PortalAmbush] Flyer spawn failed: ' + e) }
+    if (!m) return
+    armMob(server, m, FLYERS.kind, tier)
+    addMob(g, m, FLYERS.kind)
+    g.flyers++
+    g.lastFlyer = now
+    g.mobTarget[uuidOf(m)] = u
+    setMobTarget(server, m, p)
+    updateHookState()
+  })
+}
+
+// --- Following into another dimension ---
+// Target p is in another dimension. The mobs chasing them (all of them, if p is the only target) are replaced by
+// fresh copies next to p there. The only target: the whole group moves (same id, time, contract). Otherwise p and
+// their chasers split off into a new group with the same time. Waits while p is in a safe zone or there's nowhere
+// to stand.
+function followAcross(server, g, p, now) {
+  const u = uuidOf(p), dim = dimOf(p), q = posOf(p), level = levelOf(p)
+  if (!canBeTargeted(p) || isPigEscortParticipant(p) || inSafeZone(server, dim, q)) return
+  if (!followSpot(level, dim, q)) return
+  const others = g.targets.filter(x => x != u)
+  let movers = Object.keys(g.mobs).filter(m => !hasTag(g.mobs[m], TAG_SUMMONED) && g.kinds[m])
+  if (others.length) {
+    let was = g.awayChasers[u] || []
+    let chasers = movers.filter(m => was.indexOf(m) >= 0)
+    movers = chasers.length ? chasers : movers.slice(0, 1)
+  }
+  let dest = g
+  if (others.length) {
+    S.counter++
+    dest = newGroup(Date.now().toString(36) + S.counter.toString(36), g.mechanic, dim, q, g.start, g.tier, { def: g.def, extraTag: g.extraTag })
+    dest.targets = [u]
+    dest.names[u] = g.names[u] || nameOf(p)
+    g.targets.splice(g.targets.indexOf(u), 1)
+    delete g.awaySince[u]
+    delete g.awayChasers[u]
+    S.groups[dest.id] = dest
+    S.inGroup[u] = dest.id
+  }
+  // The old mobs go: the movers, and with the whole group moving, everything left behind (an evoker's vexes).
+  const leaving = others.length ? movers.slice() : Object.keys(g.mobs)
+  const kinds = movers.map(m => g.kinds[m])
+  if (!others.length) {   // the whole group moves: the parked ones come along too
+    Object.keys(g.parked).forEach(old => { kinds.push(g.parked[old]); delete S.parkedGroup[old] })
+    g.parked = {}
+  }
+  S.allowRemoval = true
+  try {
+    leaving.forEach(m => {
+      try { g.mobs[m].discard() } catch (e) { try { server.runCommandSilent('kill ' + m) } catch (e2) { } }
+      delete g.mobs[m]; delete g.kinds[m]; delete g.mobTarget[m]; delete S.mobGroup[m]
+    })
+  } finally {
+    S.allowRemoval = false
+  }
+  if (!others.length) {
+    g.dim = dim
+    g.center = q
+    g.farSince = {}; g.airSince = {}; g.awaySince = {}; g.awayChasers = {}; g.noSpot = {}
+  }
+  const tier = g.tier ? tierById(g.tier) : null
+  let made = 0
+  kinds.forEach(kind => {
+    let spot = followSpot(level, dim, q)
+    if (!spot) return
+    let m = null
+    try { m = summonMob(server, dim, kind, defOf(dest), dest.id, spot, tier, dest.extraTag) } catch (e) { console.error('[PortalAmbush] Spawn failed: ' + e) }
+    if (!m) return
+    armMob(server, m, kind, tier)
+    addMob(dest, m, kind)
+    dest.mobTarget[uuidOf(m)] = u
+    setMobTarget(server, m, p)
+    puff(server, dim, spot)
+    made++
+  })
+  updateHookState()
+  console.info('[PortalAmbush] ' + nameOf(p) + ' changed dimension during an ambush; ' + made + ' mob(s) followed them to ' + dim)
 }
 
 
@@ -1070,13 +1356,14 @@ if (global.Factions) {
     }
     if (from != null) {
       try {
-        noteTrip(player, from, to, how || '?')
+        let viaPortal = how == 'travel' && cameThroughPortal(player)
+        noteTrip(player, from, to, how == 'travel' && !viaPortal ? 'travel, no portal: waystone or teleport' : how || '?')
         let pair = (from == OVERWORLD && to == NETHER) || (from == NETHER && to == OVERWORLD)
         let hunted =(to == NETHER && faction == 'ministry') || (to == OVERWORLD && faction == 'syndicate')
         if (!pair) noteArrival(player, 'only Overworld <-> Nether trips can be ambushed')
         else if (!hunted) noteArrival(player, 'faction "' + faction + '" isn\'t hunted in ' + shortDim(to))
         else if (how != 'travel') noteArrival(player, 'not a portal trip (' + (how || 'factions_core.js outdated') + ')')
-        else if (!cameThroughPortal(player)) noteArrival(player, 'no Nether portal where they arrived (teleported, not a portal trip)')
+        else if (ARRIVALS_NEED_PORTAL && !viaPortal) noteArrival(player, 'no Nether portal where they arrived (teleported, not a portal trip)')
         else arrival(server, player, to == NETHER ? 'nether_ambush' : 'return_inspection')
       } catch (e) {
         noteArrival(player, 'error: ' + e)
@@ -1087,6 +1374,7 @@ if (global.Factions) {
   })
   global.Factions.on('leftDimension', (player, faction, dim, how) => {
     if (how == 'logout') return   // logging out isn't escaping: the 60-second rule handles it
+    if (how == 'travel' && FOLLOW_ACROSS_DIMENSIONS) return   // followed (tickGroup)
     const id = S.inGroup[uuidOf(player)]
     const g = id ? S.groups[id] : null
     if (g && g.dim == dim) dropTarget(g, uuidOf(player))
@@ -1104,6 +1392,18 @@ if (global.Factions) {
 }
 
 PlayerEvents.loggedOut(event => { if (dirty) save() })
+// Morphing blocked by a group that ended while they were away: lifted now.
+PlayerEvents.loggedIn(event => {
+  const p = event.player, u = uuidOf(p), id = S.inGroup[u]
+  if (db().morphLocked[u] && (!id || !S.groups[id])) unlockMorph(event.server || Utils.server, u)
+})
+// A target who dies is out of their group (it ends when nobody is left).
+EntityEvents.death(event => {
+  const e = event.entity
+  if (!e || !e.isPlayer()) return
+  const u = uuidOf(e), id = S.inGroup[u], g = id ? S.groups[id] : null
+  if (g) dropTarget(g, u)
+})
 
 // Damage from an ambush mob (including its arrows) only counts against its own group's targets.
 EntityEvents.hurt(event => {
@@ -1148,6 +1448,14 @@ EntityEvents.spawned(event => {
   const u = uuidOf(e)
   const g = S.mobGroup[u] ? S.groups[S.mobGroup[u]] : null
   if (g) { g.mobs[u] = e; return }
+  // A parked mob (see tickGroup) whose chunk loaded again before the group followed: it rejoins.
+  const pg = S.parkedGroup[u] ? S.groups[S.parkedGroup[u]] : null
+  if (pg && pg.parked[u] && typeOf(e) == MOB_KINDS[pg.parked[u]].id && dimOf(e) == pg.dim) {
+    addMob(pg, e, pg.parked[u])
+    delete pg.parked[u]
+    delete S.parkedGroup[u]
+    return
+  }
   event.cancel()
 })
 
@@ -1178,8 +1486,7 @@ function adoptSummonedVex(e) {
     console.warn('[PortalAmbush] Could not tag an evoker\'s vex (it stays a plain vex): ' + err)
     return
   }
-  g.mobs[u] = e
-  S.mobGroup[u] = gid
+  addMob(g, e, 'vex')
   updateHookState()
   // A tick later: the vex is still joining the world now, so /effect can't find it yet.
   const token = S.token, server = Utils.server
@@ -1190,12 +1497,16 @@ function adoptSummonedVex(e) {
 ServerEvents.loaded(event => {
   const server = event.server
   removeTagged(server)
+  if (MORPH_LOCK) walkers(server, 'playerBlacklist preventMorphing true')
+  releaseMorphLocks(server)
   if (needsLoop(server)) startLoop(server)
 })
 
 // After a /reload: end the old groups, clear their mobs and restart the loop for online players.
 if (Utils.server) {
   endAll(Utils.server, 'reload')
+  if (MORPH_LOCK) walkers(Utils.server, 'playerBlacklist preventMorphing true')
+  releaseMorphLocks(Utils.server)
   if (needsLoop(Utils.server)) startLoop(Utils.server)
 }
 
@@ -1282,7 +1593,8 @@ ServerEvents.commandRegistry(event => {
         ' | raid roll every ' + RAID_MINUTES[NETHER][0] + ' min in the hostile dimension: ' + tierOdds())
       ids.forEach(id => {
         let g = S.groups[id]
-        reply(ctx, '  ' + g.mechanic + (g.tier ? ' (' + g.tier + ')' : '') + ' in ' + g.dim + ': ' + Object.keys(g.mobs).length + ' mob(s), targets ' +
+        reply(ctx, '  ' + g.mechanic + (g.tier ? ' (' + g.tier + ')' : '') + ' in ' + g.dim + ': ' + Object.keys(g.mobs).length + ' mob(s)' +
+          (Object.keys(g.parked).length ? ' + ' + Object.keys(g.parked).length + ' left behind' : '') + (g.flyers ? ', ' + g.flyers + ' flyer(s)' : '') + ', targets ' +
           g.targets.map(u => g.names[u] || u).join(', ') + ', ' + clock((Date.now() - g.start) / 1000) + ' old' +
           (g.lostSince ? ', targets lost for ' + clock((Date.now() - g.lostSince) / 1000) : ''))
       })

@@ -167,8 +167,8 @@ Punishes faction members for travelling into the dimension hostile to their fact
 
 | Mechanic | Trigger | What comes |
 |---|---|---|
-| 1. Nether Ambush | A ministry player comes into the Nether **through a Nether portal**. 50% chance. | A war party of Blood-Marked Piglins: piglins with a Sharpness V / Fire Aspect II netherite sword or a fast multishot crossbow, and brutes with a Sharpness V netherite axe, in dark red leather. 3 mobs, +1 per extra target, up to 8. |
-| 2. Return Inspection | A syndicate player comes back to the Overworld through a portal. 50% chance, and **only if nobody outside the Syndicate is within 48 blocks**. | A patrol of Ministry Inspectors: vindicators with Sharpness V netherite axes and pillagers shooting Harming arrows, in gold leather. 2 mobs, +1 per extra target, up to 6. |
+| 1. Nether Ambush | A ministry player comes into the Nether **by portal, waystone or any other trip** (`ARRIVALS_NEED_PORTAL`). 50% chance. | A war party of Blood-Marked Piglins: piglins with a Sharpness V / Fire Aspect II netherite sword or a fast multishot crossbow, and brutes with a Sharpness V netherite axe, in dark red leather. 3 mobs, +1 per extra target, up to 8. |
+| 2. Return Inspection | A syndicate player comes back to the Overworld (portal, waystone or any other trip). 50% chance, and **only if nobody outside the Syndicate is within 48 blocks**. | A patrol of Ministry Inspectors: vindicators with Sharpness V netherite axes and pillagers shooting Harming arrows, in gold leather. 2 mobs, +1 per extra target, up to 6. |
 | 3. Random Raid | Every **10 minutes** spent in their hostile dimension (the countdown pauses during a fight and restarts with each raid): **50% a light raid, 25% a moderate one, 10% a lethal one**, 15% nothing. The cooldown doesn't apply to these rolls. | A light, moderate or lethal group (see below), 8–10 blocks away and out of sight where possible (this close, some may appear in view). A warning comes 3 seconds before they arrive. Overworld raids follow the same secrecy rule: with a witness nearby, the raid is postponed 2–5 minutes, up to 3 times, and keeps its tier. |
 
 **Raid tiers** (`RAID_TIERS` near the top of `portal_ambush.js`). Every tier adds +1 mob per extra target, up to 8:
@@ -198,12 +198,40 @@ Punishes faction members for travelling into the dimension hostile to their fact
 
 Hard difficulty is 1.5 times those hits. Without Protection enchantments they're about 3 times. To make them tougher or weaker, change `health`, `damage`, `armor` and `toughness`, the weapon enchantments, or the group sizes (`NETHER_AMBUSH_BASE_SIZE`, `PATROL_BASE_SIZE`, each raid tier's `size`). Then run `/reload`.
 
+## No getting away
+
+Once a group is out, flying or running off doesn't end it. This applies to every kind: Nether Ambushes, Return Inspections, raids and Ambush Contracts.
+- **No morphing** (Walkers / ReMorphed, `MORPH_LOCK`):
+  - Each target is turned back into a human and added to Walkers' player blacklist, so the morph menu does nothing. They're told "You can't change shape while you're being hunted."
+  - It's lifted when they leave the group: it ends, or they die.
+  - If they're offline at that moment, it's lifted when they next log in.
+  - Start-up and `/reload` lift any block left over from a crash.
+- **The mobs come to you** (`FOLLOW`): when a target has been more than **24 blocks** from every mob for **5 seconds**, the mobs that aren't fighting anyone else reappear **8–10 blocks** from them, with a portal puff.
+  - That works at any distance. A target high in the air gets them on the ground below.
+  - Mobs left in chunks that unloaded aren't lost: fresh copies of the same kinds appear next to the target. If the old chunk loads first, the old mob just rejoins.
+- **Flying pursuers** (`FLYERS`): a target who is out of reach for **3 seconds** gets a vex in the group.
+  - **Out of reach** means gliding with an elytra, flying (Flügel Tiara and the like), 6+ blocks above the ground, or with nowhere to stand nearby.
+  - The vex has the group's name and Strength III and Speed III.
+  - At most **2 per group**, one every 20 seconds. They're on top of the 8-mob group cap; the 24-mob server cap still applies.
+- **Other dimensions** (`FOLLOW_ACROSS_DIMENSIONS`): a target who leaves by portal, waystone or `/tp` is followed. **2 seconds** after they arrive, fresh copies of the mobs that were chasing them appear next to them.
+  - **The only target:** the whole group moves, keeping its time, and a contract stays the same contract.
+  - **Several targets:** the leaver's chasers split off into their own group with the same end time.
+- **Safe zones:** mobs never follow into world spawn, a Pig Escort portal area or `SAFE_ZONES`. The group waits, its time keeps running, and it follows again once the target steps out.
+- **Dying** takes the target out of the group, with the cooldown, and it ends when nobody is left.
+
 ## Files
 
 | File | Goes in | |
 |---|---|---|
 | `portal_ambush.js` | `kubejs/server_scripts/factions/` | Everything. All settings, names and messages are at the top. |
 | `portal_ambush_hooks.js` | `kubejs/startup_scripts/` | Stops ambush mobs targeting anyone outside their group, and powers the `ZERO_XP` option. |
+
+**Walkers / ReMorphed:**
+- The morph block uses Walkers' own commands: `walkers switchShape <player> normal` and `walkers playerBlacklist add|remove <player>`.
+- At start-up the script runs `walkers playerBlacklist preventMorphing true`.
+- Walkers' `playerBlacklistIsWhitelist` must stay `false`.
+- Don't put players on Walkers' blacklist by hand: a player who is ambushed is taken off it when the ambush ends.
+- Without Walkers, those commands just fail and nothing else changes.
 
 Both also need `factions_core.js` and `factions_hooks.js`, which is how portal arrivals are detected. **Restart once** after adding the startup file. `/ambush status` shows whether both hooks are loaded.
 
@@ -217,10 +245,12 @@ Both also need `factions_core.js` and `factions_hooks.js`, which is how portal a
   - **Switching:** mobs switch to the nearest target within 32 blocks.
 - **Ending a group:** the group ends, quietly and with no drops, when:
   - all its mobs are killed;
-  - 60 seconds pass with every target dead, offline or more than 64 blocks away;
-  - every target has escaped (a target who leaves the dimension just drops out of the group);
+  - every target has died;
+  - 60 seconds pass with no target to fight (all offline, or in creative or spectator);
   - it reaches 10 minutes;
   - someone runs `/ambush clear`.
+
+  Distance and changing dimension don't end it (see [No getting away](#no-getting-away)).
 
   Each target then gets a **10-minute cooldown** against portal ambushes. Raid rolls ignore it; their countdown pauses while the player is in a group instead.
 - **Drops:**
@@ -262,7 +292,7 @@ Nothing about portal arrivals or raids changed.
 | `/ambush test overworld <player>` | An inspection patrol in 3 seconds. Also skips the secrecy check. |
 | `/ambush test raid <player> [light\|moderate\|lethal]` | A raid in their hostile dimension (they must be there). With no tier, one is rolled by the odds (never "nothing"). Skips the countdown but **keeps the secrecy postponement**. |
 | `/ambush timer <player>` | Their raid countdown, the odds when it runs out, any postponement and its tier, their cooldown, whether they're in a group, and their last trip between dimensions with the reason it did or didn't lead to an ambush (e.g. `overworld -> the_nether (travel): rolled 71%, needed under 50%`). Use it first when an ambush doesn't happen. |
-| `/ambush status` | On or off, hooks, and the active groups with their mechanic, targets, mob count and age. |
+| `/ambush status` | On or off, hooks, and the active groups with their mechanic, targets, mob count (and how many were left behind in unloaded chunks), flyers and age. |
 | `/ambush clear` | Ends every group and removes every ambush mob. No cooldowns are given. |
 | `/ambush toggle` | Turns the add-on on or off. The setting is saved, and no data is lost. Turning it off ends the active groups. |
 
@@ -271,12 +301,18 @@ Nothing about portal arrivals or raids changed.
 Set up as an op: `/faction set A ministry` and `/faction set B syndicate`. Keep away from world spawn (64 blocks) for everything except step 9. To test the chances quickly, temporarily set `NETHER_AMBUSH_CHANCE` and `OVERWORLD_PATROL_CHANCE` to `1`, then `/reload`.
 
 1. **Nether ambush through a portal:** A goes through an allowed Nether portal. After 3 seconds, Blood-Marked Piglins (dark red chestplates, names showing) appear 8–10 blocks away. Only A sees "[SIGNAL HIJACKED] Blood for the Blood God." They attack A even if A wears gold.
-2. **No ambush from `/tp`:** go back to the Overworld and wait until `/ambush timer A` shows no cooldown (10 minutes). Then use `/execute in minecraft:the_nether run tp A ~ 100 ~`. No ambush appears. Going through the portal again now would trigger one.
+2. **Waystones count:** go back to the Overworld and wait until `/ambush timer A` shows no cooldown (10 minutes). Then take a waystone (or `/execute in minecraft:the_nether run tp A ~ 100 ~`) into the Nether. An ambush can come (50%), and `/ambush timer A` shows "no portal: waystone or teleport". Login and respawning never roll.
 3. **Return inspection:** B comes back to the Overworld through a portal with A more than 48 blocks away. Ministry Inspectors appear, and only B sees "[MINISTRY] Routine border inspection...". Repeat after the cooldown with **A standing within 48 blocks** of the arrival portal: nothing happens, and nobody gets a message.
 4. **Raids:** with B in the Overworld, run `/ambush test raid B`. B gets "[MINISTRY] Inspectors have been dispatched..." and a patrol arrives 3 seconds later, 8–10 blocks away. Then, with A standing within 48 blocks of B, run `/ambush test raid B` again (after `/ambush clear`). The reply says the raid was postponed, and `/ambush timer B` shows "postponed moderate raid, 1/3" (or whichever tier was rolled). With A in the Nether, `/ambush test raid A` sends a war party after "[SIGNAL HIJACKED] The Blood God has found you." Then try each tier: `/ambush test raid A light` (2–3 weaker piglins), `moderate`, and `lethal` ("The Blood God demands your blood.", 6–8 mobs with brutes, evokers and vexes, all with Strength). Watch an evoker summon vexes: they should only attack A and should disappear with the group after `/ambush clear`.
 5. **Wrong faction ignored:** during a war party on A, B stands among the piglins. They never target or hurt B. During a patrol on B, A stands among the inspectors and is ignored. Nearby villagers and iron golems aren't attacked.
 6. **Drops:** each killed piglin drops 1–3 gold nuggets and nothing else (never their weapons or arrows, no loot). Inspectors drop 0–1 emerald.
-7. **Despawning:** start a group and run more than 64 blocks away. About 60 seconds later the group vanishes without drops. Or go back through the portal: you escape, and the group ends once nobody is left.
+7. **No getting away:**
+    - **Morphing:** be morphed into a bat, then `/ambush test raid A`. A turns back into a human, and the morph menu doesn't work until the group is gone.
+    - **Running:** run or glide away. 5 seconds after leaving the mobs 24 blocks behind, they reappear around A.
+    - **Flying:** stay 6+ blocks up (elytra or tiara). After 3 seconds a vex comes, and a second one 20 seconds later.
+    - **Changing dimension:** take a portal or waystone. 2 seconds after arriving, the mobs appear next to A.
+    - **Spawn:** go to world spawn. Nothing follows; step out and they do.
+    - **Dying:** die. The group vanishes without drops, and morphing works again.
 8. **Cooldowns:** after a group ends, `/ambush timer A` shows a cooldown of about 10 minutes, and portal trips trigger nothing until it's over. Restart the server and check that the cooldown and countdown survived.
 9. **Safe zones and caps:**
    - near world spawn, portal arrivals and raids never trigger;
@@ -285,7 +321,7 @@ Set up as an op: `/faction set A ministry` and `/faction set B syndicate`. Keep 
 
 ## Not verified on a real server
 
-The mock-server test passed all 94 checks, including the raid tiers (the roll, sizes, stats, Strength, evoker cap, lethal warnings, evoker vexes joining their group, no cooldown, postponed raids keeping their tier, old countdowns being shortened): mob gear and stats (the summon NBT is parsed), portal travel versus `/tp` versus respawn, shared rolls, secrecy skips and postponements, sizes and caps, target and damage filtering, rewards, quiet despawning, escapes, cooldowns, persistence across `/reload`, Peaceful, toggle and stray removal. These parts depend on the real game:
+The mock-server test passed all 133 checks, including no getting away (the morph block and lifting it at login and start-up, following at 5 s and at any distance, never into a safe zone, flyers and their limits, mobs left in unloaded chunks being replaced or rejoining, whole-group and split moves into another dimension keeping the contract, death, waystone rolls), the raid tiers (the roll, sizes, stats, Strength, evoker cap, lethal warnings, evoker vexes joining their group, no cooldown, postponed raids keeping their tier, old countdowns being shortened): mob gear and stats (the summon NBT is parsed), portal travel versus `/tp` versus respawn, shared rolls, secrecy skips and postponements, sizes and caps, target and damage filtering, rewards, quiet despawning, escapes, cooldowns, persistence across `/reload`, Peaceful, toggle and stray removal. These parts depend on the real game:
 
 - **Whether Forge's `LivingChangeTargetEvent` also covers the piglin brain's own target choice.** If it doesn't, piglins are still re-aimed every second, and their hits on anyone else are cancelled.
 - **Whether the change-target cancel holds against vanilla "revenge" targeting** (mobs turning on whoever hit them). Same safety net as above.
@@ -295,4 +331,7 @@ The mock-server test passed all 94 checks, including the raid tiers (the roll, s
 - **Whether the portal-block check works with mods that teleport you next to a portal.**
 - **Whether pillagers shoot the Harming arrows from their off hand.** If they shoot plain arrows instead, they're only weaker; nothing else changes.
 - **Whether `vex.getOwner()` and `addTag` work from the script on an evoker's summoned vex.** If they don't, those vexes stay plain vanilla vexes: they can attack any nearby player, but they die within 30–120 seconds on their own. A warning is logged if tagging fails.
+- **Walkers' commands** (`switchShape`, `playerBlacklist`), run by the server: confirmed from the Walkers 5.8.13 jar, but not run in game. ReMorphed's menu is expected to honour Walkers' blacklist.
+- **Teleporting mobs** with `execute in <dim> run tp <uuid> x y z`, and `getRemovalReason()` telling a mob in an unloaded chunk apart from a dead one.
+- **Who counts as flying:** `isFallFlying()` and `getAbilities().flying`, plus the ground check below the target.
 - **`/effect give <uuid> minecraft:strength infinite`** for the lethal mobs. `infinite` needs 1.19.4 or later, which 1.20.1 is.

@@ -6,9 +6,9 @@ The server's story in two parts.
 
 **Trolling drives the story.**
 - Every troll is logged and scored.
-- In Part I, trolls fill the two meters (**Order** and **Chaos**) that end each act.
-- In Part II, trolls fill the **Blood Pool** that unlocks all progression.
-- Ministry **decrees** lock tiers, and boss kills and relics carry the plot.
+- In Part I, trolls fill the **Blood Pool**, which opens the Blood Gate to the new world at the end. Acts move forward when an op says so.
+- In Part II, the **Blood Pool** unlocks all progression.
+- Ministry **decrees** are announcements; boss kills and relics carry the plot.
 
 Legend: ✅ = built and running, 🔨 = still to build, *TBD* = open decision (see [Open decisions](#open-decisions)).
 
@@ -22,7 +22,7 @@ Tone: Technoblade passed away in 2022, and "Technoblade never dies" is how his c
 - **The Ministry of Trolling** claims it exists **to secure the right of trollers to troll freely**. In practice it runs **Managed Trollocracy**: trolling licensed, taxed and turned into control. "Trolling equality is a right. Being trolled is a responsibility." (`ministry_broadcasts.js`)
 - **Technoblade** (an anarchist on Dream SMP) stands for **free chaos**. The rebellion is about taking trolling back.
 
-### The Troll Log 🔨 (`trolls.js`, planned)
+### The Troll Log ✅ (`economy/trolls.js`, see [TROLLS.md](tools/kubejs/TROLLS.md))
 Every troll is recorded: who, on whom, what, where and when.
 - **Logged automatically,** from triggers the black market already sees:
   - Disguised TNT or a Teleport Trap sprung on someone else;
@@ -30,7 +30,7 @@ Every troll is recorded: who, on whom, what, where and when.
   - Cursed Food eaten;
   - an Anonymous Summons delivered;
   - a Homing Pig reaching the target's bed.
-- **Not logged automatically: Butterfingers and Itching Powder.** They're too easy to land and would flood the meters. Those trolls go through manual reports, where an admin weighs them and sets fair points.
+- **Not logged automatically: Butterfingers and Itching Powder.** They're too easy to land and would flood the Blood Pool. Those trolls go through manual reports, where an admin weighs them and sets fair points.
 - **Manual reports,** for these and anything creative the game can't detect:
   1. the troller files `/troll report <victim> <what they did>`;
   2. witnesses back it with `/troll witness <id>`;
@@ -42,27 +42,26 @@ Every troll is recorded: who, on whom, what, where and when.
 - **A weekly recap broadcast** in the Ministry's voice: "This week, 47 incidents of Unlicensed Humour were recorded. The Ministry is not amused. The Ministry is never amused."
 
 ### Scoring
-The same value counts as **Order or Chaos** in Part I (by the troller's faction) and as **Drops of Blood** in Part II. The numbers are proposals.
+The same value goes into the **Blood Pool** as Drops of Blood, in both parts. These are the script's settings.
 
-| Troll | Value |
-|---|---|
-| Anonymous Summons | 50 |
-| Cursed Food eaten | 100, + 25 per curse |
-| Mimic Chest opened | 150 |
-| Homing Pig reaching the bed | 150 |
-| Teleport Trap | 200 |
-| Disguised TNT | 250 |
-| Approved manual report (including Butterfingers and Itching Powder) | set by the admin, typically 25–500 |
+| Troll | Value | Hush Coins |
+|---|---|---|
+| Anonymous Summons | 50 | 1 |
+| Cursed Food eaten | 100, + 25 per curse | 2 |
+| Mimic Chest opened | 150 | 3 |
+| Homing Pig reaching the bed | 150 | 5 |
+| Teleport Trap | 200 | 5 |
+| Disguised TNT | 250 | 6 |
+| Approved manual report (including Butterfingers and Itching Powder) | set by the admin, typically 25–500 | 1 per 100 points |
 
 - **Cross-faction bonus ×1.5:** for trolling someone of the opposite faction (in Part II, for trolling Ministry NPCs).
-  - The Syndicate is a secret faction, so the bonus is **added straight to the meter and never shown per troll**. `/trolls me` shows base points only, and nobody can work out a victim's faction from their score.
+  - The Syndicate is a secret faction, so the bonus is **added straight to the Blood Pool and never shown per troll**. `/trolls me` shows base points only, and nobody can work out a victim's faction from their score.
 - **Revenge ×2:** a victim who trolls their troller back within 24 hours.
 - **Diminishing returns:** the same victim within 24 hours counts ×0.5, then ×0.25.
 - **Nothing counts** for trolling yourself, AFK players or players on the same IP.
 - **Good sport:** victims get a small share of the points too.
-- **Hush Coins per troll:** every logged troll pays the troller some Hush Coins.
-  - The payout is always kept **below the cost of the troll item used**, so two friends can't print coins by trolling each other.
-  - Exact payouts *TBD*.
+- **Hush Coins per troll:** every logged troll pays the troller some Hush Coins (the table above), always **below the cost of the troll item used**, so two friends can't print coins by trolling each other.
+- **Anonymity:** victims aren't told who trolled them, and the public log shows "someone"; only ops see names.
 
 ### Guardrails
 - Pranks cost time, not progress: no permanent loss of gear or bases outside story events.
@@ -73,35 +72,12 @@ The same value counts as **Order or Chaos** in Part I (by the troller's faction)
 
 ## PART I: The Ministry's Reign
 
-### Order vs Chaos: the two meters 🔨
-Two satirical meters, shown together with `/ministry status` and on event bossbars, always in the Ministry's spin.
-- **Both fill the same way: by trolling.**
-  - **Loyalists' (Crownsworn) trolls fill Order:** "Licensed Trolling", in defence of trolling rights. The Ministry calls it the "Citizen Compliance Index", officially always "99.7% and rising".
-  - **The Syndicate's trolls fill Chaos:** "Incidents of Unlicensed Humour".
-  - **Unregistered players' trolls are "unlicensed",** so they fill Chaos.
-- **Flavour only:** Ministry paperwork such as "Form 27B/6: Declaration of Having Nothing to Declare". It doesn't fill the meters.
-- **When a meter fills, the ops are told and an op confirms** before anything happens. The next act begins either way.
-
-**ORDER fills: "Trolling Rights Secured!"**
-- The Ministry "protects" trolling into oblivion with a new regulation "for your protection", escalating each time:
-  1. **Trolling Licences:** troll items cost Loyalists less and the Syndicate more at the merchant.
-  2. **Troll Quotas:** Loyalists who don't troll enough get audited ("Insufficient enthusiasm noted").
-  3. **The Trolling Moratorium:** for a few hours, unlicensed troll items fizzle with "[DENIED] Prank not processed. Please resubmit in triplicate."
-- **Mandatory Fun Day** for the Loyalists: compulsory fireworks and Certificates of Compliance.
-- **The underdog bonus:** the Syndicate's cross-faction bonus rises for the next act.
-- **The satire:** every Ministry "win" makes it more controlling, which is what drives Loyalists to doubt it.
-
-**CHAOS fills: "The Free Trolling Movement"**
-- **A Ministry Meltdown:**
-  - broadcasts glitch and contradict themselves;
-  - Inspectors drop a paperwork piñata (Hush Coins and troll items) and flee;
-  - the merchant holds a Liberation Sale;
-  - one active decree is overturned.
-- **Next act:** the Syndicate gets a perk, and the Loyalists' cross-faction bonus rises.
-
-**Either way:**
-- Both meters reset, and the next act's meters are larger, because the Ministry adapts.
-- The next act takes its tone from who won: the Ministry tightening its grip, or reeling.
+### How Part I moves forward ✅ (`story.js`, see [STORY_COMMANDS.md](tools/kubejs/STORY_COMMANDS.md))
+- **Acts are advanced by an op** with `/story act next` (or `/story act set <id>`), when the story is ready. Each act opens with a full-screen title, the Ministry's lines and a `[SIGNAL HIJACKED]` reply.
+- **Decrees are announcements only:** numbered proclamations from #41, issued with `/story decree issue|preset`, listed with `/decrees`, and overturned with `/story decree revoke`. Breaking one is something Enforcers can charge with `/accuse`; nothing is blocked by code.
+- **The Blood Pool** fills from every troll and from donated Hush Coins (1,000 Drops each). Full at **100,000 Drops**, it lets the Blood Gate open in the finale. Milestones at 25/50/75/100% are announced by the hijacked signal.
+- **Ministry events** (Prank Purge, Mandatory Fun Day, the Trolling Moratorium, a Ministry Meltdown) are op-run (next batch).
+- **Dropped:** the Order and Chaos meters (owner decision).
 
 ### Prologue (already happened)
 1. **The First Days:** players start in the Overworld and push through caves, oceans and dangers.
@@ -120,15 +96,15 @@ Two satirical meters, shown together with `/ministry status` and on event bossba
     - ✅ (`end_lockdown.js`: Eyes of Ender confiscated and uncraftable, the End portal-only, **Unsanctioned Eyes of Ender** sold by the Hooded Merchant as the way in)
 
 ### Act II: Inspections
-Starts when the first meter fill is confirmed.
-11. **The Decrees Begin:** the Ministry issues numbered decrees. Each locks a shortcut or a progression tier, and some are just absurd ("Decree 42: all chests must face north"). 🔨 (chapter and decree system)
-12. **The Trolling Licence Act:** all pranks need a permit. Unlicensed trolling becomes a chargeable offence (`/accuse … Unlicensed trolling`), and the black market goes truly underground. ✅ (trials) + 🔨 (the decree)
+Starts with `/story act next`.
+11. **The Decrees Begin:** the Ministry issues numbered decrees. They're announcements (nothing is blocked), some serious and some just absurd ("Decree 42: all chests must face north"). ✅ (`story.js`)
+12. **The Trolling Licence Act:** all pranks need a permit. Unlicensed trolling becomes a chargeable offence (`/accuse … Unlicensed trolling`), and the black market goes truly underground. ✅ (trials; `/story decree preset licence_act`)
 13. **The Scout Awakens:** the sleeping scout wakes as an NPC. Each conversation gives a piece of testimony, hinting that **the Ministry staged the Escort**. 🔨
 14. **Treason Hunts:** Inspectors and Blood God raids keep up the pressure on the Syndicate. Now and then Inspectors turn up, do paperwork and leave. ✅ (ambushes, raids, Ambush Contracts)
 
 ### Act III: The Loyalty Audit
-Starts when the second meter fill is confirmed.
-15. **The Audit:** the Ministry turns on its own Loyalists: inspections of Crownsworn players, Hush Coin tithes, curfews, and (after an Order win) Troll Quotas. 🔨 (decrees, plus ambush settings)
+Starts with `/story act next`.
+15. **The Audit:** the Ministry turns on its own Loyalists: inspections of Crownsworn players, Hush Coin tithes, curfews, and Troll Quotas. ✅ (decrees) + 🔨 (Audit events)
 16. **Show Trials:** Enforcers are pushed to prosecute. Certified Alibis become acts of quiet rebellion. ✅ (`factions/trials.js`, the black market's Certified Alibi)
 17. **The First Defections:** Crownsworn players start to desert. ✅ (faction desertion)
 18. **The Prank Purge:** one announced hour:
@@ -146,25 +122,23 @@ Starts when the second meter fill is confirmed.
     🔨
 
 ### Act IV: The End Lockdown
-Starts when the third meter fill is confirmed.
+Starts with `/story act next`.
 20. **The End Lockdown Initiative:** already in force (see 10). "There is nothing in the End." The black-market Unsanctioned Eyes are the Resistance's way in, and every sale is on the merchant's books for a trial. ✅ (`end_lockdown.js`)
 21. **Breaking the Seal:** Loyalists and Syndicate fight the Ender Dragon together, the first act of open rebellion. 🔨 (dragon-kill trigger)
 22. **The Ministry Archives:** End City chests hold Ministry documents: cover-ups, the order that sacrificed Oinkington, and proof the Ministry uses Techno's name for power. 🔨 (books added to End City loot; *TBD*: what exactly they reveal)
-23. **The Realisation:** the Archives reveal that **the Order meter literally powers the Ministry's decrees**. Every Loyalist troll was harvested to control the server.
-    - The Loyalists defect, and from then on their trolls count as Chaos.
+23. **The Realisation:** the Archives reveal the Ministry's crimes against Technoblade's legacy and the Sanctity of Swine Act: it has been using his name for power.
+    - The Loyalists defect.
     - The Resistance forms, with no friendly fire between its members.
 
     🔨
 
 ### Part I Finale: Protocol Clean Slate
-Fires on **whichever meter fills last** in Act IV, after an op confirms:
-- **Chaos fills:** the Ministry panics and fires the protocol.
-- **Order fills:** the Ministry declares total victory and fires it itself, **"to protect trolling rights from trolls."**
+An op starts it (`/story act next` from Act IV). The Ministry, cornered, fires it **"to protect trolling rights from trolls."** The world ends.
 
-The world ends either way.
+**The way out is the Blood Gate**, and it only opens once the **Blood Pool is full**. The server has to troll and donate its way out before the world burns.
 
 24. **The Fake-out:** before the real thing, the Ministry runs a "test of the emergency broadcast system". A full doomsday countdown hits zero, then: "This was a test. Please resume compliance." 🔨
-25. **The Last Decree:** Protocol Clean Slate, with a server-wide countdown bossbar. 🔨 (*TBD*: 72 h, a week, or a live night)
+25. **The Last Decree:** Protocol Clean Slate, with a **4-day** server-wide countdown bossbar. 🔨
 26. **The World Burns:**
     - thunder;
     - back-to-back Purges;
@@ -172,7 +146,7 @@ The world ends either way.
     - the broadcasts falling apart into static and denial.
 
     🔨
-27. **The Exodus Satchel:** each player chooses a few items to save, filtered against mods Part II drops. They're saved to a file outside the world. 🔨 (*TBD*: slots)
+27. **The Exodus Satchel:** each player chooses a few items to save (9 slots by default, *TBD*), filtered against mods Part II drops. They're saved to a file outside the world, once the Blood Gate is open. 🔨
 28. **Beyond the Void:** the Syndicate reveals the only escape, the End's exit portal. Players jump and the **End Poem** plays: the end of Part I. ✅ (vanilla)
 29. **The Last Broadcast:** the Ministry declares victory over an empty world, and the server goes dark.
 
@@ -290,16 +264,14 @@ Needs Blood Pool Tier 12 and the full Regalia.
 | Trials | `factions/trials.js` | Show trials; "unlicensed trolling" charges; trolling vs griefing; records carried into Part II |
 | Ministry broadcasts | `ministry_broadcasts.js` | The narrator; per-act line pools to add |
 | Techno Tribute, /superaura, fake players | `techno_tribute.js`, `smite.js`, `fake_players.js` | Manifestations of Techno's legacy; the finale |
-| **Troll Log, Order vs Chaos, Blood Pool** | `trolls.js` 🔨 (planned; hooks into `black_market.js`) | The engine of the whole story |
+| **Troll Log and the Blood Pool** | `economy/trolls.js` (hooks in `black_market.js`) | The engine of the whole story |
+| Acts and decrees | `story.js` | Op-advanced acts with titles and lines; numbered decrees |
 
 ## Build order
-1. The **chapter and decree system** (acts, decrees, op-confirmed advances).
-2. **`trolls.js`:** the Troll Log, scoring, Hush Coin payouts, manual reports (witnesses + admin points), Order and Chaos with op-confirmed fills.
-3. Act II: the **Scout NPC** and his testimony; the Trolling Licence Act.
-4. The **event scheduler** (Prank Purges, Mandatory Fun Day, the Moratorium).
-5. Act IV: the **Archive documents** and the **dragon-kill trigger** (the End lock is done: `end_lockdown.js`).
-6. **Protocol Clean Slate:** the fake-out, the countdown, the decay, and exporting satchel and legacy data.
-7. Part II (with the new modpack):
+1. ✅ **Batch 1:** `story.js` (acts and decrees) and `economy/trolls.js` (the Troll Log, payouts, reports, the Blood Pool).
+2. 🔨 **Batch 2:** the **Scout NPC** and his testimony; op-run **events** (Prank Purge, Mandatory Fun Day, the Trolling Moratorium, a Ministry Meltdown).
+3. 🔨 **Batch 3:** the **Archive books** in End City loot (the Ministry's most heinous crimes against Technoblade's legacy and the Sanctity of Swine Act), the **dragon-kill trigger**, and **Protocol Clean Slate** (the fake-out, the 4-day countdown, the decay, the Blood Gate opening when the Pool is full, and exporting satchel and legacy data).
+4. Part II (with the new modpack):
    - the **Blood Pool and tier lockdown**;
    - satchel and legacy import;
    - the Shrine and relic tracker;
@@ -307,11 +279,11 @@ Needs Blood Pool Tier 12 and the full Regalia.
    - the Minister fight.
 
 ## Open decisions
-- **Meters:** each act's meter size; what each Order and Chaos reward does exactly; how long the Moratorium lasts.
-- **Troll Log:** the final value of each troll; exact Hush Coin payouts per troll; whether Anonymous Summons (cheap, needs no aim) should also go to manual reports.
-- **Decree gating in Part I:** hard locks, or soft pressure.
+- **Events:** how long the Moratorium lasts, and what a Ministry Meltdown gives.
+- **Troll Log:** tune the values and payouts after a week of play; whether Anonymous Summons (cheap, needs no aim) should go to manual reports.
+- **The Blood Pool's quota** for the Blood Gate (100,000 Drops for now).
 - **Crownsworn players:** whether active Crownsworn players will role-play the defection, or the loyalists are mostly NPCs.
-- **Clean Slate:** the Exodus Satchel size, and the countdown length.
+- **Clean Slate:** the Exodus Satchel size (9 for now).
 - **Part II world:** a new seed, or the same seed regenerated.
 - **Archive documents:** what they reveal (for example who really killed Oinkington).
 - **Part II tiers:** what each of the 12 Blood Pool tiers unlocks, decided with the Part II modpack.

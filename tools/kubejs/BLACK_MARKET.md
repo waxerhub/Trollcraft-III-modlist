@@ -229,6 +229,15 @@ Right-clicking the merchant opens a chest-style window. It's a vanilla chest scr
 
 **For trials:** `/bm inspect` while holding any of these shows the buyer (and who switched it on or used it), even if they're offline. Like contracts, they can't be put up as custom stock.
 
+## The Troll Log
+If `economy/trolls.js` is installed, the black market logs its trolls there, and the troller is paid in Hush Coins (see [TROLLS.md](TROLLS.md)):
+- **Anonymous Summons:** when it's delivered (buyer → target).
+- **Cursed Food:** when someone other than its buyer eats it. Food now carries its buyer's uuid in its hidden tag (`by`), so cursed food bought before this update isn't logged.
+- **Mimic Chest, Teleport Trap, Disguised TNT:** when sprung by someone other than the owner.
+- **Homing Pig:** when it first reaches the target's bed (the releaser → the target, once per pig).
+
+Without trolls.js nothing changes. `global.Economy.isAfk(player)` is also exported now, so trolls.js can skip AFK victims.
+
 ## Calling a contract
 
 Hold it and right-click, in the air or on a block. Nothing is placed, and one click counts once.

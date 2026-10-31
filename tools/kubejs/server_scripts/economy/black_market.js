@@ -266,6 +266,13 @@ function PA() { return global.PortalAmbush || null }       // looked up when nee
 function BOUNTIES() { return global.Bounties || null }      // economy/bounties.js
 function TRIALS() { return global.Trials || null }          // factions/trials.js
 function ELI() { const e = global.EndLockdown; return e && e.active ? e : null }   // end_lockdown.js
+function TROLLS() { return global.Trolls || null }          // economy/trolls.js
+// Hands a troll to the Troll Log (economy/trolls.js), if it's installed. victim: a player or { uuid, name }.
+function logTroll(trollerUuid, trollerName, victim, type, extra) {
+  const T = TROLLS()
+  if (!T || !trollerUuid) return
+  try { T.record({ uuid: trollerUuid, name: trollerName }, victim, type, extra || {}) } catch (e) { console.error('[BlackMarket] Troll Log: ' + e) }
+}
 function snbtString(s) { return "'" + String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'") + "'" }
 function dateText(ms) {
   const d = new Date(ms)
@@ -1091,8 +1098,9 @@ function butterfingersStack(n) {
 // No name, no lore: it has to look like any other food of its kind. The fake Enchanted Golden Apple gets the real
 // one's name, colour and glint on a golden apple.
 function foodById(id) { return CURSED_FOOD.foods.filter(f => f.id == String(id).toLowerCase())[0] || null }
-function foodStack(f) {
-  const tag = 'trollcraft:{prank:"food",food:"' + f.id + '"}'
+// by: the buyer's uuid, so the Troll Log knows who served it.
+function foodStack(f, by) {
+  const tag = 'trollcraft:{prank:"food",food:"' + f.id + '"' + (by ? ',by:"' + by + '"' : '') + '}'
   if (f.fake) return Item.of(f.item, 1, '{' + tag + ',display:{Name:' + snbtString(JSON.stringify({ text: f.name, color: 'light_purple', italic: false })) +
     '},Enchantments:[{id:"minecraft:unbreaking",lvl:1s}],HideFlags:1}')
   return Item.of(f.item, 1, '{' + tag + '}')
@@ -1195,7 +1203,7 @@ function buyButterfingers(p) {
 function buyFood(p, id) {
   const f = foodById(id)
   if (!f) return 'He has no cursed ' + id + '. Ask for: ' + CURSED_FOOD.foods.map(x => x.id).join(', ') + '.'
-  return pay(p, CURSED_FOOD.price, foodStack(f)) ? 'One cursed ' + f.name + '. It looks exactly like the real thing, so keep it apart from yours.'
+  return pay(p, CURSED_FOOD.price, foodStack(f, uuidOf(p))) ? 'One cursed ' + f.name + '. It looks exactly like the real thing, so keep it apart from yours.'
     : 'Cursed food costs ' + CURSED_FOOD.price + ' ' + COIN_PLURAL + '. You have ' + countCoins(p) + '.'
 }
 function foodButtons() {
@@ -1214,6 +1222,7 @@ function buySummons(server, p, targetName) {
   say(target, VOICE_MINISTRY, SUMMONS.messages[Math.floor(Math.random() * SUMMONS.messages.length)])
   sound(server, target, SUMMONS.sound, 1)
   console.info('[BlackMarket] Anonymous Summons from ' + nameOf(p) + ' to ' + nameOf(target))
+  logTroll(uuidOf(p), nameOf(p), target, 'summons')
   return 'Your summons to ' + nameOf(target) + ' has been delivered. Nobody will know it was you.'
 }
 
@@ -1544,6 +1553,7 @@ function stepPig(server, h, e, now) {
     if (!h.arrived) {
       h.arrived = true
       dirty = true
+      if (!h.logged) { h.logged = true; logTroll(h.releasedBy, h.releasedByName, { uuid: h.target, name: h.targetName }, 'pig') }
       try { nav.stop() } catch (err) { }
       try { server.runCommandSilent('execute in ' + h.dim + ' run playsound minecraft:entity.pig.ambient neutral @a ' + num2(q.x) + ' ' + num2(q.y) + ' ' + num2(q.z) + ' 1 1.4') } catch (err) { }
     }
@@ -1727,6 +1737,7 @@ function triggerTnt(server, p, key) {
   const prot = isProtectedSpot(server, dim, { x: x, y: y, z: z })
   logTrap('Disguised TNT (' + t.block + ') placed by ' + t.ownerName + ' went off under ' + nameOf(p) + ' at ' + dim + ' ' + x + ' ' + y + ' ' + z + (prot ? ' (protected: no block damage)' : ''))
   save()
+  logTroll(t.owner, t.ownerName, p, 'tnt')
   try {
     let ex = level.createExplosion(x + 0.5, y + 0.5, z + 0.5).strength(DISGUISED_TNT.power).causesFire(false)
     if (ExplosionInteraction) ex = ex.explosionMode(prot ? ExplosionInteraction.NONE : ExplosionInteraction.TNT)
@@ -1763,6 +1774,7 @@ function triggerTp(server, p, key) {
     server.runCommandSilent('execute in ' + d.dim + ' run playsound minecraft:entity.enderman.teleport player @a ' + (d.x + 0.5) + ' ' + ty + ' ' + (d.z + 0.5) + ' 1 1.2')
   } catch (e) { console.error('[BlackMarket] Teleport Trap failed: ' + e) }
   logTrap('Teleport Trap (' + t.block + ') placed by ' + t.ownerName + ' sent ' + nameOf(p) + ' from ' + dim + ' ' + x + ' ' + y + ' ' + z + ' to ' + d.dim + ' ' + d.x + ' ' + ty + ' ' + d.z)
+  logTroll(t.owner, t.ownerName, p, 'tp')
   save()
   say(p, VOICE_TRICK, 'The ground had other plans for you.')
 }
@@ -1824,6 +1836,7 @@ function mimicBite(server, p, key, block) {
   const dim = key.split('|')[0]
   logTrap('Mimic Chest placed by ' + t.ownerName + ' bit ' + nameOf(p) + ' at ' + key.split('|').slice(1).join(' '))
   save()
+  logTroll(t.owner, t.ownerName, p, 'mimic')
   say(p, VOICE_TRICK, MIMIC_CHEST.laugh)
   sound(server, p, MIMIC_CHEST.sound, 1)
   const bx = Number(key.split('|')[1]), by = Number(key.split('|')[2]), bz = Number(key.split('|')[3])
@@ -2166,6 +2179,8 @@ global.Economy = {
   // For factions/trials.js: takes one genuine, unused Certified Alibi for the charge `label`.
   // { ok: true, serial } or { ok: false, text }.
   takeAlibi: (player, label) => takeAlibi(player, label),
+  // For economy/trolls.js: is this player AFK (no movement or turning for AFK_MINUTES)?
+  isAfk: player => isAfk(player),
 }
 
 
@@ -2340,6 +2355,9 @@ ItemEvents.foodEaten(event => {
     if (msg) say(p, VOICE_TRICK, msg)
   })
   console.info('[BlackMarket] ' + nameOf(p) + ' ate a cursed ' + (f ? f.name : 'cookie') + ': ' + picked.join(', '))
+  let by = ''
+  try { let t = trollcraftTag(event.item); if (t != null && t.contains('by')) by = String(t.getString('by')) } catch (e) { }
+  if (by) logTroll(by, null, p, 'food', { curses: picked.length, detail: f ? f.name : 'cookie' })
 })
 
 // Traps: placing one registers it (Disguised TNT or Mimic Chest); breaking it removes it.

@@ -26,7 +26,9 @@ Acts only move forward when an op says so.
 - 4 seconds apart come the Ministry's opening lines, then the `[SIGNAL HIJACKED]` reply;
 - edit `ACTS` to change any of it.
 
-`global.Story.act()` and `global.Story.isAtLeast(id)` let other scripts (the Scout, the Archives, Clean Slate) check the act.
+**The finale is different:** the Syndicate activates Protocol Clean Slate, so the `[SIGNAL HIJACKED]` lines come first ("Protocol Clean Slate is active. This world has four days.") and the Ministry denies it afterwards (`hijackFirst`). Entering `finale` starts the 4-day countdown in `clean_slate.js`, whichever way it's entered: the first Ender Dragon kill, `/cleanslate start`, or `/story act set finale` / `next`. See [CLEAN_SLATE.md](CLEAN_SLATE.md).
+
+`global.Story.act()` and `global.Story.isAtLeast(id)` let other scripts (the Scout, the Archives, Clean Slate) check the act, and `global.Story.setAct(id, by)` changes it (Clean Slate uses it).
 
 ## Decrees
 **Announcements only.** A decree is a numbered Ministry proclamation, starting at #41 "for continuity".

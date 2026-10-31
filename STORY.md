@@ -6,8 +6,8 @@ The server's story in two parts.
 
 **Trolling drives the story.**
 - Every troll is logged and scored.
-- In Part I, trolls fill the **Blood Pool**, which opens the Blood Gate to the new world at the end. Acts move forward when an op says so.
-- In Part II, the **Blood Pool** unlocks all progression.
+- In Part I, trolls are logged, scored and paid, and every point is kept for Part II. Acts move forward when an op says so. Part I ends with **Protocol Clean Slate**, and the way out is the **Blood Portal**.
+- In Part II, the **Blood Pool** unlocks all progression (its progression lock tree). It isn't part of Part I.
 - Ministry **decrees** are announcements; boss kills and relics carry the plot.
 
 Legend: ✅ = built and running, 🔨 = still to build, *TBD* = open decision (see [Open decisions](#open-decisions)).
@@ -30,7 +30,7 @@ Every troll is recorded: who, on whom, what, where and when.
   - Cursed Food eaten;
   - an Anonymous Summons delivered;
   - a Homing Pig reaching the target's bed.
-- **Not logged automatically: Butterfingers and Itching Powder.** They're too easy to land and would flood the Blood Pool. Those trolls go through manual reports, where an admin weighs them and sets fair points.
+- **Not logged automatically: Butterfingers and Itching Powder.** They're too easy to land and would flood the log. Those trolls go through manual reports, where an admin weighs them and sets fair points.
 - **Manual reports,** for these and anything creative the game can't detect:
   1. the troller files `/troll report <victim> <what they did>`;
   2. witnesses back it with `/troll witness <id>`;
@@ -42,7 +42,7 @@ Every troll is recorded: who, on whom, what, where and when.
 - **A weekly recap broadcast** in the Ministry's voice: "This week, 47 incidents of Unlicensed Humour were recorded. The Ministry is not amused. The Ministry is never amused."
 
 ### Scoring
-The same value goes into the **Blood Pool** as Drops of Blood, in both parts. These are the script's settings.
+These are the script's settings. In Part II the same value goes into the **Blood Pool** as Drops of Blood; Part I keeps each player's points for it.
 
 | Troll | Value | Hush Coins |
 |---|---|---|
@@ -55,7 +55,7 @@ The same value goes into the **Blood Pool** as Drops of Blood, in both parts. Th
 | Approved manual report (including Butterfingers and Itching Powder) | set by the admin, typically 25–500 | 1 per 100 points |
 
 - **Cross-faction bonus ×1.5:** for trolling someone of the opposite faction (in Part II, for trolling Ministry NPCs).
-  - The Syndicate is a secret faction, so the bonus is **added straight to the Blood Pool and never shown per troll**. `/trolls me` shows base points only, and nobody can work out a victim's faction from their score.
+  - The Syndicate is a secret faction, so the bonus is **never shown per troll**. In Part I such trolls are only marked (hidden) in the log; Part II's Blood Pool pays the bonus. `/trolls me` shows base points only, and nobody can work out a victim's faction from their score.
 - **Revenge ×2:** a victim who trolls their troller back within 24 hours.
 - **Diminishing returns:** the same victim within 24 hours counts ×0.5, then ×0.25.
 - **Nothing counts** for trolling yourself, AFK players or players on the same IP.
@@ -75,7 +75,7 @@ The same value goes into the **Blood Pool** as Drops of Blood, in both parts. Th
 ### How Part I moves forward ✅ (`story.js`, see [STORY_COMMANDS.md](tools/kubejs/STORY_COMMANDS.md))
 - **Acts are advanced by an op** with `/story act next` (or `/story act set <id>`), when the story is ready. Each act opens with a full-screen title, the Ministry's lines and a `[SIGNAL HIJACKED]` reply.
 - **Decrees are announcements only:** numbered proclamations from #41, issued with `/story decree issue|preset`, listed with `/decrees`, and overturned with `/story decree revoke`. Breaking one is something Enforcers can charge with `/accuse`; nothing is blocked by code.
-- **The Blood Pool** fills from every troll and from donated Hush Coins (1,000 Drops each). Full at **100,000 Drops**, it lets the Blood Gate open in the finale. Milestones at 25/50/75/100% are announced by the hijacked signal.
+- **The Blood Pool is saved for Part II's progression lock tree** (owner decision). Part I keeps every player's troll points, and the hidden cross-faction marks, for it.
 - **Ministry events** (Prank Purge, Mandatory Fun Day, the Trolling Moratorium, a Ministry Meltdown) are op-run (next batch).
 - **Dropped:** the Order and Chaos meters (owner decision).
 
@@ -124,31 +124,29 @@ Starts with `/story act next`.
 ### Act IV: The End Lockdown
 Starts with `/story act next`.
 20. **The End Lockdown Initiative:** already in force (see 10). "There is nothing in the End." The black-market Unsanctioned Eyes are the Resistance's way in, and every sale is on the merchant's books for a trial. ✅ (`end_lockdown.js`)
-21. **Breaking the Seal:** Loyalists and Syndicate fight the Ender Dragon together, the first act of open rebellion. 🔨 (dragon-kill trigger)
-22. **The Ministry Archives:** End City chests hold Ministry documents: cover-ups, the order that sacrificed Oinkington, and proof the Ministry uses Techno's name for power. 🔨 (books added to End City loot; *TBD*: what exactly they reveal)
-23. **The Realisation:** the Archives reveal the Ministry's crimes against Technoblade's legacy and the Sanctity of Swine Act: it has been using his name for power.
+21. **Breaking the Seal:** Loyalists and Syndicate fight the Ender Dragon together, the first act of open rebellion. **Killing it starts Protocol Clean Slate** (the finale). ✅ (`clean_slate.js`)
+22. **The Ministry Archives:** End City treasure chests hold ten classified Ministry documents (a 50% chance per chest, any time): the full Sanctity of Swine Act, the memo ordering the Escort to fail, the committee that rebranded "Technoblade never dies", the Crown melted into lapel pins, the Potato Requisition Order, Carl's personnel file, the "Blood for the Blood God" trademark, the ELI's internal version, the merchandise catalogue, and the Clean Slate procedure. ✅ (`events/blood_portal.js`)
+23. **The Realisation:** the Archives reveal the Ministry's crimes against Technoblade's legacy: it has been using his name for power.
+    - **Draft Bill 9-D, the Dwarf Management Act:** brand new and about to become law, dropped only by the dragon. It's the Ministry's openly bigoted plan for dwarves, written to turn **Goruk the Dwarf**. ✅
     - The Loyalists defect.
     - The Resistance forms, with no friendly fire between its members.
 
-    🔨
+    (Played out by the players.)
 
-### Part I Finale: Protocol Clean Slate
-An op starts it (`/story act next` from Act IV). The Ministry, cornered, fires it **"to protect trolling rights from trolls."** The world ends.
+### Part I Finale: Protocol Clean Slate ✅ (`clean_slate.js`, `events/blood_portal.js`, see [CLEAN_SLATE.md](tools/kubejs/CLEAN_SLATE.md))
+**The Syndicate activates it.** With the dragon (the Ministry's Head of Records Security) dead, the Syndicate pulls the Ministry's own doomsday switch. It starts automatically about 12 seconds after the first dragon kill (an op can also start it with `/cleanslate start`). The world has **4 days**.
 
-**The way out is the Blood Gate**, and it only opens once the **Blood Pool is full**. The server has to troll and donate its way out before the world burns.
+24. **The Activation:** the finale act opens: the hijacked signal announces it, and the Ministry denies everything ("a test of the emergency broadcast system. Please resume compliance."). No fake-out countdown (owner decision). ✅
+25. **The Countdown:** a server-wide bossbar counting down 4 days. ✅
+26. **The World Burns** (no blocks changed):
+    - an endless thunderstorm (fire spread is switched off for the 4 days, so bases survive for the archive);
+    - visual-only lightning near players, more often as zero comes closer;
+    - the Ministry's broadcasts falling apart into static and denial, answered by the hijacked signal.
 
-24. **The Fake-out:** before the real thing, the Ministry runs a "test of the emergency broadcast system". A full doomsday countdown hits zero, then: "This was a test. Please resume compliance." 🔨
-25. **The Last Decree:** Protocol Clean Slate, with a **4-day** server-wide countdown bossbar. 🔨
-26. **The World Burns:**
-    - thunder;
-    - back-to-back Purges;
-    - raids on everyone;
-    - the broadcasts falling apart into static and denial.
-
-    🔨
-27. **The Exodus Satchel:** each player chooses a few items to save (9 slots by default, *TBD*), filtered against mods Part II drops. They're saved to a file outside the world, once the Blood Gate is open. 🔨
-28. **Beyond the Void:** the Syndicate reveals the only escape, the End's exit portal. Players jump and the **End Poem** plays: the end of Part I. ✅ (vanilla)
-29. **The Last Broadcast:** the Ministry declares victory over an empty world, and the server goes dark.
+    ✅
+27. **The Blood Relics:** ten custom Relics of Technoblade's legacy, found in End City treasure chests while Clean Slate runs (60% per chest). One player must carry all ten at once. Then anyone can run `/bloodportal start`. ✅
+28. **The Blood Portal:** everyone is pulled to a preset arena and their spawn set there. Blood drifts through the air, and a **"Blood Pool"** bossbar fills as Ministry Inspectors are killed; the fuller it gets, the more come. When it's full, the bedrock basin fills with blood and hypixel calls: "The time has come to escape, players! COME TO THE NEW WORLD!" Stepping into the blood saves the player's inventory and legacy for Part II and kicks them from the server with a farewell. ✅
+29. **The Last Broadcast:** at zero, the Ministry declares victory over an empty world. Anyone still here falls (spectator mode), and the server goes dark. ✅
 
 ---
 
@@ -205,7 +203,7 @@ Everyone stands together under Techno's banner. There are no Loyalists. The Mini
   - **What each tier unlocks will be ranked once the Part II modpack is put together.** The only fixed point: **Tier 12 is the Siege**, when the Citadel's Bureaucratic Barrier falls.
 
 ### Act I: The Awakening
-34. **Waking Up:** players arrive in the new world, as the End Poem promised. They get back their satchel items and legacy:
+34. **Waking Up:** players arrive in the new world through the Blood Portal. They get back what Part II allows of the inventory they carried through (saved by the Blood Portal), and their legacy:
     - titles such as "Survivor of the Clean Slate", "Founder of the Syndicate" and "Grand Trollmaster";
     - their Part I trial records, now evidence of the Ministry's crimes.
 
@@ -264,16 +262,18 @@ Needs Blood Pool Tier 12 and the full Regalia.
 | Trials | `factions/trials.js` | Show trials; "unlicensed trolling" charges; trolling vs griefing; records carried into Part II |
 | Ministry broadcasts | `ministry_broadcasts.js` | The narrator; per-act line pools to add |
 | Techno Tribute, /superaura, fake players | `techno_tribute.js`, `smite.js`, `fake_players.js` | Manifestations of Techno's legacy; the finale |
-| **Troll Log and the Blood Pool** | `economy/trolls.js` (hooks in `black_market.js`) | The engine of the whole story |
+| **Troll Log** | `economy/trolls.js` (hooks in `black_market.js`) | The engine of the whole story; points kept for Part II's Blood Pool |
 | Acts and decrees | `story.js` | Op-advanced acts with titles and lines; numbered decrees |
+| Protocol Clean Slate | `clean_slate.js` | The dragon-kill trigger, the 4-day countdown, the burning world, the Last Broadcast |
+| Blood Relics, Archives, the Blood Portal | `events/blood_portal.js` | End City Relics and books, Draft Bill 9-D from the dragon, the escape event |
 
 ## Build order
-1. ✅ **Batch 1:** `story.js` (acts and decrees) and `economy/trolls.js` (the Troll Log, payouts, reports, the Blood Pool).
-2. 🔨 **Batch 2:** the **Scout NPC** and his testimony; op-run **events** (Prank Purge, Mandatory Fun Day, the Trolling Moratorium, a Ministry Meltdown).
-3. 🔨 **Batch 3:** the **Archive books** in End City loot (the Ministry's most heinous crimes against Technoblade's legacy and the Sanctity of Swine Act), the **dragon-kill trigger**, and **Protocol Clean Slate** (the fake-out, the 4-day countdown, the decay, the Blood Gate opening when the Pool is full, and exporting satchel and legacy data).
+1. ✅ **Batch 1:** `story.js` (acts and decrees) and `economy/trolls.js` (the Troll Log, payouts, reports). The Blood Pool was taken out again and saved for Part II.
+2. ✅ **The finale (built before batch 2):** `clean_slate.js` and `events/blood_portal.js`: the dragon-kill trigger, the Archive books and Draft Bill 9-D, the Blood Relics, the 4-day countdown and the burning world, the Blood Portal event, and the exodus files.
+3. 🔨 **Batch 2:** the **Scout NPC** and his testimony; op-run **events** (Prank Purge, Mandatory Fun Day, the Trolling Moratorium, a Ministry Meltdown).
 4. Part II (with the new modpack):
    - the **Blood Pool and tier lockdown**;
-   - satchel and legacy import;
+   - inventory and legacy import (the Blood Portal's exodus files);
    - the Shrine and relic tracker;
    - the Seizure;
    - the Minister fight.
@@ -281,11 +281,9 @@ Needs Blood Pool Tier 12 and the full Regalia.
 ## Open decisions
 - **Events:** how long the Moratorium lasts, and what a Ministry Meltdown gives.
 - **Troll Log:** tune the values and payouts after a week of play; whether Anonymous Summons (cheap, needs no aim) should go to manual reports.
-- **The Blood Pool's quota** for the Blood Gate (100,000 Drops for now).
 - **Crownsworn players:** whether active Crownsworn players will role-play the defection, or the loyalists are mostly NPCs.
-- **Clean Slate:** the Exodus Satchel size (9 for now).
+- **Clean Slate:** tune the Blood Portal event (40 kill points to fill, the Relic chance) once it's been tried; how much of each player's saved inventory Part II gives back.
 - **Part II world:** a new seed, or the same seed regenerated.
-- **Archive documents:** what they reveal (for example who really killed Oinkington).
 - **Part II tiers:** what each of the 12 Blood Pool tiers unlocks, decided with the Part II modpack.
 - **Regalia:**
   - relic amounts;

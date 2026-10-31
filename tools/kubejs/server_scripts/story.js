@@ -20,7 +20,7 @@ const TO_DISCORD = true                // acts and decrees with tellraw @a (post
 const DECREE_START = 41                // the first decree's number ("for continuity")
 
 // The acts, in order. title/subtitle: the full-screen title. ministry: the Ministry's opening lines. hijack: the
-// reply, after a pause. Lines are read out a few seconds apart.
+// reply, after a pause (hijackFirst: the other way round). Lines are read out a few seconds apart.
 const ACTS = [
   { id: 'prologue', name: 'Prologue', title: 'TROLLCRAFT III', subtitle: 'Managed Trollocracy',
     ministry: ['Welcome, citizens. The Ministry of Trolling exists to secure your right to troll freely.', 'Freedom is mandatory.'],
@@ -34,9 +34,13 @@ const ACTS = [
   { id: 'act4', name: 'Act IV: The End Lockdown', title: 'ACT IV', subtitle: 'The End Lockdown',
     ministry: ['There is nothing in the End.', 'Anyone saying otherwise has been to the End, which is impossible.'],
     hijack: ['Everything they buried is in the End. Go and read it.'] },
-  { id: 'finale', name: 'Protocol Clean Slate', title: 'PROTOCOL', subtitle: 'CLEAN SLATE',
-    ministry: ['If the Ministry cannot have this world, no one will.', 'This is for your protection.'],
-    hijack: ['Fill the Blood Pool. The Gate opens when it is full.', 'Technoblade never dies.'] },
+  // The Syndicate activates it (clean_slate.js), so the hijacked signal speaks first and the Ministry denies it.
+  { id: 'finale', name: 'Protocol Clean Slate', title: 'PROTOCOL', subtitle: 'CLEAN SLATE', hijackFirst: true,
+    hijack: ['The dragon is dead, and the Ministry\'s doomsday switch was in its hoard. We have pulled it.',
+      'Protocol Clean Slate is active. This world has four days.',
+      'Find the ten Relics in the End Cities. The Blood Portal is waiting.', 'Technoblade never dies.'],
+    ministry: ['Protocol Clean Slate does not exist and has not been activated.',
+      'The countdown you can see is a test of the emergency broadcast system. Please resume compliance.'] },
 ]
 const LINE_GAP_SECONDS = 4
 
@@ -144,7 +148,8 @@ function announceAct(server, a) {
     server.runCommandSilent('title @a title ' + t(a.title))
     server.runCommandSilent('playsound minecraft:event.raid.horn master @a ~ ~ ~ 100 1')
   } catch (e) { }
-  const lines = a.ministry.map(x => voiceParts(VOICE_MINISTRY, x)).concat(a.hijack.map(x => voiceParts(VOICE_HIJACK, x)))
+  const m = a.ministry.map(x => voiceParts(VOICE_MINISTRY, x)), h = a.hijack.map(x => voiceParts(VOICE_HIJACK, x))
+  const lines = a.hijackFirst ? h.concat(m) : m.concat(h)
   lines.forEach((parts, i) => {
     server.scheduleInTicks((i + 1) * LINE_GAP_SECONDS * 20, () => { if (token == S.token) announce(server, parts) })
   })
@@ -159,6 +164,10 @@ function setAct(server, id, by) {
   save()
   announceAct(server, a)
   console.info('[Story] Act set to ' + a.id + ' by ' + by)
+  // The finale is Protocol Clean Slate: entering it starts the countdown (clean_slate.js), whichever way it's entered.
+  if (a.id == 'finale' && global.CleanSlate) {
+    try { global.CleanSlate.onFinaleAct(by) } catch (e) { console.error('[Story] Clean Slate: ' + e) }
+  }
   return { ok: true, text: 'Now in ' + a.name + '.' }
 }
 
@@ -202,6 +211,7 @@ global.Story = {
   isAtLeast: id => actIndex(db().act) >= actIndex(String(id)) && actIndex(String(id)) >= 0,
   decrees: () => inForce().map(n => ({ number: Number(n), text: db().decrees[n].text })),
   issueDecree: (text, by) => issue(Utils.server, text, by || 'a script'),
+  setAct: (id, by) => setAct(Utils.server, String(id), by || 'a script'),
 }
 
 

@@ -1,4 +1,4 @@
-// The Troll Log and the Blood Pool: every troll is logged, scored and paid, and its blood goes into the pool.
+// The Troll Log: every troll is logged, scored and paid.
 //
 //  - Logged automatically by the black market (economy/black_market.js): Disguised TNT and Teleport Traps sprung on
 //    someone else, Mimic Chests opened, Cursed Food eaten, Anonymous Summons delivered, a Homing Pig reaching the
@@ -6,16 +6,15 @@
 //  - Manual reports: /troll report <victim> <what>, witnesses back it with /troll witness <n>, and an op sets the
 //    points with /troll approve <n> <points> (or /troll deny <n>).
 //  - Each troll pays the troller Hush Coins (less than the troll item cost, so friends can't print coins).
-//  - The Blood Pool: every troll's points go in as Drops of Blood, and Hush Coins can be donated (1,000 Drops each).
-//    When it's full, the Blood Gate to the new world can open (Protocol Clean Slate, see STORY.md).
+//  - The Blood Pool is saved for Part II's progression lock tree (see STORY.md). Part I keeps each player's lifetime
+//    points and marks trolls on the other faction (hidden), so Part II can build its pool from them.
 //  - Trollers stay anonymous: players see "someone" in the public log; ops see names.
 //
-// Needs economy/black_market.js (global.Economy: coins, AFK). Uses factions/factions_core.js (global.Factions) for
-// the cross-faction bonus. Both looked up when needed. See tools/kubejs/TROLLS.md.
+// Needs economy/black_market.js (global.Economy: coins, AFK). Uses factions/factions_core.js (global.Factions) to mark
+// cross-faction trolls. Both looked up when needed. See tools/kubejs/TROLLS.md.
 //
-// Commands: /trolls log|top|me, /troll report|witness (players), /troll pending|approve|deny (op),
-// /bloodpool [donate <coins>] (players), /bloodpool add|set (op). Copy to <server>/kubejs/server_scripts/economy/
-// and run /reload.
+// Commands: /trolls log|top|me, /troll report|witness (players), /troll pending|approve|deny (op).
+// Copy to <server>/kubejs/server_scripts/economy/ and run /reload.
 //
 // KubeJS 6 notes: no template strings; `let` inside nested blocks; public messages go to each player with
 // player.tell (nothing here is sent with tellraw @a).
@@ -24,7 +23,7 @@
 
 // ===================== SETTINGS =====================
 
-// points: the troll's value (also its Drops of Blood). coins: Hush Coins paid to the troller (about a quarter of the
+// points: the troll's value. coins: Hush Coins paid to the troller (about a quarter of the
 // item's price). perCurse: extra points per curse a Cursed Food brought.
 const TROLL_TYPES = {
   summons: { name: 'Anonymous Summons', points: 50, coins: 1 },
@@ -35,29 +34,17 @@ const TROLL_TYPES = {
   tnt: { name: 'Disguised TNT', points: 250, coins: 6 },
   manual: { name: 'Reported troll', points: 0, coinsPer100: 1 },   // points set by the op who approves it
 }
-// Trolling someone of the opposite faction: this much more blood goes into the pool. Never shown per troll (the
-// Syndicate is secret, so a visible bonus would give it away).
-const CROSS_FACTION_BONUS = 1.5
 const REVENGE = { multiplier: 2, hours: 24 }                // a victim who trolls their troller back within 24 h
 const REPEAT = { hours: 24, factors: [1, 0.5, 0.25] }       // the same troller and victim: 1st, 2nd, 3rd+ in 24 h
 const GOOD_SPORT = 0.1                                      // the victim's share, as personal points (no coins)
 const SKIP_AFK = true                                       // no credit for trolling an AFK player
 const SKIP_SAME_IP = true                                   // ...or a player on the same IP (alts)
-// The Blood Pool. exodusQuota: when the pool reaches it, the Blood Gate to the new world can open.
-const POOL = { dropsPerCoin: 1000, exodusQuota: 100000, milestones: [25, 50, 75, 100] }
 const REPORT = { witnessesNeeded: 1, maxText: 120, expireDays: 14 }
 const RECAP_DAYS = 7                                        // the Ministry's weekly recap
 const LOG_SIZE = 500
 
 const VOICE_LOG = { tag: '[TROLL LOG]', tagColor: 'dark_purple', textColor: 'light_purple' }
 const VOICE_MINISTRY = { tag: '[MINISTRY]', tagColor: 'gold', textColor: 'yellow' }
-const VOICE_HIJACK = { tag: '[SIGNAL HIJACKED]', tagColor: 'dark_red', textColor: 'red' }
-const MILESTONE_LINES = {
-  25: 'Blood has been placed in the Blood Pool. A quarter full. Keep trolling.',
-  50: 'The Blood Pool is half full. They are starting to notice.',
-  75: 'Three quarters. The Gate can hear you now.',
-  100: 'The Blood Pool is full. The Blood Gate is ready. Blood for the Blood God.',
-}
 
 
 // ===================== STATE =====================
@@ -126,8 +113,8 @@ function ago(ms) {
 
 // ===================== SAVED DATA =====================
 // server.persistentData['trolls'] = one JSON string:
-//   { v, log: [ { t, by, byName, on, onName, type, pts, detail } ], players: { uuid: { name, points, trolls, trolled,
-//     coins, donated } }, pool: { drops, fromTrolls, fromCoins, milestones: { "25": true } }, reports: { n: {...} },
+//   { v, log: [ { t, by, byName, on, onName, type, pts, detail, cross } ], players: { uuid: { name, points, trolls,
+//     trolled, coins } }, reports: { n: {...} },
 //     nextReport, pairs: { "troller|victim": [ms] }, lastTrolledBy: { victim: { by, t } }, pendingCoins: { uuid: n },
 //     week: { start, count, points } }
 
@@ -146,8 +133,7 @@ function db() {
   DB = parsed && parsed.v ? parsed : { v: 1 }
   if (!DB.log) DB.log = []
   ;['players', 'reports', 'pairs', 'lastTrolledBy', 'pendingCoins'].forEach(k => { if (!DB[k]) DB[k] = {} })
-  if (!DB.pool) DB.pool = { drops: 0, fromTrolls: 0, fromCoins: 0, milestones: {} }
-  if (!DB.pool.milestones) DB.pool.milestones = {}
+  // DB.pool (from an earlier version with the Blood Pool) is left as it was, for Part II.
   if (!DB.nextReport) DB.nextReport = 1
   if (!DB.week) DB.week = { start: Date.now(), count: 0, points: 0 }
   return DB
@@ -157,35 +143,9 @@ function save() {
 }
 function stats(u, name) {
   const D = db()
-  if (!D.players[u]) D.players[u] = { name: name || '?', points: 0, trolls: 0, trolled: 0, coins: 0, donated: 0 }
+  if (!D.players[u]) D.players[u] = { name: name || '?', points: 0, trolls: 0, trolled: 0, coins: 0 }
   if (name) D.players[u].name = name
   return D.players[u]
-}
-
-
-// ===================== THE BLOOD POOL =====================
-
-function poolFull() { return db().pool.drops >= POOL.exodusQuota }
-function addDrops(server, n, source) {
-  const P = db().pool
-  n = Math.max(0, Math.round(n))
-  if (!n) return
-  P.drops += n
-  if (source == 'coins') P.fromCoins += n
-  else if (source == 'trolls') P.fromTrolls += n
-  POOL.milestones.forEach(m => {
-    if (P.milestones[m] || P.drops < POOL.exodusQuota * m / 100) return
-    P.milestones[m] = true
-    if (server) sayAll(server, VOICE_HIJACK, MILESTONE_LINES[m] || ('The Blood Pool is ' + m + '% full.'))
-    if (m >= 100 && server) {
-      onlinePlayers(server).filter(isOp).forEach(o => say(o, VOICE_LOG, 'The Blood Pool is full (' + fmt(P.drops) + ' Drops). The Blood Gate can open for Protocol Clean Slate.'))
-      console.info('[Trolls] The Blood Pool is full: ' + P.drops + ' Drops')
-    }
-  })
-}
-function poolText() {
-  const P = db().pool
-  return fmt(P.drops) + ' / ' + fmt(POOL.exodusQuota) + ' Drops of Blood (' + Math.min(100, Math.floor(P.drops * 100 / POOL.exodusQuota)) + '%)'
 }
 
 
@@ -257,12 +217,12 @@ function record(troller, victim, type, opts) {
   vs.points += Math.round(pts * GOOD_SPORT)
   D.lastTrolledBy[vu] = { by: tu, t: now }
   const entry = { t: now, by: tu, byName: tn, on: vu, onName: vn, type: type, pts: pts, detail: opts.detail ? String(opts.detail).substring(0, 80) : '' }
+  if (crossFaction(tu, vu)) entry.cross = true                 // never shown; for Part II
   D.log.push(entry)
   if (D.log.length > LOG_SIZE) D.log.splice(0, D.log.length - LOG_SIZE)
   D.week.count++
   D.week.points += pts
   if (server) payCoins(server, tu, coinPay)
-  addDrops(server, pts * (crossFaction(tu, vu) ? CROSS_FACTION_BONUS : 1), 'trolls')
   save()
   if (tp) say(tp, VOICE_LOG, 'Troll logged: ' + def.name + ' on ' + vn + '. +' + pts + ' points' + (coinPay ? ', +' + coins(coinPay) : '') +
     (revenge ? ' (revenge!)' : factor < 1 ? ' (same victim again: less)' : '') + '.')
@@ -366,10 +326,6 @@ if (Utils.server) startLoop(Utils.server)
 
 global.Trolls = {
   record: (troller, victim, type, opts) => record(troller, victim, type, opts),
-  poolDrops: () => db().pool.drops,
-  poolQuota: POOL.exodusQuota,
-  poolFull: () => poolFull(),
-  addDrops: (n, source) => { addDrops(Utils.server, n, source || 'other'); save() },
   stats: uuid => db().players[String(uuid)] || null,
 }
 
@@ -422,7 +378,7 @@ ServerEvents.commandRegistry(event => {
     const u = uuidOf(p), s = db().players[u]
     if (!s) return reply(ctx, 'You haven\'t trolled anyone yet.')
     reply(ctx, 'You: ' + fmt(s.points) + ' points, ' + s.trolls + ' troll' + (s.trolls == 1 ? '' : 's') + ', trolled ' + s.trolled + ' time' + (s.trolled == 1 ? '' : 's') +
-      ', ' + coins(s.coins) + ' earned' + (s.donated ? ', ' + coins(s.donated) + ' given to the Blood Pool' : '') + '.')
+      ', ' + coins(s.coins) + ' earned' + '.')
     db().log.filter(e => e.by == u).slice(-5).reverse().forEach(e => reply(ctx, '  ' + ago(Date.now() - e.t) + ': ' +
       (TROLL_TYPES[e.type] ? TROLL_TYPES[e.type].name : e.type) + ' on ' + e.onName + ', +' + e.pts))
     return 1
@@ -449,33 +405,6 @@ ServerEvents.commandRegistry(event => {
     })))
     .then(Commands.literal('approve').requires(op).then(int('number').then(int('points').executes(safe(ctx => done(ctx, approve(ctx.source.server, num(ctx, 'number'), num(ctx, 'points'))))))))
     .then(Commands.literal('deny').requires(op).then(int('number').executes(safe(ctx => done(ctx, deny(num(ctx, 'number'))))))))
-
-  event.register(Commands.literal('bloodpool')
-    .executes(safe(ctx => reply(ctx, 'The Blood Pool: ' + poolText() + '. Every troll fills it; so does every Hush Coin given (' + fmt(POOL.dropsPerCoin) + ' Drops each, /bloodpool donate <coins>).')))
-    .then(Commands.literal('donate').then(int('coins').executes(asPlayer((ctx, p) => {
-      const e = E(), n = Math.floor(num(ctx, 'coins'))
-      if (!e) return reply(ctx, 'The Blood Pool can\'t take coins right now.', true)
-      if (!(n >= 1)) return reply(ctx, 'Give at least one coin.', true)
-      if (e.countCoins(p) < n) return reply(ctx, 'You only carry ' + coins(e.countCoins(p)) + '.', true)
-      e.takeCoins(p, n)
-      stats(uuidOf(p), nameOf(p)).donated += n
-      addDrops(ctx.source.server, n * POOL.dropsPerCoin, 'coins')
-      save()
-      console.info('[Trolls] ' + nameOf(p) + ' gave ' + n + ' coins to the Blood Pool')
-      return reply(ctx, coins(n) + ' given to the Blood Pool. ' + poolText() + '.')
-    }))))
-    .then(Commands.literal('add').requires(op).then(int('drops').executes(safe(ctx => {
-      addDrops(ctx.source.server, num(ctx, 'drops'), 'other')
-      save()
-      return reply(ctx, 'The Blood Pool: ' + poolText() + '.')
-    }))))
-    .then(Commands.literal('set').requires(op).then(int('drops').executes(safe(ctx => {
-      const P = db().pool
-      P.drops = Math.max(0, num(ctx, 'drops'))
-      Object.keys(P.milestones).forEach(m => { if (P.drops < POOL.exodusQuota * Number(m) / 100) delete P.milestones[m] })
-      save()
-      return reply(ctx, 'The Blood Pool set to ' + poolText() + '.')
-    })))))
 })
 
 })()

@@ -12,11 +12,11 @@ Server-admin work for the **Trollcraft III** modpack: KubeJS scripts, progressio
 
 ## Layout
 - `tools/kubejs/server_scripts/`: server scripts, in the same folders on the server (`kubejs/server_scripts/...`).
-  - `economy/`: `black_market.js` (Hush Coins, the Hooded Merchant, contracts, traps, pranks, Tracker Compass, Homing Pig, Certified Alibi), `bounties.js` and `trolls.js` (the Troll Log and the Blood Pool; `global.Trolls`).
+  - `economy/`: `black_market.js` (Hush Coins, the Hooded Merchant, contracts, traps, pranks, Tracker Compass, Homing Pig, Certified Alibi), `bounties.js` and `trolls.js` (the Troll Log; `global.Trolls`). The Blood Pool is saved for Part II.
   - `factions/`: `factions_config.js`, `factions_core.js` (`global.Factions`), `portal_ambush.js` (ambushes, raids, "no getting away"; `global.PortalAmbush`) and `trials.js` (`global.Trials`).
-  - `story.js` (Part I's acts and decrees; `global.Story`); `end_lockdown.js` (the End Lockdown Initiative; `global.EndLockdown`); `events/pig_escort.js`; `techno_tribute.js`; `smite.js` (`/smite`, `/aura`, `/superaura`); `ministry_broadcasts.js`; and smaller scripts.
+  - `story.js` (Part I's acts and decrees; `global.Story`); `clean_slate.js` (the finale countdown, started by the first dragon kill; `global.CleanSlate`); `events/blood_portal.js` (Blood Relics, Archive books, the Blood Portal event; `global.BloodPortal`); `end_lockdown.js` (the End Lockdown Initiative; `global.EndLockdown`); `events/pig_escort.js`; `techno_tribute.js`; `smite.js` (`/smite`, `/aura`, `/superaura`); `ministry_broadcasts.js`; and smaller scripts.
 - `tools/kubejs/startup_scripts/`: Forge hooks. A restart is needed after adding one.
-- `tools/kubejs/*.md`: one doc per system (`BLACK_MARKET.md`, `BOUNTIES.md`, `FACTIONS.md`, `PIG_ESCORT.md`, `TRIALS.md`, `TECHNO_TRIBUTE.md`, `END_LOCKDOWN.md`, `TROLLS.md`, `STORY_COMMANDS.md`). Keep the doc in step with its script: settings, commands, test plan, and "what couldn't be verified".
+- `tools/kubejs/*.md`: one doc per system (`BLACK_MARKET.md`, `BOUNTIES.md`, `FACTIONS.md`, `PIG_ESCORT.md`, `TRIALS.md`, `TECHNO_TRIBUTE.md`, `END_LOCKDOWN.md`, `TROLLS.md`, `STORY_COMMANDS.md`, `CLEAN_SLATE.md`). Keep the doc in step with its script: settings, commands, test plan, and "what couldn't be verified".
 - `tools/*.py`: read-only world analysis tools (find items, find portals, player stats). `tools/schematic/`, `tools/serverconfig/` and `tools/finale_pack/` hold support files.
 
 ## Rules (standing instructions from the server owner)

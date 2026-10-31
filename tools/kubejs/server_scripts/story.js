@@ -34,13 +34,15 @@ const ACTS = [
   { id: 'act4', name: 'Act IV: The End Lockdown', title: 'ACT IV', subtitle: 'The End Lockdown',
     ministry: ['There is nothing in the End.', 'Anyone saying otherwise has been to the End, which is impossible.'],
     hijack: ['Everything they buried is in the End. Go and read it.'] },
-  // The Syndicate activates it (clean_slate.js), so the hijacked signal speaks first and the Ministry denies it.
-  { id: 'finale', name: 'Protocol Clean Slate', title: 'PROTOCOL', subtitle: 'CLEAN SLATE', hijackFirst: true,
-    hijack: ['The dragon is dead, and the Ministry\'s doomsday switch was in its hoard. We have pulled it.',
-      'Protocol Clean Slate is active. This world has four days.',
-      'Find the ten Relics in the End Cities. The Blood Portal is waiting.', 'Technoblade never dies.'],
-    ministry: ['Protocol Clean Slate does not exist and has not been activated.',
-      'The countdown you can see is a test of the emergency broadcast system. Please resume compliance.'] },
+  // The dragon guarding the Archives has fallen, so the Ministry fires Protocol Clean Slate (clean_slate.js) to wipe the
+  // records that incriminate it, and the world with them.
+  { id: 'finale', name: 'Protocol Clean Slate', title: 'PROTOCOL', subtitle: 'CLEAN SLATE',
+    ministry: ['The Ministry\'s records have been accessed by unauthorised citizens. This is regrettable.',
+      'Protocol Clean Slate is now in effect. All records, and the world they are kept in, will be cleaned.',
+      'This is for your protection. Nothing incriminating was ever written down.'],
+    hijack: ['They are burning the world to bury what they did. Four days.',
+      'Read the Archives before they are ash. Find the ten Relics. The Blood Portal is our way out.',
+      'Technoblade never dies.'] },
 ]
 const LINE_GAP_SECONDS = 4
 

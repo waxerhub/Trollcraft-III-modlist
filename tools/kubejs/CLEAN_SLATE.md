@@ -1,7 +1,7 @@
 # Protocol Clean Slate and the Blood Portal
 
 The end of Part I (see [STORY.md](../../STORY.md)).
-- **The trigger:** killing the Ender Dragon. The Syndicate then activates Protocol Clean Slate, and the world has **4 days**.
+- **The trigger:** killing the Ender Dragon. The dragon guarded the Ministry's Archives, so with the records exposed the Ministry fires Protocol Clean Slate to wipe them, and the world with them. The world has **4 days**.
 - **The way out:** players find ten **Blood Relics** in End City chests, open the **Blood Portal** event, fill the **Blood Pool** with Ministry Inspectors' blood, and step through.
 - **At zero:** anyone still here falls.
 - **The Ministry Archives:** End City chests also hold the Ministry's classified documents, and the dragon drops a brand-new bill aimed at Goruk.
@@ -36,8 +36,8 @@ Nothing else is needed. The first time the dragon dies, Protocol Clean Slate sta
 - **When:** about 12 seconds after the **first** Ender Dragon dies (in the End). Later dragons do nothing.
 - **What happens:** the story act jumps to **`finale`** (story.js), which everyone sees:
   - the title PROTOCOL / CLEAN SLATE and a raid horn;
-  - the hijacked signal announces it: "The dragon is dead, and the Ministry's doomsday switch was in its hoard. We have pulled it. … This world has four days. Find the ten Relics in the End Cities. The Blood Portal is waiting. Technoblade never dies.";
-  - then the Ministry denies it: "Protocol Clean Slate does not exist and has not been activated. The countdown you can see is a test of the emergency broadcast system. Please resume compliance."
+  - the Ministry announces it: "The Ministry's records have been accessed by unauthorised citizens. This is regrettable. Protocol Clean Slate is now in effect. All records, and the world they are kept in, will be cleaned. This is for your protection. Nothing incriminating was ever written down.";
+  - the hijacked signal answers: "They are burning the world to bury what they did. Four days. Read the Archives before they are ash. Find the ten Relics. The Blood Portal is our way out. Technoblade never dies."
 - **Other ways in:** an op can start it with `/cleanslate start [hours]`, or by setting the act to `finale` with `/story`.
 
 ### The 4 days
@@ -47,13 +47,13 @@ Nothing else is needed. The first time the dragon dies, Protocol Clean Slate sta
 - **Visual-only lightning near players:** one bolt near each player in the Overworld every 2 minutes at first, rising to every 15 s at the end. No damage, no fire. It strikes the surface, so players underground only hear it.
 - **Broadcasts falling apart:**
   - **When:** at 72, 48, 24, 12, 6 and 1 hours, 30 minutes, 10 minutes and 1 minute left.
-  - **The Ministry's lines** break up into static (garbled words) more as zero comes closer.
+  - **The Ministry's lines** count down to the wipe ("Citizens in possession of Ministry records should hand them in for safe burning", "there were never any records. That is why they must be destroyed") and break up into static (garbled words) more as zero comes closer.
   - **The hijacked replies** point players to the Relics and the Portal.
   - These go out with `tellraw @a`, so Discord sees them.
 - **The last 10 seconds:** a 10…1 title for everyone.
 
 ### Zero
-- **The Last Broadcast:** "Protocol Clean Slate is complete. The Ministry has successfully protected this world from trolling. No trolls remain. No citizens remain. Compliance is at one hundred percent. The Ministry thanks you for your cooperation. This broadcast will now end."
+- **The Last Broadcast:** "Protocol Clean Slate is complete. All records have been destroyed. There is no evidence of wrongdoing. There is no evidence of anything. Compliance is at one hundred percent. The Ministry thanks you for your cooperation. This broadcast will now end."
 - **Everyone still here falls:** every online player in survival or adventure who didn't escape gets a lightning flash, the title "CLEAN SLATE / You did not escape." and **spectator mode**. Players in creative are left alone.
   - Anyone who logs in later (and didn't escape) falls the same way.
 - **The bossbar and the storm stop.** Then shut the server down when you're ready. Nothing in the world has been changed, so it's ready to archive.
@@ -98,7 +98,7 @@ Signed books ("written by" The Ministry of Trolling (CLASSIFIED)) with a red "CL
 | 7 | Trademark Application TM-41 | The Ministry trademarks "Blood for the Blood God" |
 | 8 | ELI: Internal Version | The real reason for the End Lockdown: to hide these records. "If the dragon falls, so do we." |
 | 9 | Merchandise Catalogue | Official Technoblade™ memorial goods, profits to the Minister's hot tub |
-| 10 | Protocol Clean Slate SOP | The Ministry's own doomsday plan. "Under no circumstances let the Syndicate read this." |
+| 10 | Protocol Clean Slate SOP | The Ministry's plan if the records are ever exposed: activate, evacuate officials first and citizens never, call it protection. "Burn the Archives first." |
 
 **From the Ender Dragon only: Draft Bill 9-D, the Dwarf Management Act.**
 - **What it is:** brand new legislation, stamped "DRAFT: SECOND READING PASSED. Royal Assent expected within the week" and dated the day the dragon dies. It's written to turn **Goruk the Dwarf**:
@@ -111,7 +111,7 @@ Signed books ("written by" The Ministry of Trolling (CLASSIFIED)) with a red "CL
 - **How it drops:** one copy, about 10 seconds after the **first** dragon dies:
   - **where:** at the feet of the player who killed it if they're still in the End, otherwise on top of the exit portal's pillar (never over the void);
   - **the item:** it glows and never despawns;
-  - **what everyone sees:** "[SIGNAL HIJACKED] The dragon guarded the Ministry's records. Read them."
+  - **what everyone sees,** 30 seconds later (after the Ministry's announcement): "[SIGNAL HIJACKED] The dragon guarded the Ministry's records. Read them before they burn."
 - It never appears in chests.
 
 ## The Blood Portal event (`events/blood_portal.js`)
@@ -178,6 +178,7 @@ Signed books ("written by" The Ministry of Trolling (CLASSIFIED)) with a red "CL
 | `ARCHIVE_CHANCE` | 0.5 | Per End City treasure chest |
 | `ARCHIVES_FROM_ACT` | '' | '' = any time; `'act4'` = only from Act IV |
 | `DRAGON_DROPS_BILL` | true | |
+| `BILL_DELAY_SECONDS`, `BILL_LINE_DELAY_SECONDS` | 10, 30 | When the bill drops after the kill, and its hijacked line after that |
 | `ARENA_RADIUS` | 32 | |
 | `BLOOD_BLOCK` / `BLOOD_FALLBACK` | `evilcraft:blood` / red stained glass | |
 | `WAVES` | 3 → 14 alive, groups of up to 8, tiers at 0/33/66% | |
@@ -207,7 +208,7 @@ Times are real time, so restarts and `/reload` lose nothing.
 7. **Books:** `/bloodportal archive give <you> all` and read all 11.
 
 ## What couldn't be verified for KubeJS 6 on 1.20.1
-A mock-server test passed 65 checks:
+A mock-server test passed 68 checks:
 - the test run;
 - the start from the dragon and from `/story`;
 - cancel, extend, pause and resume;

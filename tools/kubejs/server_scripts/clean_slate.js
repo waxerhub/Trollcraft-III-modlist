@@ -1,7 +1,8 @@
 // Protocol Clean Slate: the end of Part I (see STORY.md and tools/kubejs/CLEAN_SLATE.md).
 //
-//  - It begins when the Ender Dragon is killed for the first time: the Syndicate, with the End's guard dead, uses the
-//    Ministry's own doomsday procedure. An op can also start it with /cleanslate start.
+//  - It begins when the Ender Dragon is killed for the first time: the dragon guarded the Ministry's Archives, so with
+//    the records exposed the Ministry fires its doomsday procedure to wipe them, and the world with them. An op can
+//    also start it with /cleanslate start.
 //  - A 4-day countdown (bossbar for everyone). The world burns without a block being changed: endless thunder,
 //    visual-only lightning near players, and Ministry broadcasts that fall apart as zero comes closer.
 //  - The way out is the Blood Portal (events/blood_portal.js): ten Blood Relics from End Cities, then the event.
@@ -37,19 +38,19 @@ const TEST_MINUTES = 2                 // /cleanslate test: a short run that onl
 // Broadcasts, at this much time left. The Ministry's line is garbled more the closer zero is; the hijacked reply
 // is clear. The start itself is announced by the `finale` act (story.js).
 const MILESTONES = [
-  { hours: 72, ministry: 'Protocol Clean Slate is not active. The countdown you can see is a test of the emergency broadcast system. Please resume compliance.',
+  { hours: 72, ministry: 'Protocol Clean Slate proceeds on schedule. Citizens in possession of Ministry records should hand them in for safe burning.',
     hijack: 'Three days. Ten Relics sleep in the End Cities. Find them.' },
-  { hours: 48, ministry: 'Citizens reporting thunder are reminded that weather is a Ministry privilege.',
+  { hours: 48, ministry: 'Thunder is part of the cleaning process. Please do not read anything you find in the End.',
     hijack: 'Two days. One of you must carry all ten Relics at once.' },
-  { hours: 24, ministry: 'There is no countdown. Anyone who can see a countdown should report to an Inspector for recalibration.',
+  { hours: 24, ministry: 'Reminder: there were never any records. That is why they must be destroyed.',
     hijack: 'One day. The Blood Portal is thirsty.' },
   { hours: 12, ministry: 'The Ministry has everything under control. Everything. Under. Control.',
     hijack: 'Twelve hours.' },
-  { hours: 6, ministry: 'Please do not panic. Panicking requires a permit. Permits are not available.',
+  { hours: 6, ministry: 'Please do not panic. Panicking requires a permit. Permits are being burned.',
     hijack: 'Six hours. If you have the Relics, use them.' },
-  { hours: 1, ministry: 'This is fine. The Ministry always intended for the world to end. This was always the plan.',
+  { hours: 1, ministry: 'Final shredding has begun. The Ministry thanks you for not reading.',
     hijack: 'One hour. Get to the Blood Portal.' },
-  { hours: 0.5, ministry: 'Final notice: all outstanding paperwork must be completed before the end of the world.',
+  { hours: 0.5, ministry: 'All outstanding paperwork must be completed before it is destroyed.',
     hijack: 'Thirty minutes.' },
   { hours: 10 / 60, ministry: 'We regret nothing. Our regret has been filed in triplicate, and shredded.',
     hijack: 'Ten minutes. Technoblade never dies. Neither should you.' },
@@ -57,8 +58,8 @@ const MILESTONES = [
     hijack: 'Run.' },
 ]
 const LAST_BROADCAST = [
-  'Protocol Clean Slate is complete. The Ministry has successfully protected this world from trolling.',
-  'No trolls remain. No citizens remain. Compliance is at one hundred percent.',
+  'Protocol Clean Slate is complete. All records have been destroyed.',
+  'There is no evidence of wrongdoing. There is no evidence of anything. Compliance is at one hundred percent.',
   'The Ministry thanks you for your cooperation. This broadcast will now end.',
 ]
 const FALLEN_TITLE = { title: 'CLEAN SLATE', subtitle: 'You did not escape.' }
@@ -241,8 +242,8 @@ function start(server, hours, by, opts) {
   if (!D.test && St && St.setAct && !opts.fromStory) {
     try { St.setAct('finale', by) } catch (e) { console.warn('[CleanSlate] Story: ' + e) }
   } else if (D.test || !St) {
-    announce(server, voiceParts(VOICE_HIJACK, 'Protocol Clean Slate has been activated. This world has ' + leftText(total) + '.'))
-    announce(server, garbled('Protocol Clean Slate does not exist and has not been activated.', 0))
+    announce(server, garbled('Protocol Clean Slate is now in effect. All records, and the world they are kept in, will be cleaned.', 0))
+    announce(server, voiceParts(VOICE_HIJACK, 'They are burning the world to bury what they did. This world has ' + leftText(total) + '.'))
   }
   console.info('[CleanSlate] Started by ' + by + (D.test ? ' (test)' : '') + ', ' + hours + ' h')
   startLoop(server)

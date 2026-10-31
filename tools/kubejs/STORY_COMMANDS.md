@@ -26,7 +26,7 @@ Acts only move forward when an op says so.
 - 4 seconds apart come the Ministry's opening lines, then the `[SIGNAL HIJACKED]` reply;
 - edit `ACTS` to change any of it.
 
-**The finale is different:** the Syndicate activates Protocol Clean Slate, so the `[SIGNAL HIJACKED]` lines come first ("Protocol Clean Slate is active. This world has four days.") and the Ministry denies it afterwards (`hijackFirst`). Entering `finale` starts the 4-day countdown in `clean_slate.js`, whichever way it's entered: the first Ender Dragon kill, `/cleanslate start`, or `/story act set finale` / `next`. See [CLEAN_SLATE.md](CLEAN_SLATE.md).
+**The finale:** the Ministry fires Protocol Clean Slate to wipe the records that incriminate it ("Protocol Clean Slate is now in effect. All records, and the world they are kept in, will be cleaned."), and the hijacked signal answers ("They are burning the world to bury what they did."). An act with `hijackFirst: true` would put the hijacked lines first; none does now. Entering `finale` starts the 4-day countdown in `clean_slate.js`, whichever way it's entered: the first Ender Dragon kill, `/cleanslate start`, or `/story act set finale` / `next`. See [CLEAN_SLATE.md](CLEAN_SLATE.md).
 
 `global.Story.act()` and `global.Story.isAtLeast(id)` let other scripts (the Scout, the Archives, Clean Slate) check the act, and `global.Story.setAct(id, by)` changes it (Clean Slate uses it).
 

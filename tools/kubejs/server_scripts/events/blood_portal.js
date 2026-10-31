@@ -30,6 +30,7 @@ const ARCHIVE_CHANCE = 0.5                      // per unlooted End City treasur
 const ARCHIVES_FROM_ACT = ''                    // '' = any time; 'act4' = only from Act IV (story.js)
 const DRAGON_DROPS_BILL = true                  // the first Ender Dragon drops Draft Bill 9-D
 const BILL_DELAY_SECONDS = 10                   // after the kill (the dragon's death takes about 10 s)
+const BILL_LINE_DELAY_SECONDS = 30              // the hijacked line about it, after the Ministry's Clean Slate announcement
 
 const ARENA_RADIUS = 32                         // /bloodportal setarena without a radius
 const FRAME_BLOCK = 'minecraft:bedrock'
@@ -135,9 +136,9 @@ const ARCHIVES = [
     '- Bottled Potato Water\n- Official Grief, in a box\n\nAll profits go to the Ministry Wellness Fund (the Minister\'s hot tub).',
   ] },
   { id: 'clean_slate_sop', title: 'Protocol Clean Slate SOP', pages: [
-    'PROTOCOL CLEAN SLATE\nStandard Operating Procedure\n\nPurpose: if the Ministry cannot keep this world, nobody keeps it.',
-    'Step 1: Confirm the dragon is dead and the records are lost.\nStep 2: Speak the activation phrase at the End.\nStep 3: Deny everything. Call it a test of the emergency broadcast system.',
-    'The world ends in four days. Officials are evacuated first. Citizens are evacuated never.\n\nIn the margin, in red: Under no circumstances let the Syndicate read this.',
+    'PROTOCOL CLEAN SLATE\nStandard Operating Procedure\n\nPurpose: if the records are ever exposed, nobody is left to read them.',
+    'Step 1: Confirm the dragon has fallen and the records are exposed.\nStep 2: Activate. The world has four days.\nStep 3: Evacuate officials first. Evacuate citizens never.',
+    'Step 4: Announce that it is for their protection.\n\nIn the margin, in red: Burn the Archives first.',
   ] },
 ]
 // Draft Bill 9-D: only the first Ender Dragon drops it. %DATE% is the day it drops.
@@ -390,7 +391,7 @@ function dropBill(server, at) {
     ' {Item:{id:"minecraft:written_book",Count:1b,tag:' + snbt + '},PickupDelay:20,Age:-32768,Invulnerable:1b,Glowing:1b}')
   run(server, 'execute in ' + END + ' run particle minecraft:dust 0.6 0 0 2 ' + num(at.x) + ' ' + num(at.y + 1) + ' ' + num(at.z) + ' 0.6 0.6 0.6 0 60 force')
   run(server, 'execute in ' + END + ' run playsound minecraft:item.book.page_turn master @a ' + num(at.x) + ' ' + num(at.y) + ' ' + num(at.z) + ' 2 0.6')
-  announce(server, voiceParts(VOICE_HIJACK, 'The dragon guarded the Ministry\'s records. Read them.'))
+  server.scheduleInTicks(BILL_LINE_DELAY_SECONDS * 20, () => announce(server, voiceParts(VOICE_HIJACK, 'The dragon guarded the Ministry\'s records. Read them before they burn.')))
   console.info('[BloodPortal] Draft Bill 9-D dropped at ' + Math.floor(at.x) + ' ' + Math.floor(at.y) + ' ' + Math.floor(at.z))
 }
 

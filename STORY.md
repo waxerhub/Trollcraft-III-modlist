@@ -124,8 +124,8 @@ Starts with `/story act next`.
 ### Act IV: The End Lockdown
 Starts with `/story act next`.
 20. **The End Lockdown Initiative:** already in force (see 10). "There is nothing in the End." The black-market Unsanctioned Eyes are the Resistance's way in, and every sale is on the merchant's books for a trial. ✅ (`end_lockdown.js`)
-21. **Breaking the Seal:** Loyalists and Syndicate fight the Ender Dragon together, the first act of open rebellion. **Killing it starts Protocol Clean Slate** (the finale). ✅ (`clean_slate.js`)
-22. **The Ministry Archives:** End City treasure chests hold ten classified Ministry documents (a 50% chance per chest, any time): the full Sanctity of Swine Act, the memo ordering the Escort to fail, the committee that rebranded "Technoblade never dies", the Crown melted into lapel pins, the Potato Requisition Order, Carl's personnel file, the "Blood for the Blood God" trademark, the ELI's internal version, the merchandise catalogue, and the Clean Slate procedure. ✅ (`events/blood_portal.js`)
+21. **Breaking the Seal:** Loyalists and Syndicate fight the Ender Dragon together, the first act of open rebellion. The dragon was the Ministry's Head of Records Security, so **killing it exposes the Archives, and the Ministry fires Protocol Clean Slate** (the finale). ✅ (`clean_slate.js`)
+22. **The Ministry Archives:** End City treasure chests hold ten classified Ministry documents (a 50% chance per chest, any time): the full Sanctity of Swine Act, the memo ordering the Escort to fail, the committee that rebranded "Technoblade never dies", the Crown melted into lapel pins, the Potato Requisition Order, Carl's personnel file, the "Blood for the Blood God" trademark, the ELI's internal version, the merchandise catalogue, and the Clean Slate procedure itself ("Burn the Archives first."). ✅ (`events/blood_portal.js`)
 23. **The Realisation:** the Archives reveal the Ministry's crimes against Technoblade's legacy: it has been using his name for power.
     - **Draft Bill 9-D, the Dwarf Management Act:** brand new and about to become law, dropped only by the dragon. It's the Ministry's openly bigoted plan for dwarves, written to turn **Goruk the Dwarf**. ✅
     - The Loyalists defect.
@@ -134,19 +134,19 @@ Starts with `/story act next`.
     (Played out by the players.)
 
 ### Part I Finale: Protocol Clean Slate ✅ (`clean_slate.js`, `events/blood_portal.js`, see [CLEAN_SLATE.md](tools/kubejs/CLEAN_SLATE.md))
-**The Syndicate activates it.** With the dragon (the Ministry's Head of Records Security) dead, the Syndicate pulls the Ministry's own doomsday switch. It starts automatically about 12 seconds after the first dragon kill (an op can also start it with `/cleanslate start`). The world has **4 days**.
+**The Ministry fires it, to wipe the records that incriminate it.** With the dragon (its Head of Records Security) dead, the Archives in the End are exposed, so the Ministry burns the world and the evidence with it. It starts automatically about 12 seconds after the first dragon kill (an op can also start it with `/cleanslate start`). The world has **4 days**.
 
-24. **The Activation:** the finale act opens: the hijacked signal announces it, and the Ministry denies everything ("a test of the emergency broadcast system. Please resume compliance."). No fake-out countdown (owner decision). ✅
+24. **The Activation:** the finale act opens with the Ministry: "The Ministry's records have been accessed by unauthorised citizens. This is regrettable. Protocol Clean Slate is now in effect. All records, and the world they are kept in, will be cleaned. This is for your protection. Nothing incriminating was ever written down." The hijacked signal answers: "They are burning the world to bury what they did." No fake-out countdown (owner decision). ✅
 25. **The Countdown:** a server-wide bossbar counting down 4 days. ✅
 26. **The World Burns** (no blocks changed):
     - an endless thunderstorm (fire spread is switched off for the 4 days, so bases survive for the archive);
     - visual-only lightning near players, more often as zero comes closer;
-    - the Ministry's broadcasts falling apart into static and denial, answered by the hijacked signal.
+    - the Ministry's countdown to the wipe ("hand in Ministry records for safe burning"), falling apart into static, answered by the hijacked signal.
 
     ✅
 27. **The Blood Relics:** ten custom Relics of Technoblade's legacy, found in End City treasure chests while Clean Slate runs (60% per chest). One player must carry all ten at once. Then anyone can run `/bloodportal start`. ✅
 28. **The Blood Portal:** everyone is pulled to a preset arena and their spawn set there. Blood drifts through the air, and a **"Blood Pool"** bossbar fills as Ministry Inspectors are killed; the fuller it gets, the more come. When it's full, the bedrock basin fills with blood and hypixel calls: "The time has come to escape, players! COME TO THE NEW WORLD!" Stepping into the blood saves the player's inventory and legacy for Part II and kicks them from the server with a farewell. ✅
-29. **The Last Broadcast:** at zero, the Ministry declares victory over an empty world. Anyone still here falls (spectator mode), and the server goes dark. ✅
+29. **The Last Broadcast:** at zero, the Ministry declares the records destroyed and victory over an empty world ("There is no evidence of wrongdoing. There is no evidence of anything."). Anyone still here falls (spectator mode), and the server goes dark. ✅
 
 ---
 

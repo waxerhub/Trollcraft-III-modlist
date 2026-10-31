@@ -420,21 +420,10 @@ function nearestInEnd(server, at) {
   return best
 }
 
-EntityEvents.death(event => {
-  const e = event.entity
-  if (typeOf(e) != 'minecraft:ender_dragon') return
-  try { if (dimOf(e) != END) return } catch (err) { return }
+// The killer gets the bill; else the nearest player in the End to `at`; else it's dropped on the pillar. Once only.
+function giveBill(server, killer, at, level) {
   const D = db()
   if (D.billDropped || !DRAGON_DROPS_BILL) return
-  const server = event.server
-  let killer = null
-  try {
-    let a = event.source.actual
-    if (a == null) a = event.source.getActual()
-    if (a != null && a.isPlayer()) killer = a
-  } catch (err) { }
-  let at = { x: 0.5, y: 70, z: 0.5 }
-  try { at = posOf(e) } catch (err) { }
   const to = killer || nearestInEnd(server, at)
   const snbt = bookSnbt(BILL, dateText(Date.now()))
   if (to) {
@@ -443,11 +432,26 @@ EntityEvents.death(event => {
     run(server, 'execute as ' + nameOf(to) + ' at @s run playsound minecraft:item.book.page_turn master @s ~ ~ ~ 1 0.6')
     console.info('[BloodPortal] Draft Bill 9-D given to ' + nameOf(to) + (killer ? ' (the dragon\'s killer)' : ' (nearest player in the End)'))
   } else {
-    dropBill(server, { x: 0.5, y: surfaceY(levelOf(e), 0, 0, 70), z: 0.5 }, snbt)
+    dropBill(server, { x: 0.5, y: level ? surfaceY(level, 0, 0, 70) : 70, z: 0.5 }, snbt)
   }
   D.billDropped = { t: Date.now(), to: to ? nameOf(to) : '' }
   save()
   server.scheduleInTicks(BILL_LINE_DELAY_SECONDS * 20, () => announce(server, voiceParts(VOICE_HIJACK, 'The dragon guarded the Ministry\'s records. Read them before they burn.')))
+}
+EntityEvents.death(event => {
+  const e = event.entity
+  if (typeOf(e) != 'minecraft:ender_dragon') return
+  try { if (dimOf(e) != END) return } catch (err) { return }
+  if (db().billDropped) return
+  let killer = null
+  try {
+    let a = event.source.actual
+    if (a == null) a = event.source.getActual()
+    if (a != null && a.isPlayer()) killer = a
+  } catch (err) { }
+  let at = { x: 0.5, y: 70, z: 0.5 }
+  try { at = posOf(e) } catch (err) { }
+  giveBill(event.server, killer, at, levelOf(e))
 })
 
 
@@ -760,6 +764,10 @@ global.BloodPortal = {
   unlocked: () => !!db().unlocked,
   relicsFound: () => Object.keys(db().found).filter(id => db().found[id] > 0 && relicDef(id)).length,   // distinct Relics put in chests
   relicCount: RELICS.length,
+  // clean_slate.js: the fight ended without a death event (/kill). The nearest player in the End gets the bill.
+  dragonFallen: () => giveBill(Utils.server, null, { x: 0.5, y: 70, z: 0.5 }, null),
+  // clean_slate.js /cleanslate rearm: the next dragon gives the bill again.
+  rearm: () => { delete db().billDropped; save() },
   summary: () => summary(),
 }
 
@@ -821,6 +829,32 @@ ServerEvents.commandRegistry(event => {
     return reply(ctx, 'Gave ' + nameOf(p) + ' ' + (n == null ? 'all ' + all.length + ' Archive books' : '"' + list[0].title + '"') + '.')
   }
 
+  // reset: end the event and drain the portal. all: also forget the Relic unlock, what chests have given and who
+  // escaped (a fresh test run). The arena and portal are always kept.
+  const resetEvent = (ctx, all) => {
+    const D = db(), server = ctx.source.server
+    D.state = 'idle'
+    D.points = 0
+    D.kills = 0
+    D.participants = {}
+    if (all) {
+      delete D.unlocked
+      D.found = {}
+      D.foundArchives = {}
+      D.chestsRolled = 0
+      D.escaped = {}
+    }
+    save()
+    run(server, 'bossbar remove ' + BOSSBAR)
+    if (D.portal) {
+      let P = D.portal
+      run(server, 'execute in ' + P.dim + ' run fill ' + P.x + ' ' + P.y + ' ' + P.z + ' ' + (P.x + 3) + ' ' + P.y + ' ' + (P.z + 3) + ' minecraft:air')
+    }
+    console.info('[BloodPortal] Reset' + (all ? ' (all)' : '') + ' by ' + who(ctx))
+    return reply(ctx, all ? 'Everything reset: the event, the Relic unlock, Relic and book counts, and escapes. The arena and portal are kept.'
+      : 'The event is reset (the portal drained). Relics, arena, portal and escapes are kept.')
+  }
+
   event.register(Commands.literal('bloodportal')
     .executes(safe(ctx => reply(ctx, summary() + '.')))
     .then(Commands.literal('start')
@@ -874,20 +908,9 @@ ServerEvents.commandRegistry(event => {
       full(ctx.source.server)
       return reply(ctx, 'The Blood Pool is full and the portal is open.')
     })))
-    .then(Commands.literal('reset').requires(op).executes(safe(ctx => {
-      const D = db(), server = ctx.source.server
-      D.state = 'idle'
-      D.points = 0
-      D.kills = 0
-      D.participants = {}
-      save()
-      run(server, 'bossbar remove ' + BOSSBAR)
-      if (D.portal) {
-        let P = D.portal
-        run(server, 'execute in ' + P.dim + ' run fill ' + P.x + ' ' + P.y + ' ' + P.z + ' ' + (P.x + 3) + ' ' + P.y + ' ' + (P.z + 3) + ' minecraft:air')
-      }
-      return reply(ctx, 'The event is reset (the portal drained). Relics, arena, portal and escapes are kept.')
-    }))))
+    .then(Commands.literal('reset').requires(op)
+      .executes(safe(ctx => resetEvent(ctx, false)))
+      .then(Commands.literal('all').executes(safe(ctx => resetEvent(ctx, true))))))
 })
 
 })()

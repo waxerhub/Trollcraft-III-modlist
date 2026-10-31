@@ -454,31 +454,84 @@ if (Utils.server) {
 
 // ===================== EVENTS =====================
 
-// The first Ender Dragon kill.
+// The first Ender Dragon kill (after /cleanslate rearm, the next one). by: the killer's name, or ''.
+function dragonDied(server, by) {
+  const D = db()
+  if (D.dragonKilled) return
+  D.dragonKilled = { t: Date.now(), by: by }
+  D.fightBaseline = true
+  console.info('[CleanSlate] The Ender Dragon was killed' + (by ? ' by ' + by : ''))
+  if (START_ON_DRAGON_KILL && D.state == 'idle') {
+    D.state = 'pending'
+    D.startAt = Date.now() + START_DELAY_SECONDS * 1000
+    D.pendingBy = by ? by + ' (the dragon)' : 'the death of the dragon'
+    startLoop(server)
+  }
+  save()
+}
 EntityEvents.death(event => {
   const e = event.entity
   let type = ''
   try { type = String(e.getEncodeId()) } catch (err) { }
   if (type != 'minecraft:ender_dragon') return
   try { if (dimOf(e) != END) return } catch (err) { return }
-  const D = db()
-  if (D.dragonKilled) return
+  if (db().dragonKilled) return
   let by = ''
   try {
     let a = event.source.actual
     if (a == null) a = event.source.getActual()
     if (a != null && a.isPlayer()) by = nameOf(a)
   } catch (err) { }
-  D.dragonKilled = { t: Date.now(), by: by }
-  console.info('[CleanSlate] The Ender Dragon was killed' + (by ? ' by ' + by : ''))
-  if (START_ON_DRAGON_KILL && D.state == 'idle') {
-    D.state = 'pending'
-    D.startAt = Date.now() + START_DELAY_SECONDS * 1000
-    D.pendingBy = by ? by + ' (the dragon)' : 'the death of the dragon'
-    startLoop(event.server)
-  }
-  save()
+  dragonDied(event.server, by)
 })
+
+// The backup: /kill on the dragon (or a mod ending the fight its own way) fires no death event, so the End's dragon
+// fight is checked every 5 s. Only a change from "never killed" to "killed" counts; the first reading is the
+// baseline, so a world whose dragon died before this script was installed doesn't trigger anything.
+function endLevel(server) {
+  try { let l = server.getLevel(END); if (l) return l } catch (e) { }
+  try {
+    let found = null
+    server.getAllLevels().forEach(l => { if (!found && dimensionId(l) == END) found = l })
+    return found
+  } catch (e) { }
+  return null
+}
+function fightKilled(server) {
+  try {
+    let f = endLevel(server).getDragonFight()
+    return f == null ? null : !!f.hasPreviouslyKilledDragon()
+  } catch (e) { return null }
+}
+function watchFight(server) {
+  const D = db()
+  if (D.dragonKilled || D.state != 'idle') return
+  const k = fightKilled(server)
+  if (k == null) return
+  if (D.fightBaseline == null) { D.fightBaseline = k; save(); return }
+  if (k && !D.fightBaseline) {
+    console.info('[CleanSlate] The dragon fight ended without a death event (/kill?); treating it as the kill')
+    dragonDied(server, '')
+    let B = global.BloodPortal
+    try { if (B && B.dragonFallen) B.dragonFallen() } catch (e) { console.warn('[CleanSlate] Bill: ' + e) }
+  } else if (!k && D.fightBaseline) {
+    D.fightBaseline = false                                   // the fight was reset (YUNG's /end_island reset)
+    save()
+  }
+}
+function startWatch(server) {
+  if (S.watching == S.token) return
+  S.watching = S.token
+  const token = S.token
+  const loop = () => {
+    if (token != S.token) return
+    try { watchFight(server) } catch (e) { console.error('[CleanSlate] ' + e) }
+    server.scheduleInTicks(100, loop)
+  }
+  server.scheduleInTicks(100, loop)
+}
+ServerEvents.loaded(event => startWatch(event.server))
+if (Utils.server) startWatch(Utils.server)
 
 PlayerEvents.loggedIn(event => {
   const p = event.player, D = db()
@@ -535,7 +588,9 @@ ServerEvents.commandRegistry(event => {
     } else if (D.state == 'pending') reply(ctx, 'Starting in a few seconds (the dragon is dead).')
     else if (D.state == 'ended') reply(ctx, 'Over. ' + Object.keys(D.fallen).length + ' player(s) fell.')
     else reply(ctx, 'Not started. It begins when the Ender Dragon is killed' + (START_ON_DRAGON_KILL ? '' : ' (switched off: START_ON_DRAGON_KILL)') + ', or with /cleanslate start.')
-    reply(ctx, 'The dragon: ' + (D.dragonKilled ? 'killed' + (D.dragonKilled.by ? ' by ' + D.dragonKilled.by : '') : 'alive') + '.')
+    const fk = fightKilled(ctx.source.server)
+    reply(ctx, 'The dragon: ' + (D.dragonKilled ? 'killed' + (D.dragonKilled.by ? ' by ' + D.dragonKilled.by : '') + ' (only the first kill counts; /cleanslate rearm for a new End)' : 'not killed yet') +
+      '. The End\'s fight says: ' + (fk == null ? 'unknown' : fk ? 'dragon previously killed' : 'never killed') + '.')
     const B = global.BloodPortal
     if (B) { try { reply(ctx, 'Blood Portal: ' + B.summary() + '.') } catch (e) { } }
     return 1
@@ -595,7 +650,24 @@ ServerEvents.commandRegistry(event => {
       D.fallen = {}
       save()
       console.info('[CleanSlate] Cancelled by ' + who(ctx))
-      return reply(ctx, 'Cancelled quietly. Fallen players stay in spectator until you change their game mode. The dragon kill won\'t start it again (/cleanslate start will).')
+      return reply(ctx, 'Cancelled quietly. Fallen players stay in spectator until you change their game mode. Another dragon kill won\'t start it (/cleanslate rearm re-arms it; /cleanslate start starts it now).')
+    })))
+    .then(Commands.literal('rearm').executes(safe(ctx => {
+      const D = db(), fell = Object.keys(D.fallen || {}).length
+      if (D.state == 'running') clearEffects(ctx.source.server)
+      D.state = 'idle'
+      D.test = null
+      D.pausedLeft = null
+      D.startAt = null
+      delete D.dragonKilled
+      delete D.fightBaseline
+      D.fallen = {}
+      save()
+      const B = global.BloodPortal
+      try { if (B && B.rearm) B.rearm() } catch (e) { }
+      console.info('[CleanSlate] Re-armed by ' + who(ctx))
+      return reply(ctx, 'Re-armed: the next Ender Dragon kill starts Protocol Clean Slate, and its killer gets Draft Bill 9-D.' +
+        (fell ? ' ' + fell + ' fallen player(s) are still in spectator: /gamemode survival <player>.' : ''))
     }))))
 })
 

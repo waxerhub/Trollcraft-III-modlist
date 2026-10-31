@@ -34,6 +34,10 @@ Nothing else is needed. The first time the dragon dies, Protocol Clean Slate sta
 
 ### The start
 - **When:** about 12 seconds after the **first** Ender Dragon dies (in the End). Later dragons do nothing.
+  - **The kill is remembered** in the server's saved data, so making a new End (or a new test world that keeps the old saved data) doesn't re-arm it. Run **`/cleanslate rearm`** first, and the next dragon kill counts again.
+  - **`/kill` on the dragon** (or a mod ending the fight its own way) fires no death event. A backup check of the End's dragon fight catches it within 5 seconds. The bill then goes to the nearest player in the End.
+  - **Installing on a world whose dragon is already dead** starts nothing: the backup only reacts to the fight changing from "never killed" to "killed".
+  - **`/cleanslate status`** shows whether a kill is recorded and what the End's fight says.
 - **What happens:** the story act jumps to **`finale`** (story.js), which everyone sees:
   - the title PROTOCOL / CLEAN SLATE and a raid horn;
   - the Ministry announces it: "The Ministry's records have been accessed by unauthorised citizens. This is regrettable. Protocol Clean Slate is now in effect. All records, and the world they are kept in, will be cleaned. This is for your protection. Nothing incriminating was ever written down.";
@@ -148,6 +152,7 @@ Signed books ("written by" The Ministry of Trolling (CLASSIFIED)) with a red "CL
 | `/cleanslate extend <hours>` | op | More time |
 | `/cleanslate pause`, `/cleanslate resume` | op | Stop and restart the clock |
 | `/cleanslate cancel` | op | Stop it quietly (bossbar, storm and fire spread put back). The dragon won't start it again |
+| `/cleanslate rearm` | op | Back to "the dragon hasn't died": stops any countdown quietly, forgets the recorded kill (and that the bill was given), so the next dragon kill starts it again. For a new End or a test. The story act and anyone's game mode are left alone |
 | `/bloodportal` | anyone | A one-line summary |
 | `/bloodportal start` | anyone | Open the event (needs the ten Relics gathered and Clean Slate running) |
 | `/bloodportal start force` | op | Open it anyway |
@@ -157,6 +162,7 @@ Signed books ("written by" The Ministry of Trolling (CLASSIFIED)) with a red "CL
 | `/bloodportal archive give <player> <n\|all>`, `/bloodportal archives` | op | Give Archive books (11 is Draft Bill 9-D); the list |
 | `/bloodportal fill` | op | Fill the pool now |
 | `/bloodportal reset` | op | End the event and drain the portal (Relics, arena, portal and escapes are kept) |
+| `/bloodportal reset all` | op | The same, and also forget the Relic unlock, how many Relics and books chests have given, and who escaped. For a fresh test run (arena and portal kept) |
 
 ## Settings
 **clean_slate.js:**
@@ -202,6 +208,7 @@ Signed books ("written by" The Ministry of Trolling (CLASSIFIED)) with a red "CL
 Times are real time, so restarts and `/reload` lose nothing.
 
 ## Test plan (an op, plus two players A and B)
+0. **Starting fresh** (a new End, or after an earlier test): `/cleanslate rearm` and `/bloodportal reset all`. Then `/cleanslate status` should say "not killed yet".
 1. `/cleanslate test` on your own: the bossbar, broadcasts and lightning near you, the 10…1 count and the Last Broadcast, all within 2 minutes. Nobody else sees it.
 2. **Set up** the arena and portal. Then `/bloodportal relic give A all`: within a second, hypixel joins and announces it.
 3. **Start Clean Slate** with `/cleanslate start` (or kill a dragon in a test world): the finale title and lines, then thunder, the bossbar, and fire spread off (`/gamerule doFireTick` → false).
@@ -214,10 +221,11 @@ Times are real time, so restarts and `/reload` lose nothing.
 7. **Books:** `/bloodportal archive give <you> all` and read all 11.
 
 ## What couldn't be verified for KubeJS 6 on 1.20.1
-A mock-server test passed 78 checks:
+A mock-server test passed 89 checks:
 - the test run;
 - the start from the dragon and from `/story`;
 - cancel, extend, pause and resume;
+- `/cleanslate rearm` (idle and running), the backup dragon check (baseline, a fight reset, a kill with no death event), one start per kill, and `/bloodportal reset` / `reset all`;
 - the finale lines in order;
 - the bill given straight to the killer (or the nearest player in the End, or dropped on the pillar with nobody there), its date and contents, and only one bill;
 - the bossbar, milestones and thunder;
@@ -234,6 +242,7 @@ A mock-server test passed 78 checks:
 The trolls/story test (42 checks) and the black market, tracking, ambush, factions and End Lockdown tests still pass.
 
 These depend on the real game:
+- **The backup dragon check:** `server.getLevel('minecraft:the_end').getDragonFight().hasPreviouslyKilledDragon()`. `/cleanslate status` shows what it reads ("unknown" means the script couldn't reach it, so only the death event works).
 - **The chest hook:** `BlockEvents.rightClicked` comes before the loot is generated, `block.entityData` still shows the `LootTable`, and the Relic is put in through the chest's block entity two ticks later.
   - **Every unlooted container opened in the End is logged:** `[BloodPortal] Unlooted quark:purpur_chest opened at … (minecraft:chests/end_city_treasure)`, then `[BloodPortal] Relic … placed` when one goes in.
   - **A container with a different loot table** shows "… with loot table X (not in END_CITY_LOOT)". If End City chests show that, add X to `END_CITY_LOOT`.

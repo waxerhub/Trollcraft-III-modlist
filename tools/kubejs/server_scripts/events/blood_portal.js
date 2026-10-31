@@ -6,8 +6,8 @@
 //    "Blood Pool" bossbar fills as Ministry Inspectors are killed. The more it fills, the more come.
 //  - Full: the Blood Portal (a bedrock basin) fills with blood and hypixel calls everyone through. Stepping into it
 //    saves the player's legacy for Part II and kicks them from the server.
-//  - The Ministry Archives: classified books in End City chests (any time), and Draft Bill 9-D, which only the
-//    first Ender Dragon drops.
+//  - The Ministry Archives: classified books in End City chests (any time), and Draft Bill 9-D, which goes straight
+//    into the inventory of whoever kills the first Ender Dragon.
 //
 // Needs: clean_slate.js (global.CleanSlate) and factions/portal_ambush.js (global.PortalAmbush, for the Inspectors).
 // Uses: fake_players.js (hypixel), factions_core.js, economy/ (legacy data). All looked up when needed.
@@ -31,8 +31,10 @@ const RELICS_ONLY_DURING_CLEAN_SLATE = true     // no Relics before Protocol Cle
 const ARCHIVE_CHANCE = 0.5                      // per unlooted End City treasure chest, for an Archive book
 const ARCHIVES_FROM_ACT = ''                    // '' = any time; 'act4' = only from Act IV (story.js)
 const DRAGON_DROPS_BILL = true                  // the first Ender Dragon drops Draft Bill 9-D
-const BILL_DELAY_SECONDS = 10                   // after the kill (the dragon's death takes about 10 s)
-const BILL_LINE_DELAY_SECONDS = 30              // the hijacked line about it, after the Ministry's Clean Slate announcement
+// Draft Bill 9-D goes straight into the inventory of the player who kills the dragon (or the nearest player in the
+// End if the kill isn't credited to anyone). The public hijacked line about it comes this long after the kill, after
+// the Ministry's Clean Slate announcement.
+const BILL_LINE_DELAY_SECONDS = 40
 
 const ARENA_RADIUS = 32                         // /bloodportal setarena without a radius
 const FRAME_BLOCK = 'minecraft:bedrock'
@@ -236,7 +238,7 @@ function cleanSlateRunning() { const c = CS(); try { return !!(c && c.active()) 
 // server.persistentData['blood_portal'] = JSON { v, arena: { dim, x, y, z, r }, portal: { dim, x, y, z } (the 4x4
 //   inside starts at x,z; y is its floor-level layer), unlocked: { by, t }, state: idle|running|full, startedAt,
 //   startedBy, points, kills, participants: { uuid: name }, found: { relicId: n }, foundArchives: { id: n },
-//   chestsRolled, billDropped: { t, by }, escaped: { uuid: { name, t } } }
+//   chestsRolled, billDropped: { t, to }, escaped: { uuid: { name, t } } }
 // server.persistentData['blood_portal_exodus'] = JSON { uuid: { name, t, inventory, legacy } } (a copy of the files)
 
 let DB = null
@@ -395,14 +397,27 @@ function surfaceY(level, x, z, fallback) {
   }
   return fallback
 }
-function dropBill(server, at) {
-  const snbt = bookSnbt(BILL, dateText(Date.now()))
+// Nobody in the End: on top of the exit portal's pillar (never the void), glowing and never despawning.
+function dropBill(server, at, snbt) {
   run(server, 'execute in ' + END + ' run summon minecraft:item ' + num(at.x) + ' ' + num(at.y + 0.5) + ' ' + num(at.z) +
     ' {Item:{id:"minecraft:written_book",Count:1b,tag:' + snbt + '},PickupDelay:20,Age:-32768,Invulnerable:1b,Glowing:1b}')
   run(server, 'execute in ' + END + ' run particle minecraft:dust 0.6 0 0 2 ' + num(at.x) + ' ' + num(at.y + 1) + ' ' + num(at.z) + ' 0.6 0.6 0.6 0 60 force')
-  run(server, 'execute in ' + END + ' run playsound minecraft:item.book.page_turn master @a ' + num(at.x) + ' ' + num(at.y) + ' ' + num(at.z) + ' 2 0.6')
-  server.scheduleInTicks(BILL_LINE_DELAY_SECONDS * 20, () => announce(server, voiceParts(VOICE_HIJACK, 'The dragon guarded the Ministry\'s records. Read them before they burn.')))
-  console.info('[BloodPortal] Draft Bill 9-D dropped at ' + Math.floor(at.x) + ' ' + Math.floor(at.y) + ' ' + Math.floor(at.z))
+  console.info('[BloodPortal] Draft Bill 9-D dropped at ' + Math.floor(at.x) + ' ' + Math.floor(at.y) + ' ' + Math.floor(at.z) + ' (nobody was in the End)')
+}
+// The nearest player in the End (not in spectator) to `at`, or null.
+function nearestInEnd(server, at) {
+  let best = null, bestD = Infinity
+  onlinePlayers(server).forEach(p => {
+    if (isSpectator(p)) return
+    let d = Infinity
+    try {
+      if (dimOf(p) != END) return
+      let q = posOf(p), dx = q.x - at.x, dy = q.y - at.y, dz = q.z - at.z
+      d = dx * dx + dy * dy + dz * dz
+    } catch (e) { return }
+    if (d < bestD) { bestD = d; best = p }
+  })
+  return best
 }
 
 EntityEvents.death(event => {
@@ -411,22 +426,28 @@ EntityEvents.death(event => {
   try { if (dimOf(e) != END) return } catch (err) { return }
   const D = db()
   if (D.billDropped || !DRAGON_DROPS_BILL) return
+  const server = event.server
   let killer = null
   try {
     let a = event.source.actual
     if (a == null) a = event.source.getActual()
     if (a != null && a.isPlayer()) killer = a
   } catch (err) { }
-  D.billDropped = { t: Date.now(), by: killer ? nameOf(killer) : '' }
+  let at = { x: 0.5, y: 70, z: 0.5 }
+  try { at = posOf(e) } catch (err) { }
+  const to = killer || nearestInEnd(server, at)
+  const snbt = bookSnbt(BILL, dateText(Date.now()))
+  if (to) {
+    give(server, to, 'minecraft:written_book', snbt)
+    tell(to, voiceParts(VOICE_HIJACK, 'The dragon was carrying the Ministry\'s newest bill. It\'s in your inventory. Read it.'))
+    run(server, 'execute as ' + nameOf(to) + ' at @s run playsound minecraft:item.book.page_turn master @s ~ ~ ~ 1 0.6')
+    console.info('[BloodPortal] Draft Bill 9-D given to ' + nameOf(to) + (killer ? ' (the dragon\'s killer)' : ' (nearest player in the End)'))
+  } else {
+    dropBill(server, { x: 0.5, y: surfaceY(levelOf(e), 0, 0, 70), z: 0.5 }, snbt)
+  }
+  D.billDropped = { t: Date.now(), to: to ? nameOf(to) : '' }
   save()
-  const server = event.server, level = levelOf(e)
-  server.scheduleInTicks(BILL_DELAY_SECONDS * 20, () => {
-    // At the killer's feet if they're still in the End, else on top of the exit portal's pillar (never the void).
-    let at = null
-    try { if (killer && dimOf(killer) == END) at = posOf(killer) } catch (err) { }
-    if (!at) at = { x: 0.5, y: surfaceY(level, 0, 0, 70), z: 0.5 }
-    dropBill(server, at)
-  })
+  server.scheduleInTicks(BILL_LINE_DELAY_SECONDS * 20, () => announce(server, voiceParts(VOICE_HIJACK, 'The dragon guarded the Ministry\'s records. Read them before they burn.')))
 })
 
 
@@ -843,7 +864,7 @@ ServerEvents.commandRegistry(event => {
       .then(int('number').executes(safe(ctx => giveArchives(ctx, num(ctx, 'number'))))))))
     .then(Commands.literal('archives').requires(op).executes(safe(ctx => {
       ARCHIVES.concat([BILL]).forEach((a, i) => reply(ctx, (i + 1) + '. ' + a.title + (a.id == BILL.id
-        ? ' (the dragon: ' + (db().billDropped ? 'dropped' : 'not yet') + ')' : ' (' + (db().foundArchives[a.id] || 0) + ' placed)')))
+        ? ' (the dragon: ' + (db().billDropped ? 'given' + (db().billDropped.to ? ' to ' + db().billDropped.to : ', dropped at the pillar') : 'not yet') + ')' : ' (' + (db().foundArchives[a.id] || 0) + ' placed)')))
       return 1
     })))
     .then(Commands.literal('fill').requires(op).executes(safe(ctx => {

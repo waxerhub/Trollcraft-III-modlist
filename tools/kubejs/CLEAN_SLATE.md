@@ -110,10 +110,12 @@ Signed books ("written by" The Ministry of Trolling (CLASSIFIED)) with a red "CL
   - no standing on blocks in official photographs;
   - complaints filed on the bottom shelf;
   - Goruk kept on "as a useful mascot until the beard tax is fully implemented" (vote unanimous, Goruk not informed).
-- **How it drops:** one copy, about 10 seconds after the **first** dragon dies:
-  - **where:** at the feet of the player who killed it if they're still in the End, otherwise on top of the exit portal's pillar (never over the void);
-  - **the item:** it glows and never despawns;
-  - **what everyone sees,** 30 seconds later (after the Ministry's announcement): "[SIGNAL HIJACKED] The dragon guarded the Ministry's records. Read them before they burn."
+- **How it's given:** one copy, the moment the **first** dragon dies, **straight into the inventory of the player who killed it** (a full inventory drops it at their feet).
+  - **They're told privately:** "[SIGNAL HIJACKED] The dragon was carrying the Ministry's newest bill. It's in your inventory. Read it."
+  - **If the kill isn't credited to a player,** the nearest player in the End gets it instead.
+  - **Only with nobody in the End** is it dropped on top of the exit portal's pillar, glowing and never despawning.
+  - **What everyone sees,** 40 seconds after the kill (after the Ministry's announcement): "[SIGNAL HIJACKED] The dragon guarded the Ministry's records. Read them before they burn." It doesn't say who has the bill.
+  - **Already given on this world** (a dragon was killed before this update)? Hand one out with `/bloodportal archive give <player> 11`.
 - It never appears in chests.
 
 ## The Blood Portal event (`events/blood_portal.js`)
@@ -182,7 +184,7 @@ Signed books ("written by" The Ministry of Trolling (CLASSIFIED)) with a red "CL
 | `ARCHIVE_CHANCE` | 0.5 | Per End City treasure chest |
 | `ARCHIVES_FROM_ACT` | '' | '' = any time; `'act4'` = only from Act IV |
 | `DRAGON_DROPS_BILL` | true | |
-| `BILL_DELAY_SECONDS`, `BILL_LINE_DELAY_SECONDS` | 10, 30 | When the bill drops after the kill, and its hijacked line after that |
+| `BILL_LINE_DELAY_SECONDS` | 40 | The public hijacked line about the bill, this long after the kill |
 | `ARENA_RADIUS` | 32 | |
 | `BLOOD_BLOCK` / `BLOOD_FALLBACK` | `evilcraft:blood` / red stained glass | |
 | `WAVES` | 3 → 14 alive, groups of up to 8, tiers at 0/33/66% | |
@@ -212,12 +214,12 @@ Times are real time, so restarts and `/reload` lose nothing.
 7. **Books:** `/bloodportal archive give <you> all` and read all 11.
 
 ## What couldn't be verified for KubeJS 6 on 1.20.1
-A mock-server test passed 75 checks:
+A mock-server test passed 78 checks:
 - the test run;
 - the start from the dragon and from `/story`;
 - cancel, extend, pause and resume;
 - the finale lines in order;
-- the bill's drop, date and contents, and only one bill;
+- the bill given straight to the killer (or the nearest player in the End, or dropped on the pillar with nobody there), its date and contents, and only one bill;
 - the bossbar, milestones and thunder;
 - the hijacked lines sending players to the End City chests, the 6-hour Relic reminders with the count, and no reminders once the Relics are gathered;
 - Relics and books in chests (only unlooted End City treasure chests, Quark purpur chests included, least-found first, never the bill; other loot tables logged and skipped);

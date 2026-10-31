@@ -127,7 +127,7 @@ Starts with `/story act next`.
 21. **Breaking the Seal:** Loyalists and Syndicate fight the Ender Dragon together, the first act of open rebellion. The dragon was the Ministry's Head of Records Security, so **killing it exposes the Archives, and the Ministry fires Protocol Clean Slate** (the finale). ✅ (`clean_slate.js`)
 22. **The Ministry Archives:** End City treasure chests hold ten classified Ministry documents (a 50% chance per chest, any time): the full Sanctity of Swine Act, the memo ordering the Escort to fail, the committee that rebranded "Technoblade never dies", the Crown melted into lapel pins, the Potato Requisition Order, Carl's personnel file, the "Blood for the Blood God" trademark, the ELI's internal version, the merchandise catalogue, and the Clean Slate procedure itself ("Burn the Archives first."). ✅ (`events/blood_portal.js`)
 23. **The Realisation:** the Archives reveal the Ministry's crimes against Technoblade's legacy: it has been using his name for power.
-    - **Draft Bill 9-D, the Dwarf Management Act:** brand new and about to become law, dropped only by the dragon. It's the Ministry's openly bigoted plan for dwarves, written to turn **Goruk the Dwarf**. ✅
+    - **Draft Bill 9-D, the Dwarf Management Act:** brand new and about to become law, given only to whoever kills the dragon. It's the Ministry's openly bigoted plan for dwarves, written to turn **Goruk the Dwarf**. ✅
     - The Loyalists defect.
     - The Resistance forms, with no friendly fire between its members.
 

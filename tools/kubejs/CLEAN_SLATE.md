@@ -37,7 +37,7 @@ Nothing else is needed. The first time the dragon dies, Protocol Clean Slate sta
 - **What happens:** the story act jumps to **`finale`** (story.js), which everyone sees:
   - the title PROTOCOL / CLEAN SLATE and a raid horn;
   - the Ministry announces it: "The Ministry's records have been accessed by unauthorised citizens. This is regrettable. Protocol Clean Slate is now in effect. All records, and the world they are kept in, will be cleaned. This is for your protection. Nothing incriminating was ever written down.";
-  - the hijacked signal answers: "They are burning the world to bury what they did. Four days. Read the Archives before they are ash. Find the ten Relics. The Blood Portal is our way out. Technoblade never dies."
+  - the hijacked signal answers: "They are burning the world to bury what they did. Four days. The Ministry hid ten Blood Relics in the End City treasure chests. Go to the End Cities and find them. When one of you carries all ten, the Blood Portal opens. It is our way out. Technoblade never dies."
 - **Other ways in:** an op can start it with `/cleanslate start [hours]`, or by setting the act to `finale` with `/story`.
 
 ### The 4 days
@@ -48,7 +48,8 @@ Nothing else is needed. The first time the dragon dies, Protocol Clean Slate sta
 - **Broadcasts falling apart:**
   - **When:** at 72, 48, 24, 12, 6 and 1 hours, 30 minutes, 10 minutes and 1 minute left.
   - **The Ministry's lines** count down to the wipe ("Citizens in possession of Ministry records should hand them in for safe burning", "there were never any records. That is why they must be destroyed") and break up into static (garbled words) more as zero comes closer.
-  - **The hijacked replies** point players to the Relics and the Portal.
+  - **The hijacked replies** send players to the End City treasure chests for the Relics ("Three days. Ten Blood Relics sleep in the End City treasure chests. Find them."). Once someone has carried all ten, they switch to the Blood Portal ("/bloodportal start").
+- **Relic reminders:** every 6 hours, until one player has carried all ten Relics, the hijacked signal reminds everyone where they are. The three lines take turns, each with a count: "The Ministry hid ten Blood Relics in the End City treasure chests. Find them before they burn. (3 of 10 have surfaced so far.)" The count is how many different Relics have turned up in chests.
   - These go out with `tellraw @a`, so Discord sees them.
 - **The last 10 seconds:** a 10…1 title for everyone.
 
@@ -167,7 +168,8 @@ Signed books ("written by" The Ministry of Trolling (CLASSIFIED)) with a red "CL
 | `STOP_FIRE_SPREAD` | true | `doFireTick` off while it runs |
 | `LIGHTNING` | every 120 s → 15 s, 6–20 blocks away | |
 | `FALL_ON_LOGIN` | true | Late arrivals fall too |
-| `MILESTONES`, `LAST_BROADCAST`, `FALLEN_TITLE` | | The texts |
+| `MILESTONES`, `LAST_BROADCAST`, `FALLEN_TITLE` | | The texts. A milestone's `hijack` is used while the Relics are hunted, `gathered` after |
+| `RELIC_REMINDER_HOURS`, `RELIC_REMINDERS` | 6, three lines | The Relic reminders (0 = none) |
 
 **events/blood_portal.js:**
 
@@ -208,13 +210,14 @@ Times are real time, so restarts and `/reload` lose nothing.
 7. **Books:** `/bloodportal archive give <you> all` and read all 11.
 
 ## What couldn't be verified for KubeJS 6 on 1.20.1
-A mock-server test passed 68 checks:
+A mock-server test passed 72 checks:
 - the test run;
 - the start from the dragon and from `/story`;
 - cancel, extend, pause and resume;
 - the finale lines in order;
 - the bill's drop, date and contents, and only one bill;
 - the bossbar, milestones and thunder;
+- the hijacked lines sending players to the End City chests, the 6-hour Relic reminders with the count, and no reminders once the Relics are gathered;
 - Relics and books in chests (only unlooted End City treasure chests, least-found first, never the bill);
 - unlocking with all ten in one inventory but not split between two players;
 - the arena, the portal built and found;

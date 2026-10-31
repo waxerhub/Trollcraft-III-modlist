@@ -36,18 +36,24 @@ const FALL_ON_LOGIN = true             // players who log in after zero (and did
 const TEST_MINUTES = 2                 // /cleanslate test: a short run that only the op sees
 
 // Broadcasts, at this much time left. The Ministry's line is garbled more the closer zero is; the hijacked reply
-// is clear. The start itself is announced by the `finale` act (story.js).
+// is clear. `hijack` is used while the Relics are still being hunted; `gathered` (if given) once one player has
+// carried all ten. The start itself is announced by the `finale` act (story.js).
 const MILESTONES = [
   { hours: 72, ministry: 'Protocol Clean Slate proceeds on schedule. Citizens in possession of Ministry records should hand them in for safe burning.',
-    hijack: 'Three days. Ten Relics sleep in the End Cities. Find them.' },
+    hijack: 'Three days. Ten Blood Relics sleep in the End City treasure chests. Find them.',
+    gathered: 'Three days. The Relics are gathered. Open the Blood Portal: /bloodportal start' },
   { hours: 48, ministry: 'Thunder is part of the cleaning process. Please do not read anything you find in the End.',
-    hijack: 'Two days. One of you must carry all ten Relics at once.' },
+    hijack: 'Two days. Search the End City treasure chests. One of you must carry all ten Relics at once.',
+    gathered: 'Two days. The Blood Portal is waiting: /bloodportal start' },
   { hours: 24, ministry: 'Reminder: there were never any records. That is why they must be destroyed.',
-    hijack: 'One day. The Blood Portal is thirsty.' },
+    hijack: 'One day. The Relics are still out there in the End Cities, and the Blood Portal is thirsty.',
+    gathered: 'One day. The Blood Portal is thirsty.' },
   { hours: 12, ministry: 'The Ministry has everything under control. Everything. Under. Control.',
-    hijack: 'Twelve hours.' },
+    hijack: 'Twelve hours. Every End City chest left unopened may hold a Relic.',
+    gathered: 'Twelve hours.' },
   { hours: 6, ministry: 'Please do not panic. Panicking requires a permit. Permits are being burned.',
-    hijack: 'Six hours. If you have the Relics, use them.' },
+    hijack: 'Six hours. Get to the End Cities. If you have the Relics, bring them together.',
+    gathered: 'Six hours. If you have not opened the Blood Portal, do it now.' },
   { hours: 1, ministry: 'Final shredding has begun. The Ministry thanks you for not reading.',
     hijack: 'One hour. Get to the Blood Portal.' },
   { hours: 0.5, ministry: 'All outstanding paperwork must be completed before it is destroyed.',
@@ -56,6 +62,14 @@ const MILESTONES = [
     hijack: 'Ten minutes. Technoblade never dies. Neither should you.' },
   { hours: 1 / 60, ministry: 'Thank you for choosing the Ministry of Trolling.',
     hijack: 'Run.' },
+]
+// A hijacked reminder about the Relics every RELIC_REMINDER_HOURS (first one that long after the start), until one
+// player has carried all ten. They take turns; the count of Relics found so far is added.
+const RELIC_REMINDER_HOURS = 6
+const RELIC_REMINDERS = [
+  'The Ministry hid ten Blood Relics in the End City treasure chests. Find them before they burn.',
+  'Unopened End City chests still hold Relics. Look in the treasure chests, deep inside the cities.',
+  'One of you must carry all ten Relics at once. Then the Blood Portal opens: /bloodportal start',
 ]
 const LAST_BROADCAST = [
   'Protocol Clean Slate is complete. All records have been destroyed.',
@@ -224,6 +238,8 @@ function start(server, hours, by, opts) {
   D.pausedLeft = null
   D.test = opts.test || null
   D.fired = {}
+  D.lastReminder = D.startedAt
+  D.reminderN = 0
   D.startAt = null
   // Broadcasts for more time than this run has are skipped.
   MILESTONES.forEach(m => { if (m.hours * 3600000 >= total) D.fired[String(m.hours)] = true })
@@ -363,8 +379,25 @@ function milestones(server) {
   save()
   const m = due[due.length - 1]                 // after a long downtime, only the latest one is read out
   const level = Math.min(0.9, progress()), only = D.test ? audience(server) : null
+  const reply = relicsGathered() && m.gathered ? m.gathered : m.hijack
   announce(server, garbled(m.ministry, level), only)
-  server.scheduleInTicks(80, () => announce(server, voiceParts(VOICE_HIJACK, m.hijack), only))
+  server.scheduleInTicks(80, () => announce(server, voiceParts(VOICE_HIJACK, reply), only))
+}
+
+function BP() { return global.BloodPortal || null }
+function relicsGathered() { const B = BP(); try { return !!(B && B.unlocked()) } catch (e) { return false } }
+function relicReminder(server) {
+  const D = db()
+  if (D.test || relicsGathered() || !RELIC_REMINDER_HOURS) return
+  if (Date.now() - (D.lastReminder || D.startedAt) < RELIC_REMINDER_HOURS * 3600000) return
+  D.lastReminder = Date.now()
+  const n = D.reminderN || 0
+  D.reminderN = n + 1
+  save()
+  let count = ''
+  const B = BP()
+  try { if (B && B.relicsFound) count = ' (' + B.relicsFound() + ' of ' + (B.relicCount || 10) + ' have surfaced so far.)' } catch (e) { }
+  announce(server, voiceParts(VOICE_HIJACK, RELIC_REMINDERS[n % RELIC_REMINDERS.length] + count))
 }
 
 function finalSeconds(server, left) {
@@ -394,6 +427,7 @@ function tick(server) {
   S.n = (S.n || 0) + 1
   if (left < 60000 || S.n % 20 == 0) updateBar(server)
   milestones(server)
+  relicReminder(server)
   finalSeconds(server, left)
   if (Date.now() - (D.lastThunder || 0) >= THUNDER_EVERY_MINUTES * 60000) { thunder(server); save() }
   lightning(server)

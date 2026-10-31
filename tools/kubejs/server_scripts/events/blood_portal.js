@@ -727,6 +727,8 @@ global.BloodPortal = {
   hasEscaped: uuid => !!db().escaped[String(uuid).toLowerCase()],
   state: () => db().state,
   unlocked: () => !!db().unlocked,
+  relicsFound: () => Object.keys(db().found).filter(id => db().found[id] > 0 && relicDef(id)).length,   // distinct Relics put in chests
+  relicCount: RELICS.length,
   summary: () => summary(),
 }
 

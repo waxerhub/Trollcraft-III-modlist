@@ -41,7 +41,8 @@ const ACTS = [
       'Protocol Clean Slate is now in effect. All records, and the world they are kept in, will be cleaned.',
       'This is for your protection. Nothing incriminating was ever written down.'],
     hijack: ['They are burning the world to bury what they did. Four days.',
-      'Read the Archives before they are ash. Find the ten Relics. The Blood Portal is our way out.',
+      'The Ministry hid ten Blood Relics in the End City treasure chests. Go to the End Cities and find them.',
+      'When one of you carries all ten, the Blood Portal opens. It is our way out.',
       'Technoblade never dies.'] },
 ]
 const LINE_GAP_SECONDS = 4

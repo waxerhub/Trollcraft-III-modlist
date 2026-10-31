@@ -141,7 +141,7 @@ Starts with `/story act next`.
 26. **The World Burns** (no blocks changed):
     - an endless thunderstorm (fire spread is switched off for the 4 days, so bases survive for the archive);
     - visual-only lightning near players, more often as zero comes closer;
-    - the Ministry's countdown to the wipe ("hand in Ministry records for safe burning"), falling apart into static, answered by the hijacked signal.
+    - the Ministry's countdown to the wipe ("hand in Ministry records for safe burning"), falling apart into static, answered by the hijacked signal, which keeps sending players to the End City treasure chests for the Relics (and reminds everyone every 6 hours until they're gathered).
 
     ✅
 27. **The Blood Relics:** ten custom Relics of Technoblade's legacy, found in End City treasure chests while Clean Slate runs (60% per chest). One player must carry all ten at once. Then anyone can run `/bloodportal start`. ✅

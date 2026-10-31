@@ -76,6 +76,7 @@ Ten custom items, each a vanilla item with a dark red name, lore and the enchant
 | `undying_ember` | The Undying Ember | magma cream |
 
 - **Where they come from:** End City **treasure chests**, the first time each is opened, **while Clean Slate runs**. Each chest has a 60% chance of one Relic.
+  - **Any block counts** as long as it has the End City loot table (`minecraft:chests/end_city_treasure`). That includes **Quark's purpur chests**, which replace the vanilla chests in End Cities in this pack.
 - **Which Relic:** always the one found the fewest times, so all ten turn up within about 17 chests before any repeats. A Relic that's lost can turn up again.
 - **Chests opened before Clean Slate** have already generated their loot, so they never get a Relic.
 - **Unlocking the event:** the moment **one player carries all ten at once** (anywhere in their inventory), `/bloodportal start` opens for everyone, and it stays open.
@@ -175,6 +176,7 @@ Signed books ("written by" The Ministry of Trolling (CLASSIFIED)) with a red "CL
 
 | Setting | Default | |
 |---|---|---|
+| `END_CITY_LOOT` | `['minecraft:chests/end_city_treasure']` | Loot tables whose containers get Relics and books, whatever the block is. Add a table here if a mod gives End Cities its own (the server log names it) |
 | `RELIC_CHANCE` | 0.6 | Per End City treasure chest |
 | `RELICS_ONLY_DURING_CLEAN_SLATE` | true | |
 | `ARCHIVE_CHANCE` | 0.5 | Per End City treasure chest |
@@ -210,7 +212,7 @@ Times are real time, so restarts and `/reload` lose nothing.
 7. **Books:** `/bloodportal archive give <you> all` and read all 11.
 
 ## What couldn't be verified for KubeJS 6 on 1.20.1
-A mock-server test passed 72 checks:
+A mock-server test passed 75 checks:
 - the test run;
 - the start from the dragon and from `/story`;
 - cancel, extend, pause and resume;
@@ -218,7 +220,7 @@ A mock-server test passed 72 checks:
 - the bill's drop, date and contents, and only one bill;
 - the bossbar, milestones and thunder;
 - the hijacked lines sending players to the End City chests, the 6-hour Relic reminders with the count, and no reminders once the Relics are gathered;
-- Relics and books in chests (only unlooted End City treasure chests, least-found first, never the bill);
+- Relics and books in chests (only unlooted End City treasure chests, Quark purpur chests included, least-found first, never the bill; other loot tables logged and skipped);
 - unlocking with all ten in one inventory but not split between two players;
 - the arena, the portal built and found;
 - the event: teleport, spawn, Inspectors through portal_ambush, points, full, fallback blood, hypixel;
@@ -230,7 +232,10 @@ A mock-server test passed 72 checks:
 The trolls/story test (42 checks) and the black market, tracking, ambush, factions and End Lockdown tests still pass.
 
 These depend on the real game:
-- **The chest hook:** `BlockEvents.rightClicked` comes before the loot is generated, `block.entityData` still shows the `LootTable`, and the Relic is put in through the chest's block entity two ticks later. If a Relic never appears, check the server log for `[BloodPortal] Relic … placed`.
+- **The chest hook:** `BlockEvents.rightClicked` comes before the loot is generated, `block.entityData` still shows the `LootTable`, and the Relic is put in through the chest's block entity two ticks later.
+  - **Every unlooted container opened in the End is logged:** `[BloodPortal] Unlooted quark:purpur_chest opened at … (minecraft:chests/end_city_treasure)`, then `[BloodPortal] Relic … placed` when one goes in.
+  - **A container with a different loot table** shows "… with loot table X (not in END_CITY_LOOT)". If End City chests show that, add X to `END_CITY_LOOT`.
+  - **No line at all** means the chest had already been opened, or the right-click never reached the script.
 - **EvilCraft's blood block id** (`evilcraft:blood`). If it's wrong, the log says so and red glass is used instead.
 - **The dragon's death:** `EntityEvents.death` for `minecraft:ender_dragon`, and the killer read from the damage source.
 - **Visual-only lightning:** `level.createEntity('minecraft:lightning_bolt')` + `setVisualOnly(true)` (the same way smite.js does it), and `level.getHeight` for the surface.

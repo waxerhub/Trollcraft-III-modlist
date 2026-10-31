@@ -23,7 +23,9 @@
 // ===================== SETTINGS =====================
 
 const END = 'minecraft:the_end'
-const END_CITY_LOOT = 'minecraft:chests/end_city_treasure'
+// Loot tables whose containers get Relics and Archive books, whatever the block is (vanilla chests, Quark's purpur
+// chests, barrels...). Every unlooted container opened in the End is written to the server log with its loot table.
+const END_CITY_LOOT = ['minecraft:chests/end_city_treasure']
 const RELIC_CHANCE = 0.6                        // per unlooted End City treasure chest
 const RELICS_ONLY_DURING_CLEAN_SLATE = true     // no Relics before Protocol Clean Slate starts
 const ARCHIVE_CHANCE = 0.5                      // per unlooted End City treasure chest, for an Archive book
@@ -341,7 +343,7 @@ function archivesAllowed() {
   try { return !!(St && St.isAtLeast(ARCHIVES_FROM_ACT)) } catch (e) { return false }
 }
 function rollChest(server, level, dim, x, y, z) {
-  if (lootTableOf(level.getBlock(x, y, z)) == END_CITY_LOOT) return   // it didn't open (protected, cancelled)
+  if (isEndCityLoot(lootTableOf(level.getBlock(x, y, z)))) return   // it didn't open (protected, cancelled)
   const D = db()
   D.chestsRolled++
   if ((cleanSlateRunning() || !RELICS_ONLY_DURING_CLEAN_SLATE) && Math.random() < RELIC_CHANCE) {
@@ -361,14 +363,22 @@ function rollChest(server, level, dim, x, y, z) {
   save()
 }
 
+function isEndCityLoot(table) { return !!table && END_CITY_LOOT.indexOf(table) >= 0 }
+
 BlockEvents.rightClicked(event => {
   const b = event.block
-  if (String(b.id) != 'minecraft:chest') return
   let dim = ''
   try { dim = dimensionId(b.level) } catch (e) { return }
-  if (dim != END || lootTableOf(b) != END_CITY_LOOT) return
+  if (dim != END) return
+  const table = lootTableOf(b)
+  if (!table) return
   const x = Number(b.x), y = Number(b.y), z = Number(b.z), key = x + '|' + y + '|' + z, level = b.level
   if (S.pending[key]) return
+  if (!isEndCityLoot(table)) {
+    console.info('[BloodPortal] Unlooted ' + String(b.id) + ' opened at ' + x + ' ' + y + ' ' + z + ' with loot table ' + table + ' (not in END_CITY_LOOT)')
+    return
+  }
+  console.info('[BloodPortal] Unlooted ' + String(b.id) + ' opened at ' + x + ' ' + y + ' ' + z + ' (' + table + ')')
   S.pending[key] = true
   event.server.scheduleInTicks(2, () => {
     delete S.pending[key]

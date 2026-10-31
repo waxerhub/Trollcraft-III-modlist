@@ -40,6 +40,7 @@ const ARENA_RADIUS = 32                         // /bloodportal setarena without
 const FRAME_BLOCK = 'minecraft:bedrock'
 const BLOOD_BLOCK = 'evilcraft:blood'           // EvilCraft's blood; if it can't be placed, BLOOD_FALLBACK is used
 const BLOOD_FALLBACK = 'minecraft:red_stained_glass'
+const PORTAL_SIZE = 5                           // /bloodportal buildportal: blood this wide (a bedrock rim round it)
 const BOSSBAR = 'trollcraft:blood_pool'
 const BOSSBAR_NAME = 'Blood Pool'
 
@@ -235,7 +236,7 @@ function cleanSlateRunning() { const c = CS(); try { return !!(c && c.active()) 
 
 
 // ===================== SAVED DATA =====================
-// server.persistentData['blood_portal'] = JSON { v, arena: { dim, x, y, z, r }, portal: { dim, x, y, z } (the 4x4
+// server.persistentData['blood_portal'] = JSON { v, arena: { dim, x, y, z, r }, portal: { dim, x, y, z, size } (the size x size
 //   inside starts at x,z; y is its floor-level layer), unlocked: { by, t }, state: idle|running|full, startedAt,
 //   startedBy, points, kills, participants: { uuid: name }, found: { relicId: n }, foundArchives: { id: n },
 //   chestsRolled, billDropped: { t, to }, escaped: { uuid: { name, t } } }
@@ -576,9 +577,15 @@ function wave(server) {
       size: Math.min(WAVES.groupSize, wanted - alive), def: INSPECTORS, tier: tier, extraTag: EVENT_TAG })
   } catch (e) { console.error('[BloodPortal] Inspectors: ' + e) }
 }
+// The blood's width. Portals saved before the size was kept were 4x4.
+function portalSize(P) { return P && P.size ? P.size : 4 }
+function portalBox(P) {
+  const n = portalSize(P) - 1
+  return P.x + ' ' + P.y + ' ' + P.z + ' ' + (P.x + n) + ' ' + P.y + ' ' + (P.z + n)
+}
 function fillPortal(server) {
   const P = db().portal
-  const box = P.x + ' ' + P.y + ' ' + P.z + ' ' + (P.x + 3) + ' ' + P.y + ' ' + (P.z + 3)
+  const box = portalBox(P)
   if (run(server, 'execute in ' + P.dim + ' run fill ' + box + ' ' + BLOOD_BLOCK) > 0) return BLOOD_BLOCK
   run(server, 'execute in ' + P.dim + ' run fill ' + box + ' ' + BLOOD_FALLBACK)
   console.warn('[BloodPortal] ' + BLOOD_BLOCK + ' could not be placed; used ' + BLOOD_FALLBACK)
@@ -599,9 +606,9 @@ function full(server) {
   updateBar(server)
   if (D.portal) {
     fillPortal(server)
-    let P = D.portal
-    run(server, 'execute in ' + P.dim + ' run particle minecraft:dust 0.6 0 0 2 ' + (P.x + 2) + ' ' + (P.y + 1) + ' ' + (P.z + 2) + ' 1.5 1 1.5 0 200 force')
-    run(server, 'execute in ' + P.dim + ' run playsound minecraft:entity.wither.spawn master @a ' + (P.x + 2) + ' ' + P.y + ' ' + (P.z + 2) + ' 4 0.6')
+    let P = D.portal, half = portalSize(P) / 2
+    run(server, 'execute in ' + P.dim + ' run particle minecraft:dust 0.6 0 0 2 ' + num(P.x + half) + ' ' + (P.y + 1) + ' ' + num(P.z + half) + ' ' + num(half * 0.75) + ' 1 ' + num(half * 0.75) + ' 0 200 force')
+    run(server, 'execute in ' + P.dim + ' run playsound minecraft:entity.wither.spawn master @a ' + num(P.x + half) + ' ' + P.y + ' ' + num(P.z + half) + ' 4 0.6')
   }
   announce(server, voiceParts(VOICE_HIJACK, 'The Blood Pool is full. The Blood Portal is open.'))
   hypixelSay(server, FULL_LINES, 50)
@@ -631,7 +638,8 @@ function inPortal(p) {
   const P = db().portal
   if (!P || dimOf(p) != P.dim) return false
   const q = posOf(p), bx = Math.floor(q.x), bz = Math.floor(q.z)
-  return bx >= P.x && bx <= P.x + 3 && bz >= P.z && bz <= P.z + 3 && q.y >= P.y - 0.5 && q.y < P.y + 1.5
+  const n = portalSize(P) - 1
+  return bx >= P.x && bx <= P.x + n && bz >= P.z && bz <= P.z + n && q.y >= P.y - 0.5 && q.y < P.y + 1.5
 }
 function exodusRecord(p) {
   const u = uuidOf(p), inv = []
@@ -725,28 +733,35 @@ PlayerEvents.loggedIn(event => {
 function blockId(level, x, y, z) { try { return String(level.getBlock(x, y, z).id) } catch (e) { return '' } }
 function buildPortal(server, p) {
   const q = posOf(p), dim = dimOf(p)
-  const bx = Math.floor(q.x), by = Math.floor(q.y), bz = Math.floor(q.z)
-  const x = bx - 1, z = bz - 1
-  const box = (y1, y2, inset) => (x - 1 + inset) + ' ' + y1 + ' ' + (z - 1 + inset) + ' ' + (x + 4 - inset) + ' ' + y2 + ' ' + (z + 4 - inset)
+  const bx = Math.floor(q.x), by = Math.floor(q.y), bz = Math.floor(q.z), n = PORTAL_SIZE
+  // Centred on the op: the inside runs from x to x + n - 1 (for an even size, the op is just past the middle).
+  const x = bx - Math.floor((n - 1) / 2), z = bz - Math.floor((n - 1) / 2)
+  const box = (y1, y2, inset) => (x - 1 + inset) + ' ' + y1 + ' ' + (z - 1 + inset) + ' ' + (x + n - inset) + ' ' + y2 + ' ' + (z + n - inset)
   run(server, 'execute in ' + dim + ' run fill ' + box(by - 1, by, 0) + ' ' + FRAME_BLOCK)
   run(server, 'execute in ' + dim + ' run fill ' + box(by, by, 1) + ' minecraft:air')
-  db().portal = { dim: dim, x: x, y: by, z: z }
+  db().portal = { dim: dim, x: x, y: by, z: z, size: n }
   save()
-  return { ok: true, text: 'Blood Portal built: bedrock basin, inside ' + x + ' ' + by + ' ' + z + ' to ' + (x + 3) + ' ' + by + ' ' + (z + 3) + ' (' + dim + '). It fills with blood when the Pool is full.' }
+  return { ok: true, text: 'Blood Portal built: a ' + (n + 2) + 'x' + (n + 2) + ' bedrock basin, the ' + n + 'x' + n + ' inside ' + x + ' ' + by + ' ' + z + ' to ' +
+    (x + n - 1) + ' ' + by + ' ' + (z + n - 1) + ' (' + dim + '). It fills with blood when the Pool is full.' }
 }
-// A basin built by hand: the op stands in its 4x4 inside, with FRAME_BLOCK all round.
+// A basin built by hand: the op stands in its square inside (3x3 to 9x9), with FRAME_BLOCK all round.
 function findPortal(server, p) {
   const q = posOf(p), dim = dimOf(p), level = levelOf(p)
   const by = Math.floor(q.y), bx = Math.floor(q.x), bz = Math.floor(q.z)
-  let x = bx, z = bz
-  while (x > bx - 4 && blockId(level, x - 1, by, bz) != FRAME_BLOCK) x--
-  while (z > bz - 4 && blockId(level, bx, by, z - 1) != FRAME_BLOCK) z--
-  const okFrame = blockId(level, x - 1, by, bz) == FRAME_BLOCK && blockId(level, x + 4, by, bz) == FRAME_BLOCK &&
-    blockId(level, bx, by, z - 1) == FRAME_BLOCK && blockId(level, bx, by, z + 4) == FRAME_BLOCK
-  if (!okFrame) return { ok: false, text: 'Stand inside a 4x4 basin with a ' + FRAME_BLOCK + ' rim (or use /bloodportal buildportal).' }
-  db().portal = { dim: dim, x: x, y: by, z: z }
+  let x1 = bx, x2 = bx, z1 = bz, z2 = bz
+  while (x1 > bx - 9 && blockId(level, x1 - 1, by, bz) != FRAME_BLOCK) x1--
+  while (x2 < bx + 9 && blockId(level, x2 + 1, by, bz) != FRAME_BLOCK) x2++
+  while (z1 > bz - 9 && blockId(level, bx, by, z1 - 1) != FRAME_BLOCK) z1--
+  while (z2 < bz + 9 && blockId(level, bx, by, z2 + 1) != FRAME_BLOCK) z2++
+  const w = x2 - x1 + 1, d = z2 - z1 + 1
+  const okFrame = blockId(level, x1 - 1, by, bz) == FRAME_BLOCK && blockId(level, x2 + 1, by, bz) == FRAME_BLOCK &&
+    blockId(level, bx, by, z1 - 1) == FRAME_BLOCK && blockId(level, bx, by, z2 + 1) == FRAME_BLOCK
+  if (!okFrame || w != d || w < 3 || w > 9) {
+    return { ok: false, text: 'Stand inside a square basin (3x3 to 9x9) with a ' + FRAME_BLOCK + ' rim (or use /bloodportal buildportal).' }
+  }
+  db().portal = { dim: dim, x: x1, y: by, z: z1, size: w }
   save()
-  return { ok: true, text: 'Blood Portal set: inside ' + x + ' ' + by + ' ' + z + ' to ' + (x + 3) + ' ' + by + ' ' + (z + 3) + '.' }
+  return { ok: true, text: 'Blood Portal set: ' + w + 'x' + w + ', inside ' + x1 + ' ' + by + ' ' + z1 + ' to ' + x2 + ' ' + by + ' ' + z2 + '.' }
 }
 function summary() {
   const D = db()
@@ -848,7 +863,7 @@ ServerEvents.commandRegistry(event => {
     run(server, 'bossbar remove ' + BOSSBAR)
     if (D.portal) {
       let P = D.portal
-      run(server, 'execute in ' + P.dim + ' run fill ' + P.x + ' ' + P.y + ' ' + P.z + ' ' + (P.x + 3) + ' ' + P.y + ' ' + (P.z + 3) + ' minecraft:air')
+      run(server, 'execute in ' + P.dim + ' run fill ' + portalBox(P) + ' minecraft:air')
     }
     console.info('[BloodPortal] Reset' + (all ? ' (all)' : '') + ' by ' + who(ctx))
     return reply(ctx, all ? 'Everything reset: the event, the Relic unlock, Relic and book counts, and escapes. The arena and portal are kept.'
@@ -865,7 +880,7 @@ ServerEvents.commandRegistry(event => {
       reply(ctx, summary() + '.')
       reply(ctx, 'Relics placed in chests: ' + RELICS.map(r => r.id + ' ' + (D.found[r.id] || 0)).join(', ') + ' (' + D.chestsRolled + ' chests opened).')
       if (D.arena) reply(ctx, 'Arena: ' + D.arena.dim + ' ' + Math.floor(D.arena.x) + ' ' + Math.floor(D.arena.y) + ' ' + Math.floor(D.arena.z) + ', radius ' + D.arena.r + '.')
-      if (D.portal) reply(ctx, 'Portal: ' + D.portal.dim + ' ' + D.portal.x + ' ' + D.portal.y + ' ' + D.portal.z + ' (4x4).')
+      if (D.portal) reply(ctx, 'Portal: ' + D.portal.dim + ' ' + D.portal.x + ' ' + D.portal.y + ' ' + D.portal.z + ' (' + portalSize(D.portal) + 'x' + portalSize(D.portal) + ').')
       if (D.state != 'idle') reply(ctx, 'Pool: ' + D.points + '/' + KILLS_TO_FILL + ' (' + D.kills + ' killed).')
       const esc = Object.keys(D.escaped).map(u => D.escaped[u].name)
       if (esc.length) reply(ctx, 'Escaped: ' + esc.join(', ') + '.')

@@ -24,8 +24,9 @@ Copy them, then run `/reload`. Nothing is needed on the players' side.
    - Keep it well away from world spawn.
    - The Overworld is best: Inspectors there are vindicators, pillagers and, later, evokers.
 2. **The portal:** stand where its centre should be and run `/bloodportal buildportal`.
-   - It builds a bedrock basin, 1 deep: a 6x6 rim and floor around an empty 4x4 inside. **It replaces whatever blocks are there.** This is the only change the scripts make to the world, and it only happens when you run it.
-   - **Built your own?** Stand inside its 4x4 (bedrock rim all round) and run `/bloodportal setportal` instead.
+   - It builds a bedrock basin, 1 deep, **centred on you**: a 7x7 rim and floor around an empty **5x5** inside (`PORTAL_SIZE`). **It replaces whatever blocks are there.** This is the only change the scripts make to the world, and it only happens when you run it.
+   - **Built your own?** Stand inside it (a square from 3x3 to 9x9, with a bedrock rim all round) and run `/bloodportal setportal` instead. It works out the size.
+   - **Already built a 4x4 one** before this change? It keeps working as 4x4. To switch to 5x5, stand where the new centre should be and run `/bloodportal buildportal` again, then clear the old basin by hand.
 3. **Check:** `/cleanslate status` and `/bloodportal status` should show the arena and the portal.
 
 Nothing else is needed. The first time the dragon dies, Protocol Clean Slate starts by itself. `/cleanslate start` is the backup.
@@ -192,6 +193,7 @@ Signed books ("written by" The Ministry of Trolling (CLASSIFIED)) with a red "CL
 | `DRAGON_DROPS_BILL` | true | |
 | `BILL_LINE_DELAY_SECONDS` | 40 | The public hijacked line about the bill, this long after the kill |
 | `ARENA_RADIUS` | 32 | |
+| `PORTAL_SIZE` | 5 | How wide the blood is in a basin made with `buildportal` (a bedrock rim goes round it) |
 | `BLOOD_BLOCK` / `BLOOD_FALLBACK` | `evilcraft:blood` / red stained glass | |
 | `WAVES` | 3 → 14 alive, groups of up to 8, tiers at 0/33/66% | |
 | `KILLS_TO_FILL` | 40 | |
@@ -221,7 +223,7 @@ Times are real time, so restarts and `/reload` lose nothing.
 7. **Books:** `/bloodportal archive give <you> all` and read all 11.
 
 ## What couldn't be verified for KubeJS 6 on 1.20.1
-A mock-server test passed 89 checks:
+A mock-server test passed 91 checks:
 - the test run;
 - the start from the dragon and from `/story`;
 - cancel, extend, pause and resume;
@@ -232,7 +234,7 @@ A mock-server test passed 89 checks:
 - the hijacked lines sending players to the End City chests, the 6-hour Relic reminders with the count, and no reminders once the Relics are gathered;
 - Relics and books in chests (only unlooted End City treasure chests, Quark purpur chests included, least-found first, never the bill; other loot tables logged and skipped);
 - unlocking with all ten in one inventory but not split between two players;
-- the arena, the portal built and found;
+- the arena, the 5x5 portal built (centred) and found, the edge counting as inside, and an old 4x4 portal staying 4x4;
 - the event: teleport, spawn, Inspectors through portal_ambush, points, full, fallback blood, hypixel;
 - escaping, the exodus file, the kick and the rejoin kick;
 - `/reload` mid-countdown;

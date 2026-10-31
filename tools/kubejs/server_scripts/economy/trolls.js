@@ -38,7 +38,8 @@ const REVENGE = { multiplier: 2, hours: 24 }                // a victim who trol
 const REPEAT = { hours: 24, factors: [1, 0.5, 0.25] }       // the same troller and victim: 1st, 2nd, 3rd+ in 24 h
 const GOOD_SPORT = 0.1                                      // the victim's share, as personal points (no coins)
 const SKIP_AFK = true                                       // no credit for trolling an AFK player
-const SKIP_SAME_IP = true                                   // ...or a player on the same IP (alts)
+const SKIP_SAME_IP = true                                   // ...or a player on the same IP (alts; false if players share a house)
+const TELL_SKIPS = true                                     // tell the troller when a troll doesn't count, and why
 const REPORT = { witnessesNeeded: 1, maxText: 120, expireDays: 14 }
 const RECAP_DAYS = 7                                        // the Ministry's weekly recap
 const LOG_SIZE = 500
@@ -164,6 +165,16 @@ function crossFaction(a, b) {
   return !!fa && !!fb && fa != def && fb != def && fa != fb
 }
 function ipOf(p) { try { return String(p.getIpAddress()) } catch (e) { return '' } }
+// A real player (not a { uuid, name } record). Its .name is a text component in KubeJS, so it's never read directly.
+function isPlayer(x) { try { return typeof x.getGameProfile == 'function' } catch (e) { return false } }
+// A troll that doesn't count: kept for /trolls check, written to the log, and (TELL_SKIPS) explained to the troller.
+function skip(reason, text, tp, tn, vn, def) {
+  S.lastSkip = reason
+  S.skips = (S.skips || []).concat([{ t: Date.now(), by: tn, on: vn, type: def ? def.name : '?', reason: reason }]).slice(-10)
+  console.info('[Trolls] Not counted (' + reason + '): ' + tn + ' -> ' + vn + (def ? ' (' + def.name + ')' : ''))
+  if (TELL_SKIPS && tp && text) say(tp, VOICE_LOG, (def ? def.name + ' on ' + vn : 'Troll') + ' not counted: ' + text)
+  return null
+}
 function payCoins(server, u, n) {
   if (n <= 0) return
   const p = playerByUuid(server, u), e = E()
@@ -179,18 +190,22 @@ function record(troller, victim, type, opts) {
   const server = Utils.server, def = TROLL_TYPES[type]
   S.lastSkip = ''
   if (!def || !troller || !victim) { S.lastSkip = 'unknown troll'; return null }
-  const tu = troller.uuid ? String(troller.uuid) : uuidOf(troller)
-  const vu = victim.uuid ? String(victim.uuid) : uuidOf(victim)
   const D = db()
-  const tn = troller.name ? String(troller.name) : (troller.uuid ? (D.players[tu] ? D.players[tu].name : '?') : nameOf(troller))
-  const vn = victim.name ? String(victim.name) : (victim.uuid ? (D.players[vu] ? D.players[vu].name : '?') : nameOf(victim))
-  if (!tu || !vu || tu == vu) { S.lastSkip = 'self'; return null }
+  const tu = isPlayer(troller) ? uuidOf(troller) : String(troller.uuid || '')
+  const vu = isPlayer(victim) ? uuidOf(victim) : String(victim.uuid || '')
+  const tn = isPlayer(troller) ? nameOf(troller) : (troller.name ? String(troller.name) : (D.players[tu] ? D.players[tu].name : '?'))
+  const vn = isPlayer(victim) ? nameOf(victim) : (victim.name ? String(victim.name) : (D.players[vu] ? D.players[vu].name : '?'))
   const tp = server ? playerByUuid(server, tu) : null, vp = server ? playerByUuid(server, vu) : null
+  if (!tu || !vu || tu == vu) return skip('self', '', null, tn, vn, def)
   if (!opts.manual) {
     if (SKIP_AFK && vp && E() && E().isAfk) {
-      try { if (E().isAfk(vp)) { S.lastSkip = 'afk'; return null } } catch (e) { }
+      let afk = false
+      try { afk = !!E().isAfk(vp) } catch (e) { }
+      if (afk) return skip('afk', vn + ' has been AFK (not moving) for a few minutes.', tp, tn, vn, def)
     }
-    if (SKIP_SAME_IP && vp && tp && ipOf(vp) && ipOf(vp) == ipOf(tp)) { S.lastSkip = 'same ip'; return null }
+    if (SKIP_SAME_IP && vp && tp && ipOf(vp) && ipOf(vp) == ipOf(tp)) {
+      return skip('same connection', 'you and ' + vn + ' are on the same internet connection, and alts don\'t count.', tp, tn, vn, def)
+    }
   }
   const now = Date.now()
   let pts = opts.points != null ? Number(opts.points) : def.points + (def.perCurse || 0) * (opts.curses || 0)
@@ -388,7 +403,31 @@ ServerEvents.commandRegistry(event => {
     .executes(showMe)
     .then(Commands.literal('log').executes(showLog))
     .then(Commands.literal('top').executes(showTop))
-    .then(Commands.literal('me').executes(showMe)))
+    .then(Commands.literal('me').executes(showMe))
+    .then(Commands.literal('check').requires(op).executes(safe(ctx => {
+      const server = ctx.source.server, e = E()
+      reply(ctx, 'Black market: ' + (!e ? 'NOT LOADED (economy/black_market.js), so nothing is logged automatically.'
+        : typeof e.isAfk == 'function' ? 'connected (the version that logs trolls).'
+          : 'an OLD version: it doesn\'t send trolls here. Upload the new economy/black_market.js and /reload.'), !e || typeof e.isAfk != 'function')
+      reply(ctx, 'Rules: AFK victims ' + (SKIP_AFK ? 'don\'t count' : 'count') + '; same connection ' + (SKIP_SAME_IP ? 'doesn\'t count' : 'counts') + '.')
+      const all = onlinePlayers(server), groups = {}
+      all.forEach(p => {
+        let ip = ipOf(p)
+        if (ip) (groups[ip] = groups[ip] || []).push(nameOf(p))
+      })
+      reply(ctx, 'Online: ' + (all.length ? all.map(p => {
+        let afk = false
+        try { afk = !!(e && e.isAfk && e.isAfk(p)) } catch (err) { }
+        return nameOf(p) + (afk ? ' (AFK)' : '')
+      }).join(', ') : 'nobody') + '.')
+      const shared = Object.keys(groups).filter(k => groups[k].length > 1).map(k => groups[k].join(' + '))
+      reply(ctx, 'Sharing a connection: ' + (shared.length ? shared.join('; ') : 'nobody') + '.')
+      const sk = S.skips || []
+      reply(ctx, sk.length ? 'Not counted lately:' : 'No trolls refused since the last /reload. If a troll shows nothing at all, it never reached the log.')
+      sk.slice().reverse().forEach(x => reply(ctx, '  ' + ago(Date.now() - x.t) + ': ' + x.type + ', ' + x.by + ' -> ' + x.on + ': ' + x.reason))
+      reply(ctx, 'Logged so far: ' + db().log.length + ' trolls.')
+      return 1
+    }))))
 
   event.register(Commands.literal('troll')
     .then(Commands.literal('report').then(word('victim').then(rest('what').executes(asPlayer((ctx, p) => done(ctx, report(ctx.source.server, p, str(ctx, 'victim'), str(ctx, 'what'))))))))

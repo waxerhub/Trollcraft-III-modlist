@@ -36,7 +36,9 @@ Copy them and run `/reload`.
    - An approved report counts at the full points the op gave, and pays 1 coin per 100 points.
 
 ## The rules
-- **Nothing counts** for trolling yourself, an AFK player, or a player on the same IP (alts).
+- **Nothing counts** for trolling yourself, a player who has been AFK (not moving or turning) for 5 minutes, or a player on the same internet connection (alts).
+  - The troller is told why, for example "Disguised TNT on Bo not counted: Bo has been AFK (not moving) for a few minutes." (`TELL_SKIPS`).
+  - **Testing with a second account on your own connection never counts.** Test with someone on another connection, or set `SKIP_SAME_IP = false` for the test (and for good, if players share a house).
 - **The same troller and victim within 24 hours:** the second troll counts half, the third and later a quarter, and the coins shrink the same way.
 - **Revenge:** a victim who trolls their troller back within 24 hours scores double.
 - **Cross-faction trolls** are marked in the log (`cross: true`), for Part II's Blood Pool bonus. The mark is never shown, so nothing can give away who's in the (secret) Syndicate.
@@ -56,6 +58,7 @@ Every 7 days the Ministry sums up: "This week, N incidents of Unlicensed Humour 
 | `/trolls top` | anyone | The leaderboard |
 | `/troll report <victim> <what>`, `/troll witness <n>` | players | Reports |
 | `/troll pending`, `/troll approve <n> <points>`, `/troll deny <n>` | op | Judging reports |
+| `/trolls check` | op | Troubleshooting: whether the black market is connected (and not an old version), who online is AFK, who shares a connection (names only, never addresses), the last 10 trolls that didn't count and why, and how many are logged |
 
 ## Settings (top of trolls.js)
 
@@ -65,14 +68,23 @@ Every 7 days the Ministry sums up: "This week, N incidents of Unlicensed Humour 
 | `REVENGE` | ×2 within 24 h | |
 | `REPEAT` | 24 h: 1, 0.5, 0.25 | The same victim again |
 | `GOOD_SPORT` | 0.1 | The victim's share |
-| `SKIP_AFK`, `SKIP_SAME_IP` | true | |
+| `SKIP_AFK`, `SKIP_SAME_IP` | true | Set `SKIP_SAME_IP = false` if real players share a connection |
+| `TELL_SKIPS` | true | Tell the troller when a troll doesn't count |
 | `REPORT` | 1 witness, 120 characters, closed reports kept 14 days | |
 | `RECAP_DAYS` | 7 | |
 
 ## Saved data
 `persistentData["trolls"]`: the last 500 trolls, each player's totals, reports, the 24-hour history, coins owed, and the week's count. It survives restarts and `/reload`.
 
-## Test plan (three players: A Syndicate, B Crownsworn, C anyone)
+## When trolls aren't being logged
+Run `/trolls check` as an op.
+- **"Black market: NOT LOADED" or "an OLD version":** upload the new `economy/black_market.js` and `/reload`. Only the new one sends trolls to the log.
+- **The troll is in "Not counted lately":** the reason is given. If it says `afk`, the victim must have moved in the last 5 minutes. If it says `same connection`, use players on different connections, or set `SKIP_SAME_IP = false`.
+- **Nothing at all, and the black market is connected:** the troll never reached the log. Send me the server log lines with `[BlackMarket]` or `[Trolls]`.
+
+Cursed Food bought before the new black market was installed has no buyer recorded, so eating it is never logged.
+
+## Test plan (three players: A Syndicate, B Crownsworn, C anyone, all on different connections, all moving)
 1. A sends B an Anonymous Summons: A is told "+50 points, +1 Hush Coin"; B isn't told who. The log entry is marked `cross` (only visible in the saved data).
 2. A sends B two more: 25, then 13 points.
 3. B sends A one: revenge, double.
@@ -82,9 +94,10 @@ Every 7 days the Ministry sums up: "This week, N incidents of Unlicensed Humour 
 7. `/trolls log` as C (anonymous) and as an op (names); `/trolls top`; `/trolls me`.
 
 ## What couldn't be verified for KubeJS 6 on 1.20.1
-A mock-server test passed all 42 checks for this script and story.js:
+A mock-server test passed all 47 checks for this script and story.js:
 - logging summons, cursed food (with and without a buyer) and Mimic Chests;
-- self, alt (same IP) and offline payouts;
+- self, alt (same IP) and AFK refusals, each explained to the troller, and `/trolls check` (including spotting an old black market);
+- offline payouts;
 - diminishing returns and revenge;
 - the hidden cross-faction mark;
 - reports from filing to approval and denial;

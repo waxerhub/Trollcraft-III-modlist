@@ -2,7 +2,7 @@
 
 Every troll is logged, scored and paid.
 
-**The Blood Pool is saved for Part II's progression lock tree** (see [STORY.md](../../STORY.md)), so it isn't in Part I. Each player's lifetime points are kept, and trolls on the other faction are marked (hidden), so Part II can build its pool from them. An earlier copy of the pool in saved data is left untouched.
+**The Blood Pool is Part II's progression lock tree** (`part2/blood_pool.js`, see [BLOOD_POOL.md](BLOOD_POOL.md)), so it isn't in Part I. When that script is installed, every logged troll adds its points to the Pool. Each player's lifetime points are kept, and trolls on the other faction are marked (hidden), so Part II can build its pool from them. An earlier copy of the pool in saved data is left untouched.
 
 ## Files
 

@@ -170,8 +170,8 @@ Starts with `/story act next`.
 ## PART II: Technoblade Never Dies
 Everyone stands together under Techno's banner. There are no Loyalists. The Ministry becomes a non-player enemy: its Inspectors and the Minister.
 
-### Blood for the Blood God: the Blood Pool 🔨
-**All progression in Part II is locked.** Tiers open only through the server-wide **Blood Pool**.
+### Blood for the Blood God: the Blood Pool ✅ engine, *TBD* tier contents (`part2/blood_pool.js`, see [BLOOD_POOL.md](tools/kubejs/BLOOD_POOL.md))
+**All progression in Part II is locked.** Tiers open only through the server-wide **Blood Pool**. It starts at 0: Part I troll points don't count (owner decision); they only become legacy titles.
 - **It's filled by:**
   - **trolls:** each logged troll adds its value as Drops of Blood (see [Scoring](#scoring));
   - **Hush Coins:** donated at **1,000 Drops each**, a sink for the economy.
@@ -180,7 +180,7 @@ Everyone stands together under Techno's banner. There are no Loyalists. The Mini
   - its recipes are removed;
   - its blocks and items can't be placed or used.
 
-  Tiers are defined as lists of mods, items or recipes.
+  Tiers are defined as lists of mods, items and tags (settings in `blood_pool.js`, filled in once the Part II modpack is chosen). Getting a sealed item (loot, trades) is allowed; crafting, placing, using, hitting with and wearing it aren't.
 - **The pace:** about 9 contributors, about 8 weeks, **12 tiers, about 1.5 million Drops in total**.
   - **Estimate:** about 25,000 Drops a day (about 30 trolls a day, plus about 20 coins a day).
   - **Cumulative thresholds** (settings, to be tuned):
@@ -203,7 +203,7 @@ Everyone stands together under Techno's banner. There are no Loyalists. The Mini
   - **What each tier unlocks will be ranked once the Part II modpack is put together.** The only fixed point: **Tier 12 is the Siege**, when the Citadel's Bureaucratic Barrier falls.
 
 ### Act I: The Awakening
-34. **Waking Up:** players arrive in the new world through the Blood Portal. They get back what Part II allows of the inventory they carried through (saved by the Blood Portal), and their legacy:
+34. **Waking Up:** players arrive in the new world through the Blood Portal. Each picks **9 items** from the inventory they carried through (saved by the Blood Portal; only items whose mod is still in the pack), and gets their legacy:
     - titles such as "Survivor of the Clean Slate", "Founder of the Syndicate" and "Grand Trollmaster";
     - their Part I trial records, now evidence of the Ministry's crimes.
 
@@ -271,12 +271,16 @@ Needs Blood Pool Tier 12 and the full Regalia.
 1. ✅ **Batch 1:** `story.js` (acts and decrees) and `economy/trolls.js` (the Troll Log, payouts, reports). The Blood Pool was taken out again and saved for Part II.
 2. ✅ **The finale (built before batch 2):** `clean_slate.js` and `events/blood_portal.js`: the dragon-kill trigger, the Archive books and Draft Bill 9-D, the Blood Relics, the 4-day countdown and the burning world, the Blood Portal event, and the exodus files.
 3. 🔨 **Batch 2:** the **Scout NPC** and his testimony; op-run **events** (Prank Purge, Mandatory Fun Day, the Trolling Moratorium, a Ministry Meltdown).
-4. Part II (with the new modpack):
-   - the **Blood Pool and tier lockdown**;
-   - inventory and legacy import (the Blood Portal's exodus files);
-   - the Shrine and relic tracker;
-   - the Seizure;
-   - the Minister fight.
+4. **Part II** (same platform: MC 1.20.1, Forge, KubeJS 6). Scripts go in `part2/`. In order:
+   1. ✅ **The Blood Pool and tier locks** (`part2/blood_pool.js`). The tier contents wait for the Part II modpack.
+   2. 🔨 **A Part I patch, before the finale is played:** the exodus files also save trial records and what titles need.
+   3. 🔨 **Arrival** (`part2/arrival.js`): a 9-item satchel picked from the saved inventory (only items still in the pack), legacy titles, and trial records as books.
+   4. 🔨 **The Part II story driver** (`story.js` with Part II acts).
+   5. 🔨 **The Ministry as the enemy** (`part2/ministry.js`): Inspectors raid everyone, Ministry bounties, and trolls on Ministry NPCs.
+   6. 🔨 **The Shrine and the Regalia** (`part2/shrine.js`): `/regalia`, the deliveries, Shrine raids, the Seizure and the Outpost raid.
+   7. 🔨 **Events:** Prank Purges, shared with Part I's batch 2.
+   8. 🔨 **The Citadel and the Minister** (`part2/citadel.js`): the Bureaucratic Barrier, the phased fight, and the Crown Restored.
+   9. 🔨 **The ruins:** lore books.
 
 ## Open decisions
 - **Events:** how long the Moratorium lasts, and what a Ministry Meltdown gives.

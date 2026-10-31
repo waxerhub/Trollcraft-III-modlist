@@ -242,6 +242,11 @@ function record(troller, victim, type, opts) {
   if (tp) say(tp, VOICE_LOG, 'Troll logged: ' + def.name + ' on ' + vn + '. +' + pts + ' points' + (coinPay ? ', +' + coins(coinPay) : '') +
     (revenge ? ' (revenge!)' : factor < 1 ? ' (same victim again: less)' : '') + '.')
   console.info('[Trolls] ' + tn + ' trolled ' + vn + ' (' + type + '): ' + pts + ' points, ' + coinPay + ' coins')
+  // Part II: every troll fills the Blood Pool (part2/blood_pool.js), if it's installed.
+  const BP = global.BloodPool
+  if (BP && BP.addDrops) {
+    try { BP.addDrops(pts, 'troll', tu, tn) } catch (e) { console.error('[Trolls] Blood Pool: ' + e) }
+  }
   return entry
 }
 

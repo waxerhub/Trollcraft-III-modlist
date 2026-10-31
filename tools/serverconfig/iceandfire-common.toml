@@ -96,7 +96,7 @@
 		#True if tamed dragons go to sleep at night.
 		"Tamed Dragons Sleep" = true
 		#True if dragons can break blocks if they get stuck. Turn this off if your dragons randomly explode.
-		"Dragons Dig When Stuck" = false
+		"Dragons Dig When Stuck" = true
 		#True if dragons can drop their skull on death.
 		"Dragons Drop Skull" = true
 		#True if dragons can drop their heart on death.

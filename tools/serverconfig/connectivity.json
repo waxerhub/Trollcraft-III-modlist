@@ -1,0 +1,60 @@
+{
+  "disableLoginLimits": {
+    // Should login packet size limits be disabled? Error:(IOException("Payload may not be larger than 1048576 bytes")) 
+    // Default:true
+    "disableLoginLimits": true
+  },
+
+  "disablePacketLimits": {
+    // Should play packet size limits be disabled? Error:(Badly compressed packet) 
+    // Default:true
+    "disablePacketLimits": true
+  },
+
+  "disableChatVerificationDisconnect": {
+    // (Clientside) Disables players disconnecting on chat message verification problems,
+    // (enable debugPrintMessages to see the message causing issues). 
+    // Default:true
+    "disableChatVerificationDisconnect": true
+  },
+
+  "debugPrintMessages": {
+    // Enable addition debug logging for networking errors. 
+    // Default:false
+    "debugPrintMessages": false
+  },
+
+  "logintimeout": {
+    // Set the max login timeout in seconds. 
+    // Default = 120
+    // TROLLCRAFT: was 120. The mod handshake alone took 38-51 s on a fast PC; slower PCs need more room.
+    "logintimeout": 300
+  },
+
+  "disconnectTimeout": {
+    // Set the ingame disconnect timeout for disconnecting players. 
+    // Default = 60sec
+    // TROLLCRAFT: was 60. Players were kicked ("Timed out") 58 s after joining: right after login the client spends
+    // ~46 s on the recipe/tag sync and JEI's rebuild and can't answer the server meanwhile. 180 s gives slow PCs room.
+    "disconnectTimeout": 180
+  },
+
+  "packetHistoryMinutes": {
+    // Set the amount of minutes for which network packet history data is saved. 
+    // Default = 5 minutes
+    "packetHistoryMinutes": 5
+  },
+
+  "malformedtraffic": {
+    // Detection and blocking of malformed and/or malicious traffic
+    "enabled": true,
+    "proxies:": "Add your proxy IP to the whitelist below, if you're using one(e.g. velocity) to avoid blocking the proxy's ip. Format: [\"127.0.0.1\", \"128.0.01\"] without the \\ ",
+    "proxywhitelist": []
+  },
+
+  "showFullResourceLocationException": {
+    // Enable to see the full log output for all resource location exceptions. 
+    // Default = false
+    "showFullResourceLocationException": false
+  }
+}

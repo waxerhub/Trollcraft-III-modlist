@@ -180,6 +180,7 @@ Everyone stands together under Techno's banner. There are no Loyalists. The Mini
 - **A locked tier blocks crafting only** (owner decision): its recipes are removed in every recipe type. Sealed items that players find, loot or trade for work normally.
 
   The tiers are lists of mods, items, tags and recipe ids in `blood_pool.js`, filled from the progression research ([research/TIER_PROPOSAL.md](research/TIER_PROPOSAL.md)). Twilight Forest and Tinkers are open from day 0 (gear tiered by item); ironwood is open.
+- **The tank** (`part2/blood_tank.js`): a tower of chiseled nether bricks, glass and nether gold ore whose 3×3×6 chamber fills one layer of blood for every 2 tiers, full at the Siege.
 - **Dimensions:** the **Nether opens at Tier 3** and the **End at Tier 9** (owner decision). Until then Nether portals don't light, Eyes of Ender can't be crafted, and anyone who gets in is sent back.
 - **The pace:** about 9 contributors, **12 tiers, 3 million Drops in total** (thresholds doubled, owner decision).
   - **Estimate:** about 25,000 Drops a day from trolls and coins, plus up to 30,000 a day from the Potato Tithe: **about 8 weeks if the server farms, about 17 if it only trolls**.

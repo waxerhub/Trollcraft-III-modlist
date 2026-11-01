@@ -483,6 +483,8 @@ function setTier(server, n, by, announceIt) {
   save()
   const G = global.DimensionGates
   if (G) { try { G.sync(server, announceIt) } catch (e) { console.error('[BloodPool] dimension gates: ' + e) } }
+  const K = global.BloodTank
+  if (K) { try { K.sync(server, true) } catch (e) { console.error('[BloodPool] tank: ' + e) } }
   console.info('[BloodPool] Tier set to ' + D.tier + ' by ' + by + '; reloading')
   server.scheduleInTicks(RELOAD_DELAY_TICKS, () => { try { server.runCommandSilent('reload') } catch (e) { console.error('[BloodPool] reload: ' + e) } })
 }

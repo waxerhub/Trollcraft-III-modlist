@@ -15,6 +15,7 @@ See [STORY.md](../../STORY.md). The tier contents come from the progression rese
 |---|---|---|
 | `server_scripts/part2/blood_pool.js` | `kubejs/server_scripts/part2/` | The Pool, the tiers, the locks and the Potato Tithe. Settings and the tier lists are at the top |
 | `server_scripts/part2/dimension_gates.js` | `kubejs/server_scripts/part2/` | The Nether and End gates (see "Dimensions") |
+| `server_scripts/part2/blood_tank.js` | `kubejs/server_scripts/part2/` | The tank: a tower that fills with blood as tiers open (see "The tank") |
 | `startup_scripts/nether_portal_whitelist.js` | `kubejs/startup_scripts/` | Stops Nether portals lighting while the Nether is sealed. **Restart** after adding it. For Part II, empty its `ALLOWED_PORTALS` list (its two entries are Part I's event portals) |
 | `server_scripts/economy/trolls.js` | `kubejs/server_scripts/economy/` | Every logged troll fills the Pool |
 | `server_scripts/economy/black_market.js` | (as Part I) | Hush Coins for donations |
@@ -116,6 +117,24 @@ At server start, recipes load **before** the world and its saved data, so the re
 - **When the tier opens,** the dimension opens at once and a Ministry line announces it. `settier` changes it quietly.
 - **Portals lit before the gate closes** keep their frame. Anyone who uses one is just sent back.
 
+## The tank (`blood_tank.js`)
+A tower in the world shows the Pool. It's 5 × 5 and 8 tall:
+```
+roof (top)   5x5 chiseled nether bricks
+6 layers     corners: nether gold ore · sides: glass (3 wide) · inside: the 3x3 chamber
+floor        5x5 chiseled nether bricks
+```
+- **One layer of blood for every 2 tiers opened.** Tier 2 fills 1 layer, Tier 4 fills 2, and Tier 12 fills all 6.
+  - **The blood** is EvilCraft's (`evilcraft:blood`). If it can't be placed, red stained glass is used instead.
+  - **When a tier opens,** the new layer rises with a bubbling sound and red particles.
+  - **When the tier goes down** with `settier`, it drains again.
+- **Building it:**
+  - `/bloodtank build <x y z>` builds the tower with its floor centred on that block (`~ ~ ~5` works) and fills it.
+  - `/bloodtank add <x y z>` registers one you built by hand (the position is the floor's centre block). It checks the build first and names the first wrong block.
+- **Several tanks** can be registered (e.g. at spawn and at the Shrine).
+- **Unloaded tanks:** a tank whose area isn't loaded when a tier opens is filled when a player next comes within 48 blocks. A check every 10 s also repairs a tank that's out of step.
+- **Protection:** players who aren't ops can't break or place blocks in a tank ("The Blood Pool is Ministry evidence"). Ops can.
+
 ## Commands
 
 | Command | Who | |
@@ -131,6 +150,8 @@ At server start, recipes load **before** the world and its saved data, so the re
 | `/bloodpool settier <0-12>` | op | Set the open tier directly, quietly (testing, or undoing a mistake); reloads |
 | `/bloodpool add <drops>`, `/bloodpool set <drops>` | op | Adjust the Pool |
 | `/dimensiongates` | op | What's open; re-applies the Nether switch |
+| `/bloodtank build <x y z>`, `/bloodtank add <x y z>` | op | Build a tank, or register a hand-built one |
+| `/bloodtank list`, `/bloodtank remove <n>`, `/bloodtank refill` | op | The tanks and their fill; unregister one (its blocks stay); re-apply the fill |
 
 ## Settings
 
@@ -149,6 +170,9 @@ At server start, recipes load **before** the world and its saved data, so the re
 | `TIER_FILE` | `kubejs/blood_pool_tier.json` | |
 | `RELOAD_DELAY_TICKS` | 20 | Between the unlock announcement and `/reload` |
 | `dimension_gates.js`: `CHECK_TICKS`, `EXEMPT_OPS` | 20, true | How often sealed dimensions are checked (1 s); ops exempt |
+| `blood_tank.js`: `TIERS_PER_LAYER`, `BLOOD_BLOCK`, `BLOOD_FALLBACK` | 2, `evilcraft:blood`, red stained glass | The fill rule and the blood |
+| `blood_tank.js`: `FLOOR_BLOCK`, `ROOF_BLOCK`, `CORNER_BLOCK`, `SIDE_BLOCK` | chiseled nether bricks, nether gold ore, glass | The design (`add` checks against these) |
+| `blood_tank.js`: `LOOP_SECONDS`, `NEAR`, `PROTECT` | 10, 48, true | The repair check, how close counts as loaded, protection |
 
 ## Saved data
 - **`persistentData["blood_pool"]`:**
@@ -159,6 +183,7 @@ At server start, recipes load **before** the world and its saved data, so the re
   - the tithe day and its totals (server-wide and per player).
 - **`kubejs/blood_pool_tier.json`:** a copy of the open tier, for the recipe step.
 - **`persistentData["trollcraft_nether_unlocked"]`:** the Nether portal switch (kept in step by `dimension_gates.js`).
+- **`persistentData["blood_tank"]`:** the registered tanks (dimension, floor centre, layers filled).
 
 ## Test plan (an op and a player)
 1. **`/bloodpool tiers`:** 12 tiers from 20,000 to 3,000,000, with the Nether at 3 and the End at 9.
@@ -175,17 +200,31 @@ At server start, recipes load **before** the world and its saved data, so the re
    - after the reload, Immersive Engineering and steel recipes are back, but Mekanism's are still gone.
 5. **Mystical Agriculture and Tinkers:** at Tier 4, the steeleaf Tinkers material casts, and Mystical Agriculture's steel seed recipe exists. The cobalt material still doesn't cast.
 6. **Restart the server:** the tier stays open (the file), and the Nether stays open.
-7. **`/bloodpool settier 0`** puts everything back, including the Nether switch.
+7. **The tank:** stand in an open space and run `/bloodtank build ~ ~ ~5`.
+   - `/bloodpool settier 2`: one layer of blood.
+   - `settier 12`: full.
+   - `settier 0`: empty.
+   - As a non-op, try to break the glass: refused.
+8. **`/bloodpool settier 0`** puts everything back, including the Nether switch.
 
 ## What couldn't be verified for KubeJS 6 on 1.20.1
-A mock-server test passed 36 checks:
+A mock-server test passed 56 checks:
 - the real tier list (sealed mods, items, tags, and recipe rules both exact and regex);
 - items listed later than their mod staying sealed after it opens;
 - the chestplates;
 - the Potato Tithe: crates and change, whole Drops, negative and too-large amounts, the 30,000 cap, the 4 am Central rollover, credit;
 - the Nether switch following the tier;
 - players sent back from sealed dimensions, ops exempt;
-- the opening announcement, `/dimensiongates`, and no stacked loops after `/reload`.
+- the opening announcement, `/dimensiongates`, and no stacked loops after `/reload`;
+- the tank:
+  - the build;
+  - the fill at tiers 0, 1, 2, 4, 5 and 12, and draining;
+  - the rising effect;
+  - the red-glass fallback;
+  - repair of an out-of-step tank;
+  - an unloaded tank filled when a player comes near;
+  - `add` naming a wrong block, and `~` positions;
+  - protection.
 
 These depend on the real game:
 - **Regex recipe ids:** `event.remove({ id: /regex/ })` with a JS regex. If KubeJS ignores a regex, those materials, essences and seeds stay craftable (check the Tinkers steel material at Tier 0).
@@ -195,3 +234,7 @@ These depend on the real game:
 - **AlmostUnified:** check its config so no `forge:ingots/*` tag unifies to a sealed mod's item.
 - **The Dragon Heart:** test one dragon kill before Tier 10 matters. The dragon-fight mods may change the drop.
 - **Running `reload` from a script**, and **JsonIO** writing the tier file, as before.
+- **The tank:**
+  - whether EvilCraft's blood places as a still source in each cell and looks right through the glass (otherwise set `BLOOD_BLOCK` to the fallback);
+  - the `<x y z>` argument (KubeJS's block-position argument);
+  - that `fill` can only reach loaded areas (by design; the repair check covers it).

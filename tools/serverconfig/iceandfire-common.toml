@@ -9,9 +9,11 @@
 		"Generate Dragon Skeleton Chance" = 300
 		#1 out of this number chance per chunk for generation
 		#Range: 1 ~ 10000
+		#TROLLCRAFT: was 180. fewer dragon caves (dragons are heavy entities)
 		"Generate Dragon Cave Chance" = 360
 		#1 out of this number chance per chunk for generation
 		#Range: 1 ~ 10000
+		#TROLLCRAFT: was 360. fewer dragon roosts
 		"Generate Dragon Roost Chance" = 600
 		#1 out of this number chance per block that gold will generate in dragon lairs.
 		#Range: 1 ~ 10000
@@ -26,6 +28,7 @@
 		"Dangerous World Gen Dist From Spawn" = 800
 		#How far away dangerous structures(dragon roosts, cyclops caves, etc.) must be from the last generated structure.
 		#Range: 1 ~ 10000
+		#TROLLCRAFT: was 300. dangerous structures further apart
 		"Dangerous World Gen Dist Seperation" = 500
 		#Whether to generate glacier biomes or not
 		"Generate Glaciers" = true
@@ -44,6 +47,7 @@
 	[Dragons.Griefing]
 		#Dragon griefing - 2 is no griefing, 1 is breaking weak blocks, 0 is default. This value is also affected by minecrafts mob griefing rule.
 		#Range: 0 ~ 2
+		#TROLLCRAFT: was 0. 2 = dragons break no blocks (no lag spikes or crater griefing)
 		"Dragon Griefing" = 2
 		#True if tamed dragons can follow the griefing rules.
 		"Tamed Dragon Griefing" = true
@@ -80,6 +84,7 @@
 		#Range: 0.0 ~ 2.0
 		"Dragon Flight Speed Modifier" = 1.0
 		#Enable this if your server is being bombarded with moved wrongly or moved too fast console messages. REQUIRES RESTART!
+		#TROLLCRAFT: was false. stops "moved wrongly" log spam and rubber-banding
 		"Dragon Moved Wrongly Error Fix" = true
 
 	[Dragons.Behaviour]
@@ -107,6 +112,7 @@
 		"Explosive Dragon Breath" = false
 		#How many blocks away can dragons spot potential prey. Note that increasing this could cause lag.
 		#Range: 1 ~ 10000
+		#TROLLCRAFT: was 128. smaller target search per dragon
 		"Dragon Target Search Length" = 64
 		#How many blocks away can dragons wander from their defined "home" position.
 		#Range: 1 ~ 10000
@@ -129,7 +135,8 @@
 	[Mobs.Pixies]
 		#1 out of this number chance per chunk for generation
 		#Range: 1 ~ 10000
-		"Spawn Pixies Chance" = 60
+		#TROLLCRAFT: was 60. moderately fewer pixie villages (pixies were in the spark profile)
+		"Spawn Pixies Chance" = 90
 		#size of pixie villages
 		#Range: 1 ~ 10000
 		"Pixie Village Size" = 5
@@ -156,6 +163,7 @@
 		#Range: 1.0 ~ 10000.0
 		"Cyclops Bite Strength" = 40.0
 		#Whether or not cyclops can break logs or leaves in their way
+		#TROLLCRAFT: was true. no block breaking
 		"Cyclops Griefing" = false
 
 	[Mobs.Sirens]
@@ -177,6 +185,7 @@
 	[Mobs.DeathWorms]
 		#How many blocks away can death worms spot potential prey. Note that increasing this could cause lag
 		#Range: 1 ~ 10000
+		#TROLLCRAFT: was 64. smaller target search (death worm AI was Ice and Fire's top cost in the spark profile)
 		"Death Worm Target Search Length" = 48
 		#Default deathworm health, this is scaled to the worm's particular size
 		#Range: 1.0 ~ 10000.0
@@ -188,6 +197,7 @@
 		"Death Worms Target Monsters" = true
 		#Deathworm spawn weight. Higher = lower chance to spawn
 		#Range: 1 ~ 10000
+		#TROLLCRAFT: was 30. higher = rarer here; moderately fewer death worms
 		"Death Worm Spawn Weight" = 45
 
 	[Mobs.Cockatrice]
@@ -208,6 +218,7 @@
 	[Mobs.Stymphalians]
 		#How many blocks away can stymphalian birds spot potential prey. Note that increasing this could cause lag.
 		#Range: 1 ~ 10000
+		#TROLLCRAFT: was 64. smaller target search
 		"Stymphalian Bird Target Search Length" = 48
 		#1/this number chance for a stymphalian feather to turn into an item before despawning. Zero means never.
 		#Range: 0 ~ 10000
@@ -227,6 +238,7 @@
 		"Stymphalian Birds Target Animals" = false
 		#1 out of this number chance per chunk for generation
 		#Range: 1 ~ 10000
+		#TROLLCRAFT: was 100. moderately fewer stymphalian birds
 		"Spawn Stymhphalian Bird Chance" = 150
 
 	[Mobs.Trolls]
@@ -253,9 +265,11 @@
 		"Myrmex Hatch Length" = 35000
 		#One out of this number chance per chunk to generate a myrmex hive.
 		#Range: 1 ~ 10000
+		#TROLLCRAFT: was 150. fewer myrmex colonies
 		"Myrmex Colony Gen Chance" = 300
 		#How many maximum individuals a myrmex colony can have.
 		#Range: 10 ~ 10000
+		#TROLLCRAFT: was 80. smaller colonies
 		"Myrmex Colony Max Size" = 40
 		#Base Myrmex(worker) attack strength
 		#Range: 1.0 ~ 10000.0
@@ -293,6 +307,7 @@
 		#Range: 1 ~ 10000
 		"Spawn Sea Serpent Chance" = 250
 		#Whether or not sea serpents can break weak blocks in their way
+		#TROLLCRAFT: was true. no block breaking
 		"Sea Serpent Griefing" = false
 		#Default sea serpent health, this is scaled to the sea serpent's particular size
 		#Range: 1.0 ~ 10000.0
@@ -304,6 +319,7 @@
 	[Mobs.Hippocampus]
 		#1 out of this number chance per chunk for generation
 		#Range: 1 ~ 10000
+		#TROLLCRAFT: was 40. moderately fewer hippocampi (in the spark profile)
 		"Spawn Hippocampus Chance" = 60
 		#Change this to slow down or speed up hippocampus swimming.
 		#Range: 0.0 ~ 2.0
@@ -375,6 +391,7 @@
 	#Range: 0.0 ~ 1.0
 	"Easter Egg Tinkers Tool Disarm chance" = 0.20000000298023224
 	#True if the summon crystal can load chunks to find dragons.
+	#TROLLCRAFT: was true. summon crystals no longer keep chunks loaded
 	"Chunk Load Summon Crystal" = false
 	#True if the dragon bone fire sword ignites attackers.
 	"Dragon Bone Fire Abilities" = true
@@ -389,6 +406,7 @@
 	"Dragon Pathfinding Threads" = 3
 	#Maximum nodes for dragons/myrmex to path too. Decrease this is dragon pathfinding is super slow or intensive.
 	#Range: > 1
+	#TROLLCRAFT: was 5000. caps the cost of each dragon path search
 	"Dragon Max Pathfinding Nodes" = 3000
 	#Enables the option to draw the pathfinding nodes when enabled (use a stick on an entity)
 	"Debug Pathfinding Mode" = false

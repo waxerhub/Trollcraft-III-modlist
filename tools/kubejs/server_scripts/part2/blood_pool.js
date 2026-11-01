@@ -79,7 +79,7 @@ const TIERS = [
   { tier: 5, name: 'A Spring', drops: 320000, unlocks: {
       mods: ['thermal', 'enderio'],
       items: [
-        'tconstruct:cobalt_ingot', 'tconstruct:raw_cobalt', 'tconstruct:cobalt_block',
+        'tconstruct:cobalt_ingot', 'tconstruct:raw_cobalt', 'tconstruct:raw_cobalt_block', 'tconstruct:cobalt_block',
         'tconstruct:nether_grout', 'tconstruct:scorched_brick', 'tconstruct:foundry_controller',
         'tconstruct:scorched_alloyer', 'tconstruct:scorched_fuel_gauge', 'tconstruct:scorched_ingot_gauge',
         'mekanism:purification_chamber', 'mekanism:advanced_control_circuit',

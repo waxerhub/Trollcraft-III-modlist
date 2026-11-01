@@ -33,6 +33,9 @@ const TINKERS_MATERIALS = list => new RegExp('^tconstruct:tools/materials/((cast
 // Tinkers casts its metals into ingots, nuggets and blocks with recipes whose result is a TAG (forge:ingots/cobalt),
 // which an item lock may not see, so each sealed metal's casting is also locked by recipe id.
 const TINKERS_CASTING = list => new RegExp('^tconstruct:smeltery/casting/metal/(' + list.join('|') + ')/')
+// Melting a sealed metal in the smeltery or foundry (its ore, raw metal, ingots, nuggets, blocks and gear made of
+// it) is locked too, so locked materials can't enter the smeltery at all until their tier.
+const TINKERS_MELTING = list => new RegExp('^tconstruct:smeltery/melting/(metal/)?(' + list.join('|') + ')/')
 const MA_ESSENCE = (dir, list) => new RegExp('^mysticalagriculture:essence/' + dir + '/(' + list.join('|') + ')$')
 const MA_SEEDS = list => new RegExp('^mysticalagriculture:seed/(infusion|crafting)/(' + list.join('|') + ')$')
 const TIERS = [
@@ -56,7 +59,7 @@ const TIERS = [
         'tconstruct:steel_ingot'],
       tags: ['forge:ingots/steel'],
       recipes: [
-        TINKERS_MATERIALS(['steel']), TINKERS_CASTING(['steel']),
+        TINKERS_MATERIALS(['steel']), TINKERS_CASTING(['steel']), TINKERS_MELTING(['steel']),
         MA_ESSENCE('immersiveengineering', ['hop_graphite_ingot']), MA_ESSENCE('common', ['steel_ingot', 'aluminum_ingot']),
         MA_SEEDS(['steel', 'aluminum', 'hop_graphite'])] } },
 
@@ -73,6 +76,7 @@ const TIERS = [
       tags: [],
       recipes: [
         TINKERS_MATERIALS(['osmium', 'steeleaf']), TINKERS_CASTING(['osmium', 'steeleaf']),
+        TINKERS_MELTING(['osmium', 'steeleaf', 'refined_glowstone']),
         MA_ESSENCE('mekanism', ['osmium_ingot', 'refined_glowstone_ingot', 'fluorite']), MA_ESSENCE('twilightforest', ['steeleaf_ingot']),
         MA_SEEDS(['osmium', 'refined_glowstone', 'fluorite', 'steeleaf'])] } },
 
@@ -95,6 +99,7 @@ const TIERS = [
       tags: [],
       recipes: [
         TINKERS_MATERIALS(['cobalt', 'scorched_stone', 'knightmetal']), TINKERS_CASTING(['cobalt', 'knightmetal']),
+        TINKERS_MELTING(['cobalt', 'knightmetal', 'enderium', 'lumium', 'signalum']),
         'tconstruct:common/materials/cobalt_ingot_blasting', 'tconstruct:common/materials/cobalt_nugget_blasting',
         /^mysticalagriculture:essence\/(enderio|thermal)\//,
         MA_ESSENCE('tconstruct', ['cobalt_ingot']), MA_ESSENCE('twilightforest', ['knightmetal_ingot']),
@@ -125,6 +130,7 @@ const TIERS = [
       tags: [],
       recipes: [
         TINKERS_MATERIALS(['electrum', 'invar', 'constantan', 'silver', 'lead', 'pewter', 'aluminum', 'fiery']),
+        TINKERS_MELTING(['electrum', 'invar', 'constantan', 'silver', 'lead', 'pewter', 'aluminum', 'fiery', 'uranium']),
         /^tconstruct:tables\/recycling\/twilightforest\/yeti_/,
         /^mysticalagriculture:essence\/(appliedenergistics2|extremereactors2)\//,
         MA_ESSENCE('botania', ['terrasteel_ingot', 'elementium_ingot']), MA_ESSENCE('common', ['uranium_ingot']),
@@ -152,6 +158,7 @@ const TIERS = [
       tags: [],
       recipes: [
         /^tconstruct:tables\/recycling\/twilightforest\/arctic_/,
+        TINKERS_MELTING(['refined_obsidian']),
         /^mysticalagriculture:essence\/redstone_arsenal\//, MA_ESSENCE('mekanism', ['refined_obsidian_ingot']),
         MA_SEEDS(['flux_infused_ingot', 'flux_infused_gem', 'refined_obsidian'])] } },
 
@@ -171,6 +178,7 @@ const TIERS = [
         TINKERS_MATERIALS(['manyullyn', 'hepatizon', 'queens_slime', 'cinderslime', 'necronium', 'blazing_bone', 'blazewood',
           'ancient', 'enderslime', 'ichor']),
         TINKERS_CASTING(['manyullyn', 'hepatizon', 'queens_slime', 'cinderslime']),
+        TINKERS_MELTING(['manyullyn', 'hepatizon', 'queens_slime', 'cinderslime']),
         'agricraft:diamond', 'agricraft:emerald', 'agricraft:netherite_scrap',
         MA_ESSENCE('tconstruct', ['manyullyn_ingot', 'hepatizon_ingot', 'queens_slime_ingot']),
         MA_ESSENCE('minecraft', ['netherite_ingot']),
@@ -191,6 +199,7 @@ const TIERS = [
       recipes: [
         TINKERS_MATERIALS(['dragon_scale']),
         /^tcintegrations:tools\/materials\/((casting|melting|composite)\/)?dragonsteel_(fire|ice|lightning)(\/|$)/,
+        /^tcintegrations:smeltery\/(melting|casting)\/metal\/dragonsteel_(fire|ice|lightning)\//,
         /^taiga:alloy\/(1[4-9]|2[0-7])_/,
         'iceandfire:dragonforge/dragonsteel_fire_ingot', 'iceandfire:dragonforge/dragonsteel_ice_ingot',
         'iceandfire:dragonforge/dragonsteel_lightning_ingot',

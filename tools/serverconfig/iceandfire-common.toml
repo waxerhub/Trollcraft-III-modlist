@@ -177,7 +177,7 @@
 	[Mobs.DeathWorms]
 		#How many blocks away can death worms spot potential prey. Note that increasing this could cause lag
 		#Range: 1 ~ 10000
-		"Death Worm Target Search Length" = 64
+		"Death Worm Target Search Length" = 48
 		#Default deathworm health, this is scaled to the worm's particular size
 		#Range: 1.0 ~ 10000.0
 		"Death Worm Base Health" = 10.0
@@ -188,7 +188,7 @@
 		"Death Worms Target Monsters" = true
 		#Deathworm spawn weight. Higher = lower chance to spawn
 		#Range: 1 ~ 10000
-		"Death Worm Spawn Weight" = 30
+		"Death Worm Spawn Weight" = 45
 
 	[Mobs.Cockatrice]
 		#Maximum cockatrice health
@@ -208,7 +208,7 @@
 	[Mobs.Stymphalians]
 		#How many blocks away can stymphalian birds spot potential prey. Note that increasing this could cause lag.
 		#Range: 1 ~ 10000
-		"Stymphalian Bird Target Search Length" = 64
+		"Stymphalian Bird Target Search Length" = 48
 		#1/this number chance for a stymphalian feather to turn into an item before despawning. Zero means never.
 		#Range: 0 ~ 10000
 		"Stymphalian Bird Feather Drop Chance" = 25
@@ -227,7 +227,7 @@
 		"Stymphalian Birds Target Animals" = false
 		#1 out of this number chance per chunk for generation
 		#Range: 1 ~ 10000
-		"Spawn Stymhphalian Bird Chance" = 100
+		"Spawn Stymhphalian Bird Chance" = 150
 
 	[Mobs.Trolls]
 		#True if trolls are allowed to spawn
@@ -304,7 +304,7 @@
 	[Mobs.Hippocampus]
 		#1 out of this number chance per chunk for generation
 		#Range: 1 ~ 10000
-		"Spawn Hippocampus Chance" = 40
+		"Spawn Hippocampus Chance" = 60
 		#Change this to slow down or speed up hippocampus swimming.
 		#Range: 0.0 ~ 2.0
 		"Hippocampus Swim Speed Modifier" = 1.0

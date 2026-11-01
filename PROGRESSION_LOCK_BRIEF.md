@@ -32,6 +32,32 @@ known bypass routes.
 - Twilight Forest's Uncrafting Table is switched off (`disableUncraftingTable = true` in
   `tools/serverconfig/twilightforest-common.toml`): it can't be used, crafted or looted, so it isn't a bypass route.
 
+### Twilight Forest (4.3.2508): facts from its jar, to build on
+- **Its own progression already exists.** The `tfEnforcedProgression` gamerule (on by default) locks TF biomes until
+  their boss is beaten. The order, from its advancements: Naga → Lich → three branches (Labyrinth/Minoshroom → Hydra;
+  Knight Phantoms → Ur-Ghast; Alpha Yeti → Snow Queen) → all three done → Giants and Troll Caves (Lamp of Cinders) →
+  Final Plateau. Treat that as fixed; the question is where TF sits among the Blood Pool tiers, not re-ordering it.
+- **The portal can't be gated by recipes:** it's lit by throwing a diamond into a flower-ringed pool. TF's config can gate
+  it: `portalUnlockedByAdvancement` (an advancement id the player needs before a portal lights), `disablePortalCreation`
+  and `adminOnlyPortals`. If entering TF belongs to a tier, say which; the engine would grant a custom advancement when
+  that tier opens. Decide whether TF is open from the start, or gated by a tier.
+- **Most TF progression comes from boss drops and chest loot, not crafting.** Crafting locks don't touch these:
+  - Naga scales: Naga. Fiery blood: Hydra. Fiery tears and carminite: Ur-Ghast and the Dark Tower boss chest.
+  - Armor shards (for knightmetal): goblin knights, helmet crabs, Stronghold caches.
+  - Alpha Yeti fur: Alpha Yeti.
+  - Ironwood and steeleaf ingots, raw ironwood and liveroot: hill, well, labyrinth, stronghold and dark-tower chests.
+  - Knightmetal ingots: Stronghold caches.
+  What crafting locks CAN stop is turning those into gear: the ironwood, steeleaf, fiery, knightmetal and carminite
+  ingot/block/tool/armour recipes, and the magic map, charms and Carminite Reactor (all plain crafting, smelting and
+  blasting recipes in `twilightforest`).
+- **Don't lock the whole `twilightforest` mod.** That also removes TF wood (planks, doors, chests, boats) and
+  stonecutter blocks for players already inside it. Lock TF's gear, materials and key items by item instead.
+- **The magic trees can't be gated by recipes either.** Saplings come from tree-cache chests and the trees grow from
+  them; the cores (Time, Transformation, Mining, Sorting) are natural blocks. The Timewood Core speeds up machines from
+  any mod (range now 8). The only lever is the config (`disableTimeCore` etc.): say if you'd turn any off.
+- **Other TF recipe types:** `twilightforest:crumble_horn` (36) and `twilightforest:transformation_powder` (16) convert
+  blocks and mobs. Check whether any of these makes a sealed item.
+
 ### Known gaps (flag, don't hide)
 - Tinkers' Construct materials are NBT on generic tool items (tconstruct:pickaxe etc.), so they can only be gated
   through melting / alloying / casting recipes BY RECIPE ID. List the recipe ids (or id patterns) per material so a
@@ -40,8 +66,7 @@ known bypass routes.
   machine or the processing recipe, not just the product.
 - Cross-mod bypasses (ore multiplication, Mystical Agriculture essences, Botania ore flowers, Tinkers' Foundry
   diamond-ore-to-netherite, AE2 crafting through open mods) must be checked for every tier.
-- Twilight Forest's Timewood Core speeds up any machine within 8 blocks (range lowered from 16), and its bosses and
-  structure chests hand out gear: say which tier the Timewood tree (and its core) belongs in, and what TF loot leaks.
+- Twilight Forest's loot and Timewood Core: see the Twilight Forest section above.
 - Ars Nouveau's Drygmy collects mob drops without killing: check which sealed items it can produce that way.
 
 ### What I want back

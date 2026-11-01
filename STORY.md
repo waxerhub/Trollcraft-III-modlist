@@ -278,6 +278,7 @@ Needs Blood Pool Tier 12 and the full Regalia.
    2. 🔨 **A Part I patch, before the finale is played:** the exodus files also save trial records and what titles need.
    3. 🔨 **Arrival** (`part2/arrival.js`): a 9-item satchel picked from the saved inventory (only items still in the pack), legacy titles, and trial records as books.
    4. 🔨 **The Part II story driver** (`story.js` with Part II acts).
+   4a. 🔨 **Part I scripts adapted for Part II** (see [PART2_SCRIPTS.md](PART2_SCRIPTS.md)): the Pig Escort without its Nether unlock and reveal (it counts Escorts for the Swine's Oath), `limit_balance.js` reduced to permanent bans, and the black market and bounties without Part I-only items. Factions, trials, Clean Slate, the Blood Portal and the End Lockdown don't carry over.
    5. 🔨 **The Ministry as the enemy** (`part2/ministry.js`): Inspectors raid everyone, Ministry bounties, and trolls on Ministry NPCs.
    6. 🔨 **The Shrine and the Regalia** (`part2/shrine.js`): `/regalia`, the deliveries, Shrine raids, the Seizure and the Outpost raid.
    7. 🔨 **Events:** Prank Purges, shared with Part I's batch 2.

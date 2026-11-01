@@ -8,7 +8,7 @@ Server-admin work for the **Trollcraft III** modpack: KubeJS scripts, progressio
 - ProjectE has been removed from the pack, along with AppliedE and Tinkers' EMC (which needed it). The Nether is locked until the Pig Escort succeeds.
 
 ## The story
-**[STORY.md](STORY.md) is the source of truth** for the server's two-part story ("Technoblade Never Dies"). It holds the series of events, which systems are built, the build order, and the open decisions. Read it before story or event work, and keep it updated as decisions are made and things are built.
+**[STORY.md](STORY.md) is the source of truth** for the server's two-part story ("Technoblade Never Dies"). It holds the series of events, which systems are built, the build order, and the open decisions. Read it before story or event work, and keep it updated as decisions are made and things are built. [PART2_SCRIPTS.md](PART2_SCRIPTS.md) says which Part I scripts carry into Part II, need adapting, or go.
 
 ## Layout
 - `tools/kubejs/server_scripts/`: server scripts, in the same folders on the server (`kubejs/server_scripts/...`).

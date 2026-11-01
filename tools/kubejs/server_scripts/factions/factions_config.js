@@ -14,6 +14,10 @@
 //   memberTitle   what members are called ("Loyalists")
 //   color         a Minecraft colour name: gold, dark_red, gray, red, yellow, green, aqua, blue, ...
 //   secret        true = membership is never shown to other players (only to admins and the member)
+//   listed        true = the faction's name and info appear in /faction info for EVERY player.
+//                 false = hidden from /faction info except for its own members and admins.
+//                 This only controls whether people know the faction EXISTS. It never reveals who is in
+//                 a secret faction. Default: true for public factions, false for secret ones.
 //   ranks         lowest first. New members get the first rank.
 //   chatPrefix    shown in front of the player's name; %rank% and %title% are filled in. '' = none.
 //                 Public factions: it becomes part of the display name, so everyone sees it before the
@@ -24,7 +28,7 @@
 //                 player shows.
 //   inviteRank    lowest rank allowed to use /faction invite ('' = nobody can invite into this faction)
 //   voice         the tag in front of this faction's messages, its colours, and its title-screen text
-//   info          the /faction info description (secret factions: shown to members only)
+//   info          the /faction info description (shown to everyone if listed, otherwise members and admins only)
 //   welcome       lines shown when someone joins; %title% and %rank% are filled in
 //   inviteText    the invitation the invited player sees; %inviter% is filled in (leave it out to keep
 //                 the inviter anonymous)
@@ -65,9 +69,10 @@ global.FactionsConfigSource = {
       voice: { tag: '[MINISTRY]', tagColor: 'gold', textColor: 'yellow', title: 'MINISTRY', subtitle: 'Your paperwork has been processed.' },
       chatLabel: '[MINISTRY CHANNEL]',
       info: [
-        'The government. Glory to Managed Trollocracy.',
-        'The Ministry keeps order, files paperwork about the order, and audits the paperwork.',
-        'Loyalists enjoy protection, structure and the freedom to agree. Enforcers inspect bases and judge trials.',
+        'A legend lives on in those who choose to remember him. The Ministry of Trolling chose to remember him loudly, officially, and in triplicate.',
+        'The world honored him by sparing the pigs, and the Crownsworn will keep that promise under the Sanctity of Swine Act. Keep your word, protect your own, never forgive a traitor.',
+        'Power wasted is power lost, so the Ministry uses it. Enforcers inspect bases and judge trials, so that no betrayal goes unanswered and no loyalty goes unrewarded.',
+        'Technoblade Never Dies!!!!!',
       ],
       welcome: [
         'Welcome, %title%. Your paperwork has been processed. Your freedom has been managed.',
@@ -85,6 +90,7 @@ global.FactionsConfigSource = {
       memberTitle: 'Operative',
       color: 'dark_red',
       secret: true,
+      listed: true,    // everyone can read about the Syndicate; nobody can see who is in it
       ranks: ['Sympathizer', 'Operative', 'Cell Leader'],
       chatPrefix: '[%rank%]',
       inviteRank: 'Cell Leader',
@@ -92,8 +98,9 @@ global.FactionsConfigSource = {
       chatLabel: '[ENCRYPTED]',
       info: [
         'There is no Syndicate. If there were, it would answer to no one.',
-        'No kings. No Ministers. No paperwork. The pigs remember who protected them.',
-        'Cell Leaders bring in new Operatives. Trust the cell. Trust nobody else.',
+        'Honor the player, not the statue. Tend your fields, grow your strength, and spend whatever power demands. Mourners wrote the pig laws. He never did.',
+        'Cell Leaders bring in new Operatives, but loyalty here is earned, never sworn. Stand on your own, win at any cost, and never bow to a crown you did not earn!',
+        'BLOOD FOR THE BLOOD GOD!!!!',
       ],
       welcome: [
         'You were never here. Neither were we. Welcome to the Syndicate, %title%.',

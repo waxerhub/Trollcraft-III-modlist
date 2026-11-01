@@ -39,7 +39,10 @@ The ranks only change titles and who can invite. The Enforcers' real permissions
 ## Adding or changing a faction
 
 1. In `factions_config.js`, copy one of the faction blocks inside `factions: [ ... ]`, give it a new `id` (lowercase), and change the wording. The fields are explained at the top of that file.
-2. Set `secret: true` to make it behave like the Syndicate: hidden everywhere, described only to members, leaving is silent.
+2. Set `secret: true` to make it behave like the Syndicate: membership hidden everywhere, leaving is silent.
+   - **`listed`** controls whether everyone can read the faction's name and info in `/faction info`. It never reveals who is in it.
+   - **Defaults:** true for public factions, false for secret ones; members and ops always see their own.
+   - **The Syndicate is `listed: true`:** everyone can read about it; nobody can see who's in it.
 3. Run `/reload`. If something is wrong (an unknown colour, a duplicate rank, an `inviteRank` that isn't one of its ranks, a missing comma...), the log and any online ops get a `[Factions]` message, and the last working config stays in use.
 
 **Don't rename an `id` once players are in that faction.** Saved members would count as Unregistered until you change it back. Their data is kept, so nothing is lost. Renaming `displayName`, ranks text and wording is safe. If you rename a rank, members holding the old rank drop to the lowest rank, so set them again with `/faction rank`.
@@ -124,7 +127,7 @@ Use **A** (op) and **B** (not op). Copy the three files, restart, and join with 
 5. **Syndicate secrecy (the important one):** A runs `/faction set A syndicate Cell Leader`. Then, as **B**, check:
    - A's chat messages have no prefix.
    - The tab list and A's nameplate look the same as before.
-   - `/faction info` doesn't mention the Syndicate.
+   - `/faction info` describes the Syndicate (it's `listed`) but says nothing about who is in it.
    - `/faction invite A` gives exactly the same reply as `/faction invite <anyone>`, and A gets no invite.
    - B never saw a message when A joined.
    - Discord shows nothing about it.

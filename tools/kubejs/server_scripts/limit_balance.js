@@ -9,7 +9,8 @@ const RECIPE_ONLY = [
   'alexscaves:nuclear_bomb',
   'thermal:nuke_tnt',
   'thermal:nuke_tnt_minecart',
-  'thermal:nuke_grenade'
+  'thermal:nuke_grenade',
+  'minecraft:enchanted_golden_apple'
 ]
 
 ServerEvents.recipes(event => {

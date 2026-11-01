@@ -114,6 +114,7 @@ function normalizeConfig(raw) {
     let color = isStr(f.color) ? String(f.color) : 'white'
     if (COLORS.indexOf(color) < 0) errors.push(where + '.color "' + color + '" is not a Minecraft colour name')
     if (f.secret != null && typeof f.secret != 'boolean') errors.push(where + '.secret must be true or false')
+    if (f.listed != null && typeof f.listed != 'boolean') errors.push(where + '.listed must be true or false')
     let inviteRank = isStr(f.inviteRank) ? String(f.inviteRank) : ''
     if (inviteRank && ranks.map(r => r.toLowerCase()).indexOf(inviteRank.toLowerCase()) < 0) {
       errors.push(where + '.inviteRank "' + inviteRank + '" is not one of its ranks')
@@ -125,6 +126,8 @@ function normalizeConfig(raw) {
       memberTitle: isStr(f.memberTitle) ? String(f.memberTitle) : (isStr(f.displayName) ? String(f.displayName) : id),
       color: COLORS.indexOf(color) >= 0 ? color : 'white',
       secret: f.secret === true,
+      // listed: whether everyone can read this faction's name and info in /faction info (never who is in it).
+      listed: typeof f.listed == 'boolean' ? f.listed : f.secret !== true,
       ranks: ranks.length ? ranks : ['Member'],
       chatPrefix: isStr(f.chatPrefix) ? String(f.chatPrefix) : '',
       inviteRank: inviteRank,
@@ -819,7 +822,7 @@ ServerEvents.commandRegistry(event => {
     reply([{ text: '--- Factions of Trollcraft ---', color: 'gold', bold: true }])
     CFG.order.forEach(id => {
       let f = fac(id)
-      if (f.secret && mine != f.id) return
+      if (!f.listed && mine != f.id && !isOp(player)) return
       reply([{ text: f.displayName, color: f.color, bold: true }, { text: ' (' + f.memberTitle + 's)', color: 'gray' }])
       f.info.forEach(line => reply([{ text: '  ' + line, color: 'gray' }]))
     })

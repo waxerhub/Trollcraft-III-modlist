@@ -18,7 +18,6 @@ const BLOCKED_ITEMS = [
   '*:*creative*',
   '*spawn_egg*',
   // Server balance
-  'projecte:*',
   'alexscaves:nuclear_bomb', 'thermal:nuke_*',
   'extrautilitiesreborn:ender_quarry',
   'minecraft:enchanted_golden_apple', 'minecraft:totem_of_undying', 'minecraft:elytra', 'minecraft:dragon_egg',

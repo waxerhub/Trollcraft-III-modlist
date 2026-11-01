@@ -1,0 +1,20 @@
+#Trollcraft III: Twilight Forest 4.3.2508 common config, latency changes only.
+#Goes in the server's config/ folder as twilightforest-common.toml. A restart applies it.
+#Only the changed keys are here. On the first start Forge adds every other key at its default
+#and keeps these values. If the server already has this file, change these three lines in it instead.
+
+#CHANGED from 32. Every rain check that isn't already raining scanned up to 32 blocks for a TF cloud block
+#(the Twilight Forest hotspot in the spark profile). 0 turns cloud-block rain off (cosmetic only).
+#Range: > 0
+cloudBlockPrecipitationDistance = 0
+
+["Magic Trees"]
+	#CHANGED from 16. Each Timewood Core speeds up random blocks and machines within this radius
+	#(24 extra ticks a second), from any mod. Smaller radius = smaller progression shortcut.
+	#Set disableTimeCore = true to switch it off entirely.
+	#Range: 1 ~ 128
+	timeCoreRange = 8
+	#CHANGED from 16. Each Sortingwood Core checks every block in a (2r+1)^3 cube once a second:
+	#about 36,000 lookups at 16, about 4,900 at 8.
+	#Range: 1 ~ 128
+	sortingCoreRange = 8

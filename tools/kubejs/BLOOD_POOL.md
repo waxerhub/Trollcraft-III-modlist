@@ -78,6 +78,7 @@ Copy them, restart once (for the startup script), then `/reload` after any later
 - **`tags`:** item tags without the `#`. Only `forge:ingots/steel` is used, as insurance.
 - **`recipes`:** recipe ids, exact (`'agricraft:diamond'`) or a regex (`/^mekanism:nucleosynthesizing\//`). They cover what an item can't express:
   - **Tinkers materials,** which are stored on generic tools: `TINKERS_MATERIALS([...])` seals each material's part-builder, casting, composite and melting recipes.
+  - **Tinkers casting of sealed metals:** `TINKERS_CASTING([...])` seals casting molten steel, osmium, steeleaf, cobalt, knightmetal and the end-game alloys into ingots, nuggets and blocks. These recipes name their result as a tag (`forge:ingots/cobalt`), which an item lock might not catch. Melting the ore into molten metal still works, but nothing can be cast from it until the tier opens.
   - **Mystical Agriculture's cross-mod essences and seeds:** `MA_ESSENCE(dir, [...])` and `MA_SEEDS([...])`. Seeds cover both the infusion and the crafting-table versions.
   - **Recipes whose output is a vanilla item that has to stay open,** such as AgriCraft's diamond, emerald and netherite crops.
 - **Anything not listed** in any tier is always open (vanilla, decoration, food, worldgen and every mod left out; the research's §4 lists them).

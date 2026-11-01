@@ -30,6 +30,9 @@
 // locked as namespaces (their gear and materials are tiered by item and recipe id), so both work from day 0.
 // Ironwood (TF's first metal, about iron tier) is open from the start.
 const TINKERS_MATERIALS = list => new RegExp('^tconstruct:tools/materials/((casting|melting|composite)/)?(' + list.join('|') + ')(/|$)')
+// Tinkers casts its metals into ingots, nuggets and blocks with recipes whose result is a TAG (forge:ingots/cobalt),
+// which an item lock may not see, so each sealed metal's casting is also locked by recipe id.
+const TINKERS_CASTING = list => new RegExp('^tconstruct:smeltery/casting/metal/(' + list.join('|') + ')/')
 const MA_ESSENCE = (dir, list) => new RegExp('^mysticalagriculture:essence/' + dir + '/(' + list.join('|') + ')$')
 const MA_SEEDS = list => new RegExp('^mysticalagriculture:seed/(infusion|crafting)/(' + list.join('|') + ')$')
 const TIERS = [
@@ -53,7 +56,7 @@ const TIERS = [
         'tconstruct:steel_ingot'],
       tags: ['forge:ingots/steel'],
       recipes: [
-        TINKERS_MATERIALS(['steel']),
+        TINKERS_MATERIALS(['steel']), TINKERS_CASTING(['steel']),
         MA_ESSENCE('immersiveengineering', ['hop_graphite_ingot']), MA_ESSENCE('common', ['steel_ingot', 'aluminum_ingot']),
         MA_SEEDS(['steel', 'aluminum', 'hop_graphite'])] } },
 
@@ -69,7 +72,7 @@ const TIERS = [
         'twilightforest:steeleaf_axe', 'twilightforest:steeleaf_shovel', 'twilightforest:steeleaf_hoe'],
       tags: [],
       recipes: [
-        TINKERS_MATERIALS(['osmium', 'steeleaf']),
+        TINKERS_MATERIALS(['osmium', 'steeleaf']), TINKERS_CASTING(['osmium', 'steeleaf']),
         MA_ESSENCE('mekanism', ['osmium_ingot', 'refined_glowstone_ingot', 'fluorite']), MA_ESSENCE('twilightforest', ['steeleaf_ingot']),
         MA_SEEDS(['osmium', 'refined_glowstone', 'fluorite', 'steeleaf'])] } },
 
@@ -91,7 +94,8 @@ const TIERS = [
         'twilightforest:knightmetal_ring', 'twilightforest:knightmetal_shield', 'twilightforest:block_and_chain'],
       tags: [],
       recipes: [
-        TINKERS_MATERIALS(['cobalt', 'scorched_stone', 'knightmetal']),
+        TINKERS_MATERIALS(['cobalt', 'scorched_stone', 'knightmetal']), TINKERS_CASTING(['cobalt', 'knightmetal']),
+        'tconstruct:common/materials/cobalt_ingot_blasting', 'tconstruct:common/materials/cobalt_nugget_blasting',
         /^mysticalagriculture:essence\/(enderio|thermal)\//,
         MA_ESSENCE('tconstruct', ['cobalt_ingot']), MA_ESSENCE('twilightforest', ['knightmetal_ingot']),
         MA_ESSENCE('common', ['tin_ingot', 'lead_ingot', 'nickel_ingot', 'silver_ingot', 'bronze_ingot', 'brass_ingot', 'invar_ingot',
@@ -166,6 +170,7 @@ const TIERS = [
       recipes: [
         TINKERS_MATERIALS(['manyullyn', 'hepatizon', 'queens_slime', 'cinderslime', 'necronium', 'blazing_bone', 'blazewood',
           'ancient', 'enderslime', 'ichor']),
+        TINKERS_CASTING(['manyullyn', 'hepatizon', 'queens_slime', 'cinderslime']),
         'agricraft:diamond', 'agricraft:emerald', 'agricraft:netherite_scrap',
         MA_ESSENCE('tconstruct', ['manyullyn_ingot', 'hepatizon_ingot', 'queens_slime_ingot']),
         MA_ESSENCE('minecraft', ['netherite_ingot']),

@@ -40,6 +40,9 @@ known bypass routes.
   machine or the processing recipe, not just the product.
 - Cross-mod bypasses (ore multiplication, Mystical Agriculture essences, Botania ore flowers, Tinkers' Foundry
   diamond-ore-to-netherite, AE2 crafting through open mods) must be checked for every tier.
+- Twilight Forest's Timewood Core speeds up any machine within 8 blocks (range lowered from 16), and its bosses and
+  structure chests hand out gear: say which tier the Timewood tree (and its core) belongs in, and what TF loot leaks.
+- Ars Nouveau's Drygmy collects mob drops without killing: check which sealed items it can produce that way.
 
 ### What I want back
 1. A proposed TIERS list in exactly this shape, for all 12 tiers:

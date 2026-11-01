@@ -170,33 +170,37 @@ Starts with `/story act next`.
 ## PART II: Technoblade Never Dies
 Everyone stands together under Techno's banner. There are no Loyalists. The Ministry becomes a non-player enemy: its Inspectors and the Minister.
 
-### Blood for the Blood God: the Blood Pool ✅ engine, *TBD* tier contents (`part2/blood_pool.js`, see [BLOOD_POOL.md](tools/kubejs/BLOOD_POOL.md))
+### Blood for the Blood God: the Blood Pool ✅ (`part2/blood_pool.js`, `part2/dimension_gates.js`, see [BLOOD_POOL.md](tools/kubejs/BLOOD_POOL.md))
 **All progression in Part II is locked.** Tiers open only through the server-wide **Blood Pool**. It starts at 0: Part I troll points don't count (owner decision); they only become legacy titles.
 - **It's filled by:**
   - **trolls:** each logged troll adds its value as Drops of Blood (see [Scoring](#scoring));
-  - **Hush Coins:** donated at **1,000 Drops each**, a sink for the economy.
+  - **Hush Coins:** donated at **1,000 Drops each**, a sink for the economy;
+  - **the Potato Tithe** (the Potato War): **4,000 potatoes = 1,000 Drops**, capped at **30,000 Drops a day** server-wide. The quota reopens at 4 am Central (owner decisions).
 - **Group unlocks:** when the Pool reaches a milestone, that tier unlocks for everyone. **An op confirms each unlock**; the confirm includes the `/reload` that brings the tier's recipes back.
 - **A locked tier blocks crafting only** (owner decision): its recipes are removed in every recipe type. Sealed items that players find, loot or trade for work normally.
 
-  Tiers are defined as lists of mods, items and tags (settings in `blood_pool.js`, filled in once the Part II modpack is chosen).
-- **The pace:** about 9 contributors, about 8 weeks, **12 tiers, about 1.5 million Drops in total**.
-  - **Estimate:** about 25,000 Drops a day (about 30 trolls a day, plus about 20 coins a day).
-  - **Cumulative thresholds** (settings, to be tuned):
+  The tiers are lists of mods, items, tags and recipe ids in `blood_pool.js`, filled from the progression research ([research/TIER_PROPOSAL.md](research/TIER_PROPOSAL.md)). Twilight Forest and Tinkers are open from day 0 (gear tiered by item); ironwood is open.
+- **Dimensions:** the **Nether opens at Tier 3** and the **End at Tier 9** (owner decision). Until then Nether portals don't light, Eyes of Ender can't be crafted, and anyone who gets in is sent back.
+- **The pace:** about 9 contributors, **12 tiers, 3 million Drops in total** (thresholds doubled, owner decision).
+  - **Estimate:** about 25,000 Drops a day from trolls and coins, plus up to 30,000 a day from the Potato Tithe: **about 8 weeks if the server farms, about 17 if it only trolls**.
+  - **Cumulative thresholds** (settings):
 
     | Tier | Drops | Expected |
     |---|---|---|
-    | 1 | 10,000 | about day 1 |
-    | 2 | 30,000 | |
-    | 3 | 60,000 | |
-    | 4 | 100,000 | |
-    | 5 | 160,000 | about week 1 |
-    | 6 | 240,000 | |
-    | 7 | 350,000 | about week 2 |
-    | 8 | 500,000 | about week 3 |
-    | 9 | 700,000 | about week 4 |
-    | 10 | 950,000 | |
-    | 11 | 1,200,000 | |
-    | 12 | 1,500,000 | about week 8: the Siege |
+    | 1 | 20,000 | about day 1 |
+    | 2 | 60,000 | |
+    | 3 | 120,000 | about day 2: the Nether |
+    | 4 | 200,000 | |
+    | 5 | 320,000 | about week 1 |
+    | 6 | 480,000 | |
+    | 7 | 700,000 | about week 2 |
+    | 8 | 1,000,000 | about week 3 |
+    | 9 | 1,400,000 | about week 4: the End |
+    | 10 | 1,900,000 | |
+    | 11 | 2,400,000 | |
+    | 12 | 3,000,000 | about week 8: the Siege |
+
+    (Expected times assume the tithe quota is filled daily; trolls and coins alone take about twice as long.)
 
   - **What each tier unlocks will be ranked once the Part II modpack is put together.** The only fixed point: **Tier 12 is the Siege**, when the Citadel's Bureaucratic Barrier falls.
 
@@ -270,7 +274,7 @@ Needs Blood Pool Tier 12 and the full Regalia.
 2. ✅ **The finale (built before batch 2):** `clean_slate.js` and `events/blood_portal.js`: the dragon-kill trigger, the Archive books and Draft Bill 9-D, the Blood Relics, the 4-day countdown and the burning world, the Blood Portal event, and the exodus files.
 3. 🔨 **Batch 2:** the **Scout NPC** and his testimony; op-run **events** (Prank Purge, Mandatory Fun Day, the Trolling Moratorium, a Ministry Meltdown).
 4. **Part II** (same platform: MC 1.20.1, Forge, KubeJS 6). Scripts go in `part2/`. In order:
-   1. ✅ **The Blood Pool and tier locks** (`part2/blood_pool.js`). The tier contents wait for the Part II modpack.
+   1. ✅ **The Blood Pool and tier locks** (`part2/blood_pool.js`), with the tier contents from the progression research, the Potato Tithe, and the Nether and End gates (`part2/dimension_gates.js`).
    2. 🔨 **A Part I patch, before the finale is played:** the exodus files also save trial records and what titles need.
    3. 🔨 **Arrival** (`part2/arrival.js`): a 9-item satchel picked from the saved inventory (only items still in the pack), legacy titles, and trial records as books.
    4. 🔨 **The Part II story driver** (`story.js` with Part II acts).
@@ -286,7 +290,7 @@ Needs Blood Pool Tier 12 and the full Regalia.
 - **Crownsworn players:** whether active Crownsworn players will role-play the defection, or the loyalists are mostly NPCs.
 - **Clean Slate:** tune the Blood Portal event (40 kill points to fill, the Relic chance) once it's been tried; how much of each player's saved inventory Part II gives back.
 - **Part II world:** a new seed, or the same seed regenerated.
-- **Part II tiers:** what each of the 12 Blood Pool tiers unlocks, decided with the Part II modpack.
+- **Part II tiers:** decided (see BLOOD_POOL.md). Still to check on the server: Thermal's machine-frame recipes in JEI, the AlmostUnified config, and a Dragon Heart drop before Tier 10.
 - **Regalia:**
   - relic amounts;
   - whether relics need a Blood offering;

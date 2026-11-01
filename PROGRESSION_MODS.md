@@ -1,5 +1,7 @@
 # Trollcraft III (Friendly Fire Trimmed) — Progression Mods
 
+> **Note (pack change):** ProjectE has since been removed from the pack, together with AppliedE and Tinkers' EMC, which needed it. Mentions of them below describe the old pack.
+
 Source: `Trollcraft III Friendly Fire Trimmed.zip` (198 jars, Minecraft 1.20.1 Forge).
 Mod names and versions are read from each jar's `mods.toml`.
 

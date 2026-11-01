@@ -1,5 +1,7 @@
 # Trollcraft III — Progression Gates
 
+> **Note (pack change):** ProjectE has since been removed from the pack, together with AppliedE and Tinkers' EMC, which needed it. Mentions of them below describe the old pack.
+
 Which items to disable or change to make progression harder. Read from the recipes in the pack's 38 progression-mod jars (default recipes).
 The searchable version of this list is published as a page; this file has the same data.
 

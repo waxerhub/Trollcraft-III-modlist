@@ -1,5 +1,7 @@
 # Trollcraft III — Progression Mod Cross-Reference
 
+> **Note (pack change):** ProjectE has since been removed from the pack, together with AppliedE and Tinkers' EMC, which needed it. Mentions of them below describe the old pack.
+
 This file checks each progression mod in [PROGRESSION_MODS.md](PROGRESSION_MODS.md) against its official wiki,
 GitHub repo and in-game guide. It is the source material for the step-by-step guides.
 

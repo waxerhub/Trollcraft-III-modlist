@@ -5,7 +5,7 @@ Server-admin work for the **Trollcraft III** modpack: KubeJS scripts, progressio
 ## The pack and server
 - Minecraft **1.20.1**, Forge **47.4.10**, KubeJS **2001.6.5** (KubeJS 6, Rhino script engine). Hosted on Bisect.
 - About 198 mods. Their progression is documented in [PROGRESSION_MODS.md](PROGRESSION_MODS.md), [MOD_TIERS.md](MOD_TIERS.md), [STARTING_MODS.md](STARTING_MODS.md), [CROSS_REFERENCE.md](CROSS_REFERENCE.md) and [PROGRESSION_GATES.md](PROGRESSION_GATES.md). The last one lists each mod's item ladder and its bypass routes.
-- ProjectE is switched off (`disable_projecte.js`). The Nether is locked until the Pig Escort succeeds.
+- ProjectE has been removed from the pack, along with AppliedE and Tinkers' EMC (which needed it). The Nether is locked until the Pig Escort succeeds.
 
 ## The story
 **[STORY.md](STORY.md) is the source of truth** for the server's two-part story ("Technoblade Never Dies"). It holds the series of events, which systems are built, the build order, and the open decisions. Read it before story or event work, and keep it updated as decisions are made and things are built.

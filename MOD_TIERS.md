@@ -1,5 +1,7 @@
 # Trollcraft III — Per-Mod Tiers
 
+> **Note (pack change):** ProjectE has since been removed from the pack, together with AppliedE and Tinkers' EMC, which needed it. Mentions of them below describe the old pack.
+
 Each progression mod split into its own **early game**, **mid game** and **end game** stages.
 
 - These stages are **inside each mod**. A mod's "early game" isn't always early in the pack: Draconic Evolution's early

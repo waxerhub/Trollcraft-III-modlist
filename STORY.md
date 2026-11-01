@@ -159,7 +159,7 @@ Starts with `/story act next`.
     - fixes for this season's leaks:
       - Mystical Agriculture cobalt and Netherite essence;
       - the Foundry's diamond-ore → molten debris → Netherite;
-      - ProjectE's state (EMC on Nether Stars, the Dragon Egg and Netherite Scrap);
+      - ~~ProjectE's state~~ ProjectE removed from the pack (with AppliedE and Tinkers' EMC);
       - Tinkers' Levelling Addon modifier slots.
 
     See [PROGRESSION_GATES.md](PROGRESSION_GATES.md).

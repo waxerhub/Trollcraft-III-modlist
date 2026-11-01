@@ -1,5 +1,7 @@
 # Trollcraft III — Which Mods to Start With
 
+> **Note (pack change):** ProjectE has since been removed from the pack, together with AppliedE and Tinkers' EMC, which needed it. Mentions of them below describe the old pack.
+
 This is a recommendation for where to put your first sessions. It combines:
 
 - **The pack's own data:** what each mod needs before it can start, and what it unlocks in other mods. See

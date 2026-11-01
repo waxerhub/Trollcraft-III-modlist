@@ -1,8 +1,8 @@
 // Part II: Blood for the Blood God. The Blood Pool and its tier locks (see STORY.md, tools/kubejs/BLOOD_POOL.md).
 //
-//  - All progression is locked into 12 tiers. A tier's mods, items and tags can't be crafted (recipes removed) or used
-//    (placed, right-clicked, swung, worn) until the server-wide Blood Pool reaches it AND an op breaks the seal with
-//    /bloodpool unlock (which reloads, so the recipes come back). Getting a locked item (loot, trades) is allowed.
+//  - All progression is locked into 12 tiers. Locks are crafting only: a tier's mods, items and tags can't be crafted
+//    (their recipes are removed, in every recipe type) until the server-wide Blood Pool reaches it AND an op breaks the
+//    seal with /bloodpool unlock (which reloads, so the recipes come back). Found, looted or traded items work normally.
 //  - The Pool fills with every troll in the Troll Log (economy/trolls.js) and with donated Hush Coins.
 //  - Anything not listed in any tier is always open.
 //
@@ -40,27 +40,21 @@ const TIERS = [
 ]
 const DROPS_PER_TROLL_POINT = 1        // each Troll Log point
 const DROPS_PER_COIN = 1000            // each donated Hush Coin
-const OPS_BYPASS = true                // ops can use locked things (building, testing)
 const TO_DISCORD = true                // public Pool lines with tellraw @a (posted to Discord); false = in game only
 const TIER_FILE = 'kubejs/blood_pool_tier.json'
 const RELOAD_DELAY_TICKS = 20          // /bloodpool unlock reloads this long after announcing
-const ARMOUR_CHECK_SECONDS = 5         // locked armour being worn goes back into the inventory
 
 const VOICE_BLOOD = { tag: '[BLOOD GOD]', tagColor: 'dark_red', textColor: 'red' }
 const VOICE_POOL = { tag: '[Blood Pool]', tagColor: 'dark_red', textColor: 'gray' }
 const LINES = {
   ready: 'The Blood Pool overflows. Tier %n (%name) waits for the Ministry\'s seal to break.',
   unlocked: 'The seal breaks. Tier %n (%name) is open. Blood for the Blood God.',
-  locked: 'Sealed by the Ministry. The Blood Pool must reach Tier %n (%name).',
 }
 
 
 // ===================== STATE =====================
 
 const DATA_KEY = 'blood_pool'
-if (!global.bloodPoolState) global.bloodPoolState = { token: 0 }
-const S = global.bloodPoolState
-S.token++
 
 let Serializer = null
 try { Serializer = Java.loadClass('net.minecraft.network.chat.Component$Serializer') } catch (e) { }
@@ -283,84 +277,9 @@ function syncFile(server) {
 }
 
 
-// ===================== THE LOCKS =====================
-
-function sealed(p, need) {
-  const T = tierDef(need)
-  try { p.setStatusMessage(comp([{ text: T ? line('locked', T) : 'Sealed by the Ministry.', color: 'dark_red' }])) } catch (e) { }
-}
-// True if `player` may not use id/obj (and says why).
-function blockedFor(player, id, obj) {
-  if (!player) return false
-  const need = tierOf(id, obj)
-  if (need <= db().tier) return false
-  if (OPS_BYPASS && isOp(player)) return false
-  sealed(player, need)
-  return true
-}
-function playerOf(event) {
-  let p = null
-  try { p = event.player } catch (e) { }
-  if (!p) { try { let en = event.entity; if (en && en.isPlayer()) p = en } catch (e) { } }
-  return p
-}
-
-ItemEvents.rightClicked(event => {
-  if (blockedFor(event.player, event.item.id, event.item)) event.cancel()
-})
-ItemEvents.entityInteracted(event => {
-  if (blockedFor(event.player, event.item.id, event.item)) event.cancel()
-})
-BlockEvents.rightClicked(event => {
-  const p = event.player
-  let bad = blockedFor(p, event.block.id, event.block)
-  if (!bad && event.item && !event.item.isEmpty()) bad = blockedFor(p, event.item.id, event.item)
-  if (bad) event.cancel()
-})
-BlockEvents.placed(event => {
-  if (blockedFor(playerOf(event), event.block.id, event.block)) event.cancel()
-})
-// Hitting with a locked weapon does nothing.
-EntityEvents.hurt(event => {
-  let a = null
-  try { a = event.source.actual } catch (e) { }
-  if (!a) { try { a = event.source.getActual() } catch (e) { } }
-  let isPlayer = false
-  try { isPlayer = !!(a && a.isPlayer()) } catch (e) { }
-  if (!isPlayer) return
-  const held = a.mainHandItem
-  if (!held || held.isEmpty()) return
-  if (blockedFor(a, held.id, held)) event.cancel()
-})
-
-// Locked armour can't stay on: it goes back into the inventory (or drops if that's full).
-function checkArmour(server) {
-  onlinePlayers(server).forEach(p => {
-    if (OPS_BYPASS && isOp(p)) return
-    for (let i = 36; i < 40; i++) {
-      let s = null
-      try { s = p.inventory.getItem(i) } catch (e) { }
-      if (!s || s.isEmpty() || !isLocked(s.id, s)) continue
-      let copy = s.copy()
-      try {
-        p.inventory.setItem(i, Item.empty)
-        p.give(copy)
-        sealed(p, tierOf(copy.id, copy))
-      } catch (e) { console.warn('[BloodPool] Armour: ' + e) }
-    }
-  })
-}
-function startLoop(server) {
-  const token = S.token
-  const loop = () => {
-    if (token != S.token) return
-    try { checkArmour(server) } catch (e) { console.error('[BloodPool] ' + e) }
-    server.scheduleInTicks(ARMOUR_CHECK_SECONDS * 20, loop)
-  }
-  server.scheduleInTicks(ARMOUR_CHECK_SECONDS * 20, loop)
-}
-ServerEvents.loaded(event => { syncFile(event.server); startLoop(event.server) })
-if (Utils.server) { syncFile(Utils.server); startLoop(Utils.server) }
+// The saved data is the authority for the open tier; the file only follows it.
+ServerEvents.loaded(event => syncFile(event.server))
+if (Utils.server) syncFile(Utils.server)
 
 
 // ===================== API FOR OTHER SCRIPTS =====================
@@ -370,7 +289,7 @@ global.BloodPool = {
   tier: () => db().tier,
   // source: 'troll', 'coins', 'op' or another script's name. uuid/name: who to credit.
   addDrops: (n, source, uuid, name) => addDrops(Number(n) * (source == 'troll' ? DROPS_PER_TROLL_POINT : 1), source || 'other', uuid ? String(uuid) : '', name ? String(name) : ''),
-  isLocked: (id, obj) => isLocked(id, obj),
+  isLocked: (id, obj) => isLocked(id, obj),          // true = can't be crafted yet
   tierOf: (id, obj) => tierOf(id, obj),
   tierCount: TIERS.length,
 }
@@ -437,8 +356,9 @@ ServerEvents.commandRegistry(event => {
       const s = p.mainHandItem
       if (!s || s.isEmpty()) return reply(ctx, 'Hold the item to check.', true)
       const n = tierOf(s.id, s), T = tierDef(n)
-      if (!n) return reply(ctx, String(s.id) + ' isn\'t in any tier: always open.')
-      return reply(ctx, String(s.id) + ' opens at Tier ' + n + (T ? ' (' + T.name + ')' : '') + ': ' + (n <= db().tier ? 'open.' : 'sealed.'))
+      if (!n) return reply(ctx, String(s.id) + ' isn\'t in any tier: it can always be crafted.')
+      return reply(ctx, String(s.id) + ' can be crafted from Tier ' + n + (T ? ' (' + T.name + ')' : '') + ': ' +
+        (n <= db().tier ? 'open now.' : 'sealed for now (found ones still work).'))
     })))
     .then(Commands.literal('unlock').requires(op)
       .executes(safe(ctx => unlock(ctx, false)))

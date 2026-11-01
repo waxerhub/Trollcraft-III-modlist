@@ -176,11 +176,9 @@ Everyone stands together under Techno's banner. There are no Loyalists. The Mini
   - **trolls:** each logged troll adds its value as Drops of Blood (see [Scoring](#scoring));
   - **Hush Coins:** donated at **1,000 Drops each**, a sink for the economy.
 - **Group unlocks:** when the Pool reaches a milestone, that tier unlocks for everyone. **An op confirms each unlock**; the confirm includes the `/reload` that brings the tier's recipes back.
-- **A locked tier blocks crafting and use:**
-  - its recipes are removed;
-  - its blocks and items can't be placed or used.
+- **A locked tier blocks crafting only** (owner decision): its recipes are removed in every recipe type. Sealed items that players find, loot or trade for work normally.
 
-  Tiers are defined as lists of mods, items and tags (settings in `blood_pool.js`, filled in once the Part II modpack is chosen). Getting a sealed item (loot, trades) is allowed; crafting, placing, using, hitting with and wearing it aren't.
+  Tiers are defined as lists of mods, items and tags (settings in `blood_pool.js`, filled in once the Part II modpack is chosen).
 - **The pace:** about 9 contributors, about 8 weeks, **12 tiers, about 1.5 million Drops in total**.
   - **Estimate:** about 25,000 Drops a day (about 30 trolls a day, plus about 20 coins a day).
   - **Cumulative thresholds** (settings, to be tuned):

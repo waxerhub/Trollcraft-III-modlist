@@ -58,26 +58,15 @@ Copy them and run `/reload`. The script creates `kubejs/blood_pool_tier.json` by
 
 PROGRESSION_GATES.md lists each mod's ladder, which is a good guide for which tier a mod belongs in.
 
-## The locks
-A sealed thing:
-- **can't be crafted:** its recipes are removed, in every kind of machine too. They disappear from JEI.
-- **can't be placed.**
-- **can't be used:** right-clicking it in the air, on a block or on a mob, and opening its block, are all blocked.
-- **does no damage** when you hit with it.
-- **can't be worn:** sealed armour moves back into your inventory within 5 seconds, or drops if the inventory is full.
+## The locks: crafting only
+A sealed mod, item or tag **can't be crafted** until its tier opens. Its recipes are removed in every recipe type: the crafting table, furnaces, every machine, the smeltery and so on. They also disappear from JEI.
 
-The player sees why on the action bar: "Sealed by the Ministry. The Blood Pool must reach Tier 5 (A Spring)."
+**Everything else works.** Sealed items that players find, loot, trade for or get from mobs can be used, placed, worn and fought with normally (owner decision). A found item is a treat, not a way round the tier.
 
-**Getting** a sealed item is allowed (loot, trades, mob drops). Players just can't use it yet.
-
-**Ops** can use everything (`OPS_BYPASS`), for building and testing. Set it to `false` to test as a player.
-
-**Things the script can't stop:**
-- machines that run on their own (a pipe feeding a sealed item into an open machine);
-- abilities on key presses;
-- curios and baubles slots.
-
-Keep whole machine mods in one tier to avoid gaps.
+**Things to watch when filling in the tiers:**
+- **Loot and trades** can hand players sealed items early. That's fine for a few items, but a structure's loot table that gives out a whole machine tier would skip it.
+- **Machines from an open mod** can still make a sealed item through *their own* recipes. Whole-mod locks remove every recipe whose output is from the sealed mod, so this mostly matters for items listed singly or by tag.
+- **Tinkers materials:** a tool's material isn't an item, so it's gated through its melting, alloying and casting recipes. That needs recipe-id locks (a planned addition).
 
 ### Why there's a file
 At server start, recipes load **before** the world and its saved data, so the recipe step can't see the open tier. The tier is therefore also written to **`kubejs/blood_pool_tier.json`**, and the recipe step reads that.
@@ -93,7 +82,7 @@ At server start, recipes load **before** the world and its saved data, so the re
 | `/bloodpool donate <coins>` | players | Give Hush Coins (1,000 Drops each) |
 | `/bloodpool top` | anyone | The 10 biggest contributors |
 | `/bloodpool tiers` | anyone | Every tier: threshold, what it opens, OPEN / READY / sealed |
-| `/bloodpool check` | anyone | Which tier opens the item in your hand |
+| `/bloodpool check` | anyone | Which tier lets the item in your hand be crafted |
 | `/bloodpool unlock` | op | Open the next tier (it must be ready); announces and reloads |
 | `/bloodpool unlock force` | op | Open the next tier even if the Pool isn't there |
 | `/bloodpool settier <0-12>` | op | Set the open tier directly, quietly (testing, or undoing a mistake); reloads |
@@ -106,11 +95,9 @@ At server start, recipes load **before** the world and its saved data, so the re
 | `TIERS` | 12 tiers, contents empty | Names, thresholds and what each opens |
 | `DROPS_PER_TROLL_POINT` | 1 | |
 | `DROPS_PER_COIN` | 1000 | |
-| `OPS_BYPASS` | true | Ops can use sealed things |
 | `TO_DISCORD` | true | Ready and unlock lines with `tellraw @a` |
 | `TIER_FILE` | `kubejs/blood_pool_tier.json` | |
 | `RELOAD_DELAY_TICKS` | 20 | Between the unlock announcement and `/reload` |
-| `ARMOUR_CHECK_SECONDS` | 5 | |
 | `LINES` | | The texts |
 
 ## Saved data
@@ -119,21 +106,20 @@ At server start, recipes load **before** the world and its saved data, so the re
 
 ## Test plan (an op and a player, with two test tiers filled in)
 1. Fill in Tier 1 and Tier 2 (for example a small mod and one item), then `/reload`. `/bloodpool tiers` shows them as sealed, and JEI shows no recipes for them.
-2. **As the player** (or with `OPS_BYPASS = false`): try a sealed item and block. Placing, using, opening, hitting and wearing should all be blocked, with the action-bar reason.
+2. **Try to craft a sealed item:** there's no recipe, in JEI or at the crafting table or machine. Give yourself one with `/give`: it can be placed and used normally.
 3. **Fill to Tier 1:** troll someone (`/trolls log` and `/bloodpool` both go up), then `/bloodpool donate 10`. The ready line appears.
-4. **`/bloodpool unlock`:** the title appears, the server reloads, and Tier 1 can be crafted and used. Tier 2 still can't.
+4. **`/bloodpool unlock`:** the title appears, the server reloads, and Tier 1 can be crafted. Tier 2 still can't.
 5. **Restart the server:** Tier 1 stays open (the file).
 6. **`/bloodpool settier 0`** puts everything back.
 
 ## What couldn't be verified for KubeJS 6 on 1.20.1
-A mock-server test passed 35 checks:
+A mock-server test passed 29 checks:
 - trolls and donations filling the Pool, credit;
 - the ready line at each threshold (not opened);
 - unlock, force and settier, the tier file and the reload;
 - recipes removed for sealed tiers (mods, items, tags, and an early item kept from its mod's removal), and back after unlocking;
 - a missing or out-of-step file;
-- place, use, open, hit and wear blocked for sealed things and allowed for open ones;
-- ops bypass;
+- found sealed items working normally (use, place, open, hit, wear);
 - `/bloodpool`, `check`, `tiers` and `top`;
 - `/reload`.
 
@@ -144,5 +130,3 @@ These depend on the real game:
 - **`hasTag` on items and blocks**, for tag-based tiers.
 - **Running `reload` from a script.** If it doesn't reload, run `/reload` by hand after unlocking.
 - **JsonIO** writing `kubejs/blood_pool_tier.json`. The server log says if it can't.
-- **Cancelling `EntityEvents.hurt`** to stop sealed weapons.
-- **The armour slots** being 36–39 of the player's inventory.

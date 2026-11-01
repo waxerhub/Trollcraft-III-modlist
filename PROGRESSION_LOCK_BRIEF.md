@@ -28,6 +28,10 @@ known bypass routes.
 - Tier 12 ("The Siege") has no items: it opens the story's final siege. Draconic Evolution's top tiers, the Chaos
   Guardian and "the Crown of the Blade" (Draconic + Botania end game) belong late.
 
+### Already decided
+- Twilight Forest's Uncrafting Table is switched off (`disableUncraftingTable = true` in
+  `tools/serverconfig/twilightforest-common.toml`): it can't be used, crafted or looted, so it isn't a bypass route.
+
 ### Known gaps (flag, don't hide)
 - Tinkers' Construct materials are NBT on generic tool items (tconstruct:pickaxe etc.), so they can only be gated
   through melting / alloying / casting recipes BY RECIPE ID. List the recipe ids (or id patterns) per material so a

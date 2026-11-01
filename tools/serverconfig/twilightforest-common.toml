@@ -1,7 +1,7 @@
-#Trollcraft III: Twilight Forest 4.3.2508 common config, latency changes only.
+#Trollcraft III: Twilight Forest 4.3.2508 common config, latency changes and the Uncrafting Table switched off.
 #Goes in the server's config/ folder as twilightforest-common.toml. A restart applies it.
 #Only the changed keys are here. On the first start Forge adds every other key at its default
-#and keeps these values. If the server already has this file, change these three lines in it instead.
+#and keeps these values. If the server already has this file, change these lines in it instead.
 
 #CHANGED from 32. Every rain check that isn't already raining scanned up to 32 blocks for a TF cloud block
 #(the Twilight Forest hotspot in the spark profile). 0 turns cloud-block rain off (cosmetic only).
@@ -18,3 +18,8 @@ cloudBlockPrecipitationDistance = 0
 	#about 36,000 lookups at 16, about 4,900 at 8.
 	#Range: 1 ~ 128
 	sortingCoreRange = 8
+
+["Uncrafting Table"]
+	#CHANGED from false (owner decision). Disables any use of the Uncrafting Table, and removes it from loot and crafting.
+	#Tables already placed can't be used either.
+	disableUncraftingTable = true

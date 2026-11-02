@@ -152,11 +152,25 @@ Techno's Potato War runs alongside the Pool. **The Pool decides what the server 
 - **Ranking up:** a title and a sound for the player, and a public line: "Ana has risen to Potato Soldier in Techno's Potato War" (sent to Discord with `TO_DISCORD`; `RANKUP_PUBLIC = false` keeps it quiet).
 
 ### What a rank gates
-- **Crafting-table recipes:** every `minecraft:crafting_shaped` and `crafting_shapeless` recipe in an open tier gets the KubeJS stage `potato_standing_<tier>`. Players hold the stage for every rank they've reached.
+- **Crafting-table recipes:** every `minecraft:crafting_shaped` and `crafting_shapeless` recipe in an open tier gets a **result check** for its tier (KubeJS's `modifyResult`). When a player crafts it, the check asks for the KubeJS stage `potato_standing_<tier>`. Players hold the stage for every rank they've reached.
   - **A recipe's tier** is the highest lock that applies to it, by the same rules as the removal: its result (by item, then tag, then the result's mod), the recipe's own mod (unless its result is listed by id), and the recipe-id rules. So Mekanism's crafting recipe for a Create part needs rank 4.
-  - **Without the rank,** the crafting grid (table or inventory) shows no result.
+  - **Without the rank,** the crafting grid shows no result. That covers the crafting table, the inventory grid, and a mod's crafting grid the player has open (the Tinkers Crafting Station, AE2's crafting terminal, a backpack's crafting upgrade), found through the player's open window.
   - **Untouched:** machines, furnaces, the smeltery, Create's mechanical crafting and every other recipe type work for everyone. So do sealed tiers: their recipes are still removed for everybody.
-  - **Autocrafting:** KubeJS gives a staged recipe's result only when a player is behind the grid. **Autocrafters with no player can't craft any staged recipe**, whoever owns them: Create's Mechanical Crafters doing table recipes, AE2's Molecular Assemblers, Refined Storage autocrafting and Mekanism's Formulaic Assemblicator. That stops a high rank crafting for a low rank through a shared system. It also means nobody can automate an open tier's table recipes. If that's too harsh, set `STANDING_CRAFTING = false`; then rank only gates the black market.
+  - **Autocrafting works.** An autocrafter has no player behind it, so it gets every result of an open tier.
+    - **Placing an autocrafter needs the rank of its own tier** (owner decision), set in `AUTOCRAFTERS`:
+
+      | Autocrafter | Id | Rank to place |
+      |---|---|---|
+      | Create Mechanical Crafter | `create:mechanical_crafter` | 4 Potato Private |
+      | Mekanism Formulaic Assemblicator | `mekanism:formulaic_assemblicator` | 4 Potato Private |
+      | Ender IO Crafter | `enderio:crafter` | 5 Potato Soldier |
+      | AE2 Molecular Assembler | `ae2:molecular_assembler` | 6 Potato Sergeant |
+      | RFTools Crafter (tiers 1–3) | `rftoolsutility:crafter1/2/3` | 7 Potato Lieutenant |
+      | Advanced AE Quantum Crafter | `advanced_ae:quantum_crafter` | 8 Potato Captain |
+
+      A player below the rank is told "Only a Potato Sergeant or higher knows how to set up a Molecular Assembler" and the block isn't placed. Ops and creative players are exempt. Blocks placed by machines (deployers, the RFTools Builder) aren't checked.
+    - **The gap that remains:** an autocrafter doesn't know who owns it. Once someone of the rank has placed one, anyone who can use it (a shared AE2 network, a friend's crafters) can automate any open tier's table recipes, whatever their own rank.
+  - **Off switch:** `STANDING_CRAFTING = false` stops rank gating crafting (and placing autocrafters); it then only gates the black market.
 - **The black market** (`economy/black_market.js`, `STANDING_LOCKS`): some items are only sold to a rank or higher. The shop shows "(needs Potato Soldier)" in place of [BUY], or a red "Needs …" line in the window, and refuses the sale before any coins are taken.
 
   | Rank | Items |
@@ -239,7 +253,8 @@ floor        5x5 chiseled nether bricks
 | `POTATO_WORTH` | potato 1, the three crates 9 | What the tithe and `/potatowar offer` accept |
 | `STANDING` | 250 … 220,000 (11 ranks) | Lifetime potatoes for each rank; rank n crafts Tier n |
 | `RANKS` | Unenlisted, Potato Farmer … Potato Emperor | The rank names (the first is rank 0) |
-| `STANDING_CRAFTING` | true | Rank gates crafting-table recipes. false = it only gates the black market (and autocrafters work again) |
+| `STANDING_CRAFTING` | true | Rank gates crafting-table recipes for players and placing autocrafters. false = it only gates the black market |
+| `AUTOCRAFTERS` | 8 blocks (see "Autocrafting works") | Autocrafters that need their tier's rank to place. `{ name }`, or `{ name, rank }` for a fixed rank |
 | `STAGE_PREFIX` | `potato_standing_` | The KubeJS stage name for rank n |
 | `RANKUP_PUBLIC` | true | Announce rank-ups to everyone |
 | `black_market.js`: `STANDING_LOCKS` | see "The Potato War" | The rank each black market item needs |
@@ -291,7 +306,8 @@ floor        5x5 chiseled nether bricks
    - `/potatowar set <player> 250`: they're told they're a Potato Farmer, everyone sees the line, and the cogwheel now crafts. A Thermal machine frame still doesn't (rank 5).
    - Carry 300 potatoes and `/potatowar offer 100`: Standing goes up by 100 and `/bloodpool` shows the Pool unchanged. `/bloodpool tithe` with the rest: the Pool goes up and `/potatowar` doesn't.
    - `/potatowar set <player> 10000`: the machine frame crafts. Relog: it still does.
-   - **Autocrafting:** an AE2 pattern or a Mechanical Crafter for the cogwheel gives nothing (expected, see "Autocrafting").
+   - **Autocrafting:** at Potato Sergeant, place an AE2 Molecular Assembler and autocraft the cogwheel: it works. Then let an Unenlisted player try to place a Molecular Assembler: refused, with the rank named.
+   - **A mod's crafting grid:** an Unenlisted player at a Tinkers Crafting Station gets no cogwheel; a Potato Farmer does.
    - **Black market:** at the merchant, an unranked player sees "(needs Potato Farmer)" for Itching Powder and is refused; at Potato Farmer they can buy it.
 
 **Testing Tinkers after lowering the tier:** restart the server first, or break and replace the smeltery or foundry controller and the casting tables. Tinkers remembers the last recipe each slot used and keeps reusing it while the same item sits there, even after `/reload` has removed it. So a smeltery that melted raw cobalt at Tier 12 keeps melting it after `settier 0`. This only happens when going **down** (testing). In play the tier only rises, and a locked recipe can't be remembered before it exists.
@@ -300,7 +316,7 @@ floor        5x5 chiseled nether bricks
 **Confirmed on the server:** going from Tier 12 to 0, Tinkers kept melting raw cobalt in a smeltery that had melted it before, while cobalt ingots were refused.
 - **The cause** is Tinkers' per-slot recipe cache (`MeltingModule.lastRecipe` in TConstruct 3.11.2.166). It isn't saved, so a restart or a rebuilt controller clears it.
 - **The lock list is right:** `tconstruct:smeltery/melting/metal/cobalt/raw` is removed at Tier 0.
-A mock-server test passed 102 checks:
+A mock-server test passed 114 checks:
 - the real tier list (sealed mods, items, tags, and recipe rules both exact and regex);
 - items listed later than their mod staying sealed after it opens;
 - the chestplates;
@@ -318,7 +334,9 @@ A mock-server test passed 102 checks:
   - `add` naming a wrong block, and `~` positions;
   - protection;
 - the Potato War:
-  - each crafting-table recipe's stage (result item, listed item, tag, the recipe's mod over its result's, recipe-id rules); untiered, sealed-tier, machine and mechanical crafting recipes left alone; one pass;
+  - each crafting-table recipe's result check and its tier (result item, listed item, tag, the recipe's mod over its result's, recipe-id rules); untiered, sealed-tier, machine and mechanical crafting recipes left alone; no stages on recipes; one shared check per tier; one pass;
+  - the check: a player at a table with and without the rank, a mod's grid found through the player's open window, autocrafters (no player) getting every result, an error giving the result;
+  - placing autocrafters: below and at the rank, each block's tier, ordinary blocks untouched, ops and creative exempt, `/bloodpool check` naming the rank;
   - offering: everything or a count, crates and change, refusals; the Pool and the tithe untouched; the tithe never raising rank;
   - ranks, stages given and taken away, the rank-up title and line;
   - `/potatowar`, `top`, `ranks`, the op commands (op only), `/bloodpool tiers` and `check`;
@@ -334,11 +352,13 @@ These depend on the real game:
 - **The Dragon Heart:** test one dragon kill before Tier 10 matters. The dragon-fight mods may change the drop.
 - **Running `reload` from a script**, and **JsonIO** writing the tier file, as before.
 - **The Potato War's crafting gate** (read from KubeJS 2001.6.5's jar, not seen in game):
-  - `event.forEachRecipe` with a list of type filters, and `recipe.stage(...)` turning a crafting recipe into KubeJS's staged version. The server log says how many recipes got a rank ("Potato War: N crafting recipes need a rank"). If it says 0, or logs an error, rank isn't gating crafting.
-  - **Mods' own crafting-table recipe types** aren't staged: for example Mekanism's NBT-keeping recipes (`mekanism:mek_data`), IE's `shaped_fluid` and Forge's NBT recipes. Those items stay craftable by any rank once their tier opens. Check a few Mekanism machines at a crafting table with an unranked player.
-  - **Other crafting grids** (AE2's crafting terminal, Sophisticated Backpacks' crafting upgrade, crafting stations): KubeJS looks for the player whose open menu holds the grid. If a grid doesn't let it find the player, staged recipes give nothing there, even to a high rank.
-  - **JEI** still lists staged recipes for everyone. The result simply doesn't appear without the rank.
-  - **Autocrafters** can't craft staged recipes (see "Autocrafting"). Confirm with one AE2 pattern.
+  - `event.forEachRecipe` with a list of type filters, and `recipe.modifyResult(...)` on mods' existing crafting recipes turning them into KubeJS's versions with the check. The server log says how many recipes got a rank ("Potato War: N crafting recipes need a rank"). If it says 0, or logs an error, rank isn't gating crafting.
+  - **Mods' own crafting-table recipe types** aren't checked: for example Mekanism's NBT-keeping recipes (`mekanism:mek_data`), IE's `shaped_fluid` and Forge's NBT recipes. Those items stay craftable by any rank once their tier opens. Check a few Mekanism machines at a crafting table with an unranked player.
+  - **Mods' crafting grids** (the Tinkers Crafting Station, AE2's crafting terminal, backpack crafting upgrades): the script finds the player whose open window holds the grid. If a mod builds its grid so that it can't, the grid counts as an autocrafter and gives every result. Check the Crafting Station with an unranked player.
+  - **Autocrafters** that do have a player window open on them could be counted as that player's grid. Confirm one AE2 pattern crafts while someone has the assembler's screen open.
+  - **Client-side previews** (Polymorph, the recipe book) may show a result that the server then doesn't give. The server decides.
+  - **JEI** still lists rank-locked recipes for everyone. The result simply doesn't appear without the rank.
+  - **The placing check** uses `BlockEvents.placed`. Check that a refused autocrafter stays in the player's hand.
 - **The tank:**
   - whether EvilCraft's blood places as a still source in each cell and looks right through the glass (otherwise set `BLOOD_BLOCK` to the fallback);
   - the `<x y z>` argument (KubeJS's block-position argument);

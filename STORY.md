@@ -212,6 +212,7 @@ Technoblade's Potato War, revived. **The Pool decides what the server can make; 
 - **Ranks:** 11, from **Potato Farmer** (250) through **Potato Soldier** (10,000) and **Potato General** (100,000) to **Potato Emperor** (220,000). Each rank-up gets a title and a server-wide line ("Ana has risen to Potato Soldier in Techno's Potato War").
 - **What a rank unlocks:**
   - **Crafting:** rank n lets a player craft Tier n's items **at a crafting table**, once the Pool has opened that tier. Machines stay server-wide (they can't tell who's using them).
+  - **Autocrafters** craft for everyone, but only a high enough rank can set one up: the Mechanical Crafter needs Potato Private, AE2's Molecular Assembler needs Potato Sergeant (owner decision).
   - **The black market:** the Hooded Merchant only sells certain items to high enough ranks: pranks from Potato Farmer, the Writ from Potato Recruit, Disguised TNT and the Tracker from Potato Private, up to the War Party contract at Potato Captain. There's no discount (owner decision).
 - **The early ranks are cheap** so a hand farm reaches IE's Garden Cloche (Tier 3), and the Cloche reaches Thermal's Insolator (Tier 5).
 
@@ -308,7 +309,7 @@ Needs Blood Pool Tier 12 and the full Regalia.
 - **Part II tiers:** decided (see BLOOD_POOL.md). Still to check on the server: Thermal's machine-frame recipes in JEI, the AlmostUnified config, and a Dragon Heart drop before Tier 10.
 - **The Potato War:**
   - tune the rank thresholds and the black market locks after a week of Part II;
-  - **autocrafting:** while rank gates crafting, no autocrafter (AE2, Create's Mechanical Crafters, Refined Storage) can make an open tier's crafting-table recipes. Keep that, or set `STANDING_CRAFTING = false` so rank only gates the black market;
+  - **autocrafting** (decided): autocrafters craft every open tier's recipes, and placing one needs its own tier's rank. The remaining gap: low ranks can use a shared system someone else placed. Watch whether that matters in play;
   - the relic called **"The Potato Tithe"** (10,000 potatoes) now shares its name with the Blood Pool's tithe. Rename it, and decide whether its potatoes are a third, separate count.
 - **Regalia:**
   - relic amounts;

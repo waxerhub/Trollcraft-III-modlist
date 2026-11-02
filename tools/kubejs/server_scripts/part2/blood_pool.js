@@ -8,8 +8,9 @@
 //  - Anything not listed in any tier is always open. The Nether and End open at their tiers (part2/dimension_gates.js).
 //  - The Potato War: each player's Potato Standing (rank) is the lifetime count of potatoes they've offered to
 //    Techno's war chest with /potatowar offer. Those potatoes never fill the Pool (and tithed ones never raise rank).
-//    A tier's crafting-table recipes need the tier open AND the crafter's rank at that tier (KubeJS stages
-//    potato_standing_<n>). Machines work for everyone. economy/black_market.js locks some items by rank too.
+//    A tier's crafting-table recipes need the tier open AND, for a player crafting them, their rank at that tier
+//    (KubeJS stages potato_standing_<n>, checked when the result is made). Machines and autocrafters work for
+//    everyone, but placing an autocrafter needs its tier's rank. economy/black_market.js locks some items by rank too.
 //
 // Commands: /bloodpool [donate <coins>|tithe [potatoes]|top|tiers|check] (anyone);
 //           /bloodpool unlock [force]|settier <n>|add|set (op).
@@ -281,12 +282,24 @@ const STANDING = [250, 1000, 2500, 5000, 10000, 20000, 35000, 60000, 100000, 150
 // RANKS[n]: the name of rank n (RANKS[0] = no rank yet).
 const RANKS = ['Unenlisted', 'Potato Farmer', 'Potato Peeler', 'Potato Recruit', 'Potato Private', 'Potato Soldier',
   'Potato Sergeant', 'Potato Lieutenant', 'Potato Captain', 'Potato General', 'Potato Warlord', 'Potato Emperor']
-// true: crafting-table recipes (minecraft:crafting_shaped / crafting_shapeless) of open tiers need the rank.
-// KubeJS then hands out a staged recipe's result only to a player with the rank, at a crafting table or in the
-// inventory grid: autocrafters with no player (Create's Mechanical Crafters, AE2's Molecular Assemblers, Refined
-// Storage, Mekanism's Formulaic Assemblicator) can't craft those recipes at all. false = rank only gates the black market.
+// true: crafting-table recipes (minecraft:crafting_shaped / crafting_shapeless) of open tiers need the rank when a
+// player crafts them (a crafting table, the inventory grid, or a mod's crafting grid the player has open: the result
+// stays empty without the rank). Autocrafters, which have no player, craft them for anyone; placing an autocrafter
+// needs its own tier's rank (AUTOCRAFTERS). false = rank only gates the black market.
 const STANDING_CRAFTING = true
 const STAGE_PREFIX = 'potato_standing_'  // the KubeJS stage for rank n is potato_standing_<n>
+// Autocrafters: only a player of the block's own tier's rank (or higher) may place one. rank: a fixed rank instead.
+// Ops and creative players are exempt. Machines placed by something other than a player aren't checked.
+const AUTOCRAFTERS = {
+  'create:mechanical_crafter': { name: 'Mechanical Crafter' },          // Tier 4
+  'mekanism:formulaic_assemblicator': { name: 'Formulaic Assemblicator' }, // Tier 4
+  'enderio:crafter': { name: 'Crafter' },                                // Tier 5
+  'ae2:molecular_assembler': { name: 'Molecular Assembler' },            // Tier 6
+  'rftoolsutility:crafter1': { name: 'Crafter' },                        // Tier 7
+  'rftoolsutility:crafter2': { name: 'Crafter' },
+  'rftoolsutility:crafter3': { name: 'Crafter' },
+  'advanced_ae:quantum_crafter': { name: 'Quantum Crafter' },            // Tier 8
+}
 const RANKUP_PUBLIC = true               // announce rank-ups to everyone (and Discord, with TO_DISCORD)
 
 const TO_DISCORD = true                // public Pool lines with tellraw @a (posted to Discord); false = in game only
@@ -429,11 +442,41 @@ function isLocked(id, obj) { return tierOf(id, obj) > db().tier }
 
 // ===================== RECIPES =====================
 
-// The Potato War: every crafting-table recipe left in an open tier gets that tier's stage, so only players of that
-// rank can craft it. A recipe's tier is the highest that locks it, the same rules the removal below uses: its
+// The Potato War: every crafting-table recipe left in an open tier gets that tier's result check, so only players of
+// that rank can craft it (autocrafters, with no player, always can). A recipe's tier is the highest that locks it, the same rules the removal below uses: its
 // result (item, then tag, then the result's mod), its own mod (unless its result is listed by id) and the recipe
 // id rules. One pass over the crafting recipes.
 const CRAFTING_TYPES = [{ type: 'minecraft:crafting_shaped' }, { type: 'minecraft:crafting_shapeless' }]
+// Who is crafting: the player at a crafting table or inventory grid, else the online player whose open window is
+// this grid's (a mod's crafting grid). null = no player: an autocrafter.
+function crafterOf(grid) {
+  let p = null
+  try { p = grid.getPlayer() } catch (e) { }
+  if (p) return p
+  let menu = null
+  try { menu = grid.getMenu() } catch (e) { }
+  if (!menu || !Utils.server) return null
+  return onlinePlayers(Utils.server).filter(o => { try { return menu.equals(o.containerMenu) } catch (e) { return false } })[0] || null
+}
+function hasRank(p, n) {
+  try { return !!p.stages.has(STAGE_PREFIX + n) } catch (e) { }
+  return standingOf(uuidOf(p)).tier >= n
+}
+// One result check per rank, shared by every recipe of that tier. Errors give the result (never eat a craft).
+let gateErrors = 0
+function rankGate(n) {
+  return (grid, result) => {
+    try {
+      let p = crafterOf(grid)
+      return !p || hasRank(p, n) ? result : Item.empty
+    } catch (e) {
+      if (gateErrors++ < 3) console.error('[BloodPool] Potato War crafting check (the craft was allowed): ' + e)
+      return result
+    }
+  }
+}
+const RANK_GATES = {}
+STANDING.forEach((need, i) => { RANK_GATES[i + 1] = rankGate(i + 1) })
 function ruleMatches(rule, id) { return typeof rule == 'string' ? rule == id : rule.test(id) }
 function recipeTier(r, open) {
   const id = String(r.getId())
@@ -457,9 +500,9 @@ function stageCrafting(event, open) {
       let t = 0
       try { t = recipeTier(r, open) } catch (e) { failed++; return }
       if (!(t >= 1 && t <= open && t <= STANDING.length)) return
-      try { r.stage(STAGE_PREFIX + t); staged++; counts[t] = (counts[t] || 0) + 1 } catch (e) { failed++ }
+      try { r.modifyResult(RANK_GATES[t]); staged++; counts[t] = (counts[t] || 0) + 1 } catch (e) { failed++ }
     })
-  } catch (e) { console.error('[BloodPool] Potato War: crafting recipes could not be staged (rank does not gate crafting): ' + e); return }
+  } catch (e) { console.error('[BloodPool] Potato War: crafting recipes could not be given a rank check (rank does not gate crafting): ' + e); return }
   console.info('[BloodPool] Potato War: ' + staged + ' crafting recipes need a rank (' +
     Object.keys(counts).map(k => 'rank ' + k + ': ' + counts[k]).join(', ') + ')' + (failed ? '; ' + failed + ' could not be read' : ''))
 }
@@ -713,6 +756,26 @@ function standingTarget(server, name) {
 }
 
 PlayerEvents.loggedIn(event => { try { syncStages(event.player) } catch (e) { console.error('[BloodPool] login stages: ' + e) } })
+
+// The rank needed to place this block (an autocrafter), or 0.
+function autocrafterRank(id) {
+  const a = Object.prototype.hasOwnProperty.call(AUTOCRAFTERS, id) ? AUTOCRAFTERS[id] : null
+  if (!a) return 0
+  const n = Number(a.rank) > 0 ? Number(a.rank) : tierOf(id, null)
+  return Math.max(0, Math.min(STANDING.length, n))
+}
+BlockEvents.placed(event => {
+  if (!STANDING_CRAFTING) return
+  const p = event.player
+  if (!p) return
+  const id = String(event.block.id), need = autocrafterRank(id)
+  if (!need || isOp(p)) return
+  try { if (p.isCreative()) return } catch (e) { }
+  const mine = standingOf(uuidOf(p))
+  if (mine.tier >= need) return
+  tell(p, VOICE_WAR, 'Only a ' + rankName(need) + ' or higher knows how to set up a ' + AUTOCRAFTERS[id].name + '. You are ' + mine.rank + '. (/potatowar)')
+  event.cancel()
+})
 if (Utils.server) onlinePlayers(Utils.server).forEach(p => { try { syncStages(p) } catch (e) { } })
 
 
@@ -828,6 +891,8 @@ ServerEvents.commandRegistry(event => {
       if (STANDING_CRAFTING && n <= STANDING.length) {
         let mine = standingOf(uuidOf(p))
         rank = ' At a crafting table it also needs ' + rankName(n) + ' in the Potato War (you: ' + mine.rank + ').'
+        let place = autocrafterRank(String(s.id))
+        if (place) rank += ' Placing it needs ' + rankName(place) + '.'
       }
       return reply(ctx, String(s.id) + ' can be crafted from Tier ' + n + (T ? ' (' + T.name + ')' : '') + ': ' +
         (n <= db().tier ? 'open now.' : 'sealed for now (found ones still work).') + rank)

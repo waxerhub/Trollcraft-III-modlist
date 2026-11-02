@@ -5,7 +5,7 @@ A black market economy:
 - They spend them at a wandering **Hooded Merchant**.
 - They can buy **Ambush Contracts** that send hired killers after a chosen player.
 
-The merchant is neutral and sells to everyone: Crownsworn (`ministry`), Syndicate and Unregistered alike.
+The merchant is neutral and sells to everyone: Crownsworn (`ministry`), Syndicate and Unregistered alike. In Part II, some items need a rank in Techno's Potato War (see [Potato Standing locks](#potato-standing-locks-part-ii)).
 
 Players don't need a modpack update: everything is a vanilla item with custom NBT, a name and lore.
 
@@ -20,6 +20,26 @@ Players don't need a modpack update: everything is a vanilla item with custom NB
 | `server_scripts/factions/trials.js` | `kubejs/server_scripts/factions/` | Optional: trials (see [TRIALS.md](TRIALS.md)). Needed for the Certified Alibi and for Homing Pig charges. Without it, the alibi isn't sold and hurting a Homing Pig is only announced. |
 
 Copy them and run `/reload`; no restart is needed. With no vendor spots set up the merchant never appears, so add one first (see [The merchant](#the-merchant)).
+
+## Potato Standing locks (Part II)
+In Part II, `part2/blood_pool.js` gives each player a **Potato Standing**: a rank raised by offering potatoes with `/potatowar offer` (see [BLOOD_POOL.md](BLOOD_POOL.md), "The Potato War"). `STANDING_LOCKS` sells some items only to a high enough rank:
+
+| Rank needed | Items (key in `STANDING_LOCKS`) |
+|---|---|
+| 1 Potato Farmer | Itching Powder (`itching`), Butterfingers (`butterfingers`), Anonymous Summons (`summons`) |
+| 2 Potato Peeler | Mimic Chest (`mimic`), Cursed Food (`food`), Tip-off contract (`tipoff`) |
+| 3 Potato Recruit | Writ of Protection (`writ`) |
+| 4 Potato Private | Disguised TNT (`tnt`), Tracker Compass (`tracker`), Squad contract (`squad`) |
+| 6 Potato Sergeant | Teleport Trap (`tpblock`), Homing Pig (`pig`) |
+| 8 Potato Captain | War Party contract (`warparty`) |
+| anyone | Certified Alibi (`alibi`), Unsanctioned Eye (`eye`), under-the-counter stock (`custom`), bounties |
+
+- **Refused before paying:** a locked purchase is refused with "The merchant only sells that to a Potato Recruit or higher in Techno's Potato War", and no coins are taken. That holds for the command, the chat menu and the window.
+- **In the shop:**
+  - the chat menu shows "(needs Potato Recruit)" in grey where [BUY] would be;
+  - the window adds a red "Needs Potato Recruit (Potato Standing)" line to the item. Clicking it explains instead of buying, and a locked contract, Tracker Compass, Homing Pig, Cursed Food or Summons doesn't open its next page.
+- **Changing it:** set a key to the rank number, or delete it to sell that item to everyone. `custom` locks all under-the-counter stock at once.
+- **Part I:** without `part2/blood_pool.js` installed, nothing is locked.
 
 ## Hush Coins
 
@@ -366,6 +386,7 @@ Logging out, `/reload` and restarts never reset a cooldown or reuse a contract i
 | `HEAT_WINDOW_HOURS` / `HEAT_PRICE_STEP` | 24 / 0.5 | |
 | `AFK_MINUTES` | 5 | |
 | `HIRED_BLADES` | black leather vindicators and pillagers | The look of contract mobs outside the Nether |
+| `STANDING_LOCKS` | see [Potato Standing locks](#potato-standing-locks-part-ii) | Part II: the rank each item needs. No effect without `part2/blood_pool.js` |
 
 ## Test plan (two accounts in survival: A buys, B is the target)
 
@@ -456,6 +477,8 @@ Logging out, `/reload` and restarts never reset a cooldown or reuse a contract i
 ## What couldn't be verified for KubeJS 6 on 1.20.1
 
 A mock-server test passed all 248 checks (with bounties.js loaded), and a second one passed all 84 tracking and trial checks: coins, the merchant, the shop window and the chat menu, range, contracts and every refusal, the writ, dupes and forgeries, heat, outcomes, `/reload`, custom stock, selling (refused by default; working when SELL_LIST has entries), the rotation, Disguised TNT (sprinting across, jumping over, owner, protected areas, replaced blocks, breaking, the limit), the Teleport Trap (every refusal, the Nether lock, landing, owner, Pig Escort, reload, replaced blocks, the limit), the Mimic Chest, the four pranks (Cursed Food included), bounties, the coin rename (old coins swapped) and the ambush coin drops. These parts depend on the real game:
+
+**Potato Standing locks** were checked in the Blood Pool's mock test (refusals with no coins taken, the chat menu, the window, buying at the rank). The black market test above passes unchanged without the Blood Pool (Part I).
 
 - **The shop window** (`player.openChestGUI`, in your KubeJS 2001.6.5):
   - that every way of taking items out of it is blocked (KubeJS's menu handles the clicks);

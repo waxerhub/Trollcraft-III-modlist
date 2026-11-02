@@ -23,10 +23,13 @@ const NETHER = 'minecraft:the_nether'
 const END = 'minecraft:the_end'
 const NETHER_FLAG = 'trollcraft_nether_unlocked'   // read by startup_scripts/nether_portal_whitelist.js
 const TO_DISCORD = true                  // the opening lines with tellraw @a (posted to Discord)
+// The Ministry (the enemy since Part I's reveal) keeps the dimensions sealed and sends players back; the Blood God
+// announces when blood breaks a seal.
 const VOICE = { tag: '[Ministry]', tagColor: 'dark_gray', textColor: 'gray' }
+const VOICE_OPEN = { tag: '[BLOOD GOD]', tagColor: 'dark_red', textColor: 'red' }
 const LINES = {
-  netherOpen: 'By order of the Ministry, the Nether is open. Portals may be lit. Bring a permit.',
-  endOpen: 'By order of the Ministry, the End is open. Eyes of Ender may be manufactured. Nothing out there has been recorded.',
+  netherOpen: 'The Ministry\'s seal on the Nether shatters. Light your portals. Blood for the Blood God.',
+  endOpen: 'The Ministry\'s seal on the End shatters. Eyes of Ender can be made again. Whatever they hid out there is waiting.',
   bouncedNether: 'The Nether is sealed until the Blood Pool reaches Tier %n. You have been returned.',
   bouncedEnd: 'The End is sealed until the Blood Pool reaches Tier %n. There is nothing in the End. You have been returned.',
 }
@@ -60,16 +63,19 @@ function exempt(p) {
   try { if (EXEMPT_OPS && p.hasPermissions(2)) return true } catch (e) { }
   return false
 }
-function parts(text) { return [{ text: VOICE.tag, color: VOICE.tagColor, bold: true }, { text: ' ' + text, color: VOICE.textColor }] }
-function tell(p, text) {
-  const json = JSON.stringify([''].concat(parts(text)))
-  try { p.tell(Serializer ? Serializer.fromJsonLenient(json) : Text.of(VOICE.tag + ' ' + text)) } catch (e) { }
+function parts(text, voice) {
+  const v = voice || VOICE
+  return [{ text: v.tag, color: v.tagColor, bold: true }, { text: ' ' + text, color: v.textColor }]
 }
-function announce(server, text) {
+function tell(p, text, voice) {
+  const json = JSON.stringify([''].concat(parts(text, voice)))
+  try { p.tell(Serializer ? Serializer.fromJsonLenient(json) : Text.of((voice || VOICE).tag + ' ' + text)) } catch (e) { }
+}
+function announce(server, text, voice) {
   if (TO_DISCORD) {
-    try { server.runCommandSilent('tellraw @a ' + JSON.stringify([''].concat(parts(text)))); return } catch (e) { }
+    try { server.runCommandSilent('tellraw @a ' + JSON.stringify([''].concat(parts(text, voice)))); return } catch (e) { }
   }
-  onlinePlayers(server).forEach(p => tell(p, text))
+  onlinePlayers(server).forEach(p => tell(p, text, voice))
 }
 
 function pool() { return global.BloodPool || null }
@@ -94,8 +100,8 @@ function sync(server, announceIt) {
   global.netherPortalsUnlocked = nether
   try { server.persistentData.putBoolean(NETHER_FLAG, nether) } catch (e) { console.error('[Gates] Could not save the Nether switch: ' + e) }
   if (announceIt) {
-    if (nether && S.open.nether === false) announce(server, LINES.netherOpen)
-    if (end && S.open.end === false) announce(server, LINES.endOpen)
+    if (nether && S.open.nether === false) announce(server, LINES.netherOpen, VOICE_OPEN)
+    if (end && S.open.end === false) announce(server, LINES.endOpen, VOICE_OPEN)
   }
   S.open.nether = nether
   S.open.end = end

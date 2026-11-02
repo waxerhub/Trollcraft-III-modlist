@@ -4,6 +4,7 @@
 - **Filling the Pool:** the server fills one shared **Blood Pool** by trolling, by giving Hush Coins and with the **Potato Tithe**.
 - **Opening a tier:** when the Pool reaches a tier, an op breaks the Ministry's seal and that tier opens for everyone.
 - **Dimensions:** the Nether opens with Tier 3 and the End with Tier 9.
+- **The Potato War:** each player also has a **Potato Standing** (a rank), raised only by potatoes they offer to Techno's war chest. A tier's **crafting-table** recipes need the tier open **and** the crafter's rank at that tier. Machines work for everyone. Some black market items also need a rank (see "The Potato War").
 
 See [STORY.md](../../STORY.md). The tier contents come from the progression research, [research/TIER_PROPOSAL.md](../../research/TIER_PROPOSAL.md), which has the reasoning per tier and every bypass that was checked.
 
@@ -13,12 +14,12 @@ See [STORY.md](../../STORY.md). The tier contents come from the progression rese
 
 | File | Where it goes | What it does |
 |---|---|---|
-| `server_scripts/part2/blood_pool.js` | `kubejs/server_scripts/part2/` | The Pool, the tiers, the locks and the Potato Tithe. Settings and the tier lists are at the top |
+| `server_scripts/part2/blood_pool.js` | `kubejs/server_scripts/part2/` | The Pool, the tiers, the locks, the Potato Tithe and the Potato War. Settings and the tier lists are at the top |
 | `server_scripts/part2/dimension_gates.js` | `kubejs/server_scripts/part2/` | The Nether and End gates (see "Dimensions") |
 | `server_scripts/part2/blood_tank.js` | `kubejs/server_scripts/part2/` | The tank: a tower that fills with blood as tiers open (see "The tank") |
 | `startup_scripts/nether_portal_whitelist.js` | `kubejs/startup_scripts/` | Stops Nether portals lighting while the Nether is sealed. **Restart** after adding it. For Part II, empty its `ALLOWED_PORTALS` list (its two entries are Part I's event portals) |
 | `server_scripts/economy/trolls.js` | `kubejs/server_scripts/economy/` | Every logged troll fills the Pool |
-| `server_scripts/economy/black_market.js` | (as Part I) | Hush Coins for donations |
+| `server_scripts/economy/black_market.js` | (as Part I) | Hush Coins for donations. Its `STANDING_LOCKS` sell some items only to high enough ranks (no effect without the Blood Pool) |
 
 Copy them, restart once (for the startup script), then `/reload` after any later change. The script creates `kubejs/blood_pool_tier.json` by itself (see "Why there's a file").
 
@@ -31,6 +32,7 @@ Copy them, restart once (for the startup script), then `/reload` after any later
   - **Daily quota:** **30,000 Drops a day, server-wide** (about 120,000 potatoes). A tithe that would go over takes only what fits and says the quota is full; after that the command refuses until the quota reopens.
   - **Reset:** the quota reopens at **4 am Central** (`America/Chicago`, daylight saving included).
   - **Why the cap:** without it, a bank of Thermal Insolators could reach Tier 12 in about three weeks. With it the arc is about **8 weeks if the server farms, about 17 if it doesn't** (the research's §7).
+- **Tithed potatoes never raise anyone's rank** in the Potato War, and offered potatoes never fill the Pool. The two are separate on purpose.
 - **Ops** can `/bloodpool add <drops>` or `/bloodpool set <drops>`.
 - **Credit:** every Drop is credited to whoever gave it (`/bloodpool top`), for Part II titles.
 - **Part I:** troll points don't count. The Pool starts at 0.
@@ -122,14 +124,62 @@ At server start, recipes load **before** the world and its saved data, so the re
 - **If the file is missing or broken,** every tier's recipes stay removed (nothing opens by accident).
 - **Don't edit the file by hand.** Use `/bloodpool settier`.
 
+## The Potato War: each player's Potato Standing
+Techno's Potato War runs alongside the Pool. **The Pool decides what the server can make; your rank decides what you can make.**
+
+- **Offering:** `/potatowar offer` gives every potato you carry to Techno's war chest, or `/potatowar offer <potatoes>` gives that many.
+  - Crates count as 9, and change from a broken crate comes back as potatoes, as with the tithe.
+  - **Offered potatoes only count toward your rank.** They never fill the Pool, and there's no daily cap.
+  - **Your Standing is the lifetime total you've offered.** It never goes down (an op can change it).
+- **Ranks** (`STANDING` and `RANKS` in `blood_pool.js`). Rank n crafts Tier n:
+
+  | Rank | Name | Lifetime potatoes | Crafts |
+  |---|---|---|---|
+  | 0 | Unenlisted | 0 | Nothing in any tier |
+  | 1 | Potato Farmer | 250 | Tier 1 (Create, Mystical Agriculture) |
+  | 2 | Potato Peeler | 1,000 | Tier 2 |
+  | 3 | Potato Recruit | 2,500 | Tier 3 (IE, so the Garden Cloche) |
+  | 4 | Potato Private | 5,000 | Tier 4 |
+  | 5 | Potato Soldier | 10,000 | Tier 5 (Thermal, so the Insolator) |
+  | 6 | Potato Sergeant | 20,000 | Tier 6 |
+  | 7 | Potato Lieutenant | 35,000 | Tier 7 |
+  | 8 | Potato Captain | 60,000 | Tier 8 |
+  | 9 | Potato General | 100,000 | Tier 9 |
+  | 10 | Potato Warlord | 150,000 | Tier 10 |
+  | 11 | Potato Emperor | 220,000 | Tier 11 (Tier 12 has no recipes) |
+
+  The early ranks are cheap so a hand-farm reaches the Garden Cloche, and the Cloche reaches the Insolator.
+- **Ranking up:** a title and a sound for the player, and a public line: "Ana has risen to Potato Soldier in Techno's Potato War" (sent to Discord with `TO_DISCORD`; `RANKUP_PUBLIC = false` keeps it quiet).
+
+### What a rank gates
+- **Crafting-table recipes:** every `minecraft:crafting_shaped` and `crafting_shapeless` recipe in an open tier gets the KubeJS stage `potato_standing_<tier>`. Players hold the stage for every rank they've reached.
+  - **A recipe's tier** is the highest lock that applies to it, by the same rules as the removal: its result (by item, then tag, then the result's mod), the recipe's own mod (unless its result is listed by id), and the recipe-id rules. So Mekanism's crafting recipe for a Create part needs rank 4.
+  - **Without the rank,** the crafting grid (table or inventory) shows no result.
+  - **Untouched:** machines, furnaces, the smeltery, Create's mechanical crafting and every other recipe type work for everyone. So do sealed tiers: their recipes are still removed for everybody.
+  - **Autocrafting:** KubeJS gives a staged recipe's result only when a player is behind the grid. **Autocrafters with no player can't craft any staged recipe**, whoever owns them: Create's Mechanical Crafters doing table recipes, AE2's Molecular Assemblers, Refined Storage autocrafting and Mekanism's Formulaic Assemblicator. That stops a high rank crafting for a low rank through a shared system. It also means nobody can automate an open tier's table recipes. If that's too harsh, set `STANDING_CRAFTING = false`; then rank only gates the black market.
+- **The black market** (`economy/black_market.js`, `STANDING_LOCKS`): some items are only sold to a rank or higher. The shop shows "(needs Potato Soldier)" in place of [BUY], or a red "Needs …" line in the window, and refuses the sale before any coins are taken.
+
+  | Rank | Items |
+  |---|---|
+  | 1 Potato Farmer | Itching Powder, Butterfingers, Anonymous Summons |
+  | 2 Potato Peeler | Mimic Chest, Cursed Food, Tip-off contract |
+  | 3 Potato Recruit | Writ of Protection |
+  | 4 Potato Private | Disguised TNT, Tracker Compass, Squad contract |
+  | 6 Potato Sergeant | Teleport Trap, Homing Pig |
+  | 8 Potato Captain | War Party contract |
+  | anyone | Certified Alibi, Unsanctioned Eye, under-the-counter stock, bounties |
+
+  Under-the-counter stock can be locked with a `custom` entry, and anything else by adding its key (see BLACK_MARKET.md). Part I's server has no Blood Pool, so nothing there is locked.
+- **When stages are given:** on every offer, at login, after `/reload`, and when an op changes a rank (which also takes away stages above the new rank). KubeJS saves stages with the player.
+
 ## Dimensions (`dimension_gates.js`)
 | Dimension | Opens at | How it's held shut before then |
 |---|---|---|
 | The Nether | Tier 3 (`NETHER_TIER`) | **Portals don't light.** The startup script's switch (`global.netherPortalsUnlocked`, saved as `trollcraft_nether_unlocked`) is kept in step with the tier |
 | The End | Tier 9 (`END_TIER`) | **No Eyes of Ender.** The Eye's recipe is a Tier 9 item lock |
 
-- **Getting in anyway:** anyone found in a sealed dimension is sent back to their last place in an open one, with a Ministry line. That covers a found Eye, a mod teleporter, or a portal lit while it was open. Ops, creative and spectator players are exempt.
-- **When the tier opens,** the dimension opens at once and a Ministry line announces it. `settier` changes it quietly.
+- **Getting in anyway:** anyone found in a sealed dimension is sent back to their last place in an open one, with a Ministry line (the Ministry is the one keeping you out). That covers a found Eye, a mod teleporter, or a portal lit while it was open. Ops, creative and spectator players are exempt.
+- **When the tier opens,** the dimension opens at once and the Blood God announces that the Ministry's seal has shattered. `settier` changes it quietly.
 - **Portals lit before the gate closes** keep their frame. Anyone who uses one is just sent back.
 
 ## The tank (`blood_tank.js`)
@@ -148,7 +198,7 @@ floor        5x5 chiseled nether bricks
   - `/bloodtank add <x y z>` registers one you built by hand (the position is the floor's centre block). It checks the build first and names the first wrong block.
 - **Several tanks** can be registered (e.g. at spawn and at the Shrine).
 - **Unloaded tanks:** a tank whose area isn't loaded when a tier opens is filled when a player next comes within 48 blocks. A check every 10 s also repairs a tank that's out of step.
-- **Protection:** players who aren't ops can't break or place blocks in a tank ("The Blood Pool is Ministry evidence"). Ops can.
+- **Protection:** players who aren't ops can't break or place blocks in a tank ("The Blood Pool is sacred. The Blood God does not share it."). Ops can.
 
 ## Commands
 
@@ -158,8 +208,14 @@ floor        5x5 chiseled nether bricks
 | `/bloodpool donate <coins>` | players | Give Hush Coins (1,000 Drops each) |
 | `/bloodpool tithe [potatoes]` | players | The Potato Tithe: everything you carry, or that many |
 | `/bloodpool top` | anyone | The 10 biggest contributors |
-| `/bloodpool tiers` | anyone | Every tier: threshold, what it opens (mods, item count, recipe rules, dimension), OPEN / READY / sealed |
-| `/bloodpool check` | anyone | Which tier lets the item in your hand be crafted |
+| `/bloodpool tiers` | anyone | Every tier: threshold, what it opens (mods, item count, recipe rules, dimension), OPEN / READY / sealed, and the rank its crafting needs |
+| `/bloodpool check` | anyone | Which tier lets the item in your hand be crafted, and the rank (with yours) |
+| `/potatowar` | players | Your potatoes offered, your rank and the next one |
+| `/potatowar offer [potatoes]` | players | Offer everything you carry, or that many, to raise your rank |
+| `/potatowar top` | anyone | The 10 highest ranks |
+| `/potatowar ranks` | anyone | Every rank, its potatoes and the tier it crafts |
+| `/potatowar check <player>` | op | A player's potatoes and rank (online, or anyone who has offered) |
+| `/potatowar add <player> <potatoes>`, `/potatowar set <player> <potatoes>` | op | Change a player's Standing; stages follow at once (or at their next login) |
 | `/bloodpool unlock` | op | Open the next tier (it must be ready); announces and reloads |
 | `/bloodpool unlock force` | op | Open the next tier even if the Pool isn't there |
 | `/bloodpool settier <0-12>` | op | Set the open tier directly, quietly (testing, or undoing a mistake); reloads |
@@ -180,7 +236,13 @@ floor        5x5 chiseled nether bricks
 | `POTATO_DROPS_CAP_PER_DAY` | 30000 | The whole server's daily tithe; 0 = no cap |
 | `POTATO_DROPS_CAP_PER_PLAYER` | 0 (off) | Set it (e.g. 4000) if one big farm keeps taking the whole day's quota |
 | `TITHE_ZONE`, `TITHE_RESET_HOUR` | `America/Chicago`, 4 | When the tithe quota reopens |
-| `POTATO_WORTH` | potato 1, the three crates 9 | What the tithe accepts |
+| `POTATO_WORTH` | potato 1, the three crates 9 | What the tithe and `/potatowar offer` accept |
+| `STANDING` | 250 … 220,000 (11 ranks) | Lifetime potatoes for each rank; rank n crafts Tier n |
+| `RANKS` | Unenlisted, Potato Farmer … Potato Emperor | The rank names (the first is rank 0) |
+| `STANDING_CRAFTING` | true | Rank gates crafting-table recipes. false = it only gates the black market (and autocrafters work again) |
+| `STAGE_PREFIX` | `potato_standing_` | The KubeJS stage name for rank n |
+| `RANKUP_PUBLIC` | true | Announce rank-ups to everyone |
+| `black_market.js`: `STANDING_LOCKS` | see "The Potato War" | The rank each black market item needs |
 | `TO_DISCORD` | true | Ready and unlock lines with `tellraw @a` |
 | `TIER_FILE` | `kubejs/blood_pool_tier.json` | |
 | `RELOAD_DELAY_TICKS` | 20 | Between the unlock announcement and `/reload` |
@@ -195,7 +257,9 @@ floor        5x5 chiseled nether bricks
   - which tiers have been announced as ready;
   - totals by source (trolls, coins, potatoes, ops);
   - contributors, and every unlock (who, when);
-  - the tithe day and its totals (server-wide and per player).
+  - the tithe day and its totals (server-wide and per player);
+  - the Potato War: each player's lifetime potatoes offered (`standing`).
+- **The players' KubeJS stages** (`potato_standing_<n>`): saved by KubeJS with each player, and rebuilt from `standing` at login.
 - **`kubejs/blood_pool_tier.json`:** a copy of the open tier, for the recipe step.
 - **`persistentData["trollcraft_nether_unlocked"]`:** the Nether portal switch (kept in step by `dimension_gates.js`).
 - **`persistentData["blood_tank"]`:** the registered tanks (dimension, floor centre, layers filled).
@@ -221,6 +285,14 @@ floor        5x5 chiseled nether bricks
    - `settier 0`: empty.
    - As a non-op, try to break the glass: refused.
 8. **`/bloodpool settier 0`** puts everything back, including the Nether switch.
+9. **The Potato War** (a non-op player; an op runs the commands):
+   - `/bloodpool settier 5`.
+   - **Unenlisted:** the player can't craft a Create cogwheel at a crafting table or in the inventory grid (no result shows), but a Thermal machine (Pulverizer etc.) built by an op works for them.
+   - `/potatowar set <player> 250`: they're told they're a Potato Farmer, everyone sees the line, and the cogwheel now crafts. A Thermal machine frame still doesn't (rank 5).
+   - Carry 300 potatoes and `/potatowar offer 100`: Standing goes up by 100 and `/bloodpool` shows the Pool unchanged. `/bloodpool tithe` with the rest: the Pool goes up and `/potatowar` doesn't.
+   - `/potatowar set <player> 10000`: the machine frame crafts. Relog: it still does.
+   - **Autocrafting:** an AE2 pattern or a Mechanical Crafter for the cogwheel gives nothing (expected, see "Autocrafting").
+   - **Black market:** at the merchant, an unranked player sees "(needs Potato Farmer)" for Itching Powder and is refused; at Potato Farmer they can buy it.
 
 **Testing Tinkers after lowering the tier:** restart the server first, or break and replace the smeltery or foundry controller and the casting tables. Tinkers remembers the last recipe each slot used and keeps reusing it while the same item sits there, even after `/reload` has removed it. So a smeltery that melted raw cobalt at Tier 12 keeps melting it after `settier 0`. This only happens when going **down** (testing). In play the tier only rises, and a locked recipe can't be remembered before it exists.
 
@@ -228,7 +300,7 @@ floor        5x5 chiseled nether bricks
 **Confirmed on the server:** going from Tier 12 to 0, Tinkers kept melting raw cobalt in a smeltery that had melted it before, while cobalt ingots were refused.
 - **The cause** is Tinkers' per-slot recipe cache (`MeltingModule.lastRecipe` in TConstruct 3.11.2.166). It isn't saved, so a restart or a rebuilt controller clears it.
 - **The lock list is right:** `tconstruct:smeltery/melting/metal/cobalt/raw` is removed at Tier 0.
-A mock-server test passed 56 checks:
+A mock-server test passed 102 checks:
 - the real tier list (sealed mods, items, tags, and recipe rules both exact and regex);
 - items listed later than their mod staying sealed after it opens;
 - the chestplates;
@@ -244,7 +316,14 @@ A mock-server test passed 56 checks:
   - repair of an out-of-step tank;
   - an unloaded tank filled when a player comes near;
   - `add` naming a wrong block, and `~` positions;
-  - protection.
+  - protection;
+- the Potato War:
+  - each crafting-table recipe's stage (result item, listed item, tag, the recipe's mod over its result's, recipe-id rules); untiered, sealed-tier, machine and mechanical crafting recipes left alone; one pass;
+  - offering: everything or a count, crates and change, refusals; the Pool and the tithe untouched; the tithe never raising rank;
+  - ranks, stages given and taken away, the rank-up title and line;
+  - `/potatowar`, `top`, `ranks`, the op commands (op only), `/bloodpool tiers` and `check`;
+  - stages after login and `/reload`;
+  - the black market: locked items refused with no coins taken (command and window), "(needs …)" in the chat shop, a red line in the window, a locked contract not opening its target page, buying at the rank. The Part I black market test (no Blood Pool) still passes unchanged.
 
 These depend on the real game:
 - **Regex recipe ids:** `event.remove({ id: /regex/ })` with a JS regex. If KubeJS ignores a regex, those materials, essences and seeds stay craftable (check the Tinkers steel material at Tier 0).
@@ -254,6 +333,12 @@ These depend on the real game:
 - **AlmostUnified:** check its config so no `forge:ingots/*` tag unifies to a sealed mod's item.
 - **The Dragon Heart:** test one dragon kill before Tier 10 matters. The dragon-fight mods may change the drop.
 - **Running `reload` from a script**, and **JsonIO** writing the tier file, as before.
+- **The Potato War's crafting gate** (read from KubeJS 2001.6.5's jar, not seen in game):
+  - `event.forEachRecipe` with a list of type filters, and `recipe.stage(...)` turning a crafting recipe into KubeJS's staged version. The server log says how many recipes got a rank ("Potato War: N crafting recipes need a rank"). If it says 0, or logs an error, rank isn't gating crafting.
+  - **Mods' own crafting-table recipe types** aren't staged: for example Mekanism's NBT-keeping recipes (`mekanism:mek_data`), IE's `shaped_fluid` and Forge's NBT recipes. Those items stay craftable by any rank once their tier opens. Check a few Mekanism machines at a crafting table with an unranked player.
+  - **Other crafting grids** (AE2's crafting terminal, Sophisticated Backpacks' crafting upgrade, crafting stations): KubeJS looks for the player whose open menu holds the grid. If a grid doesn't let it find the player, staged recipes give nothing there, even to a high rank.
+  - **JEI** still lists staged recipes for everyone. The result simply doesn't appear without the rank.
+  - **Autocrafters** can't craft staged recipes (see "Autocrafting"). Confirm with one AE2 pattern.
 - **The tank:**
   - whether EvilCraft's blood places as a still source in each cell and looks right through the glass (otherwise set `BLOOD_BLOCK` to the fallback);
   - the `<x y z>` argument (KubeJS's block-position argument);

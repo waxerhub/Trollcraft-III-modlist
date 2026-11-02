@@ -26,7 +26,7 @@ const SIDE_BLOCK = 'minecraft:glass'
 const LOOP_SECONDS = 10                   // how often loaded tanks are checked against the tier
 const NEAR = 48                           // a tank counts as loaded while a player in its dimension is this close
 const PROTECT = true                      // non-ops can't break or place blocks in a tank
-const PROTECT_MSG = 'The Blood Pool is Ministry evidence. Do not touch the evidence.'
+const PROTECT_MSG = 'The Blood Pool is sacred. The Blood God does not share it.'
 const RISE_SOUND = 'minecraft:block.bubble_column.upwards_ambient'
 const RISE_SOUND_2 = 'minecraft:item.bucket.fill_lava'
 

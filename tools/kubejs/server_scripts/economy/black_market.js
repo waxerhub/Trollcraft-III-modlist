@@ -13,6 +13,8 @@
 //    player's bed; hurting it breaks the Sanctity of Swine Act). The Certified Alibi clears one open charge at a
 //    trial (factions/trials.js).
 //  - Unsanctioned Eyes of Ender while the End Lockdown Initiative (end_lockdown.js) is on.
+//  - Part II: some items are only sold to players of a high enough Potato Standing (STANDING_LOCKS; the Potato
+//    War in part2/blood_pool.js). Without that script (Part I) everything is sold to everyone.
 //
 // Needs: factions/factions_core.js (global.Factions) and factions/portal_ambush.js (global.PortalAmbush).
 // No new items are registered, so players don't need a modpack update. See tools/kubejs/BLACK_MARKET.md.
@@ -191,6 +193,20 @@ const ALIBI = { price: 50 }
 // (end_lockdown.js). Only sold while that script is installed. Every purchase is logged (buyer, count) and the
 // Eyes carry its id, so /bm inspect on a confiscated Eye shows who bought it. maxPerPlayer: 0 = no limit.
 const UNSANCTIONED_EYE = { price: 20, maxPerPurchase: 12, maxPerPlayer: 0 }
+
+// --- Part II: the Potato War ---
+// The Potato Standing (rank) a player needs to buy each item: 1 = the first rank (Potato Farmer) ... 11 (the ranks
+// and their names are in part2/blood_pool.js, /potatowar). An item left out is sold to everyone. Keys: the contract
+// ids (tipoff, squad, warparty), writ, alibi, eye, tracker, pig, tnt, tpblock, mimic, itching, butterfingers, food,
+// summons, custom (everything under the counter). Only applies while part2/blood_pool.js is installed (Part II).
+const STANDING_LOCKS = {
+  itching: 1, butterfingers: 1, summons: 1,
+  mimic: 2, food: 2, tipoff: 2,
+  writ: 3,
+  tnt: 4, tracker: 4, squad: 4,
+  tpblock: 6, pig: 6,
+  warparty: 8,
+}
 
 // Kept across /reload (only things that can't be rebuilt from saved data).
 if (!global.blackMarketState) global.blackMarketState = { token: 0 }
@@ -904,37 +920,37 @@ function openShop(p) {
   menuLine(p, [{ text: ' Contracts', color: 'dark_red', bold: true }])
   CONTRACTS.forEach(d => {
     menuLine(p, [{ text: '  Ambush Contract: ' + d.name, color: 'red', hoverEvent: { action: 'show_text', contents: d.desc + ' Price rises with the target\'s heat.' } },
-      { text: ' - from ' + d.price + ' coins ', color: 'gray' }, button('[BUY]', 'gold', '/blackmarket buy contract ' + d.id, 'Choose a target')])
+      { text: ' - from ' + d.price + ' coins ', color: 'gray' }, buyButton(p, d.id, '[BUY]', '/blackmarket buy contract ' + d.id, 'Choose a target')])
   })
   menuLine(p, [{ text: '  Writ of Protection', color: 'gold', hoverEvent: { action: 'show_text', contents: 'Keep it on you: the next contract called on you is refused, and the writ is used up.' } },
-    { text: ' - ' + WRIT_PRICE + ' coins ', color: 'gray' }, button('[BUY]', 'gold', '/blackmarket buy writ', 'Buy a Writ of Protection')])
+    { text: ' - ' + WRIT_PRICE + ' coins ', color: 'gray' }, buyButton(p, 'writ', '[BUY]', '/blackmarket buy writ', 'Buy a Writ of Protection')])
   if (TRIALS()) menuLine(p, [{ text: '  Certified Alibi', color: 'aqua', hoverEvent: { action: 'show_text', contents: 'Dismisses one open charge at a trial. Serial-numbered and on file.' } },
-    { text: ' - ' + ALIBI.price + ' coins ', color: 'gray' }, button('[BUY]', 'gold', '/blackmarket buy alibi', 'Buy a Certified Alibi')])
+    { text: ' - ' + ALIBI.price + ' coins ', color: 'gray' }, buyButton(p, 'alibi', '[BUY]', '/blackmarket buy alibi', 'Buy a Certified Alibi')])
   menuLine(p, [{ text: ' Tracking', color: 'dark_aqua', bold: true }])
   menuLine(p, [{ text: '  Tracker Compass', color: 'dark_aqua', hoverEvent: { action: 'show_text', contents: 'Points to one player for ' + TRACKER.minutes + ' minutes once you switch it on. They only feel watched.' } },
-    { text: ' - ' + TRACKER.price + ' coins ', color: 'gray' }, button('[BUY]', 'gold', '/blackmarket buy tracker', 'Choose who')])
+    { text: ' - ' + TRACKER.price + ' coins ', color: 'gray' }, buyButton(p, 'tracker', '[BUY]', '/blackmarket buy tracker', 'Choose who')])
   menuLine(p, [{ text: '  Homing Pig', color: 'light_purple', hoverEvent: { action: 'show_text', contents: 'Walks toward a player\'s bed for ' + HOMING_PIG.minutes + ' minutes. Hurting it breaks the Sanctity of Swine Act.' } },
-    { text: ' - ' + HOMING_PIG.price + ' coins ', color: 'gray' }, button('[BUY]', 'gold', '/blackmarket buy pig', 'Choose whose bed')])
+    { text: ' - ' + HOMING_PIG.price + ' coins ', color: 'gray' }, buyButton(p, 'pig', '[BUY]', '/blackmarket buy pig', 'Choose whose bed')])
   if (ELI()) menuLine(p, [{ text: '  Unsanctioned Eye of Ender', color: 'dark_red', hoverEvent: { action: 'show_text', contents: 'The only Eye the End Portal frames still take. Possession is a crime.' } },
-    { text: ' - ' + UNSANCTIONED_EYE.price + ' coins each ', color: 'gray' }, button('[BUY 1]', 'gold', '/blackmarket buy eye 1', 'Buy one Eye'), ' ',
-    button('[BUY ' + UNSANCTIONED_EYE.maxPerPurchase + ']', 'gold', '/blackmarket buy eye ' + UNSANCTIONED_EYE.maxPerPurchase, 'Enough to fill a portal')])
+    { text: ' - ' + UNSANCTIONED_EYE.price + ' coins each ', color: 'gray' }, buyButton(p, 'eye', '[BUY 1]', '/blackmarket buy eye 1', 'Buy one Eye'), ' ',
+    buyButton(p, 'eye', '[BUY ' + UNSANCTIONED_EYE.maxPerPurchase + ']', '/blackmarket buy eye ' + UNSANCTIONED_EYE.maxPerPurchase, 'Enough to fill a portal')])
   menuLine(p, [{ text: ' Traps', color: 'gold', bold: true }])
   menuLine(p, [{ text: '  Disguised TNT', color: 'dark_red', hoverEvent: { action: 'show_text', contents: 'Turns ONE block in your main hand into TNT that looks like it. The first to step on it sets it off, you included.' } },
-    { text: ' - ' + DISGUISED_TNT.price + ' coins ', color: 'gray' }, button('[BUY]', 'gold', '/blackmarket buy tnt', 'Hold the block first')])
+    { text: ' - ' + DISGUISED_TNT.price + ' coins ', color: 'gray' }, buyButton(p, 'tnt', '[BUY]', '/blackmarket buy tnt', 'Hold the block first')])
   menuLine(p, [{ text: '  Teleport Trap', color: 'dark_purple', hoverEvent: { action: 'show_text', contents: 'Turns ONE block in your main hand into a trap that teleports the first person to step on it (you included) to the place you name.' } },
-    { text: ' - ' + TP_TRAP.price + ' coins ', color: 'gray' }, { text: '[BUY]', color: 'gold', bold: true, clickEvent: { action: 'suggest_command', value: '/bmbuy tpblock ' }, hoverEvent: { action: 'show_text', contents: '/bmbuy tpblock <x> <y> <z> [overworld|nether|end]' } }])
+    { text: ' - ' + TP_TRAP.price + ' coins ', color: 'gray' }, standingNeed(p, 'tpblock') ? buyButton(p, 'tpblock', '', '', '') : { text: '[BUY]', color: 'gold', bold: true, clickEvent: { action: 'suggest_command', value: '/bmbuy tpblock ' }, hoverEvent: { action: 'show_text', contents: '/bmbuy tpblock <x> <y> <z> [overworld|nether|end]' } }])
   menuLine(p, [{ text: '  Mimic Chest', color: 'dark_purple', hoverEvent: { action: 'show_text', contents: 'A chest like any other. It bites the first person who opens it (not you).' } },
-    { text: ' - ' + MIMIC_CHEST.price + ' coins ', color: 'gray' }, button('[BUY]', 'gold', '/blackmarket buy mimic', 'Buy a Mimic Chest')])
+    { text: ' - ' + MIMIC_CHEST.price + ' coins ', color: 'gray' }, buyButton(p, 'mimic', '[BUY]', '/blackmarket buy mimic', 'Buy a Mimic Chest')])
   menuLine(p, [{ text: ' Pranks', color: 'light_purple', bold: true }])
   menuLine(p, [{ text: '  Itching Powder x' + ITCHING_POWDER.count, color: 'light_purple', hoverEvent: { action: 'show_text', contents: 'Snowballs. Whoever gets hit gets Nausea, Slowness and Glowing.' } },
-    { text: ' - ' + ITCHING_POWDER.price + ' coins ', color: 'gray' }, button('[BUY]', 'gold', '/blackmarket buy itching', 'Buy Itching Powder')])
+    { text: ' - ' + ITCHING_POWDER.price + ' coins ', color: 'gray' }, buyButton(p, 'itching', '[BUY]', '/blackmarket buy itching', 'Buy Itching Powder')])
   menuLine(p, [{ text: '  Butterfingers x' + BUTTERFINGERS.count, color: 'light_purple', hoverEvent: { action: 'show_text', contents: 'Eggs. Whoever gets hit drops what they are holding.' } },
-    { text: ' - ' + BUTTERFINGERS.price + ' coins ', color: 'gray' }, button('[BUY]', 'gold', '/blackmarket buy butterfingers', 'Buy Butterfingers')])
+    { text: ' - ' + BUTTERFINGERS.price + ' coins ', color: 'gray' }, buyButton(p, 'butterfingers', '[BUY]', '/blackmarket buy butterfingers', 'Buy Butterfingers')])
   menuLine(p, [{ text: '  Cursed Food', color: 'light_purple', hoverEvent: { action: 'show_text', contents: 'Looks exactly like the real thing. Whoever eats it gets one or more nasty surprises.' } },
     { text: ' - ' + CURSED_FOOD.price + ' coins each:', color: 'gray' }])
-  menuLine(p, ['    '].concat(foodButtons()))
+  menuLine(p, ['    '].concat(standingNeed(p, 'food') ? [buyButton(p, 'food', '', '', '')] : foodButtons()))
   menuLine(p, [{ text: '  Anonymous Summons', color: 'gold', hoverEvent: { action: 'show_text', contents: 'A very official [MINISTRY] notice for the player of your choice.' } },
-    { text: ' - ' + SUMMONS.price + ' coins ', color: 'gray' }, button('[BUY]', 'gold', '/blackmarket buy summons', 'Choose who gets it')])
+    { text: ' - ' + SUMMONS.price + ' coins ', color: 'gray' }, buyButton(p, 'summons', '[BUY]', '/blackmarket buy summons', 'Choose who gets it')])
   if (BOUNTIES()) {
     menuLine(p, [{ text: ' Bounties', color: 'dark_red', bold: true }])
     menuLine(p, [{ text: '  Put ' + COIN_PLURAL + ' on someone\'s head ', color: 'red', hoverEvent: { action: 'show_text', contents: 'Whoever kills them collects. Pots stack; your name stays secret.' } },
@@ -948,7 +964,7 @@ function openShop(p) {
       let hover = { action: 'show_item', contents: { id: e.item, count: e.count } }
       if (e.snbt) hover.contents.tag = e.snbt
       menuLine(p, [{ text: '  ' + e.name + (e.count > 1 ? ' x' + e.count : ''), color: 'light_purple', hoverEvent: hover },
-        { text: ' - ' + e.price + ' coins' + (e.stock > 0 ? ' (' + e.stock + ' left) ' : ' '), color: 'gray' }, button('[BUY]', 'gold', '/blackmarket buy custom ' + id, 'Buy ' + e.name)])
+        { text: ' - ' + e.price + ' coins' + (e.stock > 0 ? ' (' + e.stock + ' left) ' : ' '), color: 'gray' }, buyButton(p, 'custom', '[BUY]', '/blackmarket buy custom ' + id, 'Buy ' + e.name)])
     })
   }
   if (SELL_LIST.length) menuLine(p, [{ text: ' He buys', color: 'dark_green', bold: true }])
@@ -993,6 +1009,8 @@ function resolveTarget(server, name) {
 function buyContract(server, p, tierId, targetName) {
   const def = contractDef(tierId)
   if (!def) return 'No such contract.'
+  const locked = standingBlock(p, def.id)
+  if (locked) return locked
   if (!targetName) { openTargetMenu(p, def); return null }
   const t = resolveTarget(server, targetName)
   if (!t) return 'The merchant has never heard of ' + targetName + '.'
@@ -1009,6 +1027,8 @@ function buyContract(server, p, tierId, targetName) {
   return 'Ambush Contract (' + def.name + ') on ' + t.name + ' bought for ' + price + ' coins. Right-click it to call it in.'
 }
 function buyWrit(p) {
+  const locked = standingBlock(p, 'writ')
+  if (locked) return locked
   if (countCoins(p) < WRIT_PRICE) return 'A writ costs ' + WRIT_PRICE + ' ' + COIN_PLURAL + '. You have ' + countCoins(p) + '.'
   const item = writStack()
   takeCoins(p, WRIT_PRICE)
@@ -1018,6 +1038,8 @@ function buyWrit(p) {
 function buyCustom(p, id) {
   const D = db(), e = D.shop.custom[id]
   if (!e) return 'That isn\'t for sale any more.'
+  const locked = standingBlock(p, 'custom')
+  if (locked) return locked
   if (countCoins(p) < e.price) return e.name + ' costs ' + e.price + ' ' + COIN_PLURAL + '. You have ' + countCoins(p) + '.'
   const item = e.snbt ? Item.of(e.item, e.count, e.snbt) : Item.of(e.item, e.count)
   takeCoins(p, e.price)
@@ -1127,7 +1149,46 @@ function pay(p, price, item) {
   if (item) p.give(item)
   return true
 }
+
+// The Potato War (part2/blood_pool.js): the rank an item needs, if this player hasn't reached it. null = they may buy
+// it (or the item isn't locked, or the Blood Pool isn't installed). { need, rank }.
+function POOL() { const b = global.BloodPool; return b && typeof b.standing == 'function' ? b : null }
+function standingNeed(p, key) {
+  const need = Number(STANDING_LOCKS[key] || 0), B = POOL()
+  if (!(need > 0) || !B) return null
+  let mine = 0
+  try { mine = Number(B.standing(p).tier) || 0 } catch (e) { return null }
+  if (mine >= need) return null
+  let rank = 'Potato Standing ' + need
+  try { rank = String(B.rankName(need)) } catch (e) { }
+  return { need: need, rank: rank }
+}
+// Why this player can't buy the item yet, or '' if they can.
+function standingBlock(p, key) {
+  const n = standingNeed(p, key)
+  return n ? 'The merchant only sells that to a ' + n.rank + ' or higher in Techno\'s Potato War. (/potatowar)' : ''
+}
+// Shop displays: the chat menu's [BUY] button, or a grey "(needs <rank>)" in its place.
+function buyButton(p, key, label, command, hover) {
+  const n = standingNeed(p, key)
+  if (n) return { text: '(needs ' + n.rank + ')', color: 'dark_gray', hoverEvent: { action: 'show_text', contents: 'Raise your Potato Standing with /potatowar offer.' } }
+  return button(label, 'gold', command, hover)
+}
+// The shop window: a red lore line under a locked item, and a click that explains instead of buying.
+function standingLore(p, key) {
+  const n = standingNeed(p, key)
+  return n ? [{ text: 'Needs ' + n.rank + ' (Potato Standing)', color: 'red' }] : []
+}
+function guarded(p, key, fn) {
+  return () => {
+    const why = standingBlock(p, key)
+    if (why) return guiAct(p, () => why)
+    fn()
+  }
+}
 function buyTnt(p) {
+  const locked = standingBlock(p, 'tnt')
+  if (locked) return locked
   const held = p.mainHandItem
   const why = whyNotDisguisable(held)
   if (why) return why
@@ -1157,6 +1218,8 @@ function insideBorder(server, dim, x, z) {
 }
 // /bmbuy tpblock x y z [dimension]: no dimension = the one you're standing in.
 function buyTp(server, p, x, y, z, dimWord) {
+  const locked = standingBlock(p, 'tpblock')
+  if (locked) return locked
   let dim = dimOf(p)
   if (dimWord) {
     let w = String(dimWord).toLowerCase()
@@ -1189,18 +1252,26 @@ function tpHowTo(p) {
   menuLine(p, [{ text: '  ' + TP_TRAP.price + ' ' + COIN_PLURAL + ' per block. No dimension = the one you\'re in.', color: 'gray' }])
 }
 function buyMimic(p) {
+  const locked = standingBlock(p, 'mimic')
+  if (locked) return locked
   return pay(p, MIMIC_CHEST.price, mimicStack()) ? 'Mimic Chest bought. It bites the first person who opens it (but not you).'
     : 'A Mimic Chest costs ' + MIMIC_CHEST.price + ' ' + COIN_PLURAL + '. You have ' + countCoins(p) + '.'
 }
 function buyItching(p) {
+  const locked = standingBlock(p, 'itching')
+  if (locked) return locked
   return pay(p, ITCHING_POWDER.price, itchingStack(ITCHING_POWDER.count)) ? ITCHING_POWDER.count + ' Itching Powder bought.'
     : 'Itching Powder costs ' + ITCHING_POWDER.price + ' ' + COIN_PLURAL + '. You have ' + countCoins(p) + '.'
 }
 function buyButterfingers(p) {
+  const locked = standingBlock(p, 'butterfingers')
+  if (locked) return locked
   return pay(p, BUTTERFINGERS.price, butterfingersStack(BUTTERFINGERS.count)) ? BUTTERFINGERS.count + ' Butterfingers eggs bought.'
     : 'Butterfingers costs ' + BUTTERFINGERS.price + ' ' + COIN_PLURAL + '. You have ' + countCoins(p) + '.'
 }
 function buyFood(p, id) {
+  const locked = standingBlock(p, 'food')
+  if (locked) return locked
   const f = foodById(id)
   if (!f) return 'He has no cursed ' + id + '. Ask for: ' + CURSED_FOOD.foods.map(x => x.id).join(', ') + '.'
   return pay(p, CURSED_FOOD.price, foodStack(f, uuidOf(p))) ? 'One cursed ' + f.name + '. It looks exactly like the real thing, so keep it apart from yours.'
@@ -1216,6 +1287,8 @@ function foodHowTo(p) {
   menuLine(p, ['  '].concat(foodButtons()))
 }
 function buySummons(server, p, targetName) {
+  const locked = standingBlock(p, 'summons')
+  if (locked) return locked
   const target = playerByName(server, targetName)
   if (!target) return 'Summons are only delivered to people who are around.'
   if (!pay(p, SUMMONS.price, null)) return 'An Anonymous Summons costs ' + SUMMONS.price + ' ' + COIN_PLURAL + '. You have ' + countCoins(p) + '.'
@@ -1352,6 +1425,8 @@ function pigTarget(server, name) {
 
 // --- buying ---
 function buyTracker(server, p, targetName) {
+  const locked = standingBlock(p, 'tracker')
+  if (locked) return locked
   const target = targetName ? playerByName(server, targetName) : null
   if (!target) return 'The compass needs a fresh scent: only people who are around can be tracked.'
   if (uuidOf(target) == uuidOf(p)) return 'You always know where you are.'
@@ -1366,6 +1441,8 @@ function buyTracker(server, p, targetName) {
   return 'Tracker Compass for ' + t.name + ' bought. Right-click it to switch it on; it runs for ' + TRACKER.minutes + ' minutes.'
 }
 function buyPig(server, p, targetName) {
+  const locked = standingBlock(p, 'pig')
+  if (locked) return locked
   const t = targetName ? pigTarget(server, targetName) : null
   if (!t) return 'Nobody has heard of ' + targetName + '.'
   if (t.uuid == uuidOf(p)) return 'You know where your own bed is.'
@@ -1381,6 +1458,8 @@ function buyPig(server, p, targetName) {
   return 'A Homing Pig that knows where ' + t.name + ' sleeps. Right-click it to let it go, then follow it.'
 }
 function buyAlibi(p) {
+  const locked = standingBlock(p, 'alibi')
+  if (locked) return locked
   if (!TRIALS()) return 'Nobody is holding trials, so nobody needs an alibi.'
   if (countCoins(p) < ALIBI.price) return 'A Certified Alibi costs ' + coinText(ALIBI.price) + '. You have ' + countCoins(p) + '.'
   const D = db()
@@ -1406,6 +1485,8 @@ function eyesBoughtBy(u) {
   return Object.keys(D.eyeBatches).filter(k => D.eyeBatches[k].buyer == u).reduce((n, k) => n + D.eyeBatches[k].count, 0)
 }
 function buyEye(p, count) {
+  const locked = standingBlock(p, 'eye')
+  if (locked) return locked
   const eli = ELI()
   if (!eli) return 'Eyes of Ender are sold everywhere. Nobody pays the merchant for one.'
   count = Math.floor(Number(count) || 1)
@@ -2005,8 +2086,8 @@ function fillMain(gui, p) {
   const server = Utils.server, coins = countCoins(p)
   guiLabel(gui, 0, 'minecraft:red_stained_glass_pane', 'Contracts', 'red', ['Hired hands, called in with a right-click.'])
   CONTRACTS.forEach((d, i) => guiButton(gui, 2 + i, 0, guiItem('minecraft:skull_banner_pattern', 'Ambush Contract: ' + d.name, 'red',
-    [d.desc, { text: 'From ' + d.price + ' ' + COIN_PLURAL + ' (more for a target with heat)', color: 'gold' }, { text: 'Click to choose the target', color: 'dark_gray', italic: true }], { glint: true }),
-    () => nav(p, { kind: 'contract', tier: d.id, page: 0 })))
+    [d.desc, { text: 'From ' + d.price + ' ' + COIN_PLURAL + ' (more for a target with heat)', color: 'gold' }].concat(standingLore(p, d.id)).concat([{ text: 'Click to choose the target', color: 'dark_gray', italic: true }]), { glint: true }),
+    guarded(p, d.id, () => nav(p, { kind: 'contract', tier: d.id, page: 0 }))))
   if (BOUNTIES()) {
     guiButton(gui, 6, 0, guiItem('minecraft:wither_skeleton_skull', 'Place a Bounty', 'dark_red', [COIN_PLURAL + ' on someone\'s head.', 'Whoever kills them collects. Pots stack,', 'and your name stays secret.',
       { text: 'Any amount you carry', color: 'gold' }, { text: 'Click to choose the player', color: 'dark_gray', italic: true }]), () => nav(p, { kind: 'bounty', page: 0 }))
@@ -2014,39 +2095,39 @@ function fillMain(gui, p) {
   }
   guiLabel(gui, 1, 'minecraft:white_stained_glass_pane', 'Protection & Tracking', 'white')
   guiButton(gui, 2, 1, guiItem('minecraft:paper', 'Writ of Protection', 'gold', ['Keep it on you: the next contract called', 'on you is refused, and the writ is used up.',
-    { text: WRIT_PRICE + ' ' + COIN_PLURAL, color: 'gold' }], { glint: true }), () => guiAct(p, () => buyWrit(p)))
+    { text: WRIT_PRICE + ' ' + COIN_PLURAL, color: 'gold' }].concat(standingLore(p, 'writ')), { glint: true }), () => guiAct(p, () => buyWrit(p)))
   if (TRIALS()) guiButton(gui, 3, 1, guiItem('minecraft:paper', 'Certified Alibi', 'aqua', ['Dismisses one open charge at a trial.', 'Serial-numbered and on file.',
-    { text: ALIBI.price + ' ' + COIN_PLURAL, color: 'gold' }], { glint: true }), () => guiAct(p, () => buyAlibi(p)))
+    { text: ALIBI.price + ' ' + COIN_PLURAL, color: 'gold' }].concat(standingLore(p, 'alibi')), { glint: true }), () => guiAct(p, () => buyAlibi(p)))
   guiButton(gui, 5, 1, guiItem('minecraft:compass', 'Tracker Compass', 'dark_aqua', ['Points to one player for ' + TRACKER.minutes + ' minutes', 'once you switch it on.',
-    'They only feel watched.', { text: TRACKER.price + ' ' + COIN_PLURAL, color: 'gold' }, { text: 'Click to choose who', color: 'dark_gray', italic: true }], { glint: true }),
-    () => nav(p, { kind: 'tracker', page: 0 }))
+    'They only feel watched.', { text: TRACKER.price + ' ' + COIN_PLURAL, color: 'gold' }].concat(standingLore(p, 'tracker')).concat([{ text: 'Click to choose who', color: 'dark_gray', italic: true }]), { glint: true }),
+    guarded(p, 'tracker', () => nav(p, { kind: 'tracker', page: 0 })))
   guiButton(gui, 6, 1, guiItem('minecraft:pig_spawn_egg', 'Homing Pig', 'light_purple', ['Walks toward a player\'s bed', 'for ' + HOMING_PIG.minutes + ' minutes. Follow it.',
-    'Hurting it breaks the Sanctity of Swine Act.', { text: HOMING_PIG.price + ' ' + COIN_PLURAL, color: 'gold' }, { text: 'Click to choose whose bed', color: 'dark_gray', italic: true }]),
-    () => nav(p, { kind: 'pig', page: 0 }))
+    'Hurting it breaks the Sanctity of Swine Act.', { text: HOMING_PIG.price + ' ' + COIN_PLURAL, color: 'gold' }].concat(standingLore(p, 'pig')).concat([{ text: 'Click to choose whose bed', color: 'dark_gray', italic: true }])),
+    guarded(p, 'pig', () => nav(p, { kind: 'pig', page: 0 })))
   if (ELI()) guiButton(gui, 7, 1, guiItem('minecraft:ender_eye', 'Unsanctioned Eye of Ender', 'dark_red', ['The only Eye the End Portal frames still take.',
-    'Possession is a crime.', { text: UNSANCTIONED_EYE.price + ' ' + COIN_PLURAL + ' each', color: 'gold' }, { text: 'Click to buy one (/bm buy eye <count> for more)', color: 'dark_gray', italic: true }],
+    'Possession is a crime.', { text: UNSANCTIONED_EYE.price + ' ' + COIN_PLURAL + ' each', color: 'gold' }].concat(standingLore(p, 'eye')).concat([{ text: 'Click to buy one (/bm buy eye <count> for more)', color: 'dark_gray', italic: true }]),
     { glint: true }), () => guiAct(p, () => buyEye(p, 1)))
   guiLabel(gui, 2, 'minecraft:orange_stained_glass_pane', 'Traps', 'gold')
   guiButton(gui, 2, 2, guiItem('minecraft:tnt', 'Disguised TNT', 'dark_red', ['Turns ONE of the blocks in your main hand', 'into TNT that looks exactly like it.',
-    'Whoever steps on it first sets it off, you included.', { text: DISGUISED_TNT.price + ' ' + COIN_PLURAL + ' per block', color: 'gold' },
-    { text: 'Hold the block, then click', color: 'dark_gray', italic: true }]), () => guiAct(p, () => buyTnt(p)))
+    'Whoever steps on it first sets it off, you included.', { text: DISGUISED_TNT.price + ' ' + COIN_PLURAL + ' per block', color: 'gold' }].concat(standingLore(p, 'tnt')).concat([
+    { text: 'Hold the block, then click', color: 'dark_gray', italic: true }])), () => guiAct(p, () => buyTnt(p)))
   guiButton(gui, 4, 2, guiItem('minecraft:ender_pearl', 'Teleport Trap', 'dark_purple', ['Turns ONE of the blocks in your main hand', 'into a trap that looks exactly like it.',
-    'Whoever steps on it first is teleported', 'to the place you name, you included.', { text: TP_TRAP.price + ' ' + COIN_PLURAL + ' per block', color: 'gold' },
-    { text: 'Click: how to name the place', color: 'dark_gray', italic: true }]), () => withWindowClosed(p, () => tpHowTo(p)))
+    'Whoever steps on it first is teleported', 'to the place you name, you included.', { text: TP_TRAP.price + ' ' + COIN_PLURAL + ' per block', color: 'gold' }].concat(standingLore(p, 'tpblock')).concat([
+    { text: 'Click: how to name the place', color: 'dark_gray', italic: true }])), guarded(p, 'tpblock', () => withWindowClosed(p, () => tpHowTo(p))))
   guiButton(gui, 3, 2, guiItem('minecraft:chest', 'Mimic Chest', 'dark_purple', ['A chest like any other.', 'The first person to open it (not you) gets bitten.',
-    { text: MIMIC_CHEST.price + ' ' + COIN_PLURAL, color: 'gold' }]), () => guiAct(p, () => buyMimic(p)))
+    { text: MIMIC_CHEST.price + ' ' + COIN_PLURAL, color: 'gold' }].concat(standingLore(p, 'mimic'))), () => guiAct(p, () => buyMimic(p)))
   guiLabel(gui, 3, 'minecraft:purple_stained_glass_pane', 'Pranks', 'light_purple')
   guiButton(gui, 2, 3, guiItem('minecraft:snowball', 'Itching Powder', 'light_purple', [ITCHING_POWDER.count + ' snowballs. Whoever gets hit itches:', 'Nausea, Slowness and Glowing for ' + ITCHING_POWDER.seconds + ' s.',
-    { text: ITCHING_POWDER.price + ' ' + COIN_PLURAL, color: 'gold' }], { count: ITCHING_POWDER.count }), () => guiAct(p, () => buyItching(p)))
+    { text: ITCHING_POWDER.price + ' ' + COIN_PLURAL, color: 'gold' }].concat(standingLore(p, 'itching')), { count: ITCHING_POWDER.count }), () => guiAct(p, () => buyItching(p)))
   guiButton(gui, 3, 3, guiItem('minecraft:cooked_beef', 'Cursed Food', 'light_purple', ['Steak, bread, golden apples and more,', 'looking exactly like the real thing.',
-    'Whoever eats one gets a nasty surprise (or three).', { text: CURSED_FOOD.price + ' ' + COIN_PLURAL + ' each', color: 'gold' },
-    { text: 'Click to choose the food', color: 'dark_gray', italic: true }]), () => nav(p, { kind: 'food', page: 0 }))
+    'Whoever eats one gets a nasty surprise (or three).', { text: CURSED_FOOD.price + ' ' + COIN_PLURAL + ' each', color: 'gold' }].concat(standingLore(p, 'food')).concat([
+    { text: 'Click to choose the food', color: 'dark_gray', italic: true }])), guarded(p, 'food', () => nav(p, { kind: 'food', page: 0 })))
   guiButton(gui, 5, 3, guiItem('minecraft:egg', 'Butterfingers', 'light_purple', [BUTTERFINGERS.count + ' eggs. Whoever gets hit drops', 'whatever is in their hand.',
-    { text: BUTTERFINGERS.price + ' ' + COIN_PLURAL, color: 'gold' }], { count: BUTTERFINGERS.count }), () => guiAct(p, () => buyButterfingers(p)))
+    { text: BUTTERFINGERS.price + ' ' + COIN_PLURAL, color: 'gold' }].concat(standingLore(p, 'butterfingers')), { count: BUTTERFINGERS.count }), () => guiAct(p, () => buyButterfingers(p)))
   guiButton(gui, 4, 3, guiItem('minecraft:bell', 'Anonymous Summons', 'gold', ['A very official [MINISTRY] notice,', 'sent to the player of your choice.',
-    { text: SUMMONS.price + ' ' + COIN_PLURAL, color: 'gold' }, { text: 'Click to choose who gets it', color: 'dark_gray', italic: true }]), () => nav(p, { kind: 'summons', page: 0 }))
+    { text: SUMMONS.price + ' ' + COIN_PLURAL, color: 'gold' }].concat(standingLore(p, 'summons')).concat([{ text: 'Click to choose who gets it', color: 'dark_gray', italic: true }])), guarded(p, 'summons', () => nav(p, { kind: 'summons', page: 0 })))
   const custom = db().shop.custom, ids = Object.keys(custom)
-  guiLabel(gui, 4, 'minecraft:black_stained_glass_pane', 'Under the counter', 'dark_gray', [ids.length ? 'Whatever fell off the back of a cart.' : 'Nothing today.'])
+  guiLabel(gui, 4, 'minecraft:black_stained_glass_pane', 'Under the counter', 'dark_gray', [ids.length ? 'Whatever fell off the back of a cart.' : 'Nothing today.'].concat(ids.length ? standingLore(p, 'custom') : []))
   ids.slice(0, 6).forEach((id, i) => guiButton(gui, 2 + i, 4, customDisplay(custom[id]), () => guiAct(p, () => buyCustom(p, id))))
   if (ids.length > 6) guiButton(gui, 8, 4, guiItem('minecraft:arrow', 'More…', 'white', [(ids.length - 6) + ' more']), () => nav(p, { kind: 'custom', page: 0 }))
   guiButton(gui, 0, 5, guiItem(COIN_ITEM, 'You carry ' + coinText(coins), 'dark_red', ['Main inventory and hotbar.'], { glint: true, count: Math.max(1, Math.min(64, coins)) }), () => { })

@@ -8,7 +8,7 @@ Part II's premise ([STORY.md](STORY.md)) is that everyone stands under Techno's 
 
 | Script | Part I | Part II | What changes for Part II |
 |---|---|---|---|
-| `economy/black_market.js` | ✅ keep | 🔧 adapt | Coins still feed the Blood Pool (`/bloodpool donate`). Remove **Unsanctioned Eyes** (the End Lockdown is replaced by the Tier 9 gate) and **Certified Alibis** (no trials). Faction-based pricing and targets fall back to "everyone". The merchant smuggles *for* Techno's side |
+| `economy/black_market.js` | ✅ keep | 🔧 adapt | Coins still feed the Blood Pool (`/bloodpool donate`). Remove **Unsanctioned Eyes** (the End Lockdown is replaced by the Tier 9 gate) and **Certified Alibis** (no trials). Faction-based pricing and targets fall back to "everyone". The merchant smuggles *for* Techno's side. **Already in:** the Potato Standing locks (`STANDING_LOCKS`), which only act when `part2/blood_pool.js` is installed. Re-check them after removing items |
 | `economy/trolls.js` | ✅ keep | ✅ keep | Already pays the Blood Pool; the cross-faction bonus never applies without factions |
 | `economy/bounties.js` | ✅ keep | 🔧 adapt | Act IV: **the Ministry posts bounties** on the strongest players (Ministry-issued) |
 | `factions/factions_config.js`, `factions/factions_core.js` | ✅ keep | ❌ remove | "There are no Loyalists." Part I membership becomes legacy titles (`part2/arrival.js`) |
@@ -35,7 +35,7 @@ Part II's premise ([STORY.md](STORY.md)) is that everyone stands under Techno's 
 ## What the Part II server starts with
 - **As they are:**
   - `economy/trolls.js`, `smite.js`, `fake_players.js`, `give_limits.js` and `refined_obsidian_repellent.js`;
-  - `part2/blood_pool.js` and `part2/dimension_gates.js`;
+  - `part2/blood_pool.js` (with the Potato War), `part2/dimension_gates.js` and `part2/blood_tank.js`;
   - `startup_scripts/nether_portal_whitelist.js` (with an empty list).
 - **Once adapted:**
   - `economy/black_market.js`, `economy/bounties.js`, `events/pig_escort.js`, `limit_balance.js` and `story.js`;

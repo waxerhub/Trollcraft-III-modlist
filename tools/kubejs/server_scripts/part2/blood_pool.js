@@ -6,9 +6,14 @@
 //  - The Pool fills with every troll in the Troll Log (economy/trolls.js), with donated Hush Coins and with the
 //    Potato Tithe (4,000 potatoes = 1,000 Drops, capped per day; the quota resets at 4 am Central).
 //  - Anything not listed in any tier is always open. The Nether and End open at their tiers (part2/dimension_gates.js).
+//  - The Potato War: each player's Potato Standing (rank) is the lifetime count of potatoes they've offered to
+//    Techno's war chest with /potatowar offer. Those potatoes never fill the Pool (and tithed ones never raise rank).
+//    A tier's crafting-table recipes need the tier open AND the crafter's rank at that tier (KubeJS stages
+//    potato_standing_<n>). Machines work for everyone. economy/black_market.js locks some items by rank too.
 //
 // Commands: /bloodpool [donate <coins>|tithe [potatoes]|top|tiers|check] (anyone);
 //           /bloodpool unlock [force]|settier <n>|add|set (op).
+//           /potatowar [offer [potatoes]|top|ranks] (anyone); /potatowar check|add|set <player> ... (op).
 // Copy to <server>/kubejs/server_scripts/part2/ and run /reload. Part II only: not for the Part I server.
 //
 // KubeJS 6 notes: no template strings; `let` inside nested blocks; event.cancel() last. Recipes load before the world
@@ -265,12 +270,32 @@ const POTATO_WORTH = {                  // what the tithe accepts, in potatoes. 
   'farmersdelight:potato_crate': 9,
   'thermal:potato_block': 9,
 }
+
+// --- The Potato War: each player's Potato Standing ---
+// /potatowar offer: potatoes (and crates, by POTATO_WORTH) go to Techno's war chest. They count only toward the
+// giver's Standing, never the Pool; the tithe counts only toward the Pool. Standing is the lifetime total, no cap.
+// STANDING[n - 1]: lifetime potatoes for rank n. Rank n lets a player craft Tier n's items at a crafting table
+// (once the Pool has opened that tier). The early ranks are cheap so the IE Garden Cloche (Tier 3) and Thermal
+// Insolator (Tier 5) potato farms are within reach.
+const STANDING = [250, 1000, 2500, 5000, 10000, 20000, 35000, 60000, 100000, 150000, 220000]
+// RANKS[n]: the name of rank n (RANKS[0] = no rank yet).
+const RANKS = ['Unenlisted', 'Potato Farmer', 'Potato Peeler', 'Potato Recruit', 'Potato Private', 'Potato Soldier',
+  'Potato Sergeant', 'Potato Lieutenant', 'Potato Captain', 'Potato General', 'Potato Warlord', 'Potato Emperor']
+// true: crafting-table recipes (minecraft:crafting_shaped / crafting_shapeless) of open tiers need the rank.
+// KubeJS then hands out a staged recipe's result only to a player with the rank, at a crafting table or in the
+// inventory grid: autocrafters with no player (Create's Mechanical Crafters, AE2's Molecular Assemblers, Refined
+// Storage, Mekanism's Formulaic Assemblicator) can't craft those recipes at all. false = rank only gates the black market.
+const STANDING_CRAFTING = true
+const STAGE_PREFIX = 'potato_standing_'  // the KubeJS stage for rank n is potato_standing_<n>
+const RANKUP_PUBLIC = true               // announce rank-ups to everyone (and Discord, with TO_DISCORD)
+
 const TO_DISCORD = true                // public Pool lines with tellraw @a (posted to Discord); false = in game only
 const TIER_FILE = 'kubejs/blood_pool_tier.json'
 const RELOAD_DELAY_TICKS = 20          // /bloodpool unlock reloads this long after announcing
 
 const VOICE_BLOOD = { tag: '[BLOOD GOD]', tagColor: 'dark_red', textColor: 'red' }
 const VOICE_POOL = { tag: '[Blood Pool]', tagColor: 'dark_red', textColor: 'gray' }
+const VOICE_WAR = { tag: '[POTATO WAR]', tagColor: 'gold', textColor: 'yellow' }
 const LINES = {
   ready: 'The Blood Pool overflows. Tier %n (%name) waits for the Ministry\'s seal to break.',
   unlocked: 'The seal breaks. Tier %n (%name) is open. Blood for the Blood God.',
@@ -281,8 +306,9 @@ const LINES = {
 
 const DATA_KEY = 'blood_pool'
 
-let Serializer = null
+let Serializer = null, StringArg = null
 try { Serializer = Java.loadClass('net.minecraft.network.chat.Component$Serializer') } catch (e) { }
+try { StringArg = Java.loadClass('com.mojang.brigadier.arguments.StringArgumentType') } catch (e) { }
 
 function onlinePlayers(server) {
   const list = server.players, out = []
@@ -322,7 +348,8 @@ function tierDef(n) { return TIERS.filter(T => T.tier == n)[0] || null }
 // ===================== SAVED DATA =====================
 // server.persistentData['blood_pool'] = JSON { v, drops, tier, announced: { n: true }, from: { troll, coins, potatoes, op },
 //   contributors: { uuid: { name, drops, coins } }, unlocks: [ { tier, t, by } ],
-//   potatoDay: 'YYYY-MM-DD' (the tithe day), potatoDrops: Drops tithed that day, potatoByPlayer: { uuid: Drops } }
+//   potatoDay: 'YYYY-MM-DD' (the tithe day), potatoDrops: Drops tithed that day, potatoByPlayer: { uuid: Drops },
+//   standing: { uuid: { name, potatoes } } (the Potato War: lifetime potatoes offered) }
 
 let DB = null
 function db() {
@@ -346,6 +373,7 @@ function db() {
   if (!DB.potatoDay) DB.potatoDay = ''
   if (!DB.potatoDrops) DB.potatoDrops = 0
   if (!DB.potatoByPlayer) DB.potatoByPlayer = {}
+  if (!DB.standing) DB.standing = {}
   return DB
 }
 function save() {
@@ -401,6 +429,41 @@ function isLocked(id, obj) { return tierOf(id, obj) > db().tier }
 
 // ===================== RECIPES =====================
 
+// The Potato War: every crafting-table recipe left in an open tier gets that tier's stage, so only players of that
+// rank can craft it. A recipe's tier is the highest that locks it, the same rules the removal below uses: its
+// result (item, then tag, then the result's mod), its own mod (unless its result is listed by id) and the recipe
+// id rules. One pass over the crafting recipes.
+const CRAFTING_TYPES = [{ type: 'minecraft:crafting_shaped' }, { type: 'minecraft:crafting_shapeless' }]
+function ruleMatches(rule, id) { return typeof rule == 'string' ? rule == id : rule.test(id) }
+function recipeTier(r, open) {
+  const id = String(r.getId())
+  let t = 0
+  let out = null
+  try { out = r.getOriginalRecipeResult() } catch (e) { }
+  const outId = out && !out.isEmpty() ? String(out.id) : ''
+  if (outId) t = tierOf(outId, out)
+  if (!(outId && ITEM_TIER[outId] != null)) t = Math.max(t, MOD_TIER[id.split(':')[0]] || 0)
+  TIERS.forEach(T => {
+    if (T.tier <= t || T.tier > open) return
+    if (((T.unlocks || {}).recipes || []).some(rule => ruleMatches(rule, id))) t = T.tier
+  })
+  return t
+}
+function stageCrafting(event, open) {
+  let staged = 0, failed = 0
+  const counts = {}
+  try {
+    event.forEachRecipe(CRAFTING_TYPES, r => {
+      let t = 0
+      try { t = recipeTier(r, open) } catch (e) { failed++; return }
+      if (!(t >= 1 && t <= open && t <= STANDING.length)) return
+      try { r.stage(STAGE_PREFIX + t); staged++; counts[t] = (counts[t] || 0) + 1 } catch (e) { failed++ }
+    })
+  } catch (e) { console.error('[BloodPool] Potato War: crafting recipes could not be staged (rank does not gate crafting): ' + e); return }
+  console.info('[BloodPool] Potato War: ' + staged + ' crafting recipes need a rank (' +
+    Object.keys(counts).map(k => 'rank ' + k + ': ' + counts[k]).join(', ') + ')' + (failed ? '; ' + failed + ' could not be read' : ''))
+}
+
 ServerEvents.recipes(event => {
   const open = tierFromFile()
   let removed = 0
@@ -420,6 +483,7 @@ ServerEvents.recipes(event => {
     ;(u.recipes || []).forEach(r => { event.remove({ id: r }); removed++ })   // exact id or regex
   })
   console.info('[BloodPool] Recipes: tier ' + open + ' open; ' + removed + ' locked entries removed')
+  if (STANDING_CRAFTING) stageCrafting(event, open)
 })
 
 
@@ -579,6 +643,79 @@ function takePotatoes(p, n) {
 }
 
 
+// ===================== THE POTATO WAR =====================
+
+function standingTierOf(potatoes) {
+  let n = 0
+  STANDING.forEach((need, i) => { if (potatoes >= need) n = i + 1 })
+  return n
+}
+function rankName(n) { return RANKS[n] || ('Potato rank ' + n) }
+// { potatoes, tier, rank, next (potatoes for the next rank, 0 = top), nextRank }
+function standingOf(uuid) {
+  const r = db().standing[uuid]
+  const potatoes = r ? r.potatoes || 0 : 0, tier = standingTierOf(potatoes)
+  const top = tier >= STANDING.length
+  return { potatoes: potatoes, tier: tier, rank: rankName(tier), next: top ? 0 : STANDING[tier], nextRank: top ? '' : rankName(tier + 1) }
+}
+function standingText(s) {
+  let t = fmt(s.potatoes) + ' potatoes offered: ' + s.rank + '.'
+  return t + (s.next ? ' ' + s.nextRank + ' at ' + fmt(s.next) + ' (' + fmt(s.next - s.potatoes) + ' to go).' : ' The highest rank there is.')
+}
+function playerByUuid(server, uuid) { return onlinePlayers(server).filter(o => uuidOf(o) == uuid)[0] || null }
+// Gives the player the stages for every rank they hold and takes away the rest (an op may lower a rank).
+function syncStages(p) {
+  let st = null
+  try { st = p.stages } catch (e) { }
+  if (!st) return
+  const n = standingOf(uuidOf(p)).tier
+  for (let i = 1; i <= STANDING.length; i++) {
+    let stage = STAGE_PREFIX + i
+    try {
+      if (i <= n) { if (!st.has(stage)) st.add(stage) }
+      else if (st.has(stage)) st.remove(stage)
+    } catch (e) { console.error('[BloodPool] stage ' + stage + ' for ' + nameOf(p) + ': ' + e) }
+  }
+}
+function rankUp(server, p, name, n) {
+  if (p) {
+    try {
+      server.runCommandSilent('title ' + name + ' times 10 70 20')
+      server.runCommandSilent('title ' + name + ' subtitle ' + JSON.stringify({ text: 'Techno\'s Potato War', color: 'yellow' }))
+      server.runCommandSilent('title ' + name + ' title ' + JSON.stringify({ text: rankName(n), color: 'gold', bold: true }))
+      server.runCommandSilent('playsound minecraft:ui.toast.challenge_complete master ' + name + ' ~ ~ ~ 1 1')
+    } catch (e) { }
+    tell(p, VOICE_WAR, 'You are now a ' + rankName(n) + '. You can craft Tier ' + n + '\'s items at a crafting table once the Blood Pool opens it.')
+  }
+  if (RANKUP_PUBLIC) announce(server, VOICE_WAR, name + ' has risen to ' + rankName(n) + ' in Techno\'s Potato War.')
+  console.info('[BloodPool] Potato War: ' + name + ' is now rank ' + n + ' (' + rankName(n) + ')')
+}
+// Sets a player's lifetime offered potatoes. Online players get their stages at once (offline ones at login).
+function setStanding(server, uuid, name, potatoes, announceIt) {
+  const D = db(), before = standingOf(uuid).tier
+  if (!D.standing[uuid]) D.standing[uuid] = { name: name || '?', potatoes: 0 }
+  if (name) D.standing[uuid].name = name
+  D.standing[uuid].potatoes = Math.max(0, Math.round(potatoes))
+  save()
+  const after = standingOf(uuid).tier
+  const p = server ? playerByUuid(server, uuid) : null
+  if (p) syncStages(p)
+  if (announceIt && server && after > before) rankUp(server, p, D.standing[uuid].name, after)
+  return after
+}
+// A player by name: online, or one the Potato War already knows. { uuid, name } or null.
+function standingTarget(server, name) {
+  const low = String(name).toLowerCase()
+  const p = onlinePlayers(server).filter(o => nameOf(o).toLowerCase() == low)[0]
+  if (p) return { uuid: uuidOf(p), name: nameOf(p) }
+  const S = db().standing, u = Object.keys(S).filter(k => String(S[k].name).toLowerCase() == low)[0]
+  return u ? { uuid: u, name: S[u].name } : null
+}
+
+PlayerEvents.loggedIn(event => { try { syncStages(event.player) } catch (e) { console.error('[BloodPool] login stages: ' + e) } })
+if (Utils.server) onlinePlayers(Utils.server).forEach(p => { try { syncStages(p) } catch (e) { } })
+
+
 // ===================== API FOR OTHER SCRIPTS =====================
 
 global.BloodPool = {
@@ -591,6 +728,10 @@ global.BloodPool = {
   tierCount: TIERS.length,
   netherTier: NETHER_TIER,                           // part2/dimension_gates.js
   endTier: END_TIER,
+  // The Potato War. standing(player) = { potatoes, tier (rank number, 0 = none), rank (its name), next, nextRank }.
+  standing: player => standingOf(uuidOf(player)),
+  rankName: n => rankName(Number(n)),
+  rankCount: STANDING.length,
 }
 
 
@@ -618,13 +759,13 @@ ServerEvents.commandRegistry(event => {
   const tithe = (ctx, asked) => {
     const p = me(ctx)
     if (!p) return reply(ctx, 'Players only.', true)
-    if (asked < 0) return reply(ctx, 'The Ministry does not refund potatoes.', true)
+    if (asked < 0) return reply(ctx, 'What is spilled into the Pool stays in the Pool.', true)
     const uuid = uuidOf(p), have = countPotatoes(p)
     if (asked > have) return reply(ctx, 'You only carry ' + fmt(have) + ' potatoes (crates count as 9).', true)
     let drops = Math.floor((asked > 0 ? asked : have) / POTATOES_PER_DROP)
-    if (drops < 1) return reply(ctx, 'The Ministry weighs potatoes in fours at the least. You carry ' + fmt(have) + '.', true)
+    if (drops < 1) return reply(ctx, 'The Blood God takes potatoes in fours at the least. You carry ' + fmt(have) + '.', true)
     const room = potatoRoom(uuid)
-    if (room == 0) return reply(ctx, 'The Ministry will not weigh another potato today. The quota opens again at ' + TITHE_RESET_HOUR + ' am.', true)
+    if (room == 0) return reply(ctx, 'The Pool has drunk its fill of potatoes today. The tithe opens again at ' + TITHE_RESET_HOUR + ' am.', true)
     if (room > 0 && drops > room) drops = room
     const spend = drops * POTATOES_PER_DROP
     if (!takePotatoes(p, spend)) return reply(ctx, 'The potatoes slipped away. Nothing was tithed.', true)
@@ -633,8 +774,8 @@ ServerEvents.commandRegistry(event => {
     D.potatoByPlayer[uuid] = (D.potatoByPlayer[uuid] || 0) + drops
     addDrops(drops, 'potatoes', uuid, nameOf(p), 0)
     console.info('[BloodPool] ' + nameOf(p) + ' tithed ' + spend + ' potatoes (' + drops + ' Drops)')
-    let msg = fmt(spend) + ' potatoes weighed and accepted: ' + fmt(drops) + ' Drops.'
-    if (room > 0 && drops == room) msg += ' That fills the day\'s quota.'
+    let msg = fmt(spend) + ' potatoes spilled into the Pool: ' + fmt(drops) + ' Drops. (Tithes don\'t raise your rank in the Potato War: /potatowar offer does.)'
+    if (room > 0 && drops == room) msg += ' That fills the day\'s tithe.'
     return reply(ctx, msg + ' ' + statusText())
   }
   const unlock = (ctx, force) => {
@@ -672,7 +813,8 @@ ServerEvents.commandRegistry(event => {
     .then(Commands.literal('tiers').executes(safe(ctx => {
       const D = db()
       TIERS.forEach(T => reply(ctx, 'Tier ' + T.tier + ' · ' + T.name + ' · ' + fmt(T.drops) + ' Drops · ' + contents(T) + ' · ' +
-        (T.tier <= D.tier ? 'OPEN' : D.drops >= T.drops ? 'READY' : 'sealed')))
+        (T.tier <= D.tier ? 'OPEN' : D.drops >= T.drops ? 'READY' : 'sealed') +
+        (STANDING_CRAFTING && T.tier <= STANDING.length ? ' · crafting needs ' + rankName(T.tier) : '')))
       return 1
     })))
     .then(Commands.literal('check').executes(safe(ctx => {
@@ -682,8 +824,13 @@ ServerEvents.commandRegistry(event => {
       if (!s || s.isEmpty()) return reply(ctx, 'Hold the item to check.', true)
       const n = tierOf(s.id, s), T = tierDef(n)
       if (!n) return reply(ctx, String(s.id) + ' isn\'t in any tier: it can always be crafted.')
+      let rank = ''
+      if (STANDING_CRAFTING && n <= STANDING.length) {
+        let mine = standingOf(uuidOf(p))
+        rank = ' At a crafting table it also needs ' + rankName(n) + ' in the Potato War (you: ' + mine.rank + ').'
+      }
       return reply(ctx, String(s.id) + ' can be crafted from Tier ' + n + (T ? ' (' + T.name + ')' : '') + ': ' +
-        (n <= db().tier ? 'open now.' : 'sealed for now (found ones still work).'))
+        (n <= db().tier ? 'open now.' : 'sealed for now (found ones still work).') + rank)
     })))
     .then(Commands.literal('unlock').requires(op)
       .executes(safe(ctx => unlock(ctx, false)))
@@ -706,6 +853,65 @@ ServerEvents.commandRegistry(event => {
       save()
       return reply(ctx, statusText())
     })))))
+
+  // ----- The Potato War -----
+  const war = (ctx, text, bad) => {
+    ctx.source.sendSystemMessage(comp([{ text: '[Potato War] ', color: 'gold' }, { text: text, color: bad ? 'red' : 'yellow' }]))
+    return bad ? 0 : 1
+  }
+  const word = name => Commands.argument(name, StringArg.word())
+  const str = (ctx, name) => String(StringArg.getString(ctx, name))
+  // asked: how many potatoes (0 = all you carry).
+  const offer = (ctx, asked) => {
+    const p = me(ctx)
+    if (!p) return war(ctx, 'Players only.', true)
+    if (asked < 0) return war(ctx, 'Techno\'s war chest takes potatoes. It doesn\'t hand them out.', true)
+    const have = countPotatoes(p)
+    if (asked > have) return war(ctx, 'You only carry ' + fmt(have) + ' potatoes (crates count as 9).', true)
+    const n = asked > 0 ? asked : have
+    if (n < 1) return war(ctx, 'You carry no potatoes. Crates count as 9.', true)
+    if (!takePotatoes(p, n)) return war(ctx, 'The potatoes slipped away. Nothing was offered.', true)
+    const u = uuidOf(p)
+    setStanding(ctx.source.server, u, nameOf(p), standingOf(u).potatoes + n, true)
+    console.info('[BloodPool] Potato War: ' + nameOf(p) + ' offered ' + n + ' potatoes')
+    return war(ctx, fmt(n) + ' potatoes offered to Techno\'s war chest. ' + standingText(standingOf(u)))
+  }
+  const opSet = (ctx, add) => {
+    const t = standingTarget(ctx.source.server, str(ctx, 'player'))
+    if (!t) return war(ctx, 'Nobody by that name is online or has offered potatoes.', true)
+    const n = num(ctx, 'potatoes'), cur = standingOf(t.uuid).potatoes
+    setStanding(ctx.source.server, t.uuid, t.name, add ? cur + n : n, true)
+    console.info('[BloodPool] Potato War: ' + who(ctx) + (add ? ' added ' : ' set ') + n + ' potatoes for ' + t.name)
+    return war(ctx, t.name + ': ' + standingText(standingOf(t.uuid)))
+  }
+  event.register(Commands.literal('potatowar')
+    .executes(safe(ctx => {
+      const p = me(ctx)
+      if (!p) return war(ctx, 'Players only.', true)
+      return war(ctx, standingText(standingOf(uuidOf(p))) + ' Offer potatoes with /potatowar offer [count]; they raise your rank, not the Blood Pool.')
+    }))
+    .then(Commands.literal('offer')
+      .executes(safe(ctx => offer(ctx, 0)))
+      .then(int('potatoes').executes(safe(ctx => offer(ctx, Math.floor(num(ctx, 'potatoes')))))))
+    .then(Commands.literal('top').executes(safe(ctx => {
+      const S = db().standing, list = Object.keys(S).filter(u => S[u].potatoes > 0).sort((a, b) => S[b].potatoes - S[a].potatoes).slice(0, 10)
+      if (!list.length) return war(ctx, 'Nobody has offered a potato yet.')
+      war(ctx, 'Techno\'s Potato War, by potatoes offered:')
+      list.forEach((u, i) => war(ctx, '  ' + (i + 1) + '. ' + S[u].name + ': ' + rankName(standingTierOf(S[u].potatoes)) + ' (' + fmt(S[u].potatoes) + ')'))
+      return 1
+    })))
+    .then(Commands.literal('ranks').executes(safe(ctx => {
+      STANDING.forEach((need, i) => war(ctx, (i + 1) + '. ' + rankName(i + 1) + ': ' + fmt(need) + ' potatoes' +
+        (STANDING_CRAFTING ? ' · crafts Tier ' + (i + 1) + ' (' + (tierDef(i + 1) || { name: '?' }).name + ')' : '')))
+      return 1
+    })))
+    .then(Commands.literal('check').requires(op).then(word('player').executes(safe(ctx => {
+      const t = standingTarget(ctx.source.server, str(ctx, 'player'))
+      if (!t) return war(ctx, 'Nobody by that name is online or has offered potatoes.', true)
+      return war(ctx, t.name + ': ' + standingText(standingOf(t.uuid)))
+    }))))
+    .then(Commands.literal('add').requires(op).then(word('player').then(int('potatoes').executes(safe(ctx => opSet(ctx, true))))))
+    .then(Commands.literal('set').requires(op).then(word('player').then(int('potatoes').executes(safe(ctx => opSet(ctx, false)))))))
 })
 
 })()

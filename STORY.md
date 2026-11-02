@@ -7,7 +7,7 @@ The server's story in two parts.
 **Trolling drives the story.**
 - Every troll is logged and scored.
 - In Part I, trolls are logged, scored and paid, and every point is kept for Part II. Acts move forward when an op says so. Part I ends with **Protocol Clean Slate**, and the way out is the **Blood Portal**.
-- In Part II, the **Blood Pool** unlocks all progression (its progression lock tree). It isn't part of Part I.
+- In Part II, the **Blood Pool** unlocks all progression (its progression lock tree), and each player's rank in **Techno's Potato War** decides what they may craft from it. Neither is part of Part I.
 - Ministry **decrees** are announcements; boss kills and relics carry the plot.
 
 Legend: ✅ = built and running, 🔨 = still to build, *TBD* = open decision (see [Open decisions](#open-decisions)).
@@ -171,17 +171,18 @@ Starts with `/story act next`.
 Everyone stands together under Techno's banner. There are no Loyalists. The Ministry becomes a non-player enemy: its Inspectors and the Minister.
 
 ### Blood for the Blood God: the Blood Pool ✅ (`part2/blood_pool.js`, `part2/dimension_gates.js`, see [BLOOD_POOL.md](tools/kubejs/BLOOD_POOL.md))
-**All progression in Part II is locked.** Tiers open only through the server-wide **Blood Pool**. It starts at 0: Part I troll points don't count (owner decision); they only become legacy titles.
+**All progression in Part II is locked.** The Ministry, exposed at the end of Part I, sealed the new world's progression to keep everyone weak. Each tier is one of **the Ministry's seals**, and only blood breaks them. Tiers open only through the server-wide **Blood Pool**. It starts at 0: Part I troll points don't count (owner decision); they only become legacy titles.
 - **It's filled by:**
   - **trolls:** each logged troll adds its value as Drops of Blood (see [Scoring](#scoring));
   - **Hush Coins:** donated at **1,000 Drops each**, a sink for the economy;
-  - **the Potato Tithe** (the Potato War): **4,000 potatoes = 1,000 Drops**, capped at **30,000 Drops a day** server-wide. The quota reopens at 4 am Central (owner decisions).
+  - **the Potato Tithe:** potatoes spilled into the Pool for the Blood God. **4,000 potatoes = 1,000 Drops**, capped at **30,000 Drops a day** server-wide. The quota reopens at 4 am Central (owner decisions). Tithed potatoes never count toward anyone's Potato War rank.
 - **Group unlocks:** when the Pool reaches a milestone, that tier unlocks for everyone. **An op confirms each unlock**; the confirm includes the `/reload` that brings the tier's recipes back.
 - **A locked tier blocks crafting only** (owner decision): its recipes are removed in every recipe type. Sealed items that players find, loot or trade for work normally.
 
   The tiers are lists of mods, items, tags and recipe ids in `blood_pool.js`, filled from the progression research ([research/TIER_PROPOSAL.md](research/TIER_PROPOSAL.md)). Twilight Forest and Tinkers are open from day 0 (gear tiered by item); ironwood is open.
 - **The tank** (`part2/blood_tank.js`): a tower of chiseled nether bricks, glass and nether gold ore whose 3×3×6 chamber fills one layer of blood for every 2 tiers, full at the Siege.
-- **Dimensions:** the **Nether opens at Tier 3** and the **End at Tier 9** (owner decision). Until then Nether portals don't light, Eyes of Ender can't be crafted, and anyone who gets in is sent back.
+- **Dimensions:** the **Nether opens at Tier 3** and the **End at Tier 9** (owner decision). Until then Nether portals don't light, Eyes of Ender can't be crafted, and anyone who gets in is sent back by the Ministry. When the tier opens, the Blood God announces that the Ministry's seal has shattered.
+- **Voices:** the Blood God speaks for the Pool (ready, unlocked, the tithe). The Ministry speaks only as the enemy holding the seals (sending players back). Nothing in Part II has the Ministry granting, permitting or weighing anything.
 - **The pace:** about 9 contributors, **12 tiers, 3 million Drops in total** (thresholds doubled, owner decision).
   - **Estimate:** about 25,000 Drops a day from trolls and coins, plus up to 30,000 a day from the Potato Tithe: **about 8 weeks if the server farms, about 17 if it only trolls**.
   - **Cumulative thresholds** (settings):
@@ -203,7 +204,16 @@ Everyone stands together under Techno's banner. There are no Loyalists. The Mini
 
     (Expected times assume the tithe quota is filled daily; trolls and coins alone take about twice as long.)
 
-  - **What each tier unlocks will be ranked once the Part II modpack is put together.** The only fixed point: **Tier 12 is the Siege**, when the Citadel's Bureaucratic Barrier falls.
+  - **What each tier unlocks** is decided (BLOOD_POOL.md, from the research). **Tier 12 is the Siege**, when the Citadel's Bureaucratic Barrier falls; it unlocks no recipes.
+
+### Techno's Potato War: each player's Potato Standing ✅ (`part2/blood_pool.js`, `economy/black_market.js`, see [BLOOD_POOL.md](tools/kubejs/BLOOD_POOL.md#the-potato-war-each-players-potato-standing))
+Technoblade's Potato War, revived. **The Pool decides what the server can make; your rank decides what you can make** (owner decisions).
+- **Raising your rank:** `/potatowar offer` gives potatoes to Techno's war chest. Your **Potato Standing** is the lifetime total, with no cap. Offered potatoes only count toward rank and never fill the Pool, and tithed potatoes never count toward rank.
+- **Ranks:** 11, from **Potato Farmer** (250) through **Potato Soldier** (10,000) and **Potato General** (100,000) to **Potato Emperor** (220,000). Each rank-up gets a title and a server-wide line ("Ana has risen to Potato Soldier in Techno's Potato War").
+- **What a rank unlocks:**
+  - **Crafting:** rank n lets a player craft Tier n's items **at a crafting table**, once the Pool has opened that tier. Machines stay server-wide (they can't tell who's using them).
+  - **The black market:** the Hooded Merchant only sells certain items to high enough ranks: pranks from Potato Farmer, the Writ from Potato Recruit, Disguised TNT and the Tracker from Potato Private, up to the War Party contract at Potato Captain. There's no discount (owner decision).
+- **The early ranks are cheap** so a hand farm reaches IE's Garden Cloche (Tier 3), and the Cloche reaches Thermal's Insolator (Tier 5).
 
 ### Act I: The Awakening
 34. **Waking Up:** players arrive in the new world through the Blood Portal. Each picks **9 items** from the inventory they carried through (saved by the Blood Portal; only items whose mod is still in the pack), and gets their legacy:
@@ -269,13 +279,16 @@ Needs Blood Pool Tier 12 and the full Regalia.
 | Acts and decrees | `story.js` | Op-advanced acts with titles and lines; numbered decrees |
 | Protocol Clean Slate | `clean_slate.js` | The dragon-kill trigger, the 4-day countdown, the burning world, the Last Broadcast |
 | Blood Relics, Archives, the Blood Portal | `events/blood_portal.js` | End City Relics and books, Draft Bill 9-D from the dragon, the escape event |
+| The Blood Pool, its tiers and the Potato Tithe; the Nether and End gates; the tank | `part2/blood_pool.js`, `part2/dimension_gates.js`, `part2/blood_tank.js` | Part II's progression: blood breaks the Ministry's seals |
+| Techno's Potato War (Potato Standing) | `part2/blood_pool.js`, `economy/black_market.js` | Each player's rank: what they may craft and buy |
 
 ## Build order
 1. ✅ **Batch 1:** `story.js` (acts and decrees) and `economy/trolls.js` (the Troll Log, payouts, reports). The Blood Pool was taken out again and saved for Part II.
 2. ✅ **The finale (built before batch 2):** `clean_slate.js` and `events/blood_portal.js`: the dragon-kill trigger, the Archive books and Draft Bill 9-D, the Blood Relics, the 4-day countdown and the burning world, the Blood Portal event, and the exodus files.
 3. 🔨 **Batch 2:** the **Scout NPC** and his testimony; op-run **events** (Prank Purge, Mandatory Fun Day, the Trolling Moratorium, a Ministry Meltdown).
 4. **Part II** (same platform: MC 1.20.1, Forge, KubeJS 6). Scripts go in `part2/`. In order:
-   1. ✅ **The Blood Pool and tier locks** (`part2/blood_pool.js`), with the tier contents from the progression research, the Potato Tithe, and the Nether and End gates (`part2/dimension_gates.js`).
+   1. ✅ **The Blood Pool and tier locks** (`part2/blood_pool.js`), with the tier contents from the progression research, the Potato Tithe, and the Nether and End gates (`part2/dimension_gates.js`). The tank (`part2/blood_tank.js`).
+   1a. ✅ **Techno's Potato War** (in `part2/blood_pool.js`): each player's Potato Standing gates crafting-table recipes, and the black market's `STANDING_LOCKS`.
    2. 🔨 **A Part I patch, before the finale is played:** the exodus files also save trial records and what titles need.
    3. 🔨 **Arrival** (`part2/arrival.js`): a 9-item satchel picked from the saved inventory (only items still in the pack), legacy titles, and trial records as books.
    4. 🔨 **The Part II story driver** (`story.js` with Part II acts).
@@ -293,6 +306,10 @@ Needs Blood Pool Tier 12 and the full Regalia.
 - **Clean Slate:** tune the Blood Portal event (40 kill points to fill, the Relic chance) once it's been tried; how much of each player's saved inventory Part II gives back.
 - **Part II world:** a new seed, or the same seed regenerated.
 - **Part II tiers:** decided (see BLOOD_POOL.md). Still to check on the server: Thermal's machine-frame recipes in JEI, the AlmostUnified config, and a Dragon Heart drop before Tier 10.
+- **The Potato War:**
+  - tune the rank thresholds and the black market locks after a week of Part II;
+  - **autocrafting:** while rank gates crafting, no autocrafter (AE2, Create's Mechanical Crafters, Refined Storage) can make an open tier's crafting-table recipes. Keep that, or set `STANDING_CRAFTING = false` so rank only gates the black market;
+  - the relic called **"The Potato Tithe"** (10,000 potatoes) now shares its name with the Blood Pool's tithe. Rename it, and decide whether its potatoes are a third, separate count.
 - **Regalia:**
   - relic amounts;
   - whether relics need a Blood offering;

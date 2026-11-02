@@ -534,6 +534,8 @@ function nameFormat(event) {
   if (!Utils.server || !SET.SHOW_PUBLIC_PREFIX) return
   const player = event.getEntity()
   if (!player || !player.isPlayer()) return
+  const Dg = global.Disguise                                    // disguise.js: no prefix while disguised
+  if (Dg && Dg.isDisguised && Dg.isDisguised(player)) return
   const pub = publicFaction(uuidOf(player))
   const pre = prefixComponent(pub.f, pub.r)
   if (pre) event.setDisplayname(pre.append(event.getDisplayname()))

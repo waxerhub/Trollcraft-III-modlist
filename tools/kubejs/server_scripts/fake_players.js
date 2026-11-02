@@ -213,6 +213,10 @@ function fakeSay(server, name, text, reply) {
   text = String(text).trim()
   if (!text) return reply('Nothing to say.', true)
   if (text.length > MAX_CHAT_LENGTH) text = text.substring(0, MAX_CHAT_LENGTH)
+  return reply('<' + f.name + '> ' + text + ' ' + sayAs(server, f, text), false)
+}
+// <name> text in game, then on Discord as that name. f: { name, uuid }. Returns the Discord result.
+function sayAs(server, f, text) {
   let sent = false
   if (J.Serializer) {
     try {
@@ -221,7 +225,7 @@ function fakeSay(server, name, text, reply) {
     } catch (e) { console.warn('[FakePlayers] ' + e) }
   }
   if (!sent) server.tell(Text.of('<' + f.name + '> ' + text))
-  return reply('<' + f.name + '> ' + text + ' ' + postChatToDiscord(f, text), false)
+  return postChatToDiscord(f, text)
 }
 
 // For other scripts: global.fakePlayers.say('hypixel', 'Hello.'). Returns what the command would reply.
@@ -230,6 +234,21 @@ state.say = (name, text) => {
   if (!Utils.server) return 'The server is not running.'
   fakeSay(Utils.server, String(name), String(text), (msg, bad) => { result = msg; return bad ? 0 : 1 })
   return result
+}
+
+// For disguise.js: a join/leave line and a chat line under any name, in game and on Discord, like a real player's.
+// uuid: the account whose avatar Discord shows. They don't need a pretend player.
+state.announceAs = (name, uuid, joined) => {
+  if (!Utils.server) return 'The server is not running.'
+  classes()
+  return announce(Utils.server, { name: String(name), uuid: uuid }, joined)
+}
+state.chatAs = (name, uuid, text) => {
+  if (!Utils.server) return 'The server is not running.'
+  classes()
+  text = String(text)
+  if (text.length > MAX_CHAT_LENGTH) text = text.substring(0, MAX_CHAT_LENGTH)
+  return sayAs(Utils.server, { name: String(name), uuid: uuid }, text)
 }
 
 // Finds the real account for a name, with its skin. Mojang is asked in the background, the same way a

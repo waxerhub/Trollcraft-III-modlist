@@ -25,8 +25,10 @@
 // The nodes. n: a fixed number that makes the quest's id (never reuse or change one; add new nodes with new numbers).
 //   rank: the Potato War rank needed; tier: the Blood Pool tier needed (0 = none); needs: nodes below it.
 //   potatoes + items: the cost (taken by the quest). materials: Tinkers material ids it unlocks; gear: other item
-//   ids it unlocks (tools and armour); places: items/blocks it lets you place; use: blocks it lets you right-click
-//   (defaults to places); wireless: wireless terminal items it lets you use. x, y: position in the quest book.
+//   ids it unlocks (tools and armour); places: items/blocks it lets you place; parts: the ones among them that are
+//   placed ONTO another block (AE2 parts, Thermal attachments, conduits): those are checked when right-clicked with,
+//   the rest when the block is placed; use: blocks it lets you right-click (defaults to places); wireless: wireless
+//   terminal items it lets you use. x, y: position in the quest book.
 // The quest files are generated from this list (tools/ftbquests/); change both together (see POTATO_TREE.md).
 const NODES = [
   // ---- Tinkers' Smithy ----
@@ -47,11 +49,11 @@ const NODES = [
     places: ['tconstruct:foundry_controller', 'tconstruct:scorched_alloyer'], desc: 'Build your own foundry and alloyer.' },
   { n: 5, id: 'cobalt_smithing', name: 'Cobalt Smithing', chapter: 'smithy', rank: 5, tier: 5, needs: ['osmium_steeleaf'],
     potatoes: 10000, items: [['tconstruct:cobalt_ingot', 32], ['twilightforest:knightmetal_ingot', 8]], icon: 'tconstruct:cobalt_ingot', x: 0, y: -6,
-    materials: ['tconstruct:cobalt', 'tconstruct:knightmetal', 'tconstruct:scorched_stone'],
+    materials: ['tconstruct:cobalt', 'tconstruct:knightmetal', 'tconstruct:knightly', 'tconstruct:scorched_stone'],
     gear: ['twilightforest:knightmetal_helmet', 'twilightforest:knightmetal_chestplate', 'twilightforest:knightmetal_leggings', 'twilightforest:knightmetal_boots',
       'twilightforest:knightmetal_sword', 'twilightforest:knightmetal_axe', 'twilightforest:knightmetal_pickaxe', 'twilightforest:knightmetal_ring',
       'twilightforest:knightmetal_shield', 'twilightforest:block_and_chain'],
-    desc: 'Use cobalt, knightmetal and scorched stone Tinkers tools, and Twilight Forest knightmetal gear.' },
+    desc: 'Use cobalt, knightmetal (and knightly) and scorched stone Tinkers tools, and Twilight Forest knightmetal gear.' },
   { n: 6, id: 'alloy_smithing', name: 'Alloy Smithing', chapter: 'smithy', rank: 6, tier: 6, needs: ['cobalt_smithing'],
     potatoes: 20000, items: [['thermal:electrum_ingot', 16], ['twilightforest:fiery_ingot', 8]], icon: 'thermal:electrum_ingot', x: 0, y: -8,
     materials: ['tconstruct:electrum', 'tconstruct:invar', 'tconstruct:constantan', 'tconstruct:silver', 'tconstruct:lead',
@@ -73,7 +75,8 @@ const NODES = [
   // ---- Logistics ----
   { n: 11, id: 'create_logistics', name: 'Create Logistics', chapter: 'logistics', rank: 1, tier: 1, needs: [],
     potatoes: 500, items: [['create:andesite_alloy', 16]], icon: 'create:brass_funnel', x: 0, y: 0,
-    places: ['create:andesite_funnel', 'create:brass_funnel', 'create:andesite_tunnel', 'create:brass_tunnel', 'create:smart_chute', 'create:portable_storage_interface'],
+    places: ['create:andesite_funnel', 'create:brass_funnel', 'create:andesite_tunnel', 'create:brass_tunnel', 'create:smart_chute', 'create:portable_storage_interface',
+      'create:andesite_belt_funnel', 'create:brass_belt_funnel'],   // a funnel placed on a belt becomes a belt funnel block
     desc: 'Place and use Create funnels, tunnels, smart chutes and portable storage interfaces.' },
   { n: 12, id: 'create_automation', name: 'Create Automation', chapter: 'logistics', rank: 4, tier: 4, needs: ['create_logistics'],
     potatoes: 5000, items: [['create:precision_mechanism', 8]], icon: 'create:mechanical_arm', x: 0, y: -2,
@@ -91,15 +94,30 @@ const NODES = [
   { n: 15, id: 'thermal_servos', name: 'Thermal Servos', chapter: 'logistics', rank: 5, tier: 5, needs: [],
     potatoes: 10000, items: [['thermal:tin_gear', 8]], icon: 'thermal:servo_attachment', x: 9, y: 0,
     places: ['thermal:servo_attachment', 'thermal:turbo_servo_attachment', 'thermal:filter_attachment'], use: [],
+    parts: ['thermal:servo_attachment', 'thermal:turbo_servo_attachment', 'thermal:filter_attachment'],
     desc: 'Attach Thermal servos and filters to ducts.' },
   { n: 16, id: 'item_conduits', name: 'Item Conduits', chapter: 'logistics', rank: 5, tier: 5, needs: [],
     potatoes: 10000, items: [['enderio:conduit_binder', 16]], icon: 'enderio:item_conduit', x: 12, y: 0,
-    places: ['enderio:item_conduit'], use: [], desc: 'Place Ender IO item conduits.' },
+    places: ['enderio:item_conduit', 'enderio:vacuum_chest', 'enderio:xp_vacuum'], use: ['enderio:vacuum_chest', 'enderio:xp_vacuum'],
+    parts: ['enderio:item_conduit'], desc: 'Place Ender IO item conduits, and place and use the Vacuum Chest and XP Vacuum.' },
   { n: 17, id: 'me_logistics', name: 'ME Logistics', chapter: 'logistics', rank: 6, tier: 6, needs: [],
     potatoes: 20000, items: [['ae2:logic_processor', 16]], icon: 'ae2:interface', x: 6, y: -2,
-    places: ['ae2:import_bus', 'ae2:export_bus', 'ae2:interface', 'ae2:cable_interface', 'enderio:me_conduit', 'enderio:dense_me_conduit'],
-    use: ['ae2:interface', 'ae2:cable_bus'], wireless: ['ae2:wireless_terminal'],
-    desc: 'Place AE2 import and export buses and interfaces, and open ME terminals (on cables and wireless).' },
+    places: ['ae2:import_bus', 'ae2:export_bus', 'ae2:interface', 'ae2:cable_interface', 'ae2:storage_bus', 'ae2:annihilation_plane',
+      'ae2:formation_plane', 'ae2:toggle_bus', 'ae2:inverted_toggle_bus', 'ae2:item_p2p_tunnel', 'ae2:fluid_p2p_tunnel', 'ae2:fe_p2p_tunnel',
+      'ae2:me_p2p_tunnel', 'ae2:redstone_p2p_tunnel', 'ae2:light_p2p_tunnel', 'advanced_ae:import_export_bus_part', 'advanced_ae:stock_export_bus_part',
+      'enderio:me_conduit', 'enderio:dense_me_conduit'],
+    parts: ['ae2:import_bus', 'ae2:export_bus', 'ae2:cable_interface', 'ae2:storage_bus', 'ae2:annihilation_plane', 'ae2:formation_plane',
+      'ae2:toggle_bus', 'ae2:inverted_toggle_bus', 'ae2:item_p2p_tunnel', 'ae2:fluid_p2p_tunnel', 'ae2:fe_p2p_tunnel', 'ae2:me_p2p_tunnel',
+      'ae2:redstone_p2p_tunnel', 'ae2:light_p2p_tunnel', 'advanced_ae:import_export_bus_part', 'advanced_ae:stock_export_bus_part',
+      'enderio:me_conduit', 'enderio:dense_me_conduit'],
+    use: [],
+    desc: 'Place AE2 import, export and storage buses, interfaces, annihilation and formation planes, toggle buses and P2P tunnels (and Advanced AE\'s buses). Basic ME storage and terminals need no node.' },
+
+  // Tier 7: the Digital Miner needs a teleportation core (Tier 7), and the Mechanical Miner is Extra Utilities (Tier 7).
+  { n: 18, id: 'automated_mining', name: 'Automated Mining', chapter: 'logistics', rank: 7, tier: 7, needs: [],
+    potatoes: 35000, items: [['mekanism:ingot_osmium', 32]], icon: 'mekanism:digital_miner', x: 9, y: -2,
+    places: ['mekanism:digital_miner', 'extrautilitiesreborn:mechanical_miner', 'extrautilitiesreborn:ender_quarry', 'alexscaves:quarry'],
+    desc: 'Place and use the Digital Miner, the Mechanical Miner, the Ender Quarry and Alex\'s Caves\' Quarry (each also needs its own Blood Pool tier to be made).' },
 
   // ---- Autocrafting ----
   { n: 21, id: 'mechanical_crafting', name: 'Mechanical Crafting', chapter: 'autocrafting', rank: 4, tier: 4, needs: ['create_automation'],
@@ -118,19 +136,29 @@ const NODES = [
     potatoes: 20000, items: [['ae2:engineering_processor', 16]], icon: 'ae2:molecular_assembler', x: 3, y: -2,
     places: ['ae2:pattern_provider', 'ae2:cable_pattern_provider', 'ae2:pattern_encoding_terminal', 'ae2:crafting_unit', 'ae2:crafting_accelerator',
       'ae2:1k_crafting_storage', 'ae2:4k_crafting_storage', 'ae2:16k_crafting_storage', 'ae2:64k_crafting_storage', 'ae2:256k_crafting_storage',
-      'ae2:crafting_monitor', 'ae2:molecular_assembler'],
+      'ae2:crafting_monitor', 'ae2:molecular_assembler', 'advanced_ae:adv_pattern_provider', 'advanced_ae:adv_pattern_provider_part',
+      'advanced_ae:small_adv_pattern_provider', 'advanced_ae:small_adv_pattern_provider_part'],
+    parts: ['ae2:cable_pattern_provider', 'ae2:pattern_encoding_terminal', 'advanced_ae:adv_pattern_provider_part', 'advanced_ae:small_adv_pattern_provider_part'],
     use: ['ae2:pattern_provider', 'ae2:crafting_unit', 'ae2:crafting_accelerator', 'ae2:1k_crafting_storage', 'ae2:4k_crafting_storage',
-      'ae2:16k_crafting_storage', 'ae2:64k_crafting_storage', 'ae2:256k_crafting_storage', 'ae2:crafting_monitor', 'ae2:molecular_assembler'],
+      'ae2:16k_crafting_storage', 'ae2:64k_crafting_storage', 'ae2:256k_crafting_storage', 'ae2:crafting_monitor', 'ae2:molecular_assembler',
+      'advanced_ae:adv_pattern_provider', 'advanced_ae:small_adv_pattern_provider'],
     wireless: ['ae2:wireless_crafting_terminal', 'advanced_ae:wireless_quantum_crafter_terminal',
       'ae2wtlib:wireless_universal_terminal', 'ae2wtlib:wireless_pattern_encoding_terminal', 'ae2wtlib:wireless_pattern_access_terminal'],
-    desc: 'Place and use AE2 pattern providers, crafting CPUs and Molecular Assemblers, and use wireless crafting and pattern terminals.' },
+    desc: 'Place and use AE2 (and Advanced AE) pattern providers, crafting CPUs and Molecular Assemblers, and use wireless crafting and pattern terminals.' },
   { n: 26, id: 'rftools_crafting', name: 'RFTools Crafting', chapter: 'autocrafting', rank: 7, tier: 7, needs: ['enderio_crafting'],
     potatoes: 35000, items: [['rftoolsbase:machine_frame', 4]], icon: 'rftoolsutility:crafter1', x: 6, y: -2,
     places: ['rftoolsutility:crafter1', 'rftoolsutility:crafter2', 'rftoolsutility:crafter3'], desc: 'Place and use RFTools Crafters.' },
-  { n: 27, id: 'quantum_crafting', name: 'Quantum Crafting', chapter: 'autocrafting', rank: 8, tier: 8, needs: ['me_autocrafting'],
-    potatoes: 60000, items: [['ae2:calculation_processor', 16]], icon: 'advanced_ae:quantum_crafter', x: 3, y: -4,
+  // Tier 11: the Quantum Crafter's parts (quantum units, processors) are Tier 11 items.
+  { n: 27, id: 'quantum_crafting', name: 'Quantum Crafting', chapter: 'autocrafting', rank: 11, tier: 11, needs: ['me_autocrafting'],
+    potatoes: 100000, items: [['ae2:calculation_processor', 16]], icon: 'advanced_ae:quantum_crafter', x: 3, y: -4,
     places: ['advanced_ae:quantum_crafter', 'advanced_ae:quantum_crafter_terminal'], use: ['advanced_ae:quantum_crafter'],
+    parts: ['advanced_ae:quantum_crafter_terminal'],
     desc: 'Place and use Advanced AE\'s Quantum Crafter.' },
+
+  { n: 28, id: 'immersive_assembly', name: 'Immersive Assembly', chapter: 'autocrafting', rank: 4, tier: 4, needs: [],
+    potatoes: 5000, items: [['immersiveengineering:component_steel', 8]], icon: 'immersiveengineering:component_steel', x: 12, y: 0,
+    places: [], use: ['immersiveengineering:assembler'],
+    desc: 'Use Immersive Engineering\'s Assembler multiblock (it is formed with the hammer, so only using it is locked).' },
 
   // ---- Farms ----
   { n: 31, id: 'create_farming', name: 'Create Farming', chapter: 'farms', rank: 1, tier: 1, needs: [],
@@ -148,12 +176,16 @@ const NODES = [
   { n: 34, id: 'insolation', name: 'Phytogenic Insolation', chapter: 'farms', rank: 5, tier: 5, needs: ['garden_cloche'],
     potatoes: 10000, items: [['thermal:phytogro', 4]], icon: 'thermal:machine_insolator', x: 6, y: -2,
     places: ['thermal:machine_insolator'], desc: 'Place and use the Phytogenic Insolator.' },
-  { n: 35, id: 'powered_spawning', name: 'Powered Spawning', chapter: 'farms', rank: 9, tier: 9, needs: [],
-    potatoes: 100000, items: [['enderio:broken_spawner', 4]], icon: 'enderio:powered_spawner', x: 9, y: 0,
-    places: ['enderio:powered_spawner'], desc: 'Place and use the Powered Spawner.' },
+  // Tier 5 (the Soulium Spawner's tier); the Ender IO, RFTools and Draconic spawners come with their own tiers.
+  { n: 35, id: 'powered_spawning', name: 'Mob Spawning', chapter: 'farms', rank: 5, tier: 5, needs: [],
+    potatoes: 10000, items: [['mysticalagriculture:soulium_ingot', 8]], icon: 'enderio:powered_spawner', x: 9, y: 0,
+    places: ['enderio:powered_spawner', 'mysticalagriculture:soulium_spawner', 'rftoolsutility:spawner', 'draconicevolution:stabilized_spawner'],
+    desc: 'Place and use powered mob spawners: Ender IO\'s Powered Spawner, Mystical Agriculture\'s Soulium Spawner, the RFTools Spawner and Draconic Evolution\'s Stabilized Spawner.' },
 ]
-const CHAPTERS = {          // chapter key: [id number, title, icon, file name]
+const CHAPTERS = {          // chapter key: [id number, title, icon, file name]; listed in book order
+  start: [6, 'Start Here', 'minecraft:book', 'potato_war_start'],
   ranks: [1, 'The Ranks', 'minecraft:potato', 'potato_war_ranks'],
+  blood_pool: [7, 'The Blood Pool', 'minecraft:redstone_block', 'potato_war_blood_pool'],
   smithy: [2, 'Tinkers\' Smithy', 'tconstruct:smeltery_controller', 'potato_war_smithy'],
   logistics: [3, 'Logistics', 'create:brass_funnel', 'potato_war_logistics'],
   autocrafting: [4, 'Autocrafting', 'ae2:molecular_assembler', 'potato_war_autocrafting'],
@@ -223,12 +255,13 @@ function gap() { const b = BP(); return b && b.catchUpGap != null ? Number(b.cat
 
 // ===================== WHAT EACH NODE UNLOCKS =====================
 
-const NODE = {}, MATERIAL_NODE = {}, GEAR_NODE = {}, PLACE_NODE = {}, USE_NODE = {}, WIRELESS_NODE = {}
+const NODE = {}, MATERIAL_NODE = {}, GEAR_NODE = {}, PLACE_NODE = {}, PART_NODE = {}, USE_NODE = {}, WIRELESS_NODE = {}
 NODES.forEach(N => {
   NODE[N.id] = N
   ;(N.materials || []).forEach(m => { MATERIAL_NODE[m] = N })
   ;(N.gear || []).forEach(i => { GEAR_NODE[i] = N })
   ;(N.places || []).forEach(i => { PLACE_NODE[i] = N })
+  ;(N.parts || []).forEach(i => { PART_NODE[i] = N })
   ;(N.use != null ? N.use : (N.places || [])).forEach(b => { USE_NODE[b] = N })
   ;(N.wireless || []).forEach(i => { WIRELESS_NODE[i] = N })
 })
@@ -303,16 +336,18 @@ ItemEvents.rightClicked(event => {
   event.cancel()
 })
 
-// Right-clicking a block: placing a locked item on it (AE2 parts on cables, Thermal attachments, conduits, blocks),
-// or using a locked block (opening it, configuring it), whoever placed it.
+// Right-clicking a block: putting a locked part onto it (AE2 parts on cables, Thermal attachments on ducts,
+// conduits; they never fire a block placement of their own), or using a locked block (opening it, configuring
+// it), whoever placed it. Ordinary locked blocks are checked when placed, so holding one doesn't stop you
+// opening a chest.
 BlockEvents.rightClicked(event => {
   const p = event.player
   if (!p || exempt(p)) return
   let N = null
   const s = event.item
   if (s && !s.isEmpty()) {
-    let placeN = PLACE_NODE[String(s.id)]
-    if (placeN && !has(p, placeN)) N = placeN
+    let partN = PART_NODE[String(s.id)]
+    if (partN && !has(p, partN)) N = partN
   }
   if (!N) {
     let useN = USE_NODE[String(event.block.id)]
@@ -444,6 +479,26 @@ if (Utils.server) {
   Utils.server.scheduleInTicks(20, () => catchUp(Utils.server))   // after /reload
 }
 
+// What a player can do next in the tree: { owned: [names], ready: [names], soon: [{ name, missing: [text] }] }.
+// ready = everything but the cost is met; soon = one or two things missing.
+function status(p) {
+  const b = BP(), out = { owned: [], ready: [], soon: [] }
+  // the quests check potato_standing_<n>, which catch-up also gives, so compare with crafting access
+  const tier = b ? Number(b.tier()) : 0, rank = b ? Number(b.craftAccess(p)) : 0
+  NODES.forEach(N => {
+    if (has(p, N)) { out.owned.push(N.name); return }
+    const missing = []
+    if ((N.rank || 0) > rank) missing.push(b ? b.rankName(N.rank) : 'rank ' + N.rank)
+    if ((N.tier || 0) > tier) missing.push('Blood Pool Tier ' + N.tier)
+    ;(N.needs || []).forEach(id => { if (NODE[id] && !has(p, NODE[id])) missing.push(NODE[id].name) })
+    if (!missing.length) out.ready.push(N.name)
+    else if (missing.length <= 2) out.soon.push({ name: N.name, missing: missing })
+  })
+  return out
+}
+// The nodes a player can buy now (all requirements but the cost met), by name, for the tier-open messages.
+function buyable(p) { return status(p).ready }
+
 function open(p) {
   const server = p.server || Utils.server
   try { server.runCommandSilent('execute as ' + nameOf(p) + ' run ftbquests open_book ' + chapterId('ranks')) } catch (e) { }
@@ -462,6 +517,8 @@ global.PotatoTree = {
   idPrefix: ID_PREFIX,
   stagePrefix: STAGE_PREFIX,
   catchUp: server => catchUp(server),
+  status: p => status(p),
+  buyable: p => buyable(p),
   handlesPlacing: true,                      // part2/blood_pool.js's autocrafter rule steps aside
   placeNode: id => PLACE_NODE[String(id)] ? PLACE_NODE[String(id)].name : null,
 }

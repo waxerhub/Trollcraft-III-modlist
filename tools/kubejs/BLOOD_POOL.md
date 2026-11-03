@@ -113,6 +113,13 @@ A sealed mod, item, tag or recipe **can't be crafted** until its tier opens. Its
 
 **Everything else works.** Sealed items that players find, loot, trade for or get from mobs can be used, placed, worn and fought with normally (owner decision). A found item is a treat, not a way round the tier.
 
+**Routes the cohesion audit found and sealed** ([PROGRESSION_AUDIT.md](../../PROGRESSION_AUDIT.md)). Their results are tags, which item locks can't see, so they're locked by recipe id:
+- **Tier 4:** Tinkers' refined glowstone casting.
+- **Tier 5:** Immersive Engineering's cobalt (crusher, arc furnace, press, hammer); Thermal's enderium, lumium and signalum alloyed and cast in the Tinkers smeltery; the **knightly** Tinkers material (knightmetal shards).
+- **Tier 6:** fiery ingots and blocks cast in the smeltery.
+- **Tier 7:** refined obsidian alloyed and cast in the smeltery.
+- **Tier 8:** IE's arc furnace and alloy kiln making manyullyn, hepatizon and queen's slime.
+
 **Things the research flagged and left open on purpose:**
 - **Botania's Orechid Ignem** (netherrack to ancient debris, from Tier 2) and **IE's Excavator** (ancient debris veins) are ore routes. Both need a mature setup first. The research's §3c has the one recipe id to add if netherite should stay a Nether trip.
 - **The Timewood Core** (Twilight Forest) speeds up any mod's machines within 8 blocks. It's a natural block, so no crafting lock can stop it; only its config can.
@@ -158,6 +165,18 @@ Techno's Potato War runs alongside the Pool. **The Pool decides what the server 
   - **A recipe's tier** is the highest lock that applies to it, by the same rules as the removal: its result (by item, then tag, then the result's mod), the recipe's own mod (unless its result is listed by id), and the recipe-id rules. So Mekanism's crafting recipe for a Create part needs rank 4.
   - **Without the rank,** the crafting grid shows no result. That covers the crafting table, the inventory grid, and a mod's crafting grid the player has open (the Tinkers Crafting Station, AE2's crafting terminal, a backpack's crafting upgrade), found through the player's open window.
   - **Untouched:** machines, furnaces, the smeltery, Create's mechanical crafting and every other recipe type work for everyone. So do sealed tiers: their recipes are still removed for everybody.
+  - **Mods' own crafting-table formats** (owner decision): about 620 Mystical Agriculture recipes (`cucumber:shaped_no_mirror`, `cucumber:shaped_tag`) and Mekanism's machine recipes (`mekanism:mek_data`) use formats the check can't see. The recipe step rebuilds them as KubeJS shaped recipes:
+    - same id, pattern, ingredients and result, with no mirroring;
+    - they get the rank check;
+    - nothing about what they need or make changes (`CONVERT_RECIPE_TYPES`).
+    - **Left as they are:**
+      - Mekanism's tier upgrades: an input that is a lower tier of the same item, a factory, or anything another `mek_data` recipe makes (jetpacks, drives, machines), so upgrading keeps contents and installed upgrades;
+      - Mystical Agriculture's durability-keeping tool upgrades;
+      - recipes with an ingredient only the mod understands.
+      - They all need an item that's already rank-locked.
+    - **Tag results** (`shaped_tag`, e.g. titanium ingots) give the tag's first item.
+    - A Mekanism base machine made from an energy tablet or tank starts empty instead of keeping that item's charge.
+    - The log says how many were rebuilt ("Mod crafting recipes: N rebuilt with the rank check").
   - **Autocrafting works.** An autocrafter has no player behind it, so it gets every result of an open tier.
     - **Placing an autocrafter needs the rank of its own tier** (owner decision), set in `AUTOCRAFTERS`:
 
@@ -234,6 +253,8 @@ floor        5x5 chiseled nether bricks
 | `/bloodpool check` | anyone | Which tier lets the item in your hand be crafted, and the rank (with yours) |
 | `/potatowar` | players | Your potatoes offered, your rank and the next one (and your catch-up crafting access, if higher) |
 | `/potatowar tree` | players | Opens the upgrade tree (FTB Quests; see [POTATO_TREE.md](POTATO_TREE.md)) |
+| `/potatowar next` | players | Your rank, your crafting access, what the full open tier needs, and the tree nodes you can buy now or nearly |
+| `/bloodpool audit` | op | Reloads and writes `kubejs/progression_audit.json`: every crafting-type recipe in a tier without the rank check, and every recipe still making a sealed item (with whether KubeJS sees it). A summary goes to the log |
 | `/potatowar offer [potatoes]` | players | Offer everything you carry, or that many, to raise your rank |
 | `/potatowar top` | anyone | The 10 highest ranks |
 | `/potatowar ranks` | anyone | Every rank, its potatoes and the tier it crafts |
@@ -267,6 +288,8 @@ floor        5x5 chiseled nether bricks
 | `STAGE_PREFIX` | `potato_standing_` | The KubeJS stage name for rank n |
 | `RANKUP_PUBLIC` | true | Announce rank-ups to everyone |
 | `CATCH_UP_GAP` | 2 | Catch-up: at Pool Tier T, everyone can craft Tiers 1..T−2 (and gets the tree's nodes up to there); 0 = off |
+| `CONVERT_RECIPE_TYPES` | `cucumber:shaped_no_mirror`, `cucumber:shaped_tag`, `mekanism:mek_data` | Mods' crafting formats rebuilt with the rank check; `[]` = none |
+| `AUDIT_FILE`, `AUDIT_FLAG_FILE` | `kubejs/progression_audit.json`, `kubejs/progression_audit_request.json` | `/bloodpool audit`'s report, and its request (cleared after the run) |
 | `black_market.js`: `STANDING_LOCKS` | see "The Potato War" | The rank each black market item needs |
 | `TO_DISCORD` | true | Ready and unlock lines with `tellraw @a` |
 | `TIER_FILE` | `kubejs/blood_pool_tier.json` | |
@@ -286,6 +309,7 @@ floor        5x5 chiseled nether bricks
   - the Potato War: each player's lifetime potatoes offered (`standing`).
 - **The players' KubeJS stages** (`potato_standing_<n>`, `blood_pool_tier_<n>`): saved by KubeJS with each player, and rebuilt from `standing` and the tier at login.
 - **`kubejs/blood_pool_tier.json`:** a copy of the open tier, for the recipe step.
+- **`kubejs/progression_audit.json`:** the last `/bloodpool audit` report.
 - **`persistentData["trollcraft_nether_unlocked"]`:** the Nether portal switch (kept in step by `dimension_gates.js`).
 - **`persistentData["blood_tank"]`:** the registered tanks (dimension, floor centre, layers filled).
 
@@ -311,6 +335,8 @@ floor        5x5 chiseled nether bricks
    - As a non-op, try to break the glass: refused.
 8. **`/bloodpool settier 0`** puts everything back, including the Nether switch.
 9. **The Potato War** (a non-op player; an op runs the commands):
+   - **The audit:** at Tier 0, run `/bloodpool audit`, then again at Tier 5. Send `kubejs/progression_audit.json` back after each.
+   - **Rebuilt recipes:** at Tier 5 with `CATCH_UP_GAP = 0`, an Unenlisted player can't turn steeleaf essence into ingots (rank 4) or craft a Purification Chamber (rank 5). An op can.
    - Set `CATCH_UP_GAP = 0` for this test (or catch-up lets everyone craft Tiers 1–3 at Tier 5), then `/bloodpool settier 5`.
    - **Unenlisted:** the player can't craft a Create cogwheel at a crafting table or in the inventory grid (no result shows), but a Thermal machine (Pulverizer etc.) built by an op works for them.
    - `/potatowar set <player> 250`: they're told they're a Potato Farmer, everyone sees the line, and the cogwheel now crafts. A Thermal machine frame still doesn't (rank 5).
@@ -327,7 +353,7 @@ floor        5x5 chiseled nether bricks
 **Confirmed on the server:** going from Tier 12 to 0, Tinkers kept melting raw cobalt in a smeltery that had melted it before, while cobalt ingots were refused.
 - **The cause** is Tinkers' per-slot recipe cache (`MeltingModule.lastRecipe` in TConstruct 3.11.2.166). It isn't saved, so a restart or a rebuilt controller clears it.
 - **The lock list is right:** `tconstruct:smeltery/melting/metal/cobalt/raw` is removed at Tier 0.
-A mock-server test passed 116 checks, catch-up included. The upgrade tree's test re-runs the earlier checks with the tree loaded: 101 pass (see POTATO_TREE.md).
+A mock-server test passed 135 checks: catch-up, the rebuilt mod recipes (ids, patterns, tag results, upgrades left alone, sealed ones removed), `/bloodpool audit` and `/potatowar next`. The upgrade tree's test re-runs the earlier checks with the tree loaded: 111 pass (see POTATO_TREE.md).
 - the real tier list (sealed mods, items, tags, and recipe rules both exact and regex);
 - items listed later than their mod staying sealed after it opens;
 - the chestplates;
@@ -362,9 +388,16 @@ These depend on the real game:
 - **AlmostUnified:** check its config so no `forge:ingots/*` tag unifies to a sealed mod's item.
 - **The Dragon Heart:** test one dragon kill before Tier 10 matters. The dragon-fight mods may change the drop.
 - **Running `reload` from a script**, and **JsonIO** writing the tier file, as before.
+- **Rebuilt mod recipes** (read from KubeJS 2001.6.5's jar, not seen in game):
+  - `event.shaped(...).noMirror().id(sameId)` replacing the removed original;
+  - `Ingredient.of('#tag').getItemIds()` for tag results;
+  - Mystical Agriculture essence → ingots refused below the rank in game, and a Mekanism factory upgrade keeping its upgrades.
+  - Check JEI still shows them.
+- **`/bloodpool audit`:** `forEachRecipe('*')` over every recipe, and JsonIO writing the nested report.
+- **The tier-open message** and `/potatowar next`, as seen by players.
 - **The Potato War's crafting gate** (read from KubeJS 2001.6.5's jar, not seen in game):
   - `event.forEachRecipe` with a list of type filters, and `recipe.modifyResult(...)` on mods' existing crafting recipes turning them into KubeJS's versions with the check. The server log says how many recipes got a rank ("Potato War: N crafting recipes need a rank"). If it says 0, or logs an error, rank isn't gating crafting.
-  - **Mods' own crafting-table recipe types** aren't checked: for example Mekanism's NBT-keeping recipes (`mekanism:mek_data`), IE's `shaped_fluid` and Forge's NBT recipes. Those items stay craftable by any rank once their tier opens. Check a few Mekanism machines at a crafting table with an unranked player.
+  - **Mods' own crafting-table formats that aren't rebuilt** stay craftable by any rank once their tier opens: IE's `shaped_fluid` and `turn_and_copy`, Reliquary's alkahestry, RFTools' shape-card copies, Botania, EvilCraft and Numina specials, and the upgrades left as they are. Each needs an item that's already rank-locked, or is cosmetic (PROGRESSION_AUDIT.md section 2).
   - **Mods' crafting grids** (the Tinkers Crafting Station, AE2's crafting terminal, backpack crafting upgrades): the script finds the player whose open window holds the grid. If a mod builds its grid so that it can't, the grid counts as an autocrafter and gives every result. Check the Crafting Station with an unranked player.
   - **Autocrafters** that do have a player window open on them could be counted as that player's grid. Confirm one AE2 pattern crafts while someone has the assembler's screen open.
   - **Client-side previews** (Polymorph, the recipe book) may show a result that the server then doesn't give. The server decides.

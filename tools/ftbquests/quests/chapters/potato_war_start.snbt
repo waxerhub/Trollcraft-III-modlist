@@ -1,0 +1,149 @@
+{
+	default_hide_dependency_lines: false
+	default_quest_shape: ""
+	filename: "potato_war_start"
+	group: "507A70000000A001"
+	icon: "minecraft:book"
+	id: "507A70000000C006"
+	order_index: 0
+	quest_links: [ ]
+	quests: [
+		{
+			description: ["Technoblade's Potato War is back. Everything you can make in Part II is unlocked in two ways:", "- &cthe Blood Pool&r, which the whole server fills together, opens a tier for everyone;", "- &6your rank and upgrade tree&r, which you earn with potatoes, decide what YOU can make from it.", "Hold Shift over an item to see what it needs and whether you have it."]
+			icon: "minecraft:potato"
+			id: "507A70000001012C"
+			tags: ["potato_start"]
+			tasks: [
+				{
+					id: "507A7000000212C0"
+					title: "Read it"
+					type: "checkmark"
+				}
+			]
+			title: "Welcome to the Potato War"
+			x: 0.0d
+			y: 0.0d
+		}
+		{
+			dependencies: ["507A70000001012C"]
+			description: ["Every troll logged in the Troll Log, every Hush Coin donated (/bloodpool donate) and every potato tithed (/bloodpool tithe) fills it.", "It has 12 tiers. Each opens a batch of mods and items for crafting; the Nether opens at Tier 3 and the End at Tier 9.", "Until a tier opens, its items can't be crafted by anyone. Things you find or trade still work.", "See the chapter \"The Blood Pool\" and /bloodpool tiers."]
+			icon: "minecraft:redstone_block"
+			id: "507A70000001012D"
+			tags: ["potato_start"]
+			tasks: [
+				{
+					id: "507A7000000212D0"
+					title: "Read it"
+					type: "checkmark"
+				}
+			]
+			title: "The Blood Pool"
+			x: 0.0d
+			y: -1.5d
+		}
+		{
+			dependencies: ["507A70000001012D"]
+			description: ["Offer potatoes with &6/potatowar offer&r (crates count as 9). Your rank is the lifetime total, with no cap.", "Rank n lets you craft Tier n's items at a crafting table (also mods' own crafting recipes). Machines work for everyone.", "See the chapter \"The Ranks\" and /potatowar."]
+			icon: "minecraft:baked_potato"
+			id: "507A70000001012E"
+			tags: ["potato_start"]
+			tasks: [
+				{
+					id: "507A7000000212E0"
+					title: "Read it"
+					type: "checkmark"
+				}
+			]
+			title: "Your rank"
+			x: 0.0d
+			y: -3.0d
+		}
+		{
+			dependencies: ["507A70000001012E"]
+			description: ["&6/bloodpool tithe&r: potatoes fill the Blood Pool for everyone (capped each day). They never raise your rank.", "&6/potatowar offer&r: potatoes raise your rank. They never fill the Pool.", "Potatoes handed in for nodes in this book count toward your rank too."]
+			icon: "minecraft:poisonous_potato"
+			id: "507A70000001012F"
+			tags: ["potato_start"]
+			tasks: [
+				{
+					id: "507A7000000212F0"
+					title: "Read it"
+					type: "checkmark"
+				}
+			]
+			title: "Tithe or offer?"
+			x: 0.0d
+			y: -4.5d
+		}
+		{
+			dependencies: ["507A70000001012F"]
+			description: ["Four chapters of nodes: Tinkers' Smithy, Logistics, Autocrafting and Farms.", "Each node needs a rank, a Blood Pool tier and the nodes below it, and costs potatoes plus some of that branch's items.", "A node unlocks things for you alone: Tinkers metals your tools may be made of, building smelteries, and placing and using autocrafters, logistics and farm machines."]
+			icon: "tconstruct:smeltery_controller"
+			id: "507A700000010130"
+			tags: ["potato_start"]
+			tasks: [
+				{
+					id: "507A700000021300"
+					title: "Read it"
+					type: "checkmark"
+				}
+			]
+			title: "The upgrade tree"
+			x: 0.0d
+			y: -6.0d
+		}
+		{
+			dependencies: ["507A700000010130"]
+			description: ["When the Blood Pool is 2 tiers past something, it comes to everyone for free: crafting access and every tree node up to that tier.", "Your rank's name and black market perks still come only from potatoes."]
+			icon: "minecraft:clock"
+			id: "507A700000010131"
+			tags: ["potato_start"]
+			tasks: [
+				{
+					id: "507A700000021310"
+					title: "Read it"
+					type: "checkmark"
+				}
+			]
+			title: "Nobody falls behind"
+			x: 0.0d
+			y: -7.5d
+		}
+		{
+			dependencies: ["507A700000010131"]
+			description: ["The Hooded Merchant sells some items only to high enough ranks: pranks from Potato Farmer, up to the War Party contract at Potato Captain."]
+			icon: "minecraft:gold_nugget"
+			id: "507A700000010132"
+			tags: ["potato_start"]
+			tasks: [
+				{
+					id: "507A700000021320"
+					title: "Read it"
+					type: "checkmark"
+				}
+			]
+			title: "The black market"
+			x: 0.0d
+			y: -9.0d
+		}
+		{
+			dependencies: ["507A700000010132"]
+			description: ["&6/potatowar&r your rank · &6/potatowar next&r what to do next · &6/potatowar tree&r this book", "&6/potatowar offer [count]&r · &6/potatowar ranks&r · &6/potatowar top&r", "&6/bloodpool&r the Pool · &6/bloodpool tiers&r · &6/bloodpool check&r (hold an item)"]
+			icon: "minecraft:writable_book"
+			id: "507A700000010133"
+			tags: ["potato_start"]
+			tasks: [
+				{
+					id: "507A700000021330"
+					title: "Read it"
+					type: "checkmark"
+				}
+			]
+			title: "Useful commands"
+			x: 0.0d
+			y: -10.5d
+		}
+	]
+	subtitle: ["How the Blood Pool, your rank and the upgrade tree fit together."]
+	title: "Start Here"
+}

@@ -3,7 +3,9 @@
 A Hypixel-style upgrade tree in the **FTB Quests** book. The potato ranks are the trunk ([BLOOD_POOL.md](BLOOD_POOL.md), "The Potato War"). The branches are nodes you buy with potatoes and mod items. Each node unlocks something **for you alone**:
 - the metals your Tinkers tools and armour may be made of;
 - building your own smeltery and foundry;
-- the autocrafters, the logistics blocks (funnels, conveyors, transporters, buses, conduits) and the farm machines, both placing them and using them.
+- the autocrafters, the logistics blocks (funnels, conveyors, transporters, buses, conduits), automated mining and the farm and spawner machines, both placing them and using them.
+
+**Hold Shift over an item** to see what it needs and whether you have it (the tooltip client script). `/potatowar next` says what to do next. The book opens with a "Start Here" chapter.
 
 **Nobody falls more than 2 tiers behind:** when the Blood Pool opens Tier T, everyone gets every node of Tier T−2 and below for free.
 
@@ -28,26 +30,30 @@ A Hypixel-style upgrade tree in the **FTB Quests** book. The potato ranks are th
 |---|---|---|
 | `tools/kubejs/server_scripts/part2/potato_tree.js` | `kubejs/server_scripts/part2/` | The node list (settings), the locks, catch-up, parties off, rank credit, `/potatotree` |
 | `tools/kubejs/server_scripts/part2/blood_pool.js` (updated) | `kubejs/server_scripts/part2/` | Blood Pool tier stages, catch-up crafting access, `creditStanding`, `/potatowar tree` |
-| `tools/ftbquests/quests/chapters/potato_war_*.snbt` (5 files) | `config/ftbquests/quests/chapters/` | The chapters: The Ranks, Tinkers' Smithy, Logistics, Autocrafting, Farms |
+| `tools/ftbquests/quests/chapters/potato_war_*.snbt` (7 files) | `config/ftbquests/quests/chapters/` | The chapters: Start Here, The Ranks, The Blood Pool, Tinkers' Smithy, Logistics, Autocrafting, Farms |
 | `tools/ftbquests/quests/chapter_groups.snbt` | `config/ftbquests/quests/` | The "Techno's Potato War" group. **If you already have this file** (your own quests), copy its one group entry into yours instead |
-| `tools/ftbquests/generate_quests.js` | (stays in the repo) | Rebuilds the chapter files from the scripts: `node tools/ftbquests/generate_quests.js` |
+| `tools/kubejs/client_scripts/potato_tooltips.js` | **the modpack**: every player's `kubejs/client_scripts/` | The Shift tooltips. Generated; don't edit by hand |
+| `tools/ftbquests/generate_quests.js` (+ `load_scripts.js`) | (stays in the repo) | Rebuilds the chapter files and the tooltip script from the scripts: `node tools/ftbquests/generate_quests.js` |
 
 **Install:**
 1. Add the four mods and restart once.
-2. Copy the two scripts and the quest files.
+2. Copy the two scripts and the quest files to the server, and put the tooltip script in the modpack.
 3. Run `/reload` and `/ftbquests reload`, or restart again.
 
 There's no `data.snbt` to copy. FTB Quests keeps its own defaults.
 
 ## How it works
 - **The book:** press the quest key or run `/potatowar tree`.
+  - **Start Here:** eight short pages: the Blood Pool, your rank, tithe versus offer, the tree, catch-up, the black market, the commands.
   - **The Ranks:** the 11 ranks. Each ticks when you reach it (or when catch-up gives you its crafting access).
+  - **The Blood Pool:** the 12 tiers. Each ticks when it opens and lists what it opens.
   - **The branches:** one chapter each, drawn as trees with dependency lines.
 - **Each node is a quest:**
   - **stage tasks** for its rank (`potato_standing_<n>`) and its Blood Pool tier (`blood_pool_tier_<n>`). These tick by themselves;
   - **item tasks** that take potatoes and the branch's items. Submit them in the book; partial submissions count;
   - **dependencies** on the nodes below it;
   - **a hidden stage reward** `potato_tree_<node>`. That stage is what the locks check.
+  - In the files, the stage tasks and rewards have type `gamestage`, the name FTB Quests 2001.4.22 uses. (An earlier version of these files used `stage`, which FTB Quests ignores: re-upload the chapters.)
 - **Potatoes handed in count toward your rank.** When a node's potato task completes, its potatoes are added to your Potato Standing, as if offered with `/potatowar offer`, with the rank-up line. They never fill the Blood Pool.
   - Only plain potatoes count. Break crates first.
 - **Personal:** the script switches FTB Teams **parties off**, so every player is their own team and has their own progress. Allies still work.
@@ -64,7 +70,7 @@ Costs are placeholders. Edit `NODES` in `potato_tree.js`, then run the generator
 | Steel Smithing | Potato Recruit, Tier 3, Seared Smeltery | 2,500, 32 steel ingots | Steel Tinkers tools |
 | Osmium & Steeleaf | Potato Private, Tier 4, Steel | 5,000, 16 osmium, 16 steeleaf | Osmium and steeleaf tools; TF steeleaf gear |
 | The Foundry | Potato Soldier, Tier 5, Seared Smeltery | 5,000, 64 scorched bricks | Placing and using a foundry controller and scorched alloyer |
-| Cobalt Smithing | Potato Soldier, Tier 5, Osmium & Steeleaf | 10,000, 32 cobalt, 8 knightmetal | Cobalt, knightmetal and scorched stone tools; TF knightmetal gear |
+| Cobalt Smithing | Potato Soldier, Tier 5, Osmium & Steeleaf | 10,000, 32 cobalt, 8 knightmetal | Cobalt, knightmetal, knightly and scorched stone tools; TF knightmetal gear |
 | Alloy Smithing | Potato Sergeant, Tier 6, Cobalt | 20,000, 16 electrum, 8 fiery | Electrum, invar, constantan, silver, lead, pewter, aluminum and fiery; TF fiery gear |
 | Masterwork | Potato Captain, Tier 8, Alloy and Foundry | 60,000, 16 manyullyn, 16 hepatizon | Manyullyn, hepatizon, queen's slime, cinderslime, necronium, blazing bone, blazewood, ancient, enderslime and ichor |
 | Dragonsteel | Potato General, Tier 9, Masterwork | 100,000, 8 of each dragonsteel | Dragon scale and the three dragonsteels |
@@ -75,13 +81,14 @@ Metals in no node (wood, stone, iron, copper, bronze and the rest) are free.
 
 | Node | Needs | Cost | Place and use |
 |---|---|---|---|
-| Create Logistics | Potato Farmer, Tier 1 | 500, 16 andesite alloy | Funnels, tunnels, smart chute, portable storage interface |
+| Create Logistics | Potato Farmer, Tier 1 | 500, 16 andesite alloy | Funnels (also on belts), tunnels, smart chute, portable storage interface |
 | Create Automation | Potato Private, Tier 4, Create Logistics | 5,000, 8 precision mechanisms | Deployer, Mechanical Arm (and so Sequenced Assembly) |
 | Immersive Logistics | Potato Recruit, Tier 3 | 2,500, 16 IE steel | Conveyor, sorter, fluid sorter |
 | Logistical Transport | Potato Private, Tier 4 | 5,000, 8 basic control circuits | Logistical transporters (all tiers), restrictive and diversion transporters, logistical sorter, QIO importer and exporter |
 | Thermal Servos | Potato Soldier, Tier 5 | 10,000, 8 tin gears | Servo, turbo servo and filter attachments (placing only) |
-| Item Conduits | Potato Soldier, Tier 5 | 10,000, 16 conduit binder | Ender IO item conduits (placing only) |
-| ME Logistics | Potato Sergeant, Tier 6 | 20,000, 16 logic processors | Import and export buses, interfaces, ME conduits; **opening any AE2 terminal** (on a cable, and the plain wireless terminal) |
+| Item Conduits | Potato Soldier, Tier 5 | 10,000, 16 conduit binder | Ender IO item conduits (placing only); the Vacuum Chest and XP Vacuum |
+| ME Logistics | Potato Sergeant, Tier 6 | 20,000, 16 logic processors | Import, export and storage buses; interfaces; annihilation and formation planes; toggle buses; P2P tunnels; Advanced AE's import/export and stock export buses; ME conduits (placing). **Basic ME storage and terminals need no node** |
+| Automated Mining | Potato Lieutenant, Tier 7 | 35,000, 32 osmium | Digital Miner, Mechanical Miner, Ender Quarry (Tier 11 to make), Alex's Caves Quarry (Tier 9 to make) |
 
 **Autocrafting:**
 
@@ -91,9 +98,10 @@ Metals in no node (wood, stone, iron, copper, bronze and the rest) are free.
 | Formulaic Assembly | Potato Private, Tier 4 | 5,000, 4 basic control circuits | Formulaic Assemblicator |
 | Ender IO Crafting | Potato Soldier, Tier 5 | 10,000, 2 void chassis | Ender IO Crafter |
 | Thermal Fabrication | Potato Soldier, Tier 5 | 10,000, 4 machine frames | Sequential Fabricator |
-| ME Autocrafting | Potato Sergeant, Tier 6, ME Logistics | 20,000, 16 engineering processors | Pattern providers, the pattern encoding terminal, crafting units, accelerators, crafting storage, monitors and Molecular Assemblers; the wireless crafting and pattern terminals (AE2, AE2WTLib, Advanced AE) |
+| Immersive Assembly | Potato Private, Tier 4 | 5,000, 8 steel mechanical components | Using IE's Assembler multiblock (it's formed with the hammer, so only using it is locked) |
+| ME Autocrafting | Potato Sergeant, Tier 6, ME Logistics | 20,000, 16 engineering processors | Pattern providers (AE2 and Advanced AE), the pattern encoding terminal, crafting units, accelerators, crafting storage, monitors and Molecular Assemblers; the wireless crafting and pattern terminals (AE2, AE2WTLib, Advanced AE) |
 | RFTools Crafting | Potato Lieutenant, Tier 7, Ender IO Crafting | 35,000, 4 RFTools machine frames | RFTools Crafters 1–3 |
-| Quantum Crafting | Potato Captain, Tier 8, ME Autocrafting | 60,000, 16 calculation processors | Advanced AE's Quantum Crafter (and its terminal) |
+| Quantum Crafting | Potato Emperor, Tier 11, ME Autocrafting | 100,000, 16 calculation processors | Advanced AE's Quantum Crafter (and its terminal). Tier 11 because its parts are Tier 11 items |
 
 **Farms:**
 
@@ -103,7 +111,7 @@ Metals in no node (wood, stone, iron, copper, bronze and the rest) are free.
 | Growth Acceleration | Potato Peeler, Tier 1 | 1,000, 16 inferium essence | The five growth accelerators, the MA Harvester |
 | Garden Cloche | Potato Recruit, Tier 3 | 2,500, 8 treated planks | Garden Cloche |
 | Phytogenic Insolation | Potato Soldier, Tier 5, Garden Cloche | 10,000, 4 phyto-gro | Phytogenic Insolator |
-| Powered Spawning | Potato General, Tier 9 | 100,000, 4 broken spawners | Powered Spawner |
+| Mob Spawning | Potato Soldier, Tier 5 | 10,000, 8 soulium ingots | Ender IO's Powered Spawner, Mystical Agriculture's Soulium Spawner, the RFTools Spawner, Draconic's Stabilized Spawner (each also needs its own tier to be made) |
 
 Every block and item id was checked against the mods' jars, including the AE2WTLib ids, which were checked in its source.
 
@@ -116,15 +124,19 @@ Ops, creative and spectator players are exempt. A refusal shows "<Node> needed (
     - can't be right-clicked (bows, crossbows, shields);
     - armour is taken off into your inventory (dropped if it's full).
   - **Found, traded and cast gear is covered too.** That closes the old "cast it in someone else's smeltery" gap.
-- **Placing:** holding a node's item and right-clicking a block is refused. That covers blocks, AE2 parts on cables, Thermal attachments on ducts, and conduits. Placing the block itself is refused as a fallback, which also stops deployers placing it for you.
-- **Using:** right-clicking a node's block is refused, **whoever placed it**: opening it, configuring it, putting patterns in. AE2 terminals on cables need ME Logistics, since right-clicking any AE2 cable bus is refused without it.
+- **Placing:**
+  - **Blocks** are refused when placed, which also stops deployers placing them for you.
+  - **Parts placed onto another block** (AE2 parts on cables, Thermal attachments on ducts, Ender IO conduits) never fire a placement. So right-clicking with one in hand is refused instead. That's the node's `parts` list.
+  - **Holding a locked block** doesn't stop you right-clicking things, so you can still open a chest.
+- **Using:** right-clicking a node's block is refused, **whoever placed it**: opening it, configuring it, putting patterns in.
+  - **Basic AE2 storage is free:** drives, cables, terminals and the plain wireless terminal.
 - **Not locked:**
   - **regular machines** (pulverizers, enrichment chambers, crushers, mixers). They follow the Blood Pool, and crafting them at a table already needs the rank;
   - **faucets and casting tables**, so iron and copper casting stays open.
 - **Gaps left by design:**
   1. **Machines fed by their owner's hoppers, belts or pipes** keep working for whatever reaches them. That's the owner choosing to share.
   2. **AE2 autocraft requests:** a player with ME Logistics but not ME Autocrafting can order crafts at a terminal on someone else's network that already has crafters. AE2 doesn't tell scripts who ordered.
-  3. **Holding a node's item** while right-clicking any block (even a chest) is refused. Put it away first.
+  3. **Mining add-ons that live inside other items** (RFTools Builder quarry cards, Modular Powersuits miner modules) can't be locked. Crafting them still needs the rank.
 
 ## Catch-up
 When the Blood Pool opens Tier T, everyone gets everything of Tier T−2 and below. `CATCH_UP_GAP` in `blood_pool.js` sets the gap; 0 turns it off.
@@ -141,6 +153,7 @@ When the Blood Pool opens Tier T, everyone gets everything of Tier T−2 and bel
 | Command | Who | |
 |---|---|---|
 | `/potatowar tree` | players | Opens the book at the Potato War |
+| `/potatowar next` | players | Your rank, your crafting access, the nodes you can buy now, and what the next ones need |
 | `/potatotree check <player>` | op | Their nodes |
 | `/potatotree grant <player> <node>` | op | Completes the node's quest and gives its stage. Nothing taken, nothing credited |
 | `/potatotree revoke <player> <node>` | op | Resets the quest and takes the stage. Nothing is given back |
@@ -151,38 +164,45 @@ Node ids are in `NODES` (e.g. `cobalt_smithing`). `/ftbquests change_progress` a
 ## Settings (top of `potato_tree.js`)
 | Setting | Default | |
 |---|---|---|
-| `NODES` | 27 nodes | Every node: number `n` (fixes its quest id; never reuse one), rank, tier, needs, potatoes, items, materials, gear, places, use, wireless, position, description |
-| `CHAPTERS` | 5 | Chapter ids, titles, icons and file names |
+| `NODES` | 29 nodes | Every node: number `n` (fixes its quest id; never reuse one), rank, tier, needs, potatoes, items, materials, gear, places, parts, use, wireless, position, description |
+| `CHAPTERS` | 7 | Chapter ids, titles, icons and file names, in book order |
 | `NO_PARTIES` | true | Switch FTB Teams parties off |
 | `LOCK_ARMOR`, `ARMOR_CHECK_TICKS` | true, 40 | Take locked armour off, every 2 s |
 | `MESSAGE_COOLDOWN_TICKS` | 60 | Between action bar notes |
 | `CATCH_UP_LOGIN_DELAY_TICKS` | 60 | After a login, before catching that player up |
 | `CATCH_UP_GAP` (in `blood_pool.js`) | 2 | Tiers behind the Pool before catch-up; 0 = off |
 
-**After editing `NODES`:**
-1. Run `node tools/ftbquests/generate_quests.js`.
-2. Upload the changed chapter files.
+**After editing `NODES`, the tiers or the ranks:**
+1. Run `node tools/ftbquests/generate_quests.js`. It rebuilds the chapters and the tooltip script.
+2. Upload the changed chapter files, and update the tooltip script in the modpack.
 3. Run `/ftbquests reload` and `/reload`.
+4. Run the audit again (`python3 -I tools/progression_audit.py …`, see PROGRESSION_AUDIT.md).
 
 Moving nodes around in the book's editor is fine. Keep the ids, and re-run the generator only if you also want your edits replaced.
 
 ## Test plan (an op and a second account)
-1. **Install:** install the mods, scripts and files. The book shows a "Techno's Potato War" group with five chapters. Try "Create Party" in the FTB Teams screen: refused.
+1. **Install:** install the mods, scripts and files. The book shows a "Techno's Potato War" group with seven chapters, Start Here first. Try "Create Party" in the FTB Teams screen: refused.
 2. **Tiers:** `/bloodpool settier 1`. The second account offers 250 potatoes (`/potatowar offer 250`): The Ranks' first quest ticks.
 3. **Buying a node:** open Seared Smeltery and submit 250 potatoes and 16 seared bricks.
    - The quest completes, and the potatoes count toward the rank (`/potatowar` shows 500).
    - A smeltery controller can now be placed and opened.
    - Without it, placing or right-clicking one is refused.
 4. **Gear:** `/give` the second account a cobalt Tinkers pickaxe (build one in creative). It won't mine. `/potatotree grant <name> cobalt_smithing`: it mines.
-5. **AE2:** as the op, place a drive and terminal. The second account can't open the terminal without ME Logistics.
+5. **AE2:** as the op, place a drive, a terminal and an import bus. The second account can open the terminal (basic storage is free) but can't put a storage bus on the cable without ME Logistics.
+   - Holding a Molecular Assembler, it can still open a chest; placing the assembler is refused.
 6. **Catch-up:** `/bloodpool settier 5` with an unranked account online. It's told it was granted Seared Smeltery, Steel Smithing, Create Logistics, Immersive Logistics, Create Farming, Growth Acceleration and Garden Cloche, and the book shows them done.
 7. **A Tinkers hammer** without its node: does its area mining stop too?
+8. **Tooltips:** hold Shift over a sealed item, an autocrafter and a cobalt tool. The lines show ✘, and turn ✔ after `/bloodpool settier` or `/potatotree grant` (you may need to reopen the inventory).
+9. **`/potatowar next`** and the message when a tier opens (`/bloodpool unlock force`): each player is told privately what they can craft and buy.
 
 ## What couldn't be verified for KubeJS 6 on 1.20.1
-A mock-server test passed 101 checks (with the Blood Pool's tests), and the Blood Pool's own suite still passes with the tree absent (116):
+A mock-server test passed 111 checks (with the Blood Pool's tests). The Blood Pool's own suite passes with the tree absent (135), and the tooltip script passed 10:
 - **gear:** Tinkers NBT, the variant suffix, TF gear, ops and creative exempt, armour taken off and kept on;
 - **placing:** the held item and the block fallback, AE2 parts and Thermal attachments, a node letting an unranked player place a Mechanical Crafter (`blood_pool.js`'s rank rule stepping aside);
-- **using:** someone else's blocks, AE2 cable terminals, the wireless terminals;
+- **using:** someone else's blocks, free basic AE2 storage, the wireless terminals; the new nodes (spawners, Digital Miner, IE Assembler, vacuums);
+- **parts versus blocks:** parts checked on right-click, blocks on placement, holding a block doesn't block chests, belt funnels;
+- **`/potatowar next`, `status()`, and the private tier-open messages** (never `tellraw @a`);
+- **tooltips:** tier, rank and node lines with ✔/✘ from the stages, Tinkers materials, tags, the Shift hint;
 - **rank credit**, and the Pool untouched;
 - **catch-up:**
   - only Tier ≤ T−2 nodes, and nothing credited;
@@ -209,5 +229,6 @@ In game:
 - **The `#potato_offer` event** reaching the script in game, with the player and the task's count (the classes and names are confirmed in the jar).
 - **Parties off:** that the call from the script takes effect on the live server ("Create Party" refused).
 - **Gear locks on real Tinkers tools:** area mining (hammers, excavators), Tinkers bows, and armour moving off.
-- **Right-click cancelling** opening an AE2 terminal on a cable, and placing AE2 parts and Thermal attachments.
+- **Right-click cancelling** placing AE2 parts and Thermal attachments.
+- **The tooltips in game:** `addAdvancedToAll`, `event.shift` inside the callback, and the client seeing the synced stages straight after they change.
 - **Deployers** placing a locked block (they should be refused).

@@ -223,6 +223,12 @@ Technoblade's Potato War, revived. **The Pool decides what the server can make; 
     - building and using a smeltery or foundry;
     - placing and using autocrafters, logistics blocks, AE2 terminals and farm machines.
   - **Personal:** FTB Teams parties are switched off, so progress is per player.
+  - **Clarity:**
+    - the book opens with "Start Here" and has a "Blood Pool" chapter that ticks as tiers open;
+    - Shift tooltips show what any item needs and whether you have it;
+    - `/potatowar next` says what to do next;
+    - when a tier opens, each player is told privately what it means for them.
+  - **Cohesion audit** ([PROGRESSION_AUDIT.md](PROGRESSION_AUDIT.md)): the tiers, ranks and tree are checked against every mod's recipes. Mods' own crafting formats now carry the rank check, and the cross-mod routes that made sealed metals early are locked.
 - **Nobody falls behind** (owner decision): when the Blood Pool opens Tier T, every player gets crafting access and every tree node for Tiers 1..T−2 for free. Their rank's name and black market perks still come from potatoes only.
 
 ### Act I: The Awakening

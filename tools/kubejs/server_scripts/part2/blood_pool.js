@@ -83,6 +83,7 @@ const TIERS = [
       recipes: [
         TINKERS_MATERIALS(['osmium', 'steeleaf']), TINKERS_CASTING(['osmium', 'steeleaf']),
         TINKERS_MELTING(['osmium', 'steeleaf', 'refined_glowstone']),
+        TINKERS_CASTING(['refined_glowstone']), 'tconstruct:compat/refined_glowstone_ingot',   // its result is a tag (audit)
         MA_ESSENCE('mekanism', ['osmium_ingot', 'refined_glowstone_ingot', 'fluorite']), MA_ESSENCE('twilightforest', ['steeleaf_ingot']),
         MA_SEEDS(['osmium', 'refined_glowstone', 'fluorite', 'steeleaf'])] } },
 
@@ -104,7 +105,11 @@ const TIERS = [
         'twilightforest:knightmetal_ring', 'twilightforest:knightmetal_shield', 'twilightforest:block_and_chain'],
       tags: [],
       recipes: [
-        TINKERS_MATERIALS(['cobalt', 'scorched_stone', 'knightmetal']), TINKERS_CASTING(['cobalt', 'knightmetal']),
+        TINKERS_MATERIALS(['cobalt', 'scorched_stone', 'knightmetal', 'knightly']), TINKERS_CASTING(['cobalt', 'knightmetal']),
+        // the audit found these routes, whose results are tags the item locks can't see: Thermal's alloys made in the
+        // Tinkers smeltery, and Immersive Engineering's cobalt (crusher, arc furnace, press, hammer)
+        TINKERS_CASTING(['enderium', 'lumium', 'signalum']), /^tconstruct:smeltery\/alloys\/molten_(enderium|lumium|signalum)$/,
+        /^immersiveengineering:.*cobalt/,
         TINKERS_MELTING(['cobalt', 'knightmetal', 'enderium', 'lumium', 'signalum']),
         'tconstruct:common/materials/cobalt_ingot_blasting', 'tconstruct:common/materials/cobalt_nugget_blasting',
         /^mysticalagriculture:essence\/(enderio|thermal)\//,
@@ -138,6 +143,7 @@ const TIERS = [
         TINKERS_MATERIALS(['electrum', 'invar', 'constantan', 'silver', 'lead', 'pewter', 'aluminum', 'fiery']),
         TINKERS_MELTING(['electrum', 'invar', 'constantan', 'silver', 'lead', 'pewter', 'aluminum', 'fiery', 'uranium']),
         /^tconstruct:tables\/recycling\/twilightforest\/yeti_/,
+        /^tconstruct:smeltery\/casting\/fiery\//,                         // fiery ingots and blocks (a tag result; audit)
         /^mysticalagriculture:essence\/(appliedenergistics2|extremereactors2)\//,
         MA_ESSENCE('botania', ['terrasteel_ingot', 'elementium_ingot']), MA_ESSENCE('common', ['uranium_ingot']),
         MA_ESSENCE('twilightforest', ['fiery_ingot']),
@@ -165,6 +171,7 @@ const TIERS = [
       recipes: [
         /^tconstruct:tables\/recycling\/twilightforest\/arctic_/,
         TINKERS_MELTING(['refined_obsidian']),
+        TINKERS_CASTING(['refined_obsidian']), 'tconstruct:compat/refined_obsidian_ingot', 'tconstruct:smeltery/alloys/molten_refined_obsidian',
         /^mysticalagriculture:essence\/redstone_arsenal\//, MA_ESSENCE('mekanism', ['refined_obsidian_ingot']),
         MA_SEEDS(['flux_infused_ingot', 'flux_infused_gem', 'refined_obsidian'])] } },
 
@@ -185,6 +192,7 @@ const TIERS = [
           'ancient', 'enderslime', 'ichor']),
         TINKERS_CASTING(['manyullyn', 'hepatizon', 'queens_slime', 'cinderslime']),
         TINKERS_MELTING(['manyullyn', 'hepatizon', 'queens_slime', 'cinderslime']),
+        /^immersiveengineering:.*(manyullyn|hepatizon|queens_slime|cinderslime)/,   // IE's arc furnace and alloy kiln (audit)
         'agricraft:diamond', 'agricraft:emerald', 'agricraft:netherite_scrap',
         MA_ESSENCE('tconstruct', ['manyullyn_ingot', 'hepatizon_ingot', 'queens_slime_ingot']),
         MA_ESSENCE('minecraft', ['netherite_ingot']),
@@ -288,6 +296,16 @@ const RANKS = ['Unenlisted', 'Potato Farmer', 'Potato Peeler', 'Potato Recruit',
 // needs its own tier's rank (AUTOCRAFTERS). false = rank only gates the black market.
 const STANDING_CRAFTING = true
 const STAGE_PREFIX = 'potato_standing_'  // the KubeJS stage for rank n is potato_standing_<n>
+// Mods' own crafting-table recipe formats, which the rank check can't see. Each is rebuilt as a KubeJS shaped recipe
+// with the same id, pattern, ingredients and result (no mirroring), so it gets the rank check too. Nothing about what
+// it needs or makes changes. Mekanism tier upgrades (an input already carries data: a lower tier of the same item,
+// a factory, or anything another mek_data recipe makes) are left as they are, so upgrading keeps contents and
+// installed upgrades. Owner decision. [] = convert nothing.
+const CONVERT_RECIPE_TYPES = ['cucumber:shaped_no_mirror', 'cucumber:shaped_tag', 'mekanism:mek_data']
+// /bloodpool audit: the next /reload writes this report (every crafting-type recipe without the rank check, and
+// every recipe whose result is still sealed). The request is kept in AUDIT_FLAG_FILE until then.
+const AUDIT_FILE = 'kubejs/progression_audit.json'
+const AUDIT_FLAG_FILE = 'kubejs/progression_audit_request.json'
 // Autocrafters: only a player of the block's own tier's rank (or higher) may place one. rank: a fixed rank instead.
 // Ops and creative players are exempt. Machines placed by something other than a player aren't checked.
 const AUTOCRAFTERS = {
@@ -484,11 +502,12 @@ const RANK_GATES = {}
 STANDING.forEach((need, i) => { RANK_GATES[i + 1] = rankGate(i + 1) })
 function ruleMatches(rule, id) { return typeof rule == 'string' ? rule == id : rule.test(id) }
 function recipeTier(r, open) {
-  const id = String(r.getId())
-  let t = 0
   let out = null
   try { out = r.getOriginalRecipeResult() } catch (e) { }
-  const outId = out && !out.isEmpty() ? String(out.id) : ''
+  return recipeTierFor(String(r.getId()), out && !out.isEmpty() ? String(out.id) : '', out, open)
+}
+function recipeTierFor(id, outId, out, open) {
+  let t = 0
   if (outId) t = tierOf(outId, out)
   if (!(outId && ITEM_TIER[outId] != null)) t = Math.max(t, MOD_TIER[id.split(':')[0]] || 0)
   TIERS.forEach(T => {
@@ -496,6 +515,13 @@ function recipeTier(r, open) {
     if (((T.unlocks || {}).recipes || []).some(rule => ruleMatches(rule, id))) t = T.tier
   })
   return t
+}
+let GATED = {}                                  // recipe ids given the rank check this reload (for the audit)
+let GATED_BY_TIER = {}
+function gate(r, id, t) {
+  r.modifyResult(RANK_GATES[t])
+  GATED[id] = t
+  GATED_BY_TIER[t] = (GATED_BY_TIER[t] || 0) + 1
 }
 function stageCrafting(event, open) {
   let staged = 0, failed = 0
@@ -505,11 +531,123 @@ function stageCrafting(event, open) {
       let t = 0
       try { t = recipeTier(r, open) } catch (e) { failed++; return }
       if (!(t >= 1 && t <= open && t <= STANDING.length)) return
-      try { r.modifyResult(RANK_GATES[t]); staged++; counts[t] = (counts[t] || 0) + 1 } catch (e) { failed++ }
+      try { gate(r, String(r.getId()), t); staged++; counts[t] = (counts[t] || 0) + 1 } catch (e) { failed++ }
     })
   } catch (e) { console.error('[BloodPool] Potato War: crafting recipes could not be given a rank check (rank does not gate crafting): ' + e); return }
   console.info('[BloodPool] Potato War: ' + staged + ' crafting recipes need a rank (' +
     Object.keys(counts).map(k => 'rank ' + k + ': ' + counts[k]).join(', ') + ')' + (failed ? '; ' + failed + ' could not be read' : ''))
+}
+
+// ----- Mods' own crafting-table formats (CONVERT_RECIPE_TYPES) -----
+function jsonItems(node, out) {
+  if (Array.isArray(node)) node.forEach(x => jsonItems(x, out))
+  else if (node && typeof node == 'object') {
+    if (typeof node.item == 'string') out.push(node.item)
+    Object.keys(node).forEach(k => { if (k != 'item' && node[k] && typeof node[k] == 'object') jsonItems(node[k], out) })
+  }
+  return out
+}
+// A recipe key entry as a KubeJS ingredient, or null if it uses something only the mod understands.
+function keyIngredient(v) {
+  if (Array.isArray(v)) {
+    let parts = v.map(keyIngredient)
+    return parts.some(x => x == null || typeof x != 'string') ? null : parts
+  }
+  if (!v || typeof v != 'object') return null
+  const keys = Object.keys(v)
+  if (keys.length == 1 && keys[0] == 'item') return String(v.item)
+  if (keys.length == 1 && keys[0] == 'tag') return '#' + v.tag
+  return null
+}
+function family(id) { return String(id).split(':')[1].replace(/^(basic|advanced|elite|ultimate)_/, '') }
+function isMekUpgrade(j, outId, dataItems) {
+  if (/factory/.test(outId)) return true
+  return jsonItems(j.key || {}, []).some(i => /^mekanism/.test(i) && (family(i) == family(outId) || dataItems[i]))
+}
+let CONVERTED = { done: 0, upgrades: 0, skipped: 0, sealed: 0, failed: 0 }
+function convertRecipes(event, open) {
+  CONVERTED = { done: 0, upgrades: 0, skipped: 0, sealed: 0, failed: 0 }
+  if (!CONVERT_RECIPE_TYPES.length) return
+  const found = [], dataItems = {}
+  try {
+    event.forEachRecipe(CONVERT_RECIPE_TYPES.map(t => ({ type: t })), r => {
+      try { found.push({ id: String(r.getId()), type: String(r.getType()), j: JSON.parse(String(r.json)) }) } catch (e) { CONVERTED.failed++ }
+    })
+  } catch (e) { console.error('[BloodPool] Mod crafting recipes could not be read (left as they are): ' + e); return }
+  found.forEach(f => { if (f.type == 'mekanism:mek_data' && f.j.result && f.j.result.item) dataItems[f.j.result.item] = true })
+  found.forEach(f => {
+    try {
+      let res = f.j.result || {}, outId = res.item ? String(res.item) : ''
+      if (!outId && res.tag) {
+        let ids = Ingredient.of('#' + res.tag).getItemIds().toArray()
+        if (!ids.length) { CONVERTED.skipped++; return }
+        outId = String(ids[0])
+      }
+      if (!outId || !f.j.pattern || !f.j.key) { CONVERTED.skipped++; return }
+      let t = recipeTierFor(f.id, outId, null, open)
+      if (t > open) { event.remove({ id: f.id }); CONVERTED.sealed++; return }   // missed by the removal (a tag result): seal it now
+      if (f.type == 'mekanism:mek_data' && isMekUpgrade(f.j, outId, dataItems)) { CONVERTED.upgrades++; return }
+      let key = {}, ok = true
+      Object.keys(f.j.key).forEach(k => { let v = keyIngredient(f.j.key[k]); if (v == null) ok = false; else key[k] = v })
+      if (!ok) { CONVERTED.skipped++; return }
+      let count = Number(res.count) || 1
+      let result = res.nbt ? Item.of(outId, count, typeof res.nbt == 'string' ? res.nbt : JSON.stringify(res.nbt)) : Item.of(outId, count)
+      let nr = event.shaped(result, f.j.pattern, key).noMirror().id(f.id)
+      event.remove({ id: f.id })
+      CONVERTED.done++
+      if (STANDING_CRAFTING && t >= 1 && t <= open && t <= STANDING.length) gate(nr, f.id, t)
+    } catch (e) { CONVERTED.failed++ }
+  })
+  console.info('[BloodPool] Mod crafting recipes: ' + CONVERTED.done + ' rebuilt with the rank check; ' + CONVERTED.upgrades +
+    ' Mekanism upgrades left as they are; ' + CONVERTED.skipped + ' skipped (unusual ingredients or an empty tag)' +
+    (CONVERTED.sealed ? '; ' + CONVERTED.sealed + ' sealed (their tier is not open)' : '') +
+    (CONVERTED.failed ? '; ' + CONVERTED.failed + ' failed (left as they are)' : ''))
+}
+
+// ----- /bloodpool audit -----
+const TABLE_TYPES = /(crafting|shaped|shapeless|mek_data|copy_nbt|nbt_output|armor_upgrade|mana_upgrade|turn_and_copy|_upgrade$|_fluid$)/
+const NOT_TABLE = { 'tconstruct:material_fluid': 1, 'create:mechanical_crafting': 1, 'draconicevolution:fusion_crafting': 1,
+  'enderio:fire_crafting': 1, 'twilightforest:uncrafting': 1 }
+function auditRequested() {
+  try {
+    let m = JsonIO.read(AUDIT_FLAG_FILE)
+    if (m == null) return false
+    let v = typeof m.get == 'function' ? m.get('requested') : m.requested
+    return String(v) == 'true'
+  } catch (e) { return false }
+}
+function outputsOf(j) {
+  const out = []
+  Object.keys(j || {}).forEach(k => { if (/^(result|results|output|outputs)$/.test(k)) jsonItems(j[k], out) })
+  return out
+}
+function runAudit(event, open) {
+  const ungated = [], survivors = []
+  let total = 0
+  event.forEachRecipe('*', r => {
+    total++
+    let id = String(r.getId()), type = String(r.getType())
+    let out = null
+    try { out = r.getOriginalRecipeResult() } catch (e) { }
+    let outId = out && !out.isEmpty() ? String(out.id) : ''
+    if (TABLE_TYPES.test(type.split(':')[1] || '') && !NOT_TABLE[type] && GATED[id] == null && CRAFTING_TYPES.every(c => c.type != type)) {
+      let t = 0
+      try { t = recipeTierFor(id, outId, out, open) } catch (e) { }
+      if (t >= 1 && ungated.length < 1000) ungated.push({ type: type, id: id, result: outId, tier: t })
+    }
+    let j = null
+    try { j = JSON.parse(String(r.json)) } catch (e) { }
+    outputsOf(j).forEach(o => {
+      let t = tierOf(o, null)
+      if (t > open && survivors.length < 1000) survivors.push({ id: id, type: type, item: o, tier: t, kubejsSeesIt: o == outId })
+    })
+  })
+  const report = { open: open, recipes: total, gatedByTier: GATED_BY_TIER, converted: CONVERTED,
+    ungatedCraftingRecipes: ungated, sealedItemsStillMade: survivors }
+  try { JsonIO.write(AUDIT_FILE, report) } catch (e) { console.error('[BloodPool] Audit: could not write ' + AUDIT_FILE + ': ' + e) }
+  try { JsonIO.write(AUDIT_FLAG_FILE, { requested: 'false' }) } catch (e) { }
+  console.info('[BloodPool] Audit (tier ' + open + ', ' + total + ' recipes): ' + Object.keys(GATED).length + ' crafting recipes carry the rank check; ' +
+    ungated.length + ' crafting-type recipes in a tier do not; ' + survivors.length + ' recipes still make a sealed item. Written to ' + AUDIT_FILE)
 }
 
 ServerEvents.recipes(event => {
@@ -531,7 +669,11 @@ ServerEvents.recipes(event => {
     ;(u.recipes || []).forEach(r => { event.remove({ id: r }); removed++ })   // exact id or regex
   })
   console.info('[BloodPool] Recipes: tier ' + open + ' open; ' + removed + ' locked entries removed')
+  GATED = {}
+  GATED_BY_TIER = {}
+  convertRecipes(event, open)
   if (STANDING_CRAFTING) stageCrafting(event, open)
+  if (auditRequested()) { try { runAudit(event, open) } catch (e) { console.error('[BloodPool] Audit failed: ' + e) } }
 })
 
 
@@ -614,8 +756,27 @@ function setTier(server, n, by, announceIt) {
   onlinePlayers(server).forEach(p => { try { syncStages(p) } catch (e) { } })
   const PT = global.PotatoTree
   if (PT) { try { PT.catchUp(server) } catch (e) { console.error('[BloodPool] potato tree catch-up: ' + e) } }
+  if (announceIt && T) onlinePlayers(server).forEach(p => { try { tierMessage(p, T) } catch (e) { console.error('[BloodPool] tier message: ' + e) } })
   console.info('[BloodPool] Tier set to ' + D.tier + ' by ' + by + '; reloading')
   server.scheduleInTicks(RELOAD_DELAY_TICKS, () => { try { server.runCommandSilent('reload') } catch (e) { console.error('[BloodPool] reload: ' + e) } })
+}
+
+// Each player, privately: what the new tier means for them (crafting by rank or catch-up, nodes now buyable).
+function tierMessage(p, T) {
+  const uuid = uuidOf(p), s = standingOf(uuid), acc = craftAccess(uuid)
+  let text = 'Tier ' + T.tier + ' (' + T.name + ') is open.'
+  if (T.tier <= STANDING.length) {
+    if (acc >= T.tier) text += ' You can craft its items at a crafting table.'
+    else text += ' Crafting its items at a table needs ' + rankName(T.tier) + ': ' + fmt(Math.max(0, STANDING[T.tier - 1] - s.potatoes)) +
+      ' more potatoes (/potatowar offer), or it comes to you by catch-up at Tier ' + (T.tier + CATCH_UP_GAP) + '.'
+  }
+  const PT = global.PotatoTree
+  if (PT) {
+    let ready = []
+    try { ready = PT.buyable(p) } catch (e) { }
+    if (ready.length) text += ' Ready in the upgrade tree (/potatowar tree): ' + ready.join(', ') + '.'
+  }
+  tell(p, VOICE_WAR, text)
 }
 
 // The saved data is the authority; keep the file in step (a restart then loads the right recipes).
@@ -819,6 +980,9 @@ global.BloodPool = {
     console.info('[BloodPool] Potato War: ' + nameOf(player) + ' handed in ' + n + ' potatoes (upgrade tree)')
   },
   craftAccess: player => craftAccess(uuidOf(player)),   // the highest tier this player can craft (rank or catch-up)
+  tiers: TIERS,                                        // read-only: the tier lists (tools, the quest generator, the audit)
+  standingThresholds: STANDING,
+  autocrafters: AUTOCRAFTERS,
   catchUpGap: CATCH_UP_GAP,
   syncStages: player => syncStages(player),
 }
@@ -925,6 +1089,11 @@ ServerEvents.commandRegistry(event => {
       return reply(ctx, String(s.id) + ' can be crafted from Tier ' + n + (T ? ' (' + T.name + ')' : '') + ': ' +
         (n <= db().tier ? 'open now.' : 'sealed for now (found ones still work).') + rank)
     })))
+    .then(Commands.literal('audit').requires(op).executes(safe(ctx => {
+      try { JsonIO.write(AUDIT_FLAG_FILE, { requested: 'true' }) } catch (e) { return reply(ctx, 'Could not write ' + AUDIT_FLAG_FILE + ': ' + e, true) }
+      ctx.source.server.scheduleInTicks(RELOAD_DELAY_TICKS, () => { try { ctx.source.server.runCommandSilent('reload') } catch (e) { } })
+      return reply(ctx, 'Reloading. The report goes to ' + AUDIT_FILE + ' (a summary in the server log).')
+    })))
     .then(Commands.literal('unlock').requires(op)
       .executes(safe(ctx => unlock(ctx, false)))
       .then(Commands.literal('force').executes(safe(ctx => unlock(ctx, true)))))
@@ -985,6 +1154,23 @@ ServerEvents.commandRegistry(event => {
       let extra = acc > s.tier ? ' Crafting access: Tier ' + acc + ' (catch-up: the Blood Pool is at Tier ' + db().tier + ').' : ''
       return war(ctx, standingText(s) + extra + ' Offer potatoes with /potatowar offer [count]; they raise your rank, not the Blood Pool.')
     }))
+    .then(Commands.literal('next').executes(safe(ctx => {
+      const p = me(ctx)
+      if (!p) return war(ctx, 'Players only.', true)
+      const s = standingOf(uuidOf(p)), acc = craftAccess(uuidOf(p)), open = Math.min(db().tier, STANDING.length)
+      war(ctx, standingText(s))
+      if (open < 1) war(ctx, 'The Blood Pool hasn\'t opened a tier yet.')
+      else if (acc >= open) war(ctx, 'You can craft everything the Blood Pool has opened (Tier ' + db().tier + ').')
+      else war(ctx, 'Crafting access: Tier ' + acc + (acc > s.tier ? ' (catch-up)' : '') + ' of ' + open + ' open. ' + rankName(open) + ' crafts it all: ' +
+        fmt(Math.max(0, STANDING[open - 1] - s.potatoes)) + ' potatoes to go.')
+      const PT = global.PotatoTree
+      if (PT) {
+        let st = PT.status(p)
+        war(ctx, st.ready.length ? 'Ready in the upgrade tree (/potatowar tree): ' + st.ready.join(', ') + '.' : 'Nothing in the upgrade tree is ready to buy yet.')
+        st.soon.slice(0, 5).forEach(x => war(ctx, '  Next: ' + x.name + ' (needs ' + x.missing.join(', ') + ')'))
+      }
+      return 1
+    })))
     .then(Commands.literal('tree').executes(safe(ctx => {
       const p = me(ctx), PT = global.PotatoTree
       if (!p) return war(ctx, 'Players only.', true)

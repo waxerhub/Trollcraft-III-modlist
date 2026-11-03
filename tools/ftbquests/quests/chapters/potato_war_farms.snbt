@@ -5,11 +5,11 @@
 	group: "507A70000000A001"
 	icon: "immersiveengineering:cloche"
 	id: "507A70000000C005"
-	order_index: 4
+	order_index: 6
 	quest_links: [ ]
 	quests: [
 		{
-			description: ["Place Mechanical Harvesters and Ploughs.", "", "&6Unlocks&r", "- Place and use: mechanical harvester, mechanical plough", "", "&7Needs Potato Farmer, Blood Pool Tier 1.", "&7Potatoes handed in here count toward your rank. Items are taken when you submit them.", "&7Falls to you for free once the Blood Pool is 2 tiers past Tier 1 (catch-up)."]
+			description: ["Place Mechanical Harvesters and Ploughs.", "", "&6Unlocks&r", "- Place: mechanical harvester, mechanical plough", "- Use (whoever placed it): mechanical harvester, mechanical plough", "", "&7Needs Potato Farmer, Blood Pool Tier 1.", "&7Potatoes handed in here count toward your rank. Items are taken when you submit them (loose potatoes only).", "&7Comes to you for free once the Blood Pool is 2 tiers past Tier 1 (catch-up)."]
 			icon: "create:mechanical_harvester"
 			id: "507A70000001001F"
 			rewards: [
@@ -17,7 +17,7 @@
 					auto: "invisible"
 					id: "507A7000000301F0"
 					stage: "potato_tree_create_farming"
-					type: "stage"
+					type: "gamestage"
 				}
 			]
 			subtitle: "Potato Farmer · Tier 1"
@@ -27,13 +27,13 @@
 					id: "507A7000000201F0"
 					stage: "potato_standing_1"
 					title: "Rank: Potato Farmer"
-					type: "stage"
+					type: "gamestage"
 				}
 				{
 					id: "507A7000000201F1"
 					stage: "blood_pool_tier_1"
 					title: "Blood Pool: Tier 1"
-					type: "stage"
+					type: "gamestage"
 				}
 				{
 					consume_items: true
@@ -57,7 +57,7 @@
 			y: 0.0d
 		}
 		{
-			description: ["Place Mystical Agriculture growth accelerators and the Harvester.", "", "&6Unlocks&r", "- Place and use: inferium growth accelerator, prudentium growth accelerator, tertium growth accelerator, imperium growth accelerator, supremium growth accelerator, harvester", "", "&7Needs Potato Peeler, Blood Pool Tier 1.", "&7Potatoes handed in here count toward your rank. Items are taken when you submit them.", "&7Falls to you for free once the Blood Pool is 2 tiers past Tier 2 (catch-up)."]
+			description: ["Place Mystical Agriculture growth accelerators and the Harvester.", "", "&6Unlocks&r", "- Place: inferium growth accelerator, prudentium growth accelerator, tertium growth accelerator, imperium growth accelerator, supremium growth accelerator, harvester", "- Use (whoever placed it): inferium growth accelerator, prudentium growth accelerator, tertium growth accelerator, imperium growth accelerator, supremium growth accelerator, harvester", "", "&7Needs Potato Peeler, Blood Pool Tier 1.", "&7Potatoes handed in here count toward your rank. Items are taken when you submit them (loose potatoes only).", "&7Comes to you for free once the Blood Pool is 2 tiers past Tier 2 (catch-up)."]
 			icon: "mysticalagriculture:inferium_growth_accelerator"
 			id: "507A700000010020"
 			rewards: [
@@ -65,7 +65,7 @@
 					auto: "invisible"
 					id: "507A700000030200"
 					stage: "potato_tree_growth_acceleration"
-					type: "stage"
+					type: "gamestage"
 				}
 			]
 			subtitle: "Potato Peeler · Tier 1"
@@ -75,13 +75,13 @@
 					id: "507A700000020200"
 					stage: "potato_standing_2"
 					title: "Rank: Potato Peeler"
-					type: "stage"
+					type: "gamestage"
 				}
 				{
 					id: "507A700000020201"
 					stage: "blood_pool_tier_1"
 					title: "Blood Pool: Tier 1"
-					type: "stage"
+					type: "gamestage"
 				}
 				{
 					consume_items: true
@@ -105,7 +105,7 @@
 			y: 0.0d
 		}
 		{
-			description: ["Place and use the Garden Cloche.", "", "&6Unlocks&r", "- Place and use: cloche", "", "&7Needs Potato Recruit, Blood Pool Tier 3.", "&7Potatoes handed in here count toward your rank. Items are taken when you submit them.", "&7Falls to you for free once the Blood Pool is 2 tiers past Tier 3 (catch-up)."]
+			description: ["Place and use the Garden Cloche.", "", "&6Unlocks&r", "- Place: cloche", "- Use (whoever placed it): cloche", "", "&7Needs Potato Recruit, Blood Pool Tier 3.", "&7Potatoes handed in here count toward your rank. Items are taken when you submit them (loose potatoes only).", "&7Comes to you for free once the Blood Pool is 2 tiers past Tier 3 (catch-up)."]
 			icon: "immersiveengineering:cloche"
 			id: "507A700000010021"
 			rewards: [
@@ -113,7 +113,7 @@
 					auto: "invisible"
 					id: "507A700000030210"
 					stage: "potato_tree_garden_cloche"
-					type: "stage"
+					type: "gamestage"
 				}
 			]
 			subtitle: "Potato Recruit · Tier 3"
@@ -123,13 +123,13 @@
 					id: "507A700000020210"
 					stage: "potato_standing_3"
 					title: "Rank: Potato Recruit"
-					type: "stage"
+					type: "gamestage"
 				}
 				{
 					id: "507A700000020211"
 					stage: "blood_pool_tier_3"
 					title: "Blood Pool: Tier 3"
-					type: "stage"
+					type: "gamestage"
 				}
 				{
 					consume_items: true
@@ -154,7 +154,7 @@
 		}
 		{
 			dependencies: ["507A700000010021"]
-			description: ["Place and use the Phytogenic Insolator.", "", "&6Unlocks&r", "- Place and use: machine insolator", "", "&7Needs Potato Soldier, Blood Pool Tier 5, and Garden Cloche.", "&7Potatoes handed in here count toward your rank. Items are taken when you submit them.", "&7Falls to you for free once the Blood Pool is 2 tiers past Tier 5 (catch-up)."]
+			description: ["Place and use the Phytogenic Insolator.", "", "&6Unlocks&r", "- Place: machine insolator", "- Use (whoever placed it): machine insolator", "", "&7Needs Potato Soldier, Blood Pool Tier 5, and Garden Cloche.", "&7Potatoes handed in here count toward your rank. Items are taken when you submit them (loose potatoes only).", "&7Comes to you for free once the Blood Pool is 2 tiers past Tier 5 (catch-up)."]
 			icon: "thermal:machine_insolator"
 			id: "507A700000010022"
 			rewards: [
@@ -162,7 +162,7 @@
 					auto: "invisible"
 					id: "507A700000030220"
 					stage: "potato_tree_insolation"
-					type: "stage"
+					type: "gamestage"
 				}
 			]
 			subtitle: "Potato Soldier · Tier 5"
@@ -172,13 +172,13 @@
 					id: "507A700000020220"
 					stage: "potato_standing_5"
 					title: "Rank: Potato Soldier"
-					type: "stage"
+					type: "gamestage"
 				}
 				{
 					id: "507A700000020221"
 					stage: "blood_pool_tier_5"
 					title: "Blood Pool: Tier 5"
-					type: "stage"
+					type: "gamestage"
 				}
 				{
 					consume_items: true
@@ -202,7 +202,7 @@
 			y: -2.0d
 		}
 		{
-			description: ["Place and use the Powered Spawner.", "", "&6Unlocks&r", "- Place and use: powered spawner", "", "&7Needs Potato General, Blood Pool Tier 9.", "&7Potatoes handed in here count toward your rank. Items are taken when you submit them.", "&7Falls to you for free once the Blood Pool is 2 tiers past Tier 9 (catch-up)."]
+			description: ["Place and use powered mob spawners: Ender IO's Powered Spawner, Mystical Agriculture's Soulium Spawner, the RFTools Spawner and Draconic Evolution's Stabilized Spawner.", "", "&6Unlocks&r", "- Place: powered spawner, soulium spawner, spawner, stabilized spawner", "- Use (whoever placed it): powered spawner, soulium spawner, spawner, stabilized spawner", "", "&7Needs Potato Soldier, Blood Pool Tier 5.", "&7Potatoes handed in here count toward your rank. Items are taken when you submit them (loose potatoes only).", "&7Comes to you for free once the Blood Pool is 2 tiers past Tier 5 (catch-up)."]
 			icon: "enderio:powered_spawner"
 			id: "507A700000010023"
 			rewards: [
@@ -210,46 +210,46 @@
 					auto: "invisible"
 					id: "507A700000030230"
 					stage: "potato_tree_powered_spawning"
-					type: "stage"
+					type: "gamestage"
 				}
 			]
-			subtitle: "Potato General · Tier 9"
+			subtitle: "Potato Soldier · Tier 5"
 			tags: ["potato_tree"]
 			tasks: [
 				{
 					id: "507A700000020230"
-					stage: "potato_standing_9"
-					title: "Rank: Potato General"
-					type: "stage"
+					stage: "potato_standing_5"
+					title: "Rank: Potato Soldier"
+					type: "gamestage"
 				}
 				{
 					id: "507A700000020231"
-					stage: "blood_pool_tier_9"
-					title: "Blood Pool: Tier 9"
-					type: "stage"
+					stage: "blood_pool_tier_5"
+					title: "Blood Pool: Tier 5"
+					type: "gamestage"
 				}
 				{
 					consume_items: true
-					count: 100000L
+					count: 10000L
 					id: "507A700000020232"
 					item: "minecraft:potato"
 					tags: ["potato_offer"]
-					title: "100,000 potatoes for the war chest"
+					title: "10,000 potatoes for the war chest"
 					type: "item"
 				}
 				{
 					consume_items: true
-					count: 4L
+					count: 8L
 					id: "507A700000020233"
-					item: "enderio:broken_spawner"
+					item: "mysticalagriculture:soulium_ingot"
 					type: "item"
 				}
 			]
-			title: "Powered Spawning"
+			title: "Mob Spawning"
 			x: 9.0d
 			y: 0.0d
 		}
 	]
-	subtitle: ["Machines that grow and harvest for you."]
+	subtitle: ["Machines that grow, harvest and spawn for you."]
 	title: "Farms"
 }

@@ -1,0 +1,241 @@
+{
+	default_hide_dependency_lines: false
+	default_quest_shape: ""
+	filename: "potato_war_blood_pool"
+	group: "507A70000000A001"
+	icon: "minecraft:redstone_block"
+	id: "507A70000000C007"
+	order_index: 2
+	quest_links: [ ]
+	quests: [
+		{
+			description: ["The whole server fills the Blood Pool: trolls in the Troll Log, Hush Coins (/bloodpool donate) and the Potato Tithe (/bloodpool tithe).", "", "&6Opens at 20,000 Drops&r", "- Mods: create, mysticalagriculture", "", "&7Crafting its items at a table also needs Potato Farmer (or catch-up at Tier 3). Machines work for everyone."]
+			icon: "minecraft:redstone"
+			id: "507A7000000100C9"
+			subtitle: "20,000 Drops"
+			tags: ["blood_pool_tier"]
+			tasks: [
+				{
+					id: "507A700000020C90"
+					stage: "blood_pool_tier_1"
+					title: "Blood Pool: Tier 1"
+					type: "gamestage"
+				}
+			]
+			title: "Tier 1: A Trickle"
+			x: 0.0d
+			y: 0.0d
+		}
+		{
+			dependencies: ["507A7000000100C9"]
+			description: ["The whole server fills the Blood Pool: trolls in the Troll Log, Hush Coins (/bloodpool donate) and the Potato Tithe (/bloodpool tithe).", "", "&6Opens at 60,000 Drops&r", "- Mods: botania, ars_nouveau, evilcraft", "- 2 items, e.g. mixing cauldron, blood bottle", "", "&7Crafting its items at a table also needs Potato Peeler (or catch-up at Tier 4). Machines work for everyone."]
+			icon: "minecraft:redstone"
+			id: "507A7000000100CA"
+			subtitle: "60,000 Drops"
+			tags: ["blood_pool_tier"]
+			tasks: [
+				{
+					id: "507A700000020CA0"
+					stage: "blood_pool_tier_2"
+					title: "Blood Pool: Tier 2"
+					type: "gamestage"
+				}
+			]
+			title: "Tier 2: A Puddle"
+			x: 0.0d
+			y: -1.5d
+		}
+		{
+			dependencies: ["507A7000000100CA"]
+			description: ["The whole server fills the Blood Pool: trolls in the Troll Log, Hush Coins (/bloodpool donate) and the Potato Tithe (/bloodpool tithe).", "", "&6Opens at 120,000 Drops&r", "- Mods: immersiveengineering", "- 12 items, e.g. copper casing, fluid pipe, mechanical pump, fluid tank, steam engine, electron tube", "- Tags: forge:ingots/steel", "- &cThe Nether&r", "", "&7Crafting its items at a table also needs Potato Recruit (or catch-up at Tier 5). Machines work for everyone."]
+			icon: "minecraft:netherrack"
+			id: "507A7000000100CB"
+			subtitle: "120,000 Drops"
+			tags: ["blood_pool_tier"]
+			tasks: [
+				{
+					id: "507A700000020CB0"
+					stage: "blood_pool_tier_3"
+					title: "Blood Pool: Tier 3"
+					type: "gamestage"
+				}
+			]
+			title: "Tier 3: A Basin"
+			x: 0.0d
+			y: -3.0d
+		}
+		{
+			dependencies: ["507A7000000100CB"]
+			description: ["The whole server fills the Blood Pool: trolls in the Troll Log, Hush Coins (/bloodpool donate) and the Potato Tithe (/bloodpool tithe).", "", "&6Opens at 200,000 Drops&r", "- Mods: mekanism, mekanismgenerators, tinker_rapier", "- 16 items, e.g. precision mechanism, mechanical crafter, deployer, mechanical arm, rotation speed controller, steeleaf ingot", "", "&7Crafting its items at a table also needs Potato Private (or catch-up at Tier 6). Machines work for everyone."]
+			icon: "minecraft:redstone"
+			id: "507A7000000100CC"
+			subtitle: "200,000 Drops"
+			tags: ["blood_pool_tier"]
+			tasks: [
+				{
+					id: "507A700000020CC0"
+					stage: "blood_pool_tier_4"
+					title: "Blood Pool: Tier 4"
+					type: "gamestage"
+				}
+			]
+			title: "Tier 4: A Font"
+			x: 0.0d
+			y: -4.5d
+		}
+		{
+			dependencies: ["507A7000000100CC"]
+			description: ["The whole server fills the Blood Pool: trolls in the Troll Log, Hush Coins (/bloodpool donate) and the Potato Tithe (/bloodpool tithe).", "", "&6Opens at 320,000 Drops&r", "- Mods: thermal, enderio", "- 33 items, e.g. cobalt ingot, raw cobalt, raw cobalt block, cobalt block, nether grout, scorched brick", "", "&7Crafting its items at a table also needs Potato Soldier (or catch-up at Tier 7). Machines work for everyone."]
+			icon: "minecraft:redstone"
+			id: "507A7000000100CD"
+			subtitle: "320,000 Drops"
+			tags: ["blood_pool_tier"]
+			tasks: [
+				{
+					id: "507A700000020CD0"
+					stage: "blood_pool_tier_5"
+					title: "Blood Pool: Tier 5"
+					type: "gamestage"
+				}
+			]
+			title: "Tier 5: A Spring"
+			x: 0.0d
+			y: -6.0d
+		}
+		{
+			dependencies: ["507A7000000100CD"]
+			description: ["The whole server fills the Blood Pool: trolls in the Troll Log, Hush Coins (/bloodpool donate) and the Potato Tithe (/bloodpool tithe).", "", "&6Opens at 480,000 Drops&r", "- Mods: ae2, ae2additions, ae2wtlib, ae2insertexportcard, appliedcooking, appbot, appmek, createappliedkinetics, bigreactors, reliquary, alexscaves, iceandfire", "- 31 items, e.g. terra plate, terrasteel ingot, alfheim portal, natura pylon, mana pylon, dreamwood log", "", "&7Crafting its items at a table also needs Potato Sergeant (or catch-up at Tier 8). Machines work for everyone."]
+			icon: "minecraft:redstone"
+			id: "507A7000000100CE"
+			subtitle: "480,000 Drops"
+			tags: ["blood_pool_tier"]
+			tasks: [
+				{
+					id: "507A700000020CE0"
+					stage: "blood_pool_tier_6"
+					title: "Blood Pool: Tier 6"
+					type: "gamestage"
+				}
+			]
+			title: "Tier 6: A Stream"
+			x: 0.0d
+			y: -7.5d
+		}
+		{
+			dependencies: ["507A7000000100CE"]
+			description: ["The whole server fills the Blood Pool: trolls in the Troll Log, Hush Coins (/bloodpool donate) and the Potato Tithe (/bloodpool tithe).", "", "&6Opens at 700,000 Drops&r", "- Mods: rftoolsbase, rftoolsutility, rftoolsbuilder, powersuits, numina, redstone_arsenal, bluepower, extrautilitiesreborn", "- 37 items, e.g. sturdy sheet, railway casing, track, track station, controls, packager", "", "&7Crafting its items at a table also needs Potato Lieutenant (or catch-up at Tier 9). Machines work for everyone."]
+			icon: "minecraft:redstone"
+			id: "507A7000000100CF"
+			subtitle: "700,000 Drops"
+			tags: ["blood_pool_tier"]
+			tasks: [
+				{
+					id: "507A700000020CF0"
+					stage: "blood_pool_tier_7"
+					title: "Blood Pool: Tier 7"
+					type: "gamestage"
+				}
+			]
+			title: "Tier 7: A River"
+			x: 0.0d
+			y: -9.0d
+		}
+		{
+			dependencies: ["507A7000000100CF"]
+			description: ["The whole server fills the Blood Pool: trolls in the Troll Log, Hush Coins (/bloodpool donate) and the Potato Tithe (/bloodpool tithe).", "", "&6Opens at 1,000,000 Drops&r", "- Mods: taiga, tcintegrations, createbigcannons, mekanismtools, mekanism_weaponry, advanced_ae, create_sabers", "- 17 items, e.g. manyullyn ingot, manyullyn block, manyullyn nugget, hepatizon ingot, hepatizon block, hepatizon nugget", "", "&7Crafting its items at a table also needs Potato Captain (or catch-up at Tier 10). Machines work for everyone."]
+			icon: "minecraft:redstone"
+			id: "507A7000000100D0"
+			subtitle: "1,000,000 Drops"
+			tags: ["blood_pool_tier"]
+			tasks: [
+				{
+					id: "507A700000020D00"
+					stage: "blood_pool_tier_8"
+					title: "Blood Pool: Tier 8"
+					type: "gamestage"
+				}
+			]
+			title: "Tier 8: A Flood"
+			x: 0.0d
+			y: -10.5d
+		}
+		{
+			dependencies: ["507A7000000100D0"]
+			description: ["The whole server fills the Blood Pool: trolls in the Troll Log, Hush Coins (/bloodpool donate) and the Potato Tithe (/bloodpool tithe).", "", "&6Opens at 1,400,000 Drops&r", "- Mods: draconicevolution", "- 20 items, e.g. ender eye, gaia pylon, gaia ingot, flight tiara, terra sword, octadic capacitor", "- &5The End&r", "", "&7Crafting its items at a table also needs Potato General (or catch-up at Tier 11). Machines work for everyone."]
+			icon: "minecraft:ender_eye"
+			id: "507A7000000100D1"
+			subtitle: "1,400,000 Drops"
+			tags: ["blood_pool_tier"]
+			tasks: [
+				{
+					id: "507A700000020D10"
+					stage: "blood_pool_tier_9"
+					title: "Blood Pool: Tier 9"
+					type: "gamestage"
+				}
+			]
+			title: "Tier 9: A Tide"
+			x: 0.0d
+			y: -12.0d
+		}
+		{
+			dependencies: ["507A7000000100D1"]
+			description: ["The whole server fills the Blood Pool: trolls in the Troll Log, Hush Coins (/bloodpool donate) and the Potato Tithe (/bloodpool tithe).", "", "&6Opens at 1,900,000 Drops&r", "- Mods: rftoolsdim", "- 34 items, e.g. fission reactor casing, fission fuel assembly, control rod assembly, pellet polonium, pellet plutonium, module base", "", "&7Crafting its items at a table also needs Potato Warlord (or catch-up at Tier 12). Machines work for everyone."]
+			icon: "minecraft:redstone"
+			id: "507A7000000100D2"
+			subtitle: "1,900,000 Drops"
+			tags: ["blood_pool_tier"]
+			tasks: [
+				{
+					id: "507A700000020D20"
+					stage: "blood_pool_tier_10"
+					title: "Blood Pool: Tier 10"
+					type: "gamestage"
+				}
+			]
+			title: "Tier 10: A Sea"
+			x: 0.0d
+			y: -13.5d
+		}
+		{
+			dependencies: ["507A7000000100D2"]
+			description: ["The whole server fills the Blood Pool: trolls in the Troll Log, Hush Coins (/bloodpool donate) and the Potato Tithe (/bloodpool tithe).", "", "&6Opens at 2,400,000 Drops&r", "- 36 items, e.g. pellet antimatter, sps casing, sps port, supercharged coil, antiprotonic nucleosynthesizer, fusion reactor controller", "", "&7Crafting its items at a table also needs Potato Emperor (or catch-up at Tier 13). Machines work for everyone."]
+			icon: "minecraft:redstone"
+			id: "507A7000000100D3"
+			subtitle: "2,400,000 Drops"
+			tags: ["blood_pool_tier"]
+			tasks: [
+				{
+					id: "507A700000020D30"
+					stage: "blood_pool_tier_11"
+					title: "Blood Pool: Tier 11"
+					type: "gamestage"
+				}
+			]
+			title: "Tier 11: An Ocean"
+			x: 0.0d
+			y: -15.0d
+		}
+		{
+			dependencies: ["507A7000000100D3"]
+			description: ["The whole server fills the Blood Pool: trolls in the Troll Log, Hush Coins (/bloodpool donate) and the Potato Tithe (/bloodpool tithe).", "", "&6Opens at 3,000,000 Drops&r", "- The Siege of the Citadel"]
+			icon: "minecraft:redstone"
+			id: "507A7000000100D4"
+			subtitle: "3,000,000 Drops"
+			tags: ["blood_pool_tier"]
+			tasks: [
+				{
+					id: "507A700000020D40"
+					stage: "blood_pool_tier_12"
+					title: "Blood Pool: Tier 12"
+					type: "gamestage"
+				}
+			]
+			title: "Tier 12: The Siege"
+			x: 0.0d
+			y: -16.5d
+		}
+	]
+	subtitle: ["The server's Blood Pool: each tier ticks when it opens."]
+	title: "The Blood Pool"
+}

@@ -1,0 +1,351 @@
+{
+	default_hide_dependency_lines: false
+	default_quest_shape: ""
+	filename: "potato_war_logistics"
+	group: "507A70000000A001"
+	icon: "create:brass_funnel"
+	id: "507A70000000C003"
+	order_index: 2
+	quest_links: [ ]
+	quests: [
+		{
+			description: ["Place and use Create funnels, tunnels, smart chutes and portable storage interfaces.", "", "&6Unlocks&r", "- Place and use: andesite funnel, brass funnel, andesite tunnel, brass tunnel, smart chute, portable storage interface", "", "&7Needs Potato Farmer, Blood Pool Tier 1.", "&7Potatoes handed in here count toward your rank. Items are taken when you submit them.", "&7Falls to you for free once the Blood Pool is 2 tiers past Tier 1 (catch-up)."]
+			icon: "create:brass_funnel"
+			id: "507A70000001000B"
+			rewards: [
+				{
+					auto: "invisible"
+					id: "507A7000000300B0"
+					stage: "potato_tree_create_logistics"
+					type: "stage"
+				}
+			]
+			subtitle: "Potato Farmer · Tier 1"
+			tags: ["potato_tree"]
+			tasks: [
+				{
+					id: "507A7000000200B0"
+					stage: "potato_standing_1"
+					title: "Rank: Potato Farmer"
+					type: "stage"
+				}
+				{
+					id: "507A7000000200B1"
+					stage: "blood_pool_tier_1"
+					title: "Blood Pool: Tier 1"
+					type: "stage"
+				}
+				{
+					consume_items: true
+					count: 500L
+					id: "507A7000000200B2"
+					item: "minecraft:potato"
+					tags: ["potato_offer"]
+					title: "500 potatoes for the war chest"
+					type: "item"
+				}
+				{
+					consume_items: true
+					count: 16L
+					id: "507A7000000200B3"
+					item: "create:andesite_alloy"
+					type: "item"
+				}
+			]
+			title: "Create Logistics"
+			x: 0.0d
+			y: 0.0d
+		}
+		{
+			dependencies: ["507A70000001000B"]
+			description: ["Place and use Deployers and Mechanical Arms (and so Sequenced Assembly).", "", "&6Unlocks&r", "- Place and use: deployer, mechanical arm", "", "&7Needs Potato Private, Blood Pool Tier 4, and Create Logistics.", "&7Potatoes handed in here count toward your rank. Items are taken when you submit them.", "&7Falls to you for free once the Blood Pool is 2 tiers past Tier 4 (catch-up)."]
+			icon: "create:mechanical_arm"
+			id: "507A70000001000C"
+			rewards: [
+				{
+					auto: "invisible"
+					id: "507A7000000300C0"
+					stage: "potato_tree_create_automation"
+					type: "stage"
+				}
+			]
+			subtitle: "Potato Private · Tier 4"
+			tags: ["potato_tree"]
+			tasks: [
+				{
+					id: "507A7000000200C0"
+					stage: "potato_standing_4"
+					title: "Rank: Potato Private"
+					type: "stage"
+				}
+				{
+					id: "507A7000000200C1"
+					stage: "blood_pool_tier_4"
+					title: "Blood Pool: Tier 4"
+					type: "stage"
+				}
+				{
+					consume_items: true
+					count: 5000L
+					id: "507A7000000200C2"
+					item: "minecraft:potato"
+					tags: ["potato_offer"]
+					title: "5,000 potatoes for the war chest"
+					type: "item"
+				}
+				{
+					consume_items: true
+					count: 8L
+					id: "507A7000000200C3"
+					item: "create:precision_mechanism"
+					type: "item"
+				}
+			]
+			title: "Create Automation"
+			x: 0.0d
+			y: -2.0d
+		}
+		{
+			description: ["Place and use Immersive Engineering conveyors and sorters.", "", "&6Unlocks&r", "- Place and use: conveyor basic, sorter, fluid sorter", "", "&7Needs Potato Recruit, Blood Pool Tier 3.", "&7Potatoes handed in here count toward your rank. Items are taken when you submit them.", "&7Falls to you for free once the Blood Pool is 2 tiers past Tier 3 (catch-up)."]
+			icon: "immersiveengineering:conveyor_basic"
+			id: "507A70000001000D"
+			rewards: [
+				{
+					auto: "invisible"
+					id: "507A7000000300D0"
+					stage: "potato_tree_immersive_logistics"
+					type: "stage"
+				}
+			]
+			subtitle: "Potato Recruit · Tier 3"
+			tags: ["potato_tree"]
+			tasks: [
+				{
+					id: "507A7000000200D0"
+					stage: "potato_standing_3"
+					title: "Rank: Potato Recruit"
+					type: "stage"
+				}
+				{
+					id: "507A7000000200D1"
+					stage: "blood_pool_tier_3"
+					title: "Blood Pool: Tier 3"
+					type: "stage"
+				}
+				{
+					consume_items: true
+					count: 2500L
+					id: "507A7000000200D2"
+					item: "minecraft:potato"
+					tags: ["potato_offer"]
+					title: "2,500 potatoes for the war chest"
+					type: "item"
+				}
+				{
+					consume_items: true
+					count: 16L
+					id: "507A7000000200D3"
+					item: "immersiveengineering:ingot_steel"
+					type: "item"
+				}
+			]
+			title: "Immersive Logistics"
+			x: 3.0d
+			y: 0.0d
+		}
+		{
+			description: ["Place and use Mekanism logistical transporters, the logistical sorter and QIO importers and exporters.", "", "&6Unlocks&r", "- Place and use: basic logistical transporter, advanced logistical transporter, elite logistical transporter, ultimate logistical transporter, restrictive transporter, diversion transporter, logistical sorter, qio importer, qio exporter", "", "&7Needs Potato Private, Blood Pool Tier 4.", "&7Potatoes handed in here count toward your rank. Items are taken when you submit them.", "&7Falls to you for free once the Blood Pool is 2 tiers past Tier 4 (catch-up)."]
+			icon: "mekanism:basic_logistical_transporter"
+			id: "507A70000001000E"
+			rewards: [
+				{
+					auto: "invisible"
+					id: "507A7000000300E0"
+					stage: "potato_tree_logistical_transport"
+					type: "stage"
+				}
+			]
+			subtitle: "Potato Private · Tier 4"
+			tags: ["potato_tree"]
+			tasks: [
+				{
+					id: "507A7000000200E0"
+					stage: "potato_standing_4"
+					title: "Rank: Potato Private"
+					type: "stage"
+				}
+				{
+					id: "507A7000000200E1"
+					stage: "blood_pool_tier_4"
+					title: "Blood Pool: Tier 4"
+					type: "stage"
+				}
+				{
+					consume_items: true
+					count: 5000L
+					id: "507A7000000200E2"
+					item: "minecraft:potato"
+					tags: ["potato_offer"]
+					title: "5,000 potatoes for the war chest"
+					type: "item"
+				}
+				{
+					consume_items: true
+					count: 8L
+					id: "507A7000000200E3"
+					item: "mekanism:basic_control_circuit"
+					type: "item"
+				}
+			]
+			title: "Logistical Transport"
+			x: 6.0d
+			y: 0.0d
+		}
+		{
+			description: ["Attach Thermal servos and filters to ducts.", "", "&6Unlocks&r", "- Place: servo attachment, turbo servo attachment, filter attachment", "", "&7Needs Potato Soldier, Blood Pool Tier 5.", "&7Potatoes handed in here count toward your rank. Items are taken when you submit them.", "&7Falls to you for free once the Blood Pool is 2 tiers past Tier 5 (catch-up)."]
+			icon: "thermal:servo_attachment"
+			id: "507A70000001000F"
+			rewards: [
+				{
+					auto: "invisible"
+					id: "507A7000000300F0"
+					stage: "potato_tree_thermal_servos"
+					type: "stage"
+				}
+			]
+			subtitle: "Potato Soldier · Tier 5"
+			tags: ["potato_tree"]
+			tasks: [
+				{
+					id: "507A7000000200F0"
+					stage: "potato_standing_5"
+					title: "Rank: Potato Soldier"
+					type: "stage"
+				}
+				{
+					id: "507A7000000200F1"
+					stage: "blood_pool_tier_5"
+					title: "Blood Pool: Tier 5"
+					type: "stage"
+				}
+				{
+					consume_items: true
+					count: 10000L
+					id: "507A7000000200F2"
+					item: "minecraft:potato"
+					tags: ["potato_offer"]
+					title: "10,000 potatoes for the war chest"
+					type: "item"
+				}
+				{
+					consume_items: true
+					count: 8L
+					id: "507A7000000200F3"
+					item: "thermal:tin_gear"
+					type: "item"
+				}
+			]
+			title: "Thermal Servos"
+			x: 9.0d
+			y: 0.0d
+		}
+		{
+			description: ["Place Ender IO item conduits.", "", "&6Unlocks&r", "- Place: item conduit", "", "&7Needs Potato Soldier, Blood Pool Tier 5.", "&7Potatoes handed in here count toward your rank. Items are taken when you submit them.", "&7Falls to you for free once the Blood Pool is 2 tiers past Tier 5 (catch-up)."]
+			icon: "enderio:item_conduit"
+			id: "507A700000010010"
+			rewards: [
+				{
+					auto: "invisible"
+					id: "507A700000030100"
+					stage: "potato_tree_item_conduits"
+					type: "stage"
+				}
+			]
+			subtitle: "Potato Soldier · Tier 5"
+			tags: ["potato_tree"]
+			tasks: [
+				{
+					id: "507A700000020100"
+					stage: "potato_standing_5"
+					title: "Rank: Potato Soldier"
+					type: "stage"
+				}
+				{
+					id: "507A700000020101"
+					stage: "blood_pool_tier_5"
+					title: "Blood Pool: Tier 5"
+					type: "stage"
+				}
+				{
+					consume_items: true
+					count: 10000L
+					id: "507A700000020102"
+					item: "minecraft:potato"
+					tags: ["potato_offer"]
+					title: "10,000 potatoes for the war chest"
+					type: "item"
+				}
+				{
+					consume_items: true
+					count: 16L
+					id: "507A700000020103"
+					item: "enderio:conduit_binder"
+					type: "item"
+				}
+			]
+			title: "Item Conduits"
+			x: 12.0d
+			y: 0.0d
+		}
+		{
+			description: ["Place AE2 import and export buses and interfaces, and open ME terminals (on cables and wireless).", "", "&6Unlocks&r", "- Place and use: import bus, export bus, interface, cable interface, me conduit, dense me conduit", "- Wireless terminals: wireless terminal", "", "&7Needs Potato Sergeant, Blood Pool Tier 6.", "&7Potatoes handed in here count toward your rank. Items are taken when you submit them.", "&7Falls to you for free once the Blood Pool is 2 tiers past Tier 6 (catch-up)."]
+			icon: "ae2:interface"
+			id: "507A700000010011"
+			rewards: [
+				{
+					auto: "invisible"
+					id: "507A700000030110"
+					stage: "potato_tree_me_logistics"
+					type: "stage"
+				}
+			]
+			subtitle: "Potato Sergeant · Tier 6"
+			tags: ["potato_tree"]
+			tasks: [
+				{
+					id: "507A700000020110"
+					stage: "potato_standing_6"
+					title: "Rank: Potato Sergeant"
+					type: "stage"
+				}
+				{
+					id: "507A700000020111"
+					stage: "blood_pool_tier_6"
+					title: "Blood Pool: Tier 6"
+					type: "stage"
+				}
+				{
+					consume_items: true
+					count: 20000L
+					id: "507A700000020112"
+					item: "minecraft:potato"
+					tags: ["potato_offer"]
+					title: "20,000 potatoes for the war chest"
+					type: "item"
+				}
+				{
+					consume_items: true
+					count: 16L
+					id: "507A700000020113"
+					item: "ae2:logic_processor"
+					type: "item"
+				}
+			]
+			title: "ME Logistics"
+			x: 6.0d
+			y: -2.0d
+		}
+	]
+	subtitle: ["Moving items between machines."]
+	title: "Logistics"
+}

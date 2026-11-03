@@ -35,7 +35,7 @@ Part II's premise ([STORY.md](STORY.md)) is that everyone stands under Techno's 
 ## What the Part II server starts with
 - **As they are:**
   - `economy/trolls.js`, `smite.js`, `fake_players.js`, `give_limits.js` and `refined_obsidian_repellent.js`;
-  - `part2/blood_pool.js` (with the Potato War), `part2/dimension_gates.js` and `part2/blood_tank.js`;
+  - `part2/blood_pool.js` (with the Potato War), `part2/dimension_gates.js`, `part2/blood_tank.js` and `part2/potato_tree.js` (with FTB Quests and the quest files in `tools/ftbquests/`, see `tools/kubejs/POTATO_TREE.md`);
   - `startup_scripts/nether_portal_whitelist.js` (with an empty list).
 - **Once adapted:**
   - `economy/black_market.js`, `economy/bounties.js`, `events/pig_escort.js`, `limit_balance.js` and `story.js`;

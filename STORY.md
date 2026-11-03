@@ -212,9 +212,18 @@ Technoblade's Potato War, revived. **The Pool decides what the server can make; 
 - **Ranks:** 11, from **Potato Farmer** (250) through **Potato Soldier** (10,000) and **Potato General** (100,000) to **Potato Emperor** (220,000). Each rank-up gets a title and a server-wide line ("Ana has risen to Potato Soldier in Techno's Potato War").
 - **What a rank unlocks:**
   - **Crafting:** rank n lets a player craft Tier n's items **at a crafting table**, once the Pool has opened that tier. Machines stay server-wide (they can't tell who's using them).
-  - **Autocrafters** craft for everyone, but only a high enough rank can set one up: the Mechanical Crafter needs Potato Private, AE2's Molecular Assembler needs Potato Sergeant (owner decision).
+  - **Autocrafters** craft for everyone, but setting one up (and using one) takes its node in the upgrade tree.
   - **The black market:** the Hooded Merchant only sells certain items to high enough ranks: pranks from Potato Farmer, the Writ from Potato Recruit, Disguised TNT and the Tracker from Potato Private, up to the War Party contract at Potato Captain. There's no discount (owner decision).
 - **The early ranks are cheap** so a hand farm reaches IE's Garden Cloche (Tier 3), and the Cloche reaches Thermal's Insolator (Tier 5).
+- **The upgrade tree** ✅ (`part2/potato_tree.js` + FTB Quests, see [POTATO_TREE.md](tools/kubejs/POTATO_TREE.md)): Hypixel-style branches on top of the ranks (owner decisions).
+  - **The book:** an FTB Quests chapter group, "Techno's Potato War": The Ranks, Tinkers' Smithy, Logistics, Autocrafting and Farms.
+  - **Nodes** cost potatoes plus branch items. The potatoes count toward rank.
+  - **Each node unlocks, for that player only:**
+    - the Tinkers metals their gear may be made of (found and traded gear included);
+    - building and using a smeltery or foundry;
+    - placing and using autocrafters, logistics blocks, AE2 terminals and farm machines.
+  - **Personal:** FTB Teams parties are switched off, so progress is per player.
+- **Nobody falls behind** (owner decision): when the Blood Pool opens Tier T, every player gets crafting access and every tree node for Tiers 1..T−2 for free. Their rank's name and black market perks still come from potatoes only.
 
 ### Act I: The Awakening
 34. **Waking Up:** players arrive in the new world through the Blood Portal. Each picks **9 items** from the inventory they carried through (saved by the Blood Portal; only items whose mod is still in the pack), and gets their legacy:
@@ -282,6 +291,7 @@ Needs Blood Pool Tier 12 and the full Regalia.
 | Blood Relics, Archives, the Blood Portal | `events/blood_portal.js` | End City Relics and books, Draft Bill 9-D from the dragon, the escape event |
 | The Blood Pool, its tiers and the Potato Tithe; the Nether and End gates; the tank | `part2/blood_pool.js`, `part2/dimension_gates.js`, `part2/blood_tank.js` | Part II's progression: blood breaks the Ministry's seals |
 | Techno's Potato War (Potato Standing) | `part2/blood_pool.js`, `economy/black_market.js` | Each player's rank: what they may craft and buy |
+| The Potato War upgrade tree | `part2/potato_tree.js`, `tools/ftbquests/` (FTB Quests) | Per-player nodes: Tinkers metals, smelteries, autocrafting, logistics, farms; catch-up |
 
 ## Build order
 1. ✅ **Batch 1:** `story.js` (acts and decrees) and `economy/trolls.js` (the Troll Log, payouts, reports). The Blood Pool was taken out again and saved for Part II.
@@ -290,6 +300,7 @@ Needs Blood Pool Tier 12 and the full Regalia.
 4. **Part II** (same platform: MC 1.20.1, Forge, KubeJS 6). Scripts go in `part2/`. In order:
    1. ✅ **The Blood Pool and tier locks** (`part2/blood_pool.js`), with the tier contents from the progression research, the Potato Tithe, and the Nether and End gates (`part2/dimension_gates.js`). The tank (`part2/blood_tank.js`).
    1a. ✅ **Techno's Potato War** (in `part2/blood_pool.js`): each player's Potato Standing gates crafting-table recipes, and the black market's `STANDING_LOCKS`.
+   1b. ✅ **The upgrade tree** (`part2/potato_tree.js`, FTB Quests chapters in `tools/ftbquests/`) and catch-up.
    2. 🔨 **A Part I patch, before the finale is played:** the exodus files also save trial records and what titles need.
    3. 🔨 **Arrival** (`part2/arrival.js`): a 9-item satchel picked from the saved inventory (only items still in the pack), legacy titles, and trial records as books.
    4. 🔨 **The Part II story driver** (`story.js` with Part II acts).
@@ -309,7 +320,8 @@ Needs Blood Pool Tier 12 and the full Regalia.
 - **Part II tiers:** decided (see BLOOD_POOL.md). Still to check on the server: Thermal's machine-frame recipes in JEI, the AlmostUnified config, and a Dragon Heart drop before Tier 10.
 - **The Potato War:**
   - tune the rank thresholds and the black market locks after a week of Part II;
-  - **autocrafting** (decided): autocrafters craft every open tier's recipes, and placing one needs its own tier's rank. The remaining gap: low ranks can use a shared system someone else placed. Watch whether that matters in play;
+  - **autocrafting** (decided): autocrafters craft every open tier's recipes. Placing and using one needs its node in the upgrade tree. The remaining gaps: machines fed by their owner's hoppers or belts, and AE2 crafts ordered on someone else's network. Watch whether that matters in play;
+  - **the upgrade tree's costs** are placeholders: tune them after a week of Part II;
   - the relic called **"The Potato Tithe"** (10,000 potatoes) now shares its name with the Blood Pool's tithe. Rename it, and decide whether its potatoes are a third, separate count.
 - **Regalia:**
   - relic amounts;

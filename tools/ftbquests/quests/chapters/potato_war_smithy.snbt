@@ -1,0 +1,441 @@
+{
+	default_hide_dependency_lines: false
+	default_quest_shape: ""
+	filename: "potato_war_smithy"
+	group: "507A70000000A001"
+	icon: "tconstruct:smeltery_controller"
+	id: "507A70000000C002"
+	order_index: 1
+	quest_links: [ ]
+	quests: [
+		{
+			description: ["Build your own smeltery.", "", "&6Unlocks&r", "- Place and use: smeltery controller", "", "&7Needs Potato Farmer.", "&7Potatoes handed in here count toward your rank. Items are taken when you submit them.", "&7Falls to you for free once the Blood Pool is 2 tiers past Tier 1 (catch-up)."]
+			icon: "tconstruct:smeltery_controller"
+			id: "507A700000010001"
+			rewards: [
+				{
+					auto: "invisible"
+					id: "507A700000030010"
+					stage: "potato_tree_seared_smeltery"
+					type: "stage"
+				}
+			]
+			subtitle: "Potato Farmer"
+			tags: ["potato_tree"]
+			tasks: [
+				{
+					id: "507A700000020010"
+					stage: "potato_standing_1"
+					title: "Rank: Potato Farmer"
+					type: "stage"
+				}
+				{
+					consume_items: true
+					count: 250L
+					id: "507A700000020011"
+					item: "minecraft:potato"
+					tags: ["potato_offer"]
+					title: "250 potatoes for the war chest"
+					type: "item"
+				}
+				{
+					consume_items: true
+					count: 16L
+					id: "507A700000020012"
+					item: "tconstruct:seared_brick"
+					type: "item"
+				}
+			]
+			title: "Seared Smeltery"
+			x: 0.0d
+			y: 0.0d
+		}
+		{
+			dependencies: ["507A700000010001"]
+			description: ["Use Tinkers tools made with steel.", "", "&6Unlocks&r", "- Tinkers materials: steel", "", "&7Needs Potato Recruit, Blood Pool Tier 3, and Seared Smeltery.", "&7Potatoes handed in here count toward your rank. Items are taken when you submit them.", "&7Falls to you for free once the Blood Pool is 2 tiers past Tier 3 (catch-up)."]
+			icon: "tconstruct:steel_ingot"
+			id: "507A700000010002"
+			rewards: [
+				{
+					auto: "invisible"
+					id: "507A700000030020"
+					stage: "potato_tree_steel_smithing"
+					type: "stage"
+				}
+			]
+			subtitle: "Potato Recruit · Tier 3"
+			tags: ["potato_tree"]
+			tasks: [
+				{
+					id: "507A700000020020"
+					stage: "potato_standing_3"
+					title: "Rank: Potato Recruit"
+					type: "stage"
+				}
+				{
+					id: "507A700000020021"
+					stage: "blood_pool_tier_3"
+					title: "Blood Pool: Tier 3"
+					type: "stage"
+				}
+				{
+					consume_items: true
+					count: 2500L
+					id: "507A700000020022"
+					item: "minecraft:potato"
+					tags: ["potato_offer"]
+					title: "2,500 potatoes for the war chest"
+					type: "item"
+				}
+				{
+					consume_items: true
+					count: 32L
+					id: "507A700000020023"
+					item: "tconstruct:steel_ingot"
+					type: "item"
+				}
+			]
+			title: "Steel Smithing"
+			x: 0.0d
+			y: -2.0d
+		}
+		{
+			dependencies: ["507A700000010002"]
+			description: ["Use osmium and steeleaf Tinkers tools, and Twilight Forest steeleaf gear.", "", "&6Unlocks&r", "- Tinkers materials: osmium, steeleaf", "", "&7Needs Potato Private, Blood Pool Tier 4, and Steel Smithing.", "&7Potatoes handed in here count toward your rank. Items are taken when you submit them.", "&7Falls to you for free once the Blood Pool is 2 tiers past Tier 4 (catch-up)."]
+			icon: "twilightforest:steeleaf_ingot"
+			id: "507A700000010003"
+			rewards: [
+				{
+					auto: "invisible"
+					id: "507A700000030030"
+					stage: "potato_tree_osmium_steeleaf"
+					type: "stage"
+				}
+			]
+			subtitle: "Potato Private · Tier 4"
+			tags: ["potato_tree"]
+			tasks: [
+				{
+					id: "507A700000020030"
+					stage: "potato_standing_4"
+					title: "Rank: Potato Private"
+					type: "stage"
+				}
+				{
+					id: "507A700000020031"
+					stage: "blood_pool_tier_4"
+					title: "Blood Pool: Tier 4"
+					type: "stage"
+				}
+				{
+					consume_items: true
+					count: 5000L
+					id: "507A700000020032"
+					item: "minecraft:potato"
+					tags: ["potato_offer"]
+					title: "5,000 potatoes for the war chest"
+					type: "item"
+				}
+				{
+					consume_items: true
+					count: 16L
+					id: "507A700000020033"
+					item: "mekanism:ingot_osmium"
+					type: "item"
+				}
+				{
+					consume_items: true
+					count: 16L
+					id: "507A700000020034"
+					item: "twilightforest:steeleaf_ingot"
+					type: "item"
+				}
+			]
+			title: "Osmium & Steeleaf"
+			x: 0.0d
+			y: -4.0d
+		}
+		{
+			dependencies: ["507A700000010001"]
+			description: ["Build your own foundry and alloyer.", "", "&6Unlocks&r", "- Place and use: foundry controller, scorched alloyer", "", "&7Needs Potato Soldier, Blood Pool Tier 5, and Seared Smeltery.", "&7Potatoes handed in here count toward your rank. Items are taken when you submit them.", "&7Falls to you for free once the Blood Pool is 2 tiers past Tier 5 (catch-up)."]
+			icon: "tconstruct:foundry_controller"
+			id: "507A700000010004"
+			rewards: [
+				{
+					auto: "invisible"
+					id: "507A700000030040"
+					stage: "potato_tree_foundry"
+					type: "stage"
+				}
+			]
+			subtitle: "Potato Soldier · Tier 5"
+			tags: ["potato_tree"]
+			tasks: [
+				{
+					id: "507A700000020040"
+					stage: "potato_standing_5"
+					title: "Rank: Potato Soldier"
+					type: "stage"
+				}
+				{
+					id: "507A700000020041"
+					stage: "blood_pool_tier_5"
+					title: "Blood Pool: Tier 5"
+					type: "stage"
+				}
+				{
+					consume_items: true
+					count: 5000L
+					id: "507A700000020042"
+					item: "minecraft:potato"
+					tags: ["potato_offer"]
+					title: "5,000 potatoes for the war chest"
+					type: "item"
+				}
+				{
+					consume_items: true
+					count: 64L
+					id: "507A700000020043"
+					item: "tconstruct:scorched_brick"
+					type: "item"
+				}
+			]
+			title: "The Foundry"
+			x: 3.0d
+			y: -2.0d
+		}
+		{
+			dependencies: ["507A700000010003"]
+			description: ["Use cobalt, knightmetal and scorched stone Tinkers tools, and Twilight Forest knightmetal gear.", "", "&6Unlocks&r", "- Tinkers materials: cobalt, knightmetal, scorched stone", "", "&7Needs Potato Soldier, Blood Pool Tier 5, and Osmium & Steeleaf.", "&7Potatoes handed in here count toward your rank. Items are taken when you submit them.", "&7Falls to you for free once the Blood Pool is 2 tiers past Tier 5 (catch-up)."]
+			icon: "tconstruct:cobalt_ingot"
+			id: "507A700000010005"
+			rewards: [
+				{
+					auto: "invisible"
+					id: "507A700000030050"
+					stage: "potato_tree_cobalt_smithing"
+					type: "stage"
+				}
+			]
+			subtitle: "Potato Soldier · Tier 5"
+			tags: ["potato_tree"]
+			tasks: [
+				{
+					id: "507A700000020050"
+					stage: "potato_standing_5"
+					title: "Rank: Potato Soldier"
+					type: "stage"
+				}
+				{
+					id: "507A700000020051"
+					stage: "blood_pool_tier_5"
+					title: "Blood Pool: Tier 5"
+					type: "stage"
+				}
+				{
+					consume_items: true
+					count: 10000L
+					id: "507A700000020052"
+					item: "minecraft:potato"
+					tags: ["potato_offer"]
+					title: "10,000 potatoes for the war chest"
+					type: "item"
+				}
+				{
+					consume_items: true
+					count: 32L
+					id: "507A700000020053"
+					item: "tconstruct:cobalt_ingot"
+					type: "item"
+				}
+				{
+					consume_items: true
+					count: 8L
+					id: "507A700000020054"
+					item: "twilightforest:knightmetal_ingot"
+					type: "item"
+				}
+			]
+			title: "Cobalt Smithing"
+			x: 0.0d
+			y: -6.0d
+		}
+		{
+			dependencies: ["507A700000010005"]
+			description: ["Use electrum, invar, constantan, silver, lead, pewter, aluminum and fiery Tinkers tools, and Twilight Forest fiery gear.", "", "&6Unlocks&r", "- Tinkers materials: electrum, invar, constantan, silver, lead, pewter, aluminum, fiery", "", "&7Needs Potato Sergeant, Blood Pool Tier 6, and Cobalt Smithing.", "&7Potatoes handed in here count toward your rank. Items are taken when you submit them.", "&7Falls to you for free once the Blood Pool is 2 tiers past Tier 6 (catch-up)."]
+			icon: "thermal:electrum_ingot"
+			id: "507A700000010006"
+			rewards: [
+				{
+					auto: "invisible"
+					id: "507A700000030060"
+					stage: "potato_tree_alloy_smithing"
+					type: "stage"
+				}
+			]
+			subtitle: "Potato Sergeant · Tier 6"
+			tags: ["potato_tree"]
+			tasks: [
+				{
+					id: "507A700000020060"
+					stage: "potato_standing_6"
+					title: "Rank: Potato Sergeant"
+					type: "stage"
+				}
+				{
+					id: "507A700000020061"
+					stage: "blood_pool_tier_6"
+					title: "Blood Pool: Tier 6"
+					type: "stage"
+				}
+				{
+					consume_items: true
+					count: 20000L
+					id: "507A700000020062"
+					item: "minecraft:potato"
+					tags: ["potato_offer"]
+					title: "20,000 potatoes for the war chest"
+					type: "item"
+				}
+				{
+					consume_items: true
+					count: 16L
+					id: "507A700000020063"
+					item: "thermal:electrum_ingot"
+					type: "item"
+				}
+				{
+					consume_items: true
+					count: 8L
+					id: "507A700000020064"
+					item: "twilightforest:fiery_ingot"
+					type: "item"
+				}
+			]
+			title: "Alloy Smithing"
+			x: 0.0d
+			y: -8.0d
+		}
+		{
+			dependencies: ["507A700000010006", "507A700000010004"]
+			description: ["Use manyullyn, hepatizon, queen's slime, cinderslime and the other Nether masterwork materials.", "", "&6Unlocks&r", "- Tinkers materials: manyullyn, hepatizon, queens slime, cinderslime, necronium, blazing bone, blazewood, ancient, enderslime, ichor", "", "&7Needs Potato Captain, Blood Pool Tier 8, and Alloy Smithing and The Foundry.", "&7Potatoes handed in here count toward your rank. Items are taken when you submit them.", "&7Falls to you for free once the Blood Pool is 2 tiers past Tier 8 (catch-up)."]
+			icon: "tconstruct:manyullyn_ingot"
+			id: "507A700000010007"
+			rewards: [
+				{
+					auto: "invisible"
+					id: "507A700000030070"
+					stage: "potato_tree_masterwork"
+					type: "stage"
+				}
+			]
+			subtitle: "Potato Captain · Tier 8"
+			tags: ["potato_tree"]
+			tasks: [
+				{
+					id: "507A700000020070"
+					stage: "potato_standing_8"
+					title: "Rank: Potato Captain"
+					type: "stage"
+				}
+				{
+					id: "507A700000020071"
+					stage: "blood_pool_tier_8"
+					title: "Blood Pool: Tier 8"
+					type: "stage"
+				}
+				{
+					consume_items: true
+					count: 60000L
+					id: "507A700000020072"
+					item: "minecraft:potato"
+					tags: ["potato_offer"]
+					title: "60,000 potatoes for the war chest"
+					type: "item"
+				}
+				{
+					consume_items: true
+					count: 16L
+					id: "507A700000020073"
+					item: "tconstruct:manyullyn_ingot"
+					type: "item"
+				}
+				{
+					consume_items: true
+					count: 16L
+					id: "507A700000020074"
+					item: "tconstruct:hepatizon_ingot"
+					type: "item"
+				}
+			]
+			title: "Masterwork"
+			x: 1.5d
+			y: -10.0d
+		}
+		{
+			dependencies: ["507A700000010007"]
+			description: ["Use dragon scale and dragonsteel Tinkers tools.", "", "&6Unlocks&r", "- Tinkers materials: dragon scale, dragonsteel fire, dragonsteel ice, dragonsteel lightning", "", "&7Needs Potato General, Blood Pool Tier 9, and Masterwork.", "&7Potatoes handed in here count toward your rank. Items are taken when you submit them.", "&7Falls to you for free once the Blood Pool is 2 tiers past Tier 9 (catch-up)."]
+			icon: "iceandfire:dragonsteel_fire_ingot"
+			id: "507A700000010008"
+			rewards: [
+				{
+					auto: "invisible"
+					id: "507A700000030080"
+					stage: "potato_tree_dragonsteel"
+					type: "stage"
+				}
+			]
+			subtitle: "Potato General · Tier 9"
+			tags: ["potato_tree"]
+			tasks: [
+				{
+					id: "507A700000020080"
+					stage: "potato_standing_9"
+					title: "Rank: Potato General"
+					type: "stage"
+				}
+				{
+					id: "507A700000020081"
+					stage: "blood_pool_tier_9"
+					title: "Blood Pool: Tier 9"
+					type: "stage"
+				}
+				{
+					consume_items: true
+					count: 100000L
+					id: "507A700000020082"
+					item: "minecraft:potato"
+					tags: ["potato_offer"]
+					title: "100,000 potatoes for the war chest"
+					type: "item"
+				}
+				{
+					consume_items: true
+					count: 8L
+					id: "507A700000020083"
+					item: "iceandfire:dragonsteel_fire_ingot"
+					type: "item"
+				}
+				{
+					consume_items: true
+					count: 8L
+					id: "507A700000020084"
+					item: "iceandfire:dragonsteel_ice_ingot"
+					type: "item"
+				}
+				{
+					consume_items: true
+					count: 8L
+					id: "507A700000020085"
+					item: "iceandfire:dragonsteel_lightning_ingot"
+					type: "item"
+				}
+			]
+			title: "Dragonsteel"
+			x: 1.5d
+			y: -12.0d
+		}
+	]
+	subtitle: ["Your own smeltery and foundry, and the metals your Tinkers tools may be made of."]
+	title: "Tinkers' Smithy"
+}

@@ -301,6 +301,11 @@ const AUTOCRAFTERS = {
   'advanced_ae:quantum_crafter': { name: 'Quantum Crafter' },            // Tier 8
 }
 const RANKUP_PUBLIC = true               // announce rank-ups to everyone (and Discord, with TO_DISCORD)
+// Catch-up: when the Pool opens Tier T, every player can craft Tiers 1..T-CATCH_UP_GAP whatever their rank (their
+// rank's name still comes from potatoes only, and the black market uses that). part2/potato_tree.js uses the same
+// gap for the upgrade tree. 0 = off.
+const CATCH_UP_GAP = 2
+const TIER_STAGE_PREFIX = 'blood_pool_tier_' // every player gets blood_pool_tier_<n> for each open tier (FTB Quests checks it)
 
 const TO_DISCORD = true                // public Pool lines with tellraw @a (posted to Discord); false = in game only
 const TIER_FILE = 'kubejs/blood_pool_tier.json'
@@ -460,7 +465,7 @@ function crafterOf(grid) {
 }
 function hasRank(p, n) {
   try { return !!p.stages.has(STAGE_PREFIX + n) } catch (e) { }
-  return standingOf(uuidOf(p)).tier >= n
+  return craftAccess(uuidOf(p)) >= n
 }
 // One result check per rank, shared by every recipe of that tier. Errors give the result (never eat a craft).
 let gateErrors = 0
@@ -606,6 +611,9 @@ function setTier(server, n, by, announceIt) {
   if (G) { try { G.sync(server, announceIt) } catch (e) { console.error('[BloodPool] dimension gates: ' + e) } }
   const K = global.BloodTank
   if (K) { try { K.sync(server, true) } catch (e) { console.error('[BloodPool] tank: ' + e) } }
+  onlinePlayers(server).forEach(p => { try { syncStages(p) } catch (e) { } })
+  const PT = global.PotatoTree
+  if (PT) { try { PT.catchUp(server) } catch (e) { console.error('[BloodPool] potato tree catch-up: ' + e) } }
   console.info('[BloodPool] Tier set to ' + D.tier + ' by ' + by + '; reloading')
   server.scheduleInTicks(RELOAD_DELAY_TICKS, () => { try { server.runCommandSilent('reload') } catch (e) { console.error('[BloodPool] reload: ' + e) } })
 }
@@ -707,18 +715,24 @@ function standingText(s) {
 }
 function playerByUuid(server, uuid) { return onlinePlayers(server).filter(o => uuidOf(o) == uuid)[0] || null }
 // Gives the player the stages for every rank they hold and takes away the rest (an op may lower a rank).
+// The tiers a player can craft at a table: their rank, or the catch-up tier if that's higher.
+function catchUpTier() { return CATCH_UP_GAP > 0 ? Math.max(0, Math.min(STANDING.length, db().tier - CATCH_UP_GAP)) : 0 }
+function craftAccess(uuid) { return Math.max(standingOf(uuid).tier, catchUpTier()) }
+function setStage(st, p, stage, on) {
+  try {
+    if (on) { if (!st.has(stage)) st.add(stage) }
+    else if (st.has(stage)) st.remove(stage)
+  } catch (e) { console.error('[BloodPool] stage ' + stage + ' for ' + nameOf(p) + ': ' + e) }
+}
+// Gives the player the stages for every rank they can craft at (rank or catch-up) and every open Pool tier, and
+// takes away the rest (an op may lower a rank or the tier).
 function syncStages(p) {
   let st = null
   try { st = p.stages } catch (e) { }
   if (!st) return
-  const n = standingOf(uuidOf(p)).tier
-  for (let i = 1; i <= STANDING.length; i++) {
-    let stage = STAGE_PREFIX + i
-    try {
-      if (i <= n) { if (!st.has(stage)) st.add(stage) }
-      else if (st.has(stage)) st.remove(stage)
-    } catch (e) { console.error('[BloodPool] stage ' + stage + ' for ' + nameOf(p) + ': ' + e) }
-  }
+  const n = craftAccess(uuidOf(p)), open = db().tier
+  for (let i = 1; i <= STANDING.length; i++) setStage(st, p, STAGE_PREFIX + i, i <= n)
+  for (let i = 1; i <= TIERS.length; i++) setStage(st, p, TIER_STAGE_PREFIX + i, i <= open)
 }
 function rankUp(server, p, name, n) {
   if (p) {
@@ -766,6 +780,7 @@ function autocrafterRank(id) {
 }
 BlockEvents.placed(event => {
   if (!STANDING_CRAFTING) return
+  if (global.PotatoTree && global.PotatoTree.handlesPlacing) return   // the upgrade tree decides (part2/potato_tree.js)
   const p = event.player
   if (!p) return
   const id = String(event.block.id), need = autocrafterRank(id)
@@ -795,6 +810,17 @@ global.BloodPool = {
   standing: player => standingOf(uuidOf(player)),
   rankName: n => rankName(Number(n)),
   rankCount: STANDING.length,
+  // Adds potatoes handed in elsewhere (part2/potato_tree.js's quest costs) to the player's Standing, with rank-ups.
+  creditStanding: (player, n) => {
+    n = Math.floor(Number(n) || 0)
+    if (!(n > 0)) return
+    const u = uuidOf(player)
+    setStanding(player.server || Utils.server, u, nameOf(player), standingOf(u).potatoes + n, true)
+    console.info('[BloodPool] Potato War: ' + nameOf(player) + ' handed in ' + n + ' potatoes (upgrade tree)')
+  },
+  craftAccess: player => craftAccess(uuidOf(player)),   // the highest tier this player can craft (rank or catch-up)
+  catchUpGap: CATCH_UP_GAP,
+  syncStages: player => syncStages(player),
 }
 
 
@@ -891,8 +917,10 @@ ServerEvents.commandRegistry(event => {
       if (STANDING_CRAFTING && n <= STANDING.length) {
         let mine = standingOf(uuidOf(p))
         rank = ' At a crafting table it also needs ' + rankName(n) + ' in the Potato War (you: ' + mine.rank + ').'
+        let PT = global.PotatoTree, node = PT && PT.handlesPlacing ? PT.placeNode(String(s.id)) : null
         let place = autocrafterRank(String(s.id))
-        if (place) rank += ' Placing it needs ' + rankName(place) + '.'
+        if (node) rank += ' Placing it needs ' + node + ' (/potatowar tree).'
+        else if (place && !(PT && PT.handlesPlacing)) rank += ' Placing it needs ' + rankName(place) + '.'
       }
       return reply(ctx, String(s.id) + ' can be crafted from Tier ' + n + (T ? ' (' + T.name + ')' : '') + ': ' +
         (n <= db().tier ? 'open now.' : 'sealed for now (found ones still work).') + rank)
@@ -953,8 +981,17 @@ ServerEvents.commandRegistry(event => {
     .executes(safe(ctx => {
       const p = me(ctx)
       if (!p) return war(ctx, 'Players only.', true)
-      return war(ctx, standingText(standingOf(uuidOf(p))) + ' Offer potatoes with /potatowar offer [count]; they raise your rank, not the Blood Pool.')
+      const s = standingOf(uuidOf(p)), acc = craftAccess(uuidOf(p))
+      let extra = acc > s.tier ? ' Crafting access: Tier ' + acc + ' (catch-up: the Blood Pool is at Tier ' + db().tier + ').' : ''
+      return war(ctx, standingText(s) + extra + ' Offer potatoes with /potatowar offer [count]; they raise your rank, not the Blood Pool.')
     }))
+    .then(Commands.literal('tree').executes(safe(ctx => {
+      const p = me(ctx), PT = global.PotatoTree
+      if (!p) return war(ctx, 'Players only.', true)
+      if (!PT) return war(ctx, 'The upgrade tree isn\'t installed.', true)
+      PT.open(p)
+      return 1
+    })))
     .then(Commands.literal('offer')
       .executes(safe(ctx => offer(ctx, 0)))
       .then(int('potatoes').executes(safe(ctx => offer(ctx, Math.floor(num(ctx, 'potatoes')))))))

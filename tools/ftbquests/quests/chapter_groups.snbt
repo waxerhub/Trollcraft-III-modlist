@@ -1,0 +1,9 @@
+{
+	chapter_groups: [
+		{
+			icon: "minecraft:potato"
+			id: "507A70000000A001"
+			title: "Techno's Potato War"
+		}
+	]
+}

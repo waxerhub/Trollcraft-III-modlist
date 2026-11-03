@@ -1,0 +1,222 @@
+{
+	default_hide_dependency_lines: false
+	default_quest_shape: ""
+	filename: "potato_war_ranks"
+	group: "507A70000000A001"
+	icon: "minecraft:potato"
+	id: "507A70000000C001"
+	order_index: 0
+	quest_links: [ ]
+	quests: [
+		{
+			description: ["Offer potatoes with &6/potatowar offer&r (or hand them in for nodes in this book).", "Rank 1 lets you craft Tier 1's items at a crafting table, once the Blood Pool opens it.", "&7Catch-up: when the Blood Pool is 2 tiers past Tier 1, you can craft it whatever your rank."]
+			icon: "minecraft:potato"
+			id: "507A700000010065"
+			subtitle: "Rank 1"
+			tags: ["potato_rank"]
+			tasks: [
+				{
+					id: "507A700000020650"
+					stage: "potato_standing_1"
+					title: "Rank: Potato Farmer"
+					type: "stage"
+				}
+			]
+			title: "Potato Farmer"
+			x: 0.0d
+			y: 0.0d
+		}
+		{
+			dependencies: ["507A700000010065"]
+			description: ["Offer potatoes with &6/potatowar offer&r (or hand them in for nodes in this book).", "Rank 2 lets you craft Tier 2's items at a crafting table, once the Blood Pool opens it.", "&7Catch-up: when the Blood Pool is 2 tiers past Tier 2, you can craft it whatever your rank."]
+			icon: "minecraft:potato"
+			id: "507A700000010066"
+			subtitle: "Rank 2"
+			tags: ["potato_rank"]
+			tasks: [
+				{
+					id: "507A700000020660"
+					stage: "potato_standing_2"
+					title: "Rank: Potato Peeler"
+					type: "stage"
+				}
+			]
+			title: "Potato Peeler"
+			x: 0.0d
+			y: -1.5d
+		}
+		{
+			dependencies: ["507A700000010066"]
+			description: ["Offer potatoes with &6/potatowar offer&r (or hand them in for nodes in this book).", "Rank 3 lets you craft Tier 3's items at a crafting table, once the Blood Pool opens it.", "&7Catch-up: when the Blood Pool is 2 tiers past Tier 3, you can craft it whatever your rank."]
+			icon: "minecraft:potato"
+			id: "507A700000010067"
+			subtitle: "Rank 3"
+			tags: ["potato_rank"]
+			tasks: [
+				{
+					id: "507A700000020670"
+					stage: "potato_standing_3"
+					title: "Rank: Potato Recruit"
+					type: "stage"
+				}
+			]
+			title: "Potato Recruit"
+			x: 0.0d
+			y: -3.0d
+		}
+		{
+			dependencies: ["507A700000010067"]
+			description: ["Offer potatoes with &6/potatowar offer&r (or hand them in for nodes in this book).", "Rank 4 lets you craft Tier 4's items at a crafting table, once the Blood Pool opens it.", "&7Catch-up: when the Blood Pool is 2 tiers past Tier 4, you can craft it whatever your rank."]
+			icon: "minecraft:potato"
+			id: "507A700000010068"
+			subtitle: "Rank 4"
+			tags: ["potato_rank"]
+			tasks: [
+				{
+					id: "507A700000020680"
+					stage: "potato_standing_4"
+					title: "Rank: Potato Private"
+					type: "stage"
+				}
+			]
+			title: "Potato Private"
+			x: 0.0d
+			y: -4.5d
+		}
+		{
+			dependencies: ["507A700000010068"]
+			description: ["Offer potatoes with &6/potatowar offer&r (or hand them in for nodes in this book).", "Rank 5 lets you craft Tier 5's items at a crafting table, once the Blood Pool opens it.", "&7Catch-up: when the Blood Pool is 2 tiers past Tier 5, you can craft it whatever your rank."]
+			icon: "minecraft:potato"
+			id: "507A700000010069"
+			subtitle: "Rank 5"
+			tags: ["potato_rank"]
+			tasks: [
+				{
+					id: "507A700000020690"
+					stage: "potato_standing_5"
+					title: "Rank: Potato Soldier"
+					type: "stage"
+				}
+			]
+			title: "Potato Soldier"
+			x: 0.0d
+			y: -6.0d
+		}
+		{
+			dependencies: ["507A700000010069"]
+			description: ["Offer potatoes with &6/potatowar offer&r (or hand them in for nodes in this book).", "Rank 6 lets you craft Tier 6's items at a crafting table, once the Blood Pool opens it.", "&7Catch-up: when the Blood Pool is 2 tiers past Tier 6, you can craft it whatever your rank."]
+			icon: "minecraft:potato"
+			id: "507A70000001006A"
+			subtitle: "Rank 6"
+			tags: ["potato_rank"]
+			tasks: [
+				{
+					id: "507A7000000206A0"
+					stage: "potato_standing_6"
+					title: "Rank: Potato Sergeant"
+					type: "stage"
+				}
+			]
+			title: "Potato Sergeant"
+			x: 0.0d
+			y: -7.5d
+		}
+		{
+			dependencies: ["507A70000001006A"]
+			description: ["Offer potatoes with &6/potatowar offer&r (or hand them in for nodes in this book).", "Rank 7 lets you craft Tier 7's items at a crafting table, once the Blood Pool opens it.", "&7Catch-up: when the Blood Pool is 2 tiers past Tier 7, you can craft it whatever your rank."]
+			icon: "minecraft:potato"
+			id: "507A70000001006B"
+			subtitle: "Rank 7"
+			tags: ["potato_rank"]
+			tasks: [
+				{
+					id: "507A7000000206B0"
+					stage: "potato_standing_7"
+					title: "Rank: Potato Lieutenant"
+					type: "stage"
+				}
+			]
+			title: "Potato Lieutenant"
+			x: 0.0d
+			y: -9.0d
+		}
+		{
+			dependencies: ["507A70000001006B"]
+			description: ["Offer potatoes with &6/potatowar offer&r (or hand them in for nodes in this book).", "Rank 8 lets you craft Tier 8's items at a crafting table, once the Blood Pool opens it.", "&7Catch-up: when the Blood Pool is 2 tiers past Tier 8, you can craft it whatever your rank."]
+			icon: "minecraft:potato"
+			id: "507A70000001006C"
+			subtitle: "Rank 8"
+			tags: ["potato_rank"]
+			tasks: [
+				{
+					id: "507A7000000206C0"
+					stage: "potato_standing_8"
+					title: "Rank: Potato Captain"
+					type: "stage"
+				}
+			]
+			title: "Potato Captain"
+			x: 0.0d
+			y: -10.5d
+		}
+		{
+			dependencies: ["507A70000001006C"]
+			description: ["Offer potatoes with &6/potatowar offer&r (or hand them in for nodes in this book).", "Rank 9 lets you craft Tier 9's items at a crafting table, once the Blood Pool opens it.", "&7Catch-up: when the Blood Pool is 2 tiers past Tier 9, you can craft it whatever your rank."]
+			icon: "minecraft:potato"
+			id: "507A70000001006D"
+			subtitle: "Rank 9"
+			tags: ["potato_rank"]
+			tasks: [
+				{
+					id: "507A7000000206D0"
+					stage: "potato_standing_9"
+					title: "Rank: Potato General"
+					type: "stage"
+				}
+			]
+			title: "Potato General"
+			x: 0.0d
+			y: -12.0d
+		}
+		{
+			dependencies: ["507A70000001006D"]
+			description: ["Offer potatoes with &6/potatowar offer&r (or hand them in for nodes in this book).", "Rank 10 lets you craft Tier 10's items at a crafting table, once the Blood Pool opens it.", "&7Catch-up: when the Blood Pool is 2 tiers past Tier 10, you can craft it whatever your rank."]
+			icon: "minecraft:potato"
+			id: "507A70000001006E"
+			subtitle: "Rank 10"
+			tags: ["potato_rank"]
+			tasks: [
+				{
+					id: "507A7000000206E0"
+					stage: "potato_standing_10"
+					title: "Rank: Potato Warlord"
+					type: "stage"
+				}
+			]
+			title: "Potato Warlord"
+			x: 0.0d
+			y: -13.5d
+		}
+		{
+			dependencies: ["507A70000001006E"]
+			description: ["Offer potatoes with &6/potatowar offer&r (or hand them in for nodes in this book).", "Rank 11 lets you craft Tier 11's items at a crafting table, once the Blood Pool opens it.", "&7Catch-up: when the Blood Pool is 2 tiers past Tier 11, you can craft it whatever your rank."]
+			icon: "minecraft:golden_carrot"
+			id: "507A70000001006F"
+			subtitle: "Rank 11"
+			tags: ["potato_rank"]
+			tasks: [
+				{
+					id: "507A7000000206F0"
+					stage: "potato_standing_11"
+					title: "Rank: Potato Emperor"
+					type: "stage"
+				}
+			]
+			title: "Potato Emperor"
+			x: 0.0d
+			y: -15.0d
+		}
+	]
+	subtitle: ["Techno's Potato War: your rank, from the potatoes you offer.", "Each rank opens a tier of crafting-table recipes."]
+	title: "The Ranks"
+}

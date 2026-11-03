@@ -125,6 +125,8 @@ At server start, recipes load **before** the world and its saved data, so the re
 - **Don't edit the file by hand.** Use `/bloodpool settier`.
 
 ## The Potato War: each player's Potato Standing
+**The upgrade tree** ([POTATO_TREE.md](POTATO_TREE.md)) builds on these ranks. It's an FTB Quests book of nodes bought with potatoes and items, locking Tinkers metals, smelteries, autocrafters, logistics and farms per player.
+
 Techno's Potato War runs alongside the Pool. **The Pool decides what the server can make; your rank decides what you can make.**
 
 - **Offering:** `/potatowar offer` gives every potato you carry to Techno's war chest, or `/potatowar offer <potatoes>` gives that many.
@@ -169,6 +171,7 @@ Techno's Potato War runs alongside the Pool. **The Pool decides what the server 
       | Advanced AE Quantum Crafter | `advanced_ae:quantum_crafter` | 8 Potato Captain |
 
       A player below the rank is told "Only a Potato Sergeant or higher knows how to set up a Molecular Assembler" and the block isn't placed. Ops and creative players are exempt. Blocks placed by machines (deployers, the RFTools Builder) aren't checked.
+    - **With the upgrade tree installed** (`part2/potato_tree.js`), the tree's nodes decide placing (and using) autocrafters instead of this rank rule. This rule stays as the fallback without it.
     - **The gap that remains:** an autocrafter doesn't know who owns it. Once someone of the rank has placed one, anyone who can use it (a shared AE2 network, a friend's crafters) can automate any open tier's table recipes, whatever their own rank.
   - **Off switch:** `STANDING_CRAFTING = false` stops rank gating crafting (and placing autocrafters); it then only gates the black market.
 - **The black market** (`economy/black_market.js`, `STANDING_LOCKS`): some items are only sold to a rank or higher. The shop shows "(needs Potato Soldier)" in place of [BUY], or a red "Needs …" line in the window, and refuses the sale before any coins are taken.
@@ -184,7 +187,12 @@ Techno's Potato War runs alongside the Pool. **The Pool decides what the server 
   | anyone | Certified Alibi, Unsanctioned Eye, under-the-counter stock, bounties |
 
   Under-the-counter stock can be locked with a `custom` entry, and anything else by adding its key (see BLACK_MARKET.md). Part I's server has no Blood Pool, so nothing there is locked.
-- **When stages are given:** on every offer, at login, after `/reload`, and when an op changes a rank (which also takes away stages above the new rank). KubeJS saves stages with the player.
+- **When stages are given:** on every offer, at login, after `/reload`, when a tier opens, and when an op changes a rank (which also takes away stages above the new rank). KubeJS saves stages with the player.
+- **Every player also gets `blood_pool_tier_<n>`** for each open tier. The upgrade tree's quests check it.
+- **Catch-up** (owner decision): when the Pool opens Tier T, every player can craft Tiers 1..T−2 at a table, whatever their rank (`CATCH_UP_GAP = 2`; 0 = off).
+  - The rank's name, rank-ups and the black market still use the real rank.
+  - `/potatowar` shows "Crafting access: Tier 3 (catch-up)".
+  - The upgrade tree catches its nodes up in the same way.
 
 ## Dimensions (`dimension_gates.js`)
 | Dimension | Opens at | How it's held shut before then |
@@ -224,7 +232,8 @@ floor        5x5 chiseled nether bricks
 | `/bloodpool top` | anyone | The 10 biggest contributors |
 | `/bloodpool tiers` | anyone | Every tier: threshold, what it opens (mods, item count, recipe rules, dimension), OPEN / READY / sealed, and the rank its crafting needs |
 | `/bloodpool check` | anyone | Which tier lets the item in your hand be crafted, and the rank (with yours) |
-| `/potatowar` | players | Your potatoes offered, your rank and the next one |
+| `/potatowar` | players | Your potatoes offered, your rank and the next one (and your catch-up crafting access, if higher) |
+| `/potatowar tree` | players | Opens the upgrade tree (FTB Quests; see [POTATO_TREE.md](POTATO_TREE.md)) |
 | `/potatowar offer [potatoes]` | players | Offer everything you carry, or that many, to raise your rank |
 | `/potatowar top` | anyone | The 10 highest ranks |
 | `/potatowar ranks` | anyone | Every rank, its potatoes and the tier it crafts |
@@ -257,6 +266,7 @@ floor        5x5 chiseled nether bricks
 | `AUTOCRAFTERS` | 8 blocks (see "Autocrafting works") | Autocrafters that need their tier's rank to place. `{ name }`, or `{ name, rank }` for a fixed rank |
 | `STAGE_PREFIX` | `potato_standing_` | The KubeJS stage name for rank n |
 | `RANKUP_PUBLIC` | true | Announce rank-ups to everyone |
+| `CATCH_UP_GAP` | 2 | Catch-up: at Pool Tier T, everyone can craft Tiers 1..T−2 (and gets the tree's nodes up to there); 0 = off |
 | `black_market.js`: `STANDING_LOCKS` | see "The Potato War" | The rank each black market item needs |
 | `TO_DISCORD` | true | Ready and unlock lines with `tellraw @a` |
 | `TIER_FILE` | `kubejs/blood_pool_tier.json` | |
@@ -274,7 +284,7 @@ floor        5x5 chiseled nether bricks
   - contributors, and every unlock (who, when);
   - the tithe day and its totals (server-wide and per player);
   - the Potato War: each player's lifetime potatoes offered (`standing`).
-- **The players' KubeJS stages** (`potato_standing_<n>`): saved by KubeJS with each player, and rebuilt from `standing` at login.
+- **The players' KubeJS stages** (`potato_standing_<n>`, `blood_pool_tier_<n>`): saved by KubeJS with each player, and rebuilt from `standing` and the tier at login.
 - **`kubejs/blood_pool_tier.json`:** a copy of the open tier, for the recipe step.
 - **`persistentData["trollcraft_nether_unlocked"]`:** the Nether portal switch (kept in step by `dimension_gates.js`).
 - **`persistentData["blood_tank"]`:** the registered tanks (dimension, floor centre, layers filled).
@@ -301,14 +311,15 @@ floor        5x5 chiseled nether bricks
    - As a non-op, try to break the glass: refused.
 8. **`/bloodpool settier 0`** puts everything back, including the Nether switch.
 9. **The Potato War** (a non-op player; an op runs the commands):
-   - `/bloodpool settier 5`.
+   - Set `CATCH_UP_GAP = 0` for this test (or catch-up lets everyone craft Tiers 1–3 at Tier 5), then `/bloodpool settier 5`.
    - **Unenlisted:** the player can't craft a Create cogwheel at a crafting table or in the inventory grid (no result shows), but a Thermal machine (Pulverizer etc.) built by an op works for them.
    - `/potatowar set <player> 250`: they're told they're a Potato Farmer, everyone sees the line, and the cogwheel now crafts. A Thermal machine frame still doesn't (rank 5).
    - Carry 300 potatoes and `/potatowar offer 100`: Standing goes up by 100 and `/bloodpool` shows the Pool unchanged. `/bloodpool tithe` with the rest: the Pool goes up and `/potatowar` doesn't.
    - `/potatowar set <player> 10000`: the machine frame crafts. Relog: it still does.
-   - **Autocrafting:** at Potato Sergeant, place an AE2 Molecular Assembler and autocraft the cogwheel: it works. Then let an Unenlisted player try to place a Molecular Assembler: refused, with the rank named.
+   - **Autocrafting:** at Potato Sergeant, place an AE2 Molecular Assembler and autocraft the cogwheel: it works. Then let an Unenlisted player try to place a Molecular Assembler: refused, with the rank named. (With the upgrade tree installed, it names the ME Autocrafting node instead.)
    - **A mod's crafting grid:** an Unenlisted player at a Tinkers Crafting Station gets no cogwheel; a Potato Farmer does.
    - **Black market:** at the merchant, an unranked player sees "(needs Potato Farmer)" for Itching Powder and is refused; at Potato Farmer they can buy it.
+   - **Catch-up:** set `CATCH_UP_GAP = 2` again and `/reload`. An unranked player can now craft the cogwheel (Tier 1, three tiers behind the Pool), and `/potatowar` says "Crafting access: Tier 3 (catch-up)". The black market still refuses them Itching Powder.
 
 **Testing Tinkers after lowering the tier:** restart the server first, or break and replace the smeltery or foundry controller and the casting tables. Tinkers remembers the last recipe each slot used and keeps reusing it while the same item sits there, even after `/reload` has removed it. So a smeltery that melted raw cobalt at Tier 12 keeps melting it after `settier 0`. This only happens when going **down** (testing). In play the tier only rises, and a locked recipe can't be remembered before it exists.
 
@@ -316,7 +327,7 @@ floor        5x5 chiseled nether bricks
 **Confirmed on the server:** going from Tier 12 to 0, Tinkers kept melting raw cobalt in a smeltery that had melted it before, while cobalt ingots were refused.
 - **The cause** is Tinkers' per-slot recipe cache (`MeltingModule.lastRecipe` in TConstruct 3.11.2.166). It isn't saved, so a restart or a rebuilt controller clears it.
 - **The lock list is right:** `tconstruct:smeltery/melting/metal/cobalt/raw` is removed at Tier 0.
-A mock-server test passed 114 checks:
+A mock-server test passed 116 checks, catch-up included. The upgrade tree's test re-runs the earlier checks with the tree loaded: 101 pass (see POTATO_TREE.md).
 - the real tier list (sealed mods, items, tags, and recipe rules both exact and regex);
 - items listed later than their mod staying sealed after it opens;
 - the chestplates;

@@ -196,10 +196,18 @@ A mock-server test passed 101 checks (with the Blood Pool's tests), and the Bloo
 
 The quest files were checked by a separate parser against FTB Quests 2001.4.22's source: ids, groups, dependencies, task and reward fields, and every item id against the mod jars.
 
+**Checked against the owner's jars** (FTB Quests 2001.4.22, FTB Teams 2001.3.2, FTB Library 2001.2.13, FTB XMod Compat 2.1.3):
+- **XMod Compat:**
+  - it picks **KubeJS stages** when KubeJS is loaded (its default);
+  - it fires `FTBQuestsEvents.completed` for `'#' + tag`, and the event has `player`, `object` and `onlineMembers`;
+  - its KubeJS class filter allows `dev.ftb.mods.ftbteams`, so the script may load `FTBTeamsAPI`.
+- **FTB Teams 2001.3.2:** `FTBTeamsAPI.api().setPartyCreationFromAPIOnly(boolean)` exists, and both the "Create Party" button and `/ftbteams party create` check it.
+- **FTB Library 2001.2.13:** its SNBT reader (the source matches this exact version) reads the generated files' syntax: newline-separated entries, quoted strings, `L` and `d` numbers, empty lists.
+
 In game:
 - **FTB Quests:** that the book loads the files, stage tasks tick, item tasks take the potatoes, the hidden stage reward is claimed, and `change_progress` from the console completes a quest for a named player.
-- **The `#potato_offer` event** from FTB XMod Compat reaching the script, with the player and the task's count.
-- **Parties off:** `FTBTeamsAPI.api().setPartyCreationFromAPIOnly(true)` from a script (KubeJS may block the class; the log says so).
+- **The `#potato_offer` event** reaching the script in game, with the player and the task's count (the classes and names are confirmed in the jar).
+- **Parties off:** that the call from the script takes effect on the live server ("Create Party" refused).
 - **Gear locks on real Tinkers tools:** area mining (hammers, excavators), Tinkers bows, and armour moving off.
 - **Right-click cancelling** opening an AE2 terminal on a cable, and placing AE2 parts and Thermal attachments.
 - **Deployers** placing a locked block (they should be refused).

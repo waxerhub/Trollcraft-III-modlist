@@ -21,6 +21,7 @@ Server-admin work for the **Trollcraft III** modpack: KubeJS scripts, progressio
 - `tools/ftbquests/`: the Potato War's FTB Quests files (`quests/`, generated), `generate_quests.js`, `load_scripts.js` (loads the part2 scripts outside the game) and `dump_progression.js`. FTB Quests 2001.4.22 calls stage tasks and rewards `gamestage`.
 - `tools/progression_audit.py` + `tools/progression_audit_notes.md` → `PROGRESSION_AUDIT.md`: the cohesion audit of tiers, ranks and tree against the mods' recipes. Re-run it after changing any of them; `/bloodpool audit` is the in-game version.
 - `tools/kubejs/*.md`: one doc per system (`BLACK_MARKET.md`, `BOUNTIES.md`, `FACTIONS.md`, `PIG_ESCORT.md`, `TRIALS.md`, `TECHNO_TRIBUTE.md`, `END_LOCKDOWN.md`, `TROLLS.md`, `STORY_COMMANDS.md`, `CLEAN_SLATE.md`, `BLOOD_POOL.md`, `POTATO_TREE.md`, `DISGUISE.md`). Keep the doc in step with its script: settings, commands, test plan, and "what couldn't be verified".
+- `tools/tests/`: the script tests (`run_all.js`, `lint_rhino.js`, `suites/`).
 - `tools/*.py`: read-only world analysis tools (find items, find portals, player stats). `tools/schematic/`, `tools/serverconfig/` and `tools/finale_pack/` hold support files.
 
 ## Rules (standing instructions from the server owner)
@@ -42,4 +43,9 @@ Server-admin work for the **Trollcraft III** modpack: KubeJS scripts, progressio
 - Minecraft's `closeContainer()` is exposed to scripts as `closeMenu()`.
 
 ## Testing
-Scripts are checked against a mock KubeJS server written in Node (fake players, levels, commands, scheduler), plus an audit that flags `const` inside nested blocks. Those harnesses lived in the session scratchpad and aren't in this repo, so rebuild one when needed. Each script's doc ends with "what couldn't be verified", which lists the in-game behaviour to confirm on the real server.
+`tools/tests/` holds the checks (see its README):
+- a mock KubeJS server in Node (fake players, levels, commands, scheduler, FTB Quests and Teams stubs) with one suite per system;
+- a lint for the Rhino rules above;
+- a check that the generated quest files are current and valid.
+
+Run `node tools/tests/run_all.js` after changing any script (run `npm install` in `tools/tests` once first), and add checks for new behaviour to the matching suite. Each script's doc ends with "what couldn't be verified", which lists the in-game behaviour to confirm on the real server.

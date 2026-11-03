@@ -275,18 +275,19 @@ function restoreWeather(server) {
 function potatoes(server, p) {
   const dim = dimOf(p)
   every(server, 3, Math.round(POTATO.seconds * 20 / 3), () => {
-    for (let k = 0; k < 2; k++) {
+    // forEach, not a for loop: the callbacks below run later, and Rhino would give them the last potato's u/rot/e
+    ;[0, 1].forEach(function () {
       let q = posOf(p)
       let at = { x: q.x + rand(-POTATO.radius, POTATO.radius), y: q.y + POTATO.height, z: q.z + rand(-POTATO.radius, POTATO.radius) }
       let e = summon(server, dim, 'minecraft:item_display', at,
         '{Tags:["' + TAG + '"],item:{id:"minecraft:baked_potato",Count:1b},transformation:{left_rotation:[0f,0f,0f,1f],right_rotation:[0f,0f,0f,1f],translation:[0f,0f,0f],scale:[0.9f,0.9f,0.9f]}}')
-      if (!e) continue
+      if (!e) return
       let u = uuidOf(e), half = rand(-1.5, 1.5)   // half the spin angle: a turn of up to about 170 degrees
       let rot = '[0f,' + n2(Math.sin(half)) + 'f,0f,' + n2(Math.cos(half)) + 'f]'
       // next tick: slide it down to the ground, spinning, then remove it
       later(server, 1, () => runIn(server, dim, 'data merge entity ' + u + ' {start_interpolation:0,interpolation_duration:30,transformation:{left_rotation:' + rot + ',right_rotation:[0f,0f,0f,1f],translation:[0f,-' + POTATO.height + 'f,0f],scale:[0.9f,0.9f,0.9f]}}'))
       later(server, 34, () => removeEntity(server, e, false))
-    }
+    })
   })
 }
 

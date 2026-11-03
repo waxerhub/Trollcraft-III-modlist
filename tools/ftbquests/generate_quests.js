@@ -14,8 +14,9 @@ const path = require('path')
 const { BP, PT } = require('./load_scripts.js')()
 
 const ROOT = path.resolve(__dirname, '..', '..')
-const OUT = path.join(__dirname, 'quests')
-const CLIENT_OUT = path.join(ROOT, 'tools', 'kubejs', 'client_scripts', 'potato_tooltips.js')
+// QUEST_OUT and TOOLTIP_OUT send the output elsewhere (tools/tests uses them to check the committed files are current).
+const OUT = process.env.QUEST_OUT || path.join(__dirname, 'quests')
+const CLIENT_OUT = process.env.TOOLTIP_OUT || path.join(ROOT, 'tools', 'kubejs', 'client_scripts', 'potato_tooltips.js')
 
 // ---------- SNBT writer (FTB Library style) ----------
 class Long { constructor(v) { this.v = v } }

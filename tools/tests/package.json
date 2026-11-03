@@ -1,0 +1,13 @@
+{
+  "name": "trollcraft-kubejs-tests",
+  "private": true,
+  "description": "Mock KubeJS 6 server tests and the Rhino lint for the Trollcraft III scripts",
+  "scripts": {
+    "test": "node run_all.js",
+    "lint": "node lint_rhino.js"
+  },
+  "devDependencies": {
+    "acorn": "^8.19.0",
+    "acorn-walk": "^8.3.5"
+  }
+}

@@ -47,6 +47,7 @@ Each check prints one line, `ok   <what>` or `FAIL <what>  <detail>`, and each s
 | `smite`, `superaura` | `smite.js` | `/smite`, `/aura`, `/superaura` |
 | `fake_players` | `fake_players.js` | The pretend players |
 | `give_limits` | `give_limits.js` | Which `/give` commands are refused |
+| `back_toll` | `back_toll.js` | `/back` costs 2 Hush Coins: charged, refused, refunded when no teleport happens, refunds owed across a logout |
 | `enchanted_porkchop`, `fairy_wings` | those scripts | Their items |
 | `nether_portal_whitelist` | `startup_scripts/nether_portal_whitelist.js` | The Nether unlock |
 

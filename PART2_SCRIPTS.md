@@ -21,6 +21,7 @@ Part II's premise ([STORY.md](STORY.md)) is that everyone stands under Techno's 
 | `events/pig_escort.js` | ✅ keep | 🔧 adapt | **The Swine's Oath relic needs 10 completed Escorts**, so it stays as a repeatable event. Its Nether unlock and the Syndicate-reveal finale **must go**: they flip the same Nether switch `dimension_gates.js` uses, and would open the Nether before Tier 3 |
 | `smite.js`, `fake_players.js` | ✅ keep | ✅ keep | Part II's finale uses `/superaura` and `/fakejoin Technoblade` |
 | `give_limits.js` | ✅ keep | ✅ keep | |
+| `back_toll.js` | ✅ keep | ✅ keep | `/back` costs 2 Hush Coins (needs `black_market.js`) |
 | `limit_balance.js` | ✅ keep | 🔧 adapt | Its permanent bans (Ender Quarry, the nukes) **conflict** with the Blood Pool, which opens them at Tier 11. Keep only bans meant to last forever (e.g. the enchanted golden apple) |
 | `refined_obsidian_repellent.js` | ✅ keep | ✅ keep | Works alongside the tiers |
 | `restore_ae2_inscriber.js` | ✅ keep | ❌ remove | **A bypass in Part II:** it adds an Inscriber recipe after the Blood Pool's removal has run, so AE2's Inscriber would be craftable at Tier 0 instead of Tier 6 |
@@ -34,7 +35,7 @@ Part II's premise ([STORY.md](STORY.md)) is that everyone stands under Techno's 
 
 ## What the Part II server starts with
 - **As they are:**
-  - `economy/trolls.js`, `smite.js`, `fake_players.js`, `give_limits.js` and `refined_obsidian_repellent.js`;
+  - `economy/trolls.js`, `smite.js`, `fake_players.js`, `give_limits.js`, `back_toll.js` and `refined_obsidian_repellent.js`;
   - `part2/blood_pool.js` (with the Potato War), `part2/dimension_gates.js`, `part2/blood_tank.js` and `part2/potato_tree.js` (with FTB Quests and the quest files in `tools/ftbquests/`, see `tools/kubejs/POTATO_TREE.md`);
   - in the **modpack**: `kubejs/client_scripts/potato_tooltips.js` (the Shift tooltips);
   - `startup_scripts/nether_portal_whitelist.js` (with an empty list).

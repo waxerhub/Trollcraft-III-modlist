@@ -240,6 +240,15 @@ Technoblade's Potato War, revived. **The Pool decides what the server can make; 
 35. **The Ruins:** the remains of Part I bases are lore sites, with books telling Part I's story. 🔨
 36. **The Shrine:** the scout's last testimony reveals Technoblade's Shrine, and the Blood Pool and the relic hunt begin. 🔨
 
+**The Castellan** (a player role; owner decision). A Part I **Enforcer** keeps the spawn castle.
+- **The story:** the castle was the Ministry's **Induction Castle**, where recruits were processed and Enforcers stationed. When Clean Slate fired, the Ministry evacuated "officials first" (its own SOP), and its Enforcer at the castle was left to burn with everyone else.
+- **Her loyalty is never confirmed.** The Ministry's files list her as "Enforcer, status: under review". She plays it however she likes.
+- **A light role:** the `[Castellan]` title (FTB Ranks, see [tools/serverconfig/ftbranks_castellan.md](tools/serverconfig/ftbranks_castellan.md)) and the castle as her seat. Only she and ops build there, and everyone can use doors and buttons (`protected_areas.js`, `allowUse`).
+- **Optional ceremonial jobs:** swearing in arrivals under Techno's banner, reading Purge declarations, and neutral ground for ransom handovers.
+- **A Part II Ministry broadcast line** for `ministry_broadcasts.js`: "The Ministry has not forgotten its Enforcer at the castle. Her file remains open. Her pension does not."
+
+  ✅ (title and castle files) + 🔨 (the broadcast line, with the other Part II lines)
+
 ### Act II: The Regalia of the Blade
 37. **The Relic Hunt:** eight relics, restored at the Shrine by the whole server. Progress is tallied server-wide and credited to each contributor (`/regalia`). The amounts are placeholders. 🔨 (*TBD*: whether each relic also needs a Blood offering)
 
@@ -323,6 +332,7 @@ Needs Blood Pool Tier 12 and the full Regalia.
 - **Crownsworn players:** whether active Crownsworn players will role-play the defection, or the loyalists are mostly NPCs.
 - **Clean Slate:** tune the Blood Portal event (40 kill points to fill, the Relic chance) once it's been tried; how much of each player's saved inventory Part II gives back.
 - **Part II world:** a new seed, or the same seed regenerated.
+- **The Castellan:** her loyalty stays unconfirmed, unless she wants a story arc later (e.g. a double-agent turn in Act III, the Seizure).
 - **Part II tiers:** decided (see BLOOD_POOL.md). Still to check on the server: Thermal's machine-frame recipes in JEI, the AlmostUnified config, and a Dragon Heart drop before Tier 10.
 - **The Potato War:**
   - tune the rank thresholds and the black market locks after a week of Part II;

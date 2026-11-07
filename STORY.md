@@ -175,7 +175,8 @@ Everyone stands together under Techno's banner. There are no Loyalists. The Mini
 - **It's filled by:**
   - **trolls:** each logged troll adds its value as Drops of Blood (see [Scoring](#scoring));
   - **Hush Coins:** donated at **1,000 Drops each**, a sink for the economy;
-  - **the Potato Tithe:** potatoes spilled into the Pool for the Blood God. **4,000 potatoes = 1,000 Drops**, capped at **30,000 Drops a day** server-wide. The quota reopens at 4 am Central (owner decisions). Tithed potatoes never count toward anyone's Potato War rank.
+  - **the Potato Tithe:** potatoes spilled into the Pool for the Blood God. **4,000 potatoes = 1,000 Drops**, capped at **30,000 Drops a day** server-wide. The quota reopens at 4 am Central (owner decisions). Tithed potatoes never count toward anyone's Potato War rank;
+  - **boss kills** ✅ (`part2/boss_blood.js`, see [BOSS_BLOOD.md](tools/kubejs/BOSS_BLOOD.md)): Twilight Forest bosses pay on a ladder, Naga 200 up to the Snow Queen 1,000. Every kill pays, and the credit is split among the fighters within 64 blocks (owner decisions).
 - **Group unlocks:** when the Pool reaches a milestone, that tier unlocks for everyone. **An op confirms each unlock**; the confirm includes the `/reload` that brings the tier's recipes back.
 - **A locked tier blocks crafting only** (owner decision): its recipes are removed in every recipe type. Sealed items that players find, loot or trade for work normally.
 

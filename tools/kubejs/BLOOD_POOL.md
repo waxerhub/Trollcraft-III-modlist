@@ -1,7 +1,7 @@
 # The Blood Pool (Part II)
 
 **Blood for the Blood God.** In Part II all progression is locked into 12 tiers.
-- **Filling the Pool:** the server fills one shared **Blood Pool** by trolling, by giving Hush Coins and with the **Potato Tithe**.
+- **Filling the Pool:** the server fills one shared **Blood Pool** by trolling, by giving Hush Coins, with the **Potato Tithe**, and by killing Twilight Forest bosses (`part2/boss_blood.js`, see [BOSS_BLOOD.md](BOSS_BLOOD.md)).
 - **Opening a tier:** when the Pool reaches a tier, an op breaks the Ministry's seal and that tier opens for everyone.
 - **Dimensions:** the Nether opens with Tier 3 and the End with Tier 9.
 - **The Potato War:** each player also has a **Potato Standing** (a rank), raised only by potatoes they offer to Techno's war chest. A tier's **crafting-table** recipes need the tier open **and** the crafter's rank at that tier. Machines work for everyone. Some black market items also need a rank (see "The Potato War").

@@ -30,6 +30,7 @@ Each check prints one line, `ok   <what>` or `FAIL <what>  <detail>`, and each s
 | Suite | Scripts loaded | Covers |
 |---|---|---|
 | `blood_pool` | `part2/blood_pool.js`, `blood_tank.js`, `dimension_gates.js` and the Part I economy, factions and story | Tiers and what each one seals, the Potato Tithe, Potato Standing and ranks, rank-locked crafting (including autocrafters), the conversion of mod crafting formats, `/bloodpool audit`, the dimension gates, the Blood Tank, the black market's standing locks |
+| `boss_blood` | `part2/boss_blood.js` | Twilight Forest boss kills pay the Pool on the ladder: the split among fighters, Lich shadow clones, the Knight Phantom group, `/kill`, `/bossblood` |
 | `potato_tree` | the same plus `part2/potato_tree.js` | Tree nodes: gear (Tinkers materials, armour), placing and using, AE2 parts, handed-in potatoes counting toward rank, catch-up at Tier T−2, `/potatowar next`, `/potatotree`, running without FTB Quests |
 | `generated_files` | `tools/ftbquests/generate_quests.js` | The committed quest files and `potato_tooltips.js` are what the generator makes now. The quest files only use FTB Quests 2001.4.22 task and reward types. Ids are valid and unique, and every node has its quest and stage |
 | `potato_tooltips` | `client_scripts/potato_tooltips.js` | The tier, rank and node lines, and their ✔/✘ against a player's stages |

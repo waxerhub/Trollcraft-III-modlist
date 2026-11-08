@@ -154,6 +154,24 @@ ok('/deeprecords give Ana all hands out all eight', /all 8 Deep Records/.test(ru
 ok('/deeprecords give Ana 4 hands out the Blood God memo', /Memo: Re: The Blood God/.test(run(['give', 'Ana', '4'], admin)[0]) && p.got.length == 9)
 ok('... and refuses a number out of range', /1 to 8/.test(run(['give', 'Ana', '9'], admin)[0]))
 
+// Twilight Forest chests (BP.t is 11 here: every overworld book is unlocked)
+rand = 0.4
+const lib = chestAt(80, 'twilightforest:chests/tower_library'); openChest(lib)
+ok('a Lich Tower library chest is a key room (50%: a 40% roll hits)', books(lib.c).length == 1)
+const room = chestAt(81, 'twilightforest:chests/tower_room'); openChest(room)
+ok('an ordinary Lich Tower room is 10% (a 40% roll misses)', books(room.c).length == 0)
+rand = 0.25
+const vault = chestAt(82, 'twilightforest:chests/troll_vault'); openChest(vault)
+ok('a troll vault is 30% (a 25% roll hits)', books(vault.c).length == 1)
+rand = 0
+const tfSeen = []
+;['labyrinth_vault', 'stronghold_boss', 'darktower_boss', 'aurora_cache', 'hill_2', 'hedge_maze', 'well'].forEach((n, i) => {
+  let ch = chestAt(90 + i, 'twilightforest:chests/' + n); openChest(ch); tfSeen.push(books(ch.c).length ? idOf(books(ch.c)[0]) : 'none')
+})
+ok('Twilight chests give books, but never books 6-8', tfSeen.every(id => id != 'none' && ['pump', 'power_budget', 'full_measure'].indexOf(id) < 0), tfSeen.join(','))
+const key = chestAt(99, 'twilightforest:chests/darktower_key'); openChest(key)
+ok('the Dark Tower key chest is left out (counted as unlisted)', books(key.c).length == 0 && JSON.parse(persistent.deep_records).tables['twilightforest:chests/darktower_key'] == 1)
+
 // without the Blood Pool
 global.BloodPool = undefined
 const solo = []

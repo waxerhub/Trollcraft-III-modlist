@@ -79,7 +79,18 @@ const SITES = [
     tables: ['minecraft:chests/abandoned_mineshaft', 'minecraft:chests/simple_dungeon'] },
   { name: 'End City', chance: 0.5, books: END_BOOKS,
     tables: ['minecraft:chests/end_city_treasure'] },
+  // Twilight Forest (loot tables from twilightforest-1.20.1-4.3.2508). Left out: darktower_key (the key chest),
+  // quest_grove_dropper (a dropper) and useless (empty filler).
+  { name: 'Twilight Forest key room', chance: 0.5, books: OVERWORLD_BOOKS,
+    tables: tf(['tower_library', 'labyrinth_vault', 'labyrinth_vault_jackpot', 'stronghold_boss', 'darktower_boss', 'aurora_cache']) },
+  { name: 'Twilight Forest troll cave', chance: 0.3, books: OVERWORLD_BOOKS,
+    tables: tf(['troll_vault', 'troll_vault_with_lamp', 'troll_garden']) },
+  { name: 'Twilight Forest', chance: 0.1, books: OVERWORLD_BOOKS,
+    tables: tf(['tower_room', 'labyrinth_room', 'labyrinth_dead_end', 'stronghold_room', 'stronghold_cache', 'darktower_cache',
+      'aurora_room', 'hill_1', 'hill_2', 'hill_3', 'hedge_maze', 'tree_cache', 'basement', 'foundation_basement', 'graveyard',
+      'fancy_well', 'well']) },
 ]
+function tf(names) { return names.map(n => 'twilightforest:chests/' + n) }
 
 // ===================== STATE =====================
 

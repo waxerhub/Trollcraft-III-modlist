@@ -40,6 +40,14 @@ This ties together:
 | Buried and ruined | `chests/buried_treasure`, `underwater_ruin_small`, `underwater_ruin_big` | 15% | 1–5 |
 | Mineshafts and dungeons | `chests/abandoned_mineshaft` (chest minecarts), `chests/simple_dungeon` | 10% | 1–5 |
 | End Cities | `chests/end_city_treasure` | 50% | 6–8 |
+| Twilight Forest key rooms | `twilightforest:chests/` `tower_library` (Lich Tower library), `labyrinth_vault`, `labyrinth_vault_jackpot`, `stronghold_boss` (Knight Phantom treasure), `darktower_boss` (Ur-Ghast treasure), `aurora_cache` (Aurora Palace) | 50% | 1–5 |
+| Twilight Forest troll caves | `troll_vault`, `troll_vault_with_lamp`, `troll_garden` | 30% | 1–5 |
+| Twilight Forest elsewhere | `tower_room`, `labyrinth_room`, `labyrinth_dead_end`, `stronghold_room`, `stronghold_cache`, `darktower_cache`, `aurora_room`, `hill_1`–`hill_3`, `hedge_maze`, `tree_cache`, `basement`, `foundation_basement`, `graveyard`, `fancy_well`, `well` | 10% | 1–5 |
+
+The Twilight Forest tables come from `twilightforest-1.20.1-4.3.2508`. Left out on purpose:
+- `darktower_key`: the Dark Tower key chest;
+- `quest_grove_dropper`: a dropper;
+- `useless`: empty filler.
 
 **How a book gets in:**
 - A chest's loot is made when it's first opened. So the chest is noted on the right-click, while it still has its loot table, and the book goes into its first empty slot two ticks later.
@@ -84,11 +92,13 @@ Copy `deep_records.js` to `kubejs/server_scripts/part2/` (next to `blood_pool.js
 1. **Commands:** `/deeprecords list` shows tier 0 with books 1 and 2 unlocked. `/deeprecords give <you> all` gives all eight: read them through.
 2. **An ancient city:** open unlooted chests. About half get a book, and the console logs each one.
 3. **A stronghold and a mineshaft:** books turn up less often (20% and 10%), including in the chest minecarts.
-4. **A modded structure's chest:** `/deeprecords tables` lists its loot table.
-5. **Later tiers (test server):** `/bloodpool settier 5`, and books 3–5 start appearing.
-6. **End Cities (test server):** `/bloodpool settier 11`, and End City chests give books 6–8; overworld chests never do.
+4. **Twilight Forest:** open the Lich Tower library chests. About half get a book, logged as a "Twilight Forest key room" chest.
+5. **A modded structure's chest:** `/deeprecords tables` lists its loot table.
+6. **Later tiers (test server):** `/bloodpool settier 5`, and books 3–5 start appearing.
+7. **End Cities (test server):** `/bloodpool settier 11`, and End City chests give books 6–8; overworld chests never do.
 
 ## What couldn't be verified
 - **The chest timing:** that a chest's loot is in place two ticks after the right-click on 1.20.1. The same method works for `events/blood_portal.js`'s End City books in Part I.
 - **Chest minecarts:** that `ItemEvents.entityInteracted` and a minecart's container slots work from KubeJS.
+- **Twilight Forest's boss treasure chests** (`stronghold_boss` after the Knight Phantoms, `darktower_boss` after the Ur-Ghast) are placed when the boss dies. A book only lands if that chest still has its loot table when first opened, as structure chests do.
 - **Lootr** (per-player chests), if it's in the pack: those containers may not be filled this way. `/deeprecords tables` and the log show what's happening.

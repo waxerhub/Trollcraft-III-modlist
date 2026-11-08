@@ -278,6 +278,9 @@ Technoblade's Potato War, revived. **The Pool decides what the server can make; 
 
 ### Act IV: Project Chaos
 41. **Prank Purges:** recurring, timed around relic deliveries. 🔨
+    - **Super weapons** are the Purges' prizes, each one held by whoever can keep it:
+      - **Leelinda's Stake:** the Minotaur Axe from the Minoshroom's labyrinth. Announced by hand.
+      - **The Anamian Axe** ✅ (`anamian_axe.js`, see [ANAMIAN_AXE.md](tools/kubejs/ANAMIAN_AXE.md)): a living weapon forged for Lord Anamy. It gains Souls from kills, bosses, felled trees and offerings, and levels I–X. It learns Timber, Cleave, Bloodthirst and Blood Harvest, turns netherite at VIII, and calls lightning on crits at X (Judgement). Only one exists; whoever holds it keeps its level, and the server is told when it changes hands or goes loose (owner decisions).
 42. **Ministry Bounties:** the Ministry posts bounties on the strongest players. ✅ (`economy/bounties.js`) + 🔨 (Ministry-issued)
 43. **Project Chaos Revealed:** the Ministry has kept the Chaos Guardian contained on a Chaos Island. Its shards complete the Crown. ✅ (Draconic Evolution)
 

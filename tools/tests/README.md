@@ -50,6 +50,7 @@ Each check prints one line, `ok   <what>` or `FAIL <what>  <detail>`, and each s
 | `smite`, `superaura` | `smite.js` | `/smite`, `/aura`, `/superaura` |
 | `fake_players` | `fake_players.js` | The pretend players |
 | `give_limits` | `give_limits.js` | Which `/give` commands are refused |
+| `anamian_axe` | `anamian_axe.js` | The Anamian Axe: Souls per source, level-ups (enchantments, lore, netherite), Timber, Cleave, Bloodthirst, Blood Harvest, Judgement, offerings, open for grabs, commands |
 | `back_toll` | `back_toll.js` | `/back` costs 2 Hush Coins: charged, refused, refunded when no teleport happens, refunds owed across a logout |
 | `protected_areas` | `protected_areas.js` | Only allowed players break, place or right-click in an area; `allowUse` areas (the Castellan's castle) let everyone use doors and buttons but not buckets or fire |
 | `enchanted_porkchop`, `fairy_wings` | those scripts | Their items |

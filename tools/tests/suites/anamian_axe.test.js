@@ -205,6 +205,7 @@ ok('... a player kill: +25 Souls, heals 6, pours 50', anamy.healed == before + 8
 
 // ---------- Level VIII, X and Judgement ----------
 run(['setsouls', '1700'], Object.assign(anamy, { op: true })); anamy.op = false
+ok('below Level X: no attribute modifiers (the axe\'s own damage)', !axeOf(anamy).parsed.AttributeModifiers)
 ok('Level VIII: the axe becomes netherite, durability kept', axeOf(anamy).id == 'minecraft:netherite_axe' && axeOf(anamy).getDamageValue() == 4)
 ok('... with Efficiency VI, Unbreaking V, Fortune III', ench(axeOf(anamy)).efficiency == 6 && ench(axeOf(anamy)).unbreaking == 5 && ench(axeOf(anamy)).fortune == 3)
 ok('... and it says so', bo.msgs.some(m => /Its edge turns to netherite/.test(m)))
@@ -214,6 +215,10 @@ hit(crit, anamy, 10)
 ok('below Level X: a crit calls no lightning', !cmds.some(c => /lightning_bolt/.test(c)))
 run(['setsouls', '3300'], Object.assign(anamy, { op: true })); anamy.op = false
 ok('Level X: Sharpness VI, Mending, Fire Aspect, and a dark red bold name', ench(axeOf(anamy)).sharpness == 6 && ench(axeOf(anamy)).mending == 1 && ench(axeOf(anamy)).fire_aspect == 1 && JSON.parse(axeOf(anamy).parsed.display.Name).bold === true && JSON.parse(axeOf(anamy).parsed.display.Name).color == 'dark_red')
+const am = axeOf(anamy).parsed.AttributeModifiers
+ok('Level X: 17 attack damage (a +16 main-hand modifier) with the axe\'s usual attack speed', am && am.length == 2 &&
+  am[0].AttributeName == 'minecraft:generic.attack_damage' && parseFloat(am[0].Amount) == 16 && am[0].Slot == 'mainhand' &&
+  am[1].AttributeName == 'minecraft:generic.attack_speed' && parseFloat(am[1].Amount) == -3, JSON.stringify(am))
 hit(crit, anamy, 10)
 ok('Judgement: a critical hit summons lightning on the target', cmds.some(c => /summon minecraft:lightning_bolt 50\.00 64\.00 0\.00/.test(c)), cmds.filter(c => /lightning/.test(c)).join(' / '))
 ok('... the holder gets Fire Resistance', cmds.some(c => /effect give Anamy minecraft:fire_resistance/.test(c)))
@@ -223,6 +228,31 @@ hit(crit, anamy, 10)
 ok('... with a cooldown (no second bolt straight away)', bolts() == 1)
 anamy.onGround = true; anamy.fall = 0
 ok('a non-critical hit never calls lightning', (() => { const n = bolts(); hit(crit, anamy, 10); return bolts() == n })())
+// Rhino may hand the same player back as a different wrapper: compare by UUID, not identity.
+const anamyTwin = Object.assign(Object.create(Object.getPrototypeOf(anamy)), anamy)
+const crit2 = mob('minecraft:zombie', 60, 0, { hostile: true })
+anamy.onGround = false; anamy.fall = 0; anamy.vy = -0.4
+anamy.getDeltaMovement = () => ({ y: () => anamy.vy })
+const nBefore = bolts()
+global.__now = Date.now
+Date.now = () => global.__now() + 10000           // past the cooldown
+fireHurt(crit2, { getActual: () => anamy, getImmediate: () => anamyTwin, getMsgId: () => 'player' }, 10)
+ok('... fires even when the attacker comes back as a different object (same UUID)', bolts() == nBefore + 1)
+ok('... and counts a falling hit (moving down) as a crit even with no fall distance recorded', cmds.filter(c => /lightning_bolt 60\.00/.test(c)).length == 1)
+Date.now = () => global.__now() + 20000
+const arrow = { getStringUuid: () => 'arrow-1', isPlayer: () => false }
+const nArrow = bolts()
+fireHurt(crit2, { getActual: () => anamy, getImmediate: () => arrow, getMsgId: () => 'arrow' }, 10)
+ok('... but not for a projectile', bolts() == nArrow)
+ok('/anamian debug is op-only', run(['debug'], anamy)[0] == 'DENIED')
+anamy.op = true
+ok('/anamian debug turns on the hit report', /Debug on/.test(run(['debug'], anamy)[0]))
+Date.now = () => global.__now() + 30000
+fireHurt(crit2, { getActual: () => anamy, getImmediate: () => anamy, getMsgId: () => 'player' }, 10)
+ok('... which shows what the crit check saw', /hit: Level X, damage 10\.00, ground false, fall 0\.00, vy -0\.40 -> JUDGEMENT/.test(lastMsg(anamy)), lastMsg(anamy))
+run(['debug'], anamy); anamy.op = false
+Date.now = global.__now
+anamy.vy = 0
 ok('other players are still hurt by lightning', fireHurt(bo, { getActual: () => null, getImmediate: () => null, getMsgId: () => 'lightningBolt' }, 5) === false)
 
 // ---------- offerings ----------

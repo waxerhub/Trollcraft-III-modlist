@@ -24,8 +24,11 @@ const LEVELS = [
   { souls: 1200, item: 'minecraft:diamond_axe', ench: { sharpness: 5, efficiency: 5, unbreaking: 4, looting: 3, fortune: 2 } },
   { souls: 1700, item: 'minecraft:netherite_axe', ench: { sharpness: 5, efficiency: 6, unbreaking: 5, looting: 3, fortune: 3 } },
   { souls: 2400, item: 'minecraft:netherite_axe', ench: { sharpness: 6, efficiency: 6, unbreaking: 5, looting: 3, fortune: 3, mending: 1 } },
-  { souls: 3300, item: 'minecraft:netherite_axe', ench: { sharpness: 6, efficiency: 6, unbreaking: 5, looting: 3, fortune: 3, mending: 1, fire_aspect: 1 } },
+  { souls: 3300, item: 'minecraft:netherite_axe', damage: 17, ench: { sharpness: 6, efficiency: 6, unbreaking: 5, looting: 3, fortune: 3, mending: 1, fire_aspect: 1 } },
 ]
+// A level with `damage` sets the axe's attack damage (the tooltip's "N Attack Damage", before Sharpness) through item
+// attribute modifiers. Those replace the axe's own, so the attack speed is set too (an axe's usual 1.0).
+const ATTACK_SPEED_MODIFIER = -3.0
 const ABILITIES = [
   { id: 'timber', level: 2, name: 'Timber', text: 'fells the whole tree (sneak to chop one log)' },
   { id: 'cleave', level: 4, name: 'Cleave', text: 'hits also strike nearby mobs' },
@@ -58,7 +61,7 @@ const DATA_KEY = 'anamian_axe'
 let Serializer = null, StringArg = null
 try { Serializer = Java.loadClass('net.minecraft.network.chat.Component$Serializer') } catch (e) { }
 try { StringArg = Java.loadClass('com.mojang.brigadier.arguments.StringArgumentType') } catch (e) { }
-const S = { cleaving: false, judged: {}, judgeCooldown: {}, loopToken: 0 }
+const S = { cleaving: false, judged: {}, judgeCooldown: {}, loopToken: 0, debug: {} }
 let data = null
 function db() {
   if (data) return data
@@ -179,6 +182,9 @@ function axeSnbt(serial, souls, damage) {
   if (locked) lore.push({ text: '✧ ' + locked.name + ' at Level ' + roman(locked.level), color: 'dark_gray', italic: false })
   const nameJson = { text: NAME, color: nameColor(level), bold: level >= 10, italic: false }
   return '{Damage:' + Math.max(0, Math.floor(damage || 0)) + ',Enchantments:[' + ench.join(',') + ']' +
+    (L.damage ? ',AttributeModifiers:[' +
+      '{AttributeName:"minecraft:generic.attack_damage",Name:"anamian_damage",Amount:' + (L.damage - 1) + 'd,Operation:0,Slot:"mainhand",UUID:[I;1095647553,1294356821,-1801154134,1361185305]},' +
+      '{AttributeName:"minecraft:generic.attack_speed",Name:"anamian_speed",Amount:' + ATTACK_SPEED_MODIFIER + 'd,Operation:0,Slot:"mainhand",UUID:[I;1095647553,1294356821,-1801154134,1361185306]}]' : '') +
     ',display:{Name:' + snbtString(JSON.stringify(nameJson)) + ',Lore:[' + lore.map(l => snbtString(JSON.stringify(l))).join(',') + ']}' +
     ',trollcraft:{anamian:{serial:' + serial + ',souls:' + Math.floor(souls) + '}}}'
 }
@@ -240,7 +246,7 @@ function isShadowClone(e) {
 function otherKnightsAlive(server, e) {
   const d = dimOf(e), here = pos(e)
   return list(server.entities).some(o => {
-    if (o === e || typeOf(o) != 'twilightforest:knight_phantom') return false
+    if (sameEntity(o, e) || typeOf(o) != 'twilightforest:knight_phantom') return false
     try { if (!o.isAlive()) return false } catch (err) { }
     return dimOf(o) == d && dist(pos(o), here) <= 64
   })
@@ -253,7 +259,7 @@ function isHostile(e) {
 EntityEvents.death(event => {
   const e = event.entity
   const killer = attackerOf(event.source)
-  if (!isPlayer(killer) || killer === e || !inMainHand(killer)) return
+  if (!isPlayer(killer) || sameEntity(killer, e) || !inMainHand(killer)) return
   const server = event.server || Utils.server
   const id = typeOf(e), victimIsPlayer = isPlayer(e)
   let souls = 0, big = false
@@ -279,19 +285,30 @@ EntityEvents.death(event => {
 
 // ===================== HITS: CLEAVE AND JUDGEMENT =====================
 
+// What the crit check sees (shown by /anamian debug).
+function critInfo(p) {
+  let ground = null, fall = 0, vy = 0
+  try { ground = !!p.onGround() } catch (e) { try { ground = !!p.isOnGround() } catch (e2) { try { ground = !!p.onGround } catch (e3) { } } }
+  try { fall = Number(p.fallDistance) || 0 } catch (e) { }
+  try { let v = p.getDeltaMovement(); vy = Number(typeof v.y == 'function' ? v.y() : v.y) || 0 } catch (e) { }
+  return { ground: ground, fall: fall, vy: vy, water: bool(() => p.isInWater()), riding: bool(() => p.isPassenger()) }
+}
+// A critical hit: in the air and coming down (vanilla's rule), not in water, not riding.
 function isCrit(p) {
-  if (bool(() => p.onGround()) || bool(() => p.isOnGround())) return false
-  if (bool(() => p.isInWater()) || bool(() => p.isPassenger())) return false
-  let fall = 0
-  try { fall = Number(p.fallDistance) } catch (e) { }
-  return fall > 0
+  const c = critInfo(p)
+  if (c.ground === true || c.water || c.riding) return false
+  return c.fall > 0 || c.vy < -0.05
+}
+function sameEntity(a, b) {
+  if (!a || !b) return false
+  try { return uuidOf(a) == uuidOf(b) } catch (e) { return a === b }
 }
 function isFire(level, x, y, z) {
   try { return String(level.getBlock(x, y, z).id) == 'minecraft:fire' } catch (e) { return false }
 }
 function judgement(server, p, target) {
   const u = uuidOf(p), now = Date.now()
-  if (S.judgeCooldown[u] && now < S.judgeCooldown[u]) return
+  if (S.judgeCooldown[u] && now < S.judgeCooldown[u]) return false
   S.judgeCooldown[u] = now + JUDGEMENT_COOLDOWN_MS
   S.judged[u] = now + JUDGEMENT_SAFE_MS
   run(server, 'effect give ' + nameOf(p) + ' minecraft:fire_resistance 3 0 true')
@@ -310,6 +327,8 @@ function judgement(server, p, target) {
       }
     })
   })
+  console.info('[AnamianAxe] Judgement by ' + nameOf(p) + ' at ' + num(t.x) + ' ' + num(t.y) + ' ' + num(t.z) + ' (' + d + ')')
+  return true
 }
 
 EntityEvents.hurt(event => {
@@ -322,7 +341,9 @@ EntityEvents.hurt(event => {
   }
   if (S.cleaving) return
   const p = attackerOf(event.source)
-  if (!isPlayer(p) || p === victim || directOf(event.source) !== p || !inMainHand(p)) return
+  if (!isPlayer(p) || sameEntity(p, victim) || !inMainHand(p)) return
+  const direct = directOf(event.source)
+  if (direct && !sameEntity(direct, p)) return          // arrows and other projectiles aren't melee hits
   const level = levelFor(axeData(p.mainHandItem).souls)
   let amount = 0
   try { amount = Number(event.damage) } catch (e) { }
@@ -330,7 +351,7 @@ EntityEvents.hurt(event => {
   if (has(level, 'cleave') && amount > 0) {
     let d = dimOf(victim), here = pos(victim)
     let splash = list(server.entities).filter(o => {
-      if (o === victim || o === p || isPlayer(o)) return false
+      if (sameEntity(o, victim) || sameEntity(o, p) || isPlayer(o)) return false
       try { if (!o.isLiving() || !o.isAlive()) return false } catch (err) { return false }
       return dimOf(o) == d && dist(pos(o), here) <= CLEAVE_RADIUS
     })
@@ -339,7 +360,16 @@ EntityEvents.hurt(event => {
       splash.forEach(o => { run(server, 'damage ' + uuidOf(o) + ' ' + num(amount * CLEAVE_SHARE) + ' minecraft:player_attack by ' + nameOf(p)) })
     } finally { S.cleaving = false }
   }
-  if (has(level, 'judgement') && isCrit(p)) judgement(server, p, victim)
+  const crit = has(level, 'judgement') && isCrit(p)
+  let fired = false
+  if (crit) fired = judgement(server, p, victim)
+  if (S.debug[uuidOf(p)]) {
+    let c = critInfo(p)
+    try {
+      p.tell(comp(voice('hit: Level ' + roman(level) + ', damage ' + num(amount) + ', ground ' + c.ground + ', fall ' + num(c.fall) + ', vy ' + num(c.vy) +
+        (c.water ? ', in water' : '') + (c.riding ? ', riding' : '') + ' -> ' + (has(level, 'judgement') ? (crit ? (fired ? 'JUDGEMENT' : 'crit, on cooldown') : 'not a crit') : 'no Judgement yet'), 'gray')))
+    } catch (e) { }
+  }
 })
 
 // ===================== TREES: SOULS AND TIMBER =====================
@@ -541,6 +571,13 @@ ServerEvents.commandRegistry(event => {
       .executes(safe(ctx => give(ctx, false)))
       .then(Commands.literal('force').executes(safe(ctx => give(ctx, true))))))
     .then(Commands.literal('setsouls').requires(op).then(int('souls').executes(safe(setSouls))))
+    .then(Commands.literal('debug').requires(op).executes(safe(ctx => {
+      const p = ctx.source.getPlayer()
+      if (!p) return reply(ctx, 'Players only.', true)
+      const u = uuidOf(p)
+      S.debug[u] = !S.debug[u]
+      return reply(ctx, 'Debug ' + (S.debug[u] ? 'on: every hit with the Axe shows what the crit check sees.' : 'off.'))
+    })))
     .then(Commands.literal('stats').requires(op).executes(safe(ctx => {
       const D = db(), s = D.stats
       return reply(ctx, 'Serial ' + D.serial + ', held by ' + (D.holderName || 'nobody') + (D.loose ? ' (loose)' : '') + '. Kills ' + s.kills +

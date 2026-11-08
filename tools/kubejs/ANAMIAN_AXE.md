@@ -18,7 +18,7 @@ It works on both servers. Blood Harvest only acts once Part II's Blood Pool is i
 | VII | 1,200 | | Sharpness V, Efficiency V, Unbreaking IV, Looting III, Fortune II | |
 | VIII | 1,700 | **netherite axe** | Sharpness V, Efficiency VI, Unbreaking V, Looting III, Fortune III | |
 | IX | 2,400 | | as VIII + Sharpness VI, Mending | |
-| X | 3,300 | | as IX + Fire Aspect I | **Judgement** |
+| X | 3,300 | | as IX + Fire Aspect I, and **17 Attack Damage** | **Judgement** |
 
 **How it looks:**
 - **The name** changes colour: gray (I–III), gold (IV–VI), red (VII–IX), and dark red and bold at X.
@@ -26,6 +26,8 @@ It works on both servers. Blood Harvest only acts once Part II's Blood Pool is i
   - the flavour line (*"Forged for Lord Anamy. It remembers every hand that held it."*);
   - the level and Souls, with a progress bar;
   - each unlocked ability, and the next one to come.
+
+**Level X's 17 Attack Damage** is the tooltip figure, before Sharpness (Sharpness VI adds another 3.5). It's set with item attribute modifiers: +16 to attack damage, plus the axe's usual attack speed (1.0), because modifiers replace the axe's own.
 
 **On a level-up:** every player is told, e.g. "The Anamian Axe has reached Level V in the hands of Anamy. It has learned Bloodthirst." The holder gets a sound and totem particles. Durability carries over through every level.
 
@@ -56,7 +58,9 @@ All abilities work from the main hand only.
 - **Cleave (IV).** A melee hit also deals half its damage to other mobs within 3 blocks of the target. Players are never cleaved, so no accidental friendly fire.
 - **Bloodthirst (V).** A kill heals 2 HP, or 6 HP for a player or a boss.
 - **Blood Harvest (VI).** Kills pour Drops into the Blood Pool, credited to the holder: 5 for a mob, 50 for a player, 100 for a boss.
-- **Judgement (X, the capstone).** A **critical hit** (a falling strike, vanilla's rule) calls down a real lightning bolt on the target.
+- **Judgement (X, the capstone).** A **critical hit** calls down a real lightning bolt on the target.
+  - **What counts as critical:** a melee hit while in the air and coming down (a fall distance, or moving downward). Not on the ground, in water or riding. Arrows and other projectiles don't count.
+  - **Logged:** each bolt is written to the server log (`[AnamianAxe] Judgement by …`).
   - The holder is never hurt by their own bolt: its damage is cancelled for a second, and they get a short Fire Resistance.
   - Any fire it starts is put out.
   - It has a 3-second cooldown.
@@ -77,6 +81,7 @@ All abilities work from the main hand only.
 | `/anamian give <player>` | op | Forge the axe at Level I. Refused if one already exists |
 | `/anamian give <player> force` | op | Forge a new one; the old one becomes an ordinary axe to the script |
 | `/anamian setsouls <n>` | op | Set the Souls of the axe in your hand (testing, fixes) |
+| `/anamian debug` | op | Toggle a hit report for yourself: every hit with the Axe shows the level, the damage, and what the crit check saw (on the ground, fall distance, downward speed), and whether Judgement fired |
 | `/anamian stats` | op | Serial, holder, kills (players, bosses), logs, Souls from offerings |
 
 **Replacing the hand-made axe** (Fortune 255): run `/anamian give <player>` and remove the old one. The script only recognises the axe it forged.
@@ -108,7 +113,7 @@ Copy `anamian_axe.js` to `kubejs/server_scripts/` and run `/reload`, then `/anam
 3. **Timber:** at Level II or above, chop the bottom log of a tree and the tree falls. A log pillar without leaves doesn't. Sneaking chops one.
 4. **Cleave:** at IV (`setsouls 300`), hit a zombie in a group and the others take damage. A player standing next to it doesn't.
 5. **Bloodthirst and Blood Harvest:** at VI (`setsouls 800`), kills heal you, and `/bloodpool top` shows your Drops rising.
-6. **Netherite and Judgement:** at X (`setsouls 3300`), the axe is netherite. A jump-attack crit calls lightning on the target, and you take no damage. A second crit within 3 seconds doesn't.
+6. **Netherite, damage and Judgement:** at X (`setsouls 3300`), the axe is netherite and its tooltip reads 17 Attack Damage. Turn on `/anamian debug`, then jump and hit a mob on the way down: the report says JUDGEMENT, lightning strikes the target, and you take no damage. A second crit within 3 seconds says "on cooldown".
 7. **Open for grabs:** drop the axe and the loose message appears. A second player picks it up and is announced as its holder.
 8. **Offerings:** `/anamian offer coins 2` adds 30 Souls.
 
@@ -116,5 +121,6 @@ Copy `anamian_axe.js` to `kubejs/server_scripts/` and run `/reload`, then `/anam
 - **Rebuilding the axe in its inventory slot** (`inventory.setItem`) keeps it in the same hand and slot. If it doesn't, the axe still exists with its Souls, just in the slot it was rebuilt into.
 - **Timber** breaks logs with `setblock … destroy`: they drop as if mined, but without the axe's Fortune or Silk Touch (logs aren't affected by either).
 - **Cleave** deals its damage with the `/damage … by <holder>` command (1.20.1). Mobs see the holder as the attacker.
-- **Critical hits** are judged from the holder's fall distance, ground and water state, which may not match vanilla's crit check exactly (e.g. with mods that change attacks).
+- **Critical hits** are judged from the holder's ground state, fall distance and downward speed. Mods that change attacks (Better Combat is in the pack) may not match vanilla exactly. `/anamian debug` shows what the check sees on every hit, so a miss can be traced.
+- **Existing axes** pick up a change to their level's settings (like Level X's damage) only when they're rebuilt: on their next Soul gain, or with `/anamian setsouls <their Souls>`.
 - **The Corpse mod:** an axe in a corpse is invisible to the scan until someone loots it. Then it's announced as claimed.

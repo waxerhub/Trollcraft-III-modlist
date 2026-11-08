@@ -69,6 +69,9 @@ All abilities work from the main hand only.
 - **Watching for it:** every 5 seconds the script looks for the axe in online players' inventories, including armour and off-hand slots.
 - **When it changes hands:** "Bo has claimed The Anamian Axe (Level V)! Anamy has lost it."
 - **When nobody online has it:** if the last holder is online but doesn't have it (dropped, put in a chest, or left in their corpse), it's announced once: "The Anamian Axe is loose. Anamy no longer has it. Open for grabs." Where it is isn't said.
+  - It must be missing for **two checks in a row** (about 10 seconds).
+  - **Not while a window is open.** The black market's shop window takes the player's inventory away until it's closed, so nothing is announced while any chest or shop window is open.
+  - The axe still counts as held while it's on the mouse cursor.
 - **A holder who logs off** with the axe keeps it. That isn't "loose".
 - **It isn't soulbound.** The Corpse mod keeps a dead holder's items in their corpse, so looting the corpse claims it.
 
@@ -99,6 +102,7 @@ All abilities work from the main hand only.
 | `HARVEST_MOB`, `HARVEST_PLAYER`, `HARVEST_BOSS` | Blood Harvest |
 | `JUDGEMENT_COOLDOWN_MS`, `JUDGEMENT_SAFE_MS` | Judgement |
 | `SCAN_TICKS` | How often to look for the holder (100 = 5 s) |
+| `LOOSE_AFTER_SCANS` | Checks in a row without it (no window open) before it's announced loose (2) |
 
 **Saved data:** `server.persistentData["anamian_axe"]` holds the serial, holder, whether it's loose, its Souls and the stats. The axe's own Souls are stored on the item.
 

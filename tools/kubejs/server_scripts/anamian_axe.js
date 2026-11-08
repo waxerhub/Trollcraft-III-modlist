@@ -54,6 +54,7 @@ const HARVEST_MOB = 5, HARVEST_PLAYER = 50, HARVEST_BOSS = 100
 const JUDGEMENT_COOLDOWN_MS = 3000, JUDGEMENT_SAFE_MS = 1000
 const FIRE_CHECK_RADIUS = 3, FIRE_CHECK_TICKS = 12
 const SCAN_TICKS = 100                      // how often to look for who holds it
+const LOOSE_AFTER_SCANS = 2                 // scans in a row without it (no window open) before it's announced loose
 const DATA_KEY = 'anamian_axe'
 
 // ===================== STATE =====================
@@ -201,6 +202,16 @@ function axeSlot(p) {
   return -1
 }
 function inMainHand(p) { return bool(() => isRealAxe(p.mainHandItem)) }
+// Held on the mouse cursor while moving items about.
+function onCursor(p) { return bool(() => isRealAxe(p.containerMenu.getCarried())) }
+function hasAxe(p) { return axeSlot(p) >= 0 || onCursor(p) }
+// A chest, the black market's shop window or any other container is open. The black market takes the player's
+// inventory away while its window is open (it hands it back on close), so the axe can't be seen then.
+function windowOpen(p) {
+  try { if (typeof p.hasContainerOpen == 'function') return !!p.hasContainerOpen() } catch (e) { }
+  try { return !sameRef(p.containerMenu, p.inventoryMenu) } catch (e) { return false }
+}
+function sameRef(a, b) { try { return a === b || (a != null && b != null && a.equals(b)) } catch (e) { return a === b } }
 
 // Adds Souls to the axe this player holds (main hand). Rebuilds it, announcing a level-up.
 function addSouls(p, n, why) {
@@ -431,7 +442,7 @@ function scan(server) {
   const D = db()
   if (!D.serial) return
   const players = list(server.players)
-  const holder = players.filter(p => axeSlot(p) >= 0)[0] || null
+  const holder = players.filter(p => hasAxe(p))[0] || null
   if (holder) {
     let u = uuidOf(holder)
     if (u != D.holder) {
@@ -440,14 +451,20 @@ function scan(server) {
       D.holderName = nameOf(holder)
       D.loose = false
       save()
-      let lv = levelFor(axeData(holder.inventory.getItem(axeSlot(holder))).souls)
+      let slot = axeSlot(holder)
+      let lv = slot >= 0 ? levelFor(axeData(holder.inventory.getItem(slot)).souls) : levelFor(D.souls)
       tellAll(server, voice(nameOf(holder) + ' has claimed ' + NAME + ' (Level ' + roman(lv) + ')!' + (prev && prev != nameOf(holder) ? ' ' + prev + ' has lost it.' : ''), 'gold'))
       console.info('[AnamianAxe] Now held by ' + nameOf(holder))
     } else if (D.loose) { D.loose = false; save() }
+    S.misses = 0
     return
   }
   // Nobody online has it. If its last holder is online, it was dropped, stashed or lost in a corpse: it's loose.
-  if (!D.loose && D.holder && players.some(p => uuidOf(p) == D.holder)) {
+  const last = players.filter(p => uuidOf(p) == D.holder)[0]
+  if (!last || D.loose) return
+  if (windowOpen(last)) { S.misses = 0; return }     // a chest or shop window is open: wait until it's closed
+  S.misses = (S.misses || 0) + 1
+  if (S.misses >= LOOSE_AFTER_SCANS) {
     D.loose = true
     save()
     tellAll(server, voice(NAME + ' is loose. ' + D.holderName + ' no longer has it. Open for grabs.', 'red'))

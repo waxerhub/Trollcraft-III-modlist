@@ -267,7 +267,23 @@ ok('... only the holder, axe in hand', /Hold The Anamian Axe/.test(run(['offer',
 // ---------- open for grabs ----------
 advance(120)
 const held = axeOf(anamy), idx = anamy.slots.indexOf(held)
+// The black market's shop window takes the inventory away while it's open: not "loose".
 anamy.slots[idx] = EMPTY
+anamy.hasContainerOpen = () => true
+advance(400)
+ok('while a shop window or chest is open, a missing axe isn\'t announced loose', !bo.msgs.some(m => /is loose/.test(m)))
+anamy.hasContainerOpen = () => false
+anamy.slots[idx] = held
+advance(120)
+ok('... and it\'s back when the window closes, with no claim message', !bo.msgs.some(m => /Anamy has claimed/.test(m)))
+// Held on the mouse cursor while sorting the inventory: still held.
+anamy.slots[idx] = EMPTY
+anamy.containerMenu = { getCarried: () => held }
+advance(400)
+ok('on the mouse cursor it still counts as held', !bo.msgs.some(m => /is loose/.test(m)))
+anamy.containerMenu = { getCarried: () => EMPTY }
+advance(110)
+ok('one check without it isn\'t enough to call it loose', !bo.msgs.some(m => /is loose/.test(m)))
 advance(120)
 ok('dropped: announced once as loose', bo.msgs.filter(m => /is loose\. Anamy no longer has it\. Open for grabs/.test(m)).length == 1, bo.msgs.slice(-3).join(' / '))
 advance(240)

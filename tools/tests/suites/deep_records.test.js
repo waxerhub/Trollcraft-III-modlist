@@ -173,6 +173,17 @@ ok('Twilight chests give books, but never books 6-8', tfSeen.every(id => id != '
 const key = chestAt(99, 'twilightforest:chests/darktower_key'); openChest(key)
 ok('the Dark Tower key chest is left out (counted as unlisted)', books(key.c).length == 0 && JSON.parse(persistent.deep_records).tables['twilightforest:chests/darktower_key'] == 1)
 
+// Ice and Fire dragon lairs (25%)
+rand = 0.2
+const lair = chestAt(400, 'iceandfire:chest/fire_dragon_male_cave'); openChest(lair)
+ok('a dragon lair cave chest can hold a book (25%: a 20% roll hits)', books(lair.c).length == 1 && ['pump', 'power_budget', 'full_measure'].indexOf(idOf(books(lair.c)[0])) < 0)
+const roost = chestAt(401, 'iceandfire:chest/lightning_dragon_roost'); openChest(roost)
+ok('... and so can a roost', books(roost.c).length == 1)
+rand = 0.3
+const lair2 = chestAt(402, 'iceandfire:chest/ice_dragon_female_cave'); openChest(lair2)
+ok('... but a 30% roll misses', books(lair2.c).length == 0)
+rand = 0
+
 // the Surveyor's notes never drop, whatever the chest
 BP.t = 12
 rand = 0

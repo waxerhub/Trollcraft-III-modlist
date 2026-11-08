@@ -30,6 +30,7 @@ Each check prints one line, `ok   <what>` or `FAIL <what>  <detail>`, and each s
 | Suite | Scripts loaded | Covers |
 |---|---|---|
 | `blood_pool` | `part2/blood_pool.js`, `blood_tank.js`, `dimension_gates.js` and the Part I economy, factions and story | Tiers and what each one seals, the Potato Tithe, Potato Standing and ranks, rank-locked crafting (including autocrafters), the conversion of mod crafting formats, `/bloodpool audit`, the dimension gates, the Blood Tank, the black market's standing locks |
+| `dragon_hoard` | `part2/dragon_hoard.js` | Dragon lair chests: 3–5 bonus stacks in caves and 1–3 in roosts, scales and blood of the lair's type, nothing the Pool seals |
 | `deep_records` | `part2/deep_records.js` | Deep Record books in structure chests: unlocking by Pool tier, books 6–8 only in End Cities, chances per site, chest minecarts, the discovery log, `/deeprecords` |
 | `boss_blood` | `part2/boss_blood.js` | Twilight Forest boss kills pay the Pool on the ladder: the split among fighters, Lich shadow clones, the Knight Phantom group, `/kill`, `/bossblood` |
 | `potato_tree` | the same plus `part2/potato_tree.js` | Tree nodes: gear (Tinkers materials, armour), placing and using, AE2 parts, handed-in potatoes counting toward rank, catch-up at Tier T−2, `/potatowar next`, `/potatotree`, running without FTB Quests |

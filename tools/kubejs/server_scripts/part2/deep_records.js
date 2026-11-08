@@ -99,6 +99,10 @@ const SITES = [
     tables: tf(['tower_room', 'labyrinth_room', 'labyrinth_dead_end', 'stronghold_room', 'stronghold_cache', 'darktower_cache',
       'aurora_room', 'hill_1', 'hill_2', 'hill_3', 'hedge_maze', 'tree_cache', 'basement', 'foundation_basement', 'graveyard',
       'fancy_well', 'well']) },
+  // Ice and Fire dragon lairs (iceandfire-2.1.13-1.20.1): the caves and the roosts. part2/dragon_hoard.js adds treasure.
+  { name: 'dragon lair', chance: 0.25, books: OVERWORLD_BOOKS,
+    tables: ['fire', 'ice', 'lightning'].map(t => ['female_cave', 'male_cave', 'roost'].map(k => 'iceandfire:chest/' + t + '_dragon_' + k))
+      .reduce((a, b) => a.concat(b), []) },
 ]
 function tf(names) { return names.map(n => 'twilightforest:chests/' + n) }
 

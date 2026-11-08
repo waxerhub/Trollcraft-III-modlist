@@ -44,6 +44,7 @@ This ties together:
 | Twilight Forest key rooms | `twilightforest:chests/` `tower_library` (Lich Tower library), `labyrinth_vault`, `labyrinth_vault_jackpot`, `stronghold_boss` (Knight Phantom treasure), `darktower_boss` (Ur-Ghast treasure), `aurora_cache` (Aurora Palace) | 50% | 1–5 |
 | Twilight Forest troll caves | `troll_vault`, `troll_vault_with_lamp`, `troll_garden` | 30% | 1–5 |
 | Twilight Forest elsewhere | `tower_room`, `labyrinth_room`, `labyrinth_dead_end`, `stronghold_room`, `stronghold_cache`, `darktower_cache`, `aurora_room`, `hill_1`–`hill_3`, `hedge_maze`, `tree_cache`, `basement`, `foundation_basement`, `graveyard`, `fancy_well`, `well` | 10% | 1–5 |
+| Ice and Fire dragon lairs | `iceandfire:chest/` `fire_`, `ice_` and `lightning_dragon_` `female_cave`, `male_cave` and `roost` | 25% | 1–5 |
 
 The Twilight Forest tables come from `twilightforest-1.20.1-4.3.2508`. Left out on purpose:
 - `darktower_key`: the Dark Tower key chest;

@@ -241,6 +241,11 @@ Technoblade's Potato War, revived. **The Pool decides what the server can make; 
 35. **The Ruins:** the remains of Part I bases are lore sites, with books telling Part I's story. 🔨
 36. **The Shrine:** the scout's last testimony reveals Technoblade's Shrine, and the Blood Pool and the relic hunt begin. 🔨
 
+**The Deep Records** ✅ (`part2/deep_records.js`, see [DEEP_RECORDS.md](tools/kubejs/DEEP_RECORDS.md)). The old world wasn't burned, it was **buried**: an ancient city turned out to be part of it, and the Warden replaced the dead dragon as Records Security. Eight `[REDACTED]` books in structure chests reveal the Ministry's real objective, without naming it.
+- **The Harvest (owner decision):** the seals are a pump, not a prison. The Ministry sealed the new world so the server would fill the Blood Pool, and at the twelfth seal it drains the full Pool to power the Citadel's Bureaucratic Barrier for a century. "They will think they won."
+- **Paced by the Pool:** each book waits for a Blood Pool tier. Books 1–5 turn up in overworld chests (ancient cities, strongholds, buried and ruined sites, mineshafts and dungeons). The biggest reveals, books 6–8 (the pump, the power budget, Protocol Full Measure), are in End City chests only (owner decision).
+- **What it sets up:** the Siege (Act V) becomes a race. Break the twelfth seal and take the Citadel before the drain runs.
+
 **The Castellan** (a player role; owner decision). A Part I **Enforcer** keeps the spawn castle.
 - **The story:** the castle was the Ministry's **Induction Castle**, where recruits were processed and Enforcers stationed. When Clean Slate fired, the Ministry evacuated "officials first" (its own SOP), and its Enforcer at the castle was left to burn with everyone else.
 - **Her loyalty is never confirmed.** The Ministry's files list her as "Enforcer, status: under review". She plays it however she likes.

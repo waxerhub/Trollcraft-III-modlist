@@ -52,6 +52,9 @@ const CLEAVE_RADIUS = 3, CLEAVE_SHARE = 0.5
 const HEAL_KILL = 2, HEAL_BIG = 6
 const HARVEST_MOB = 5, HARVEST_PLAYER = 50, HARVEST_BOSS = 100
 const JUDGEMENT_COOLDOWN_MS = 3000, JUDGEMENT_SAFE_MS = 1000
+// Better Combat swings have a wind-up: the server gets the hit after the swing lands, when a jump attack has usually
+// already touched down. So a hit counts as critical if the holder was in the air and falling up to this long before.
+const CRIT_GRACE_MS = 600
 const FIRE_CHECK_RADIUS = 3, FIRE_CHECK_TICKS = 12
 const SCAN_TICKS = 100                      // how often to look for who holds it
 const LOOSE_AFTER_SCANS = 2                 // scans in a row without it (no window open) before it's announced loose
@@ -62,7 +65,7 @@ const DATA_KEY = 'anamian_axe'
 let Serializer = null, StringArg = null
 try { Serializer = Java.loadClass('net.minecraft.network.chat.Component$Serializer') } catch (e) { }
 try { StringArg = Java.loadClass('com.mojang.brigadier.arguments.StringArgumentType') } catch (e) { }
-const S = { cleaving: false, judged: {}, judgeCooldown: {}, loopToken: 0, debug: {} }
+const S = { cleaving: false, judged: {}, judgeCooldown: {}, loopToken: 0, debug: {}, falling: {} }
 let data = null
 function db() {
   if (data) return data
@@ -304,12 +307,26 @@ function critInfo(p) {
   try { let v = p.getDeltaMovement(); vy = Number(typeof v.y == 'function' ? v.y() : v.y) || 0 } catch (e) { }
   return { ground: ground, fall: fall, vy: vy, water: bool(() => p.isInWater()), riding: bool(() => p.isPassenger()) }
 }
-// A critical hit: in the air and coming down (vanilla's rule), not in water, not riding.
+function fallingNow(c) { return c.ground !== true && !c.water && !c.riding && (c.fall > 0 || c.vy < -0.05) }
+// A critical hit: in the air and coming down (vanilla's rule), not in water, not riding; or, for Better Combat's
+// delayed hits, falling within CRIT_GRACE_MS before the hit.
 function isCrit(p) {
   const c = critInfo(p)
-  if (c.ground === true || c.water || c.riding) return false
-  return c.fall > 0 || c.vy < -0.05
+  if (c.water || c.riding) return false
+  if (fallingNow(c)) return true
+  const t = S.falling[uuidOf(p)]
+  return !!t && Date.now() - t <= CRIT_GRACE_MS
 }
+// Each tick, note when the axe's holder is falling (only the holder is checked).
+PlayerEvents.tick(event => {
+  const p = event.player
+  const D = db()
+  if (!D.serial || !D.holder) return
+  let u = ''
+  try { u = uuidOf(p) } catch (e) { return }
+  if (u != D.holder) return
+  if (fallingNow(critInfo(p)) && inMainHand(p)) S.falling[u] = Date.now()
+})
 function sameEntity(a, b) {
   if (!a || !b) return false
   try { return uuidOf(a) == uuidOf(b) } catch (e) { return a === b }
@@ -377,7 +394,9 @@ EntityEvents.hurt(event => {
   if (S.debug[uuidOf(p)]) {
     let c = critInfo(p)
     try {
+      let ago = S.falling[uuidOf(p)] ? Date.now() - S.falling[uuidOf(p)] : -1
       p.tell(comp(voice('hit: Level ' + roman(level) + ', damage ' + num(amount) + ', ground ' + c.ground + ', fall ' + num(c.fall) + ', vy ' + num(c.vy) +
+        ', last fell ' + (ago < 0 ? 'never' : ago + ' ms ago') +
         (c.water ? ', in water' : '') + (c.riding ? ', riding' : '') + ' -> ' + (has(level, 'judgement') ? (crit ? (fired ? 'JUDGEMENT' : 'crit, on cooldown') : 'not a crit') : 'no Judgement yet'), 'gray')))
     } catch (e) { }
   }

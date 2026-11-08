@@ -81,9 +81,10 @@ const global = { Economy, BloodPool: { addDrops: (n, src2, u, nm) => pool.push({
 const node = n => ({ n, ch: [], req: null, f: null, then(c) { this.ch.push(c); return this }, requires(f) { this.req = f; return this }, executes(f) { this.f = f; return this } })
 const StringArg = { word: () => 'word', getString: (ctx, k) => ctx.args[k] }
 const Serializer = { fromJsonLenient: j => JSON.parse(j) }
-new Function('EntityEvents', 'BlockEvents', 'ServerEvents', 'Java', 'Utils', 'Item', 'Text', 'console', 'global', src)(
+new Function('EntityEvents', 'BlockEvents', 'PlayerEvents', 'ServerEvents', 'Java', 'Utils', 'Item', 'Text', 'console', 'global', src)(
   { death: h => { handlers.death = h }, hurt: h => { handlers.hurt = h } },
   { broken: h => { handlers.broken = h } },
+  { tick: h => { handlers.tick = h } },
   { loaded: h => { handlers.loaded = h }, commandRegistry: h => h({ commands: { literal: node, argument: n => node(n) }, arguments: { INTEGER: { create: () => 'int', getResult: (ctx, k) => ctx.args[k] } }, register: t => { cmdTree = t } }) },
   { loadClass: n => (/StringArgumentType/.test(n) ? StringArg : Serializer) },
   { server }, Item, { of: s => s },
@@ -249,7 +250,27 @@ anamy.op = true
 ok('/anamian debug turns on the hit report', /Debug on/.test(run(['debug'], anamy)[0]))
 Date.now = () => global.__now() + 30000
 fireHurt(crit2, { getActual: () => anamy, getImmediate: () => anamy, getMsgId: () => 'player' }, 10)
-ok('... which shows what the crit check saw', /hit: Level X, damage 10\.00, ground false, fall 0\.00, vy -0\.40 -> JUDGEMENT/.test(lastMsg(anamy)), lastMsg(anamy))
+ok('... which shows what the crit check saw', /hit: Level X, damage 10\.00, ground false, fall 0\.00, vy -0\.40, last fell never -> JUDGEMENT/.test(lastMsg(anamy)), lastMsg(anamy))
+// Better Combat: the hit arrives after the swing's wind-up, when the jump has already landed.
+const crit3 = mob('minecraft:zombie', 70, 0, { hostile: true })
+let clock = global.__now() + 40000
+Date.now = () => clock
+anamy.onGround = false; anamy.vy = -0.3; anamy.fall = 0.8
+handlers.tick({ player: anamy })                 // falling, axe in hand
+anamy.onGround = true; anamy.vy = 0; anamy.fall = 0
+clock += 400
+let nGrace = bolts()
+fireHurt(crit3, { getActual: () => anamy, getImmediate: () => anamy, getMsgId: () => 'player' }, 10)
+ok('Better Combat: a hit 0.4 s after landing from a jump still counts as a crit', bolts() == nGrace + 1, lastMsg(anamy))
+ok('... and the debug line says when the holder last fell', /last fell 400 ms ago -> JUDGEMENT/.test(lastMsg(anamy)), lastMsg(anamy))
+clock += 5000
+handlers.tick({ player: anamy })                 // on the ground now
+clock += 100
+nGrace = bolts()
+fireHurt(crit3, { getActual: () => anamy, getImmediate: () => anamy, getMsgId: () => 'player' }, 10)
+ok('... but a hit long after landing isn\'t a crit', bolts() == nGrace && /not a crit/.test(lastMsg(anamy)), lastMsg(anamy))
+const boTick = () => { bo.onGround = false; bo.vy = -0.5; handlers.tick({ player: bo }); bo.onGround = true; bo.vy = 0 }
+boTick()
 run(['debug'], anamy); anamy.op = false
 Date.now = global.__now
 anamy.vy = 0

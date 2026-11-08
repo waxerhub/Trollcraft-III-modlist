@@ -59,7 +59,8 @@ All abilities work from the main hand only.
 - **Bloodthirst (V).** A kill heals 2 HP, or 6 HP for a player or a boss.
 - **Blood Harvest (VI).** Kills pour Drops into the Blood Pool, credited to the holder: 5 for a mob, 50 for a player, 100 for a boss.
 - **Judgement (X, the capstone).** A **critical hit** calls down a real lightning bolt on the target.
-  - **What counts as critical:** a melee hit while in the air and coming down (a fall distance, or moving downward). Not on the ground, in water or riding. Arrows and other projectiles don't count.
+  - **What counts as critical:** a melee hit while in the air and coming down (a fall distance, or moving downward), or within **0.6 seconds** of having been in the air and falling. Not in water or riding. Arrows and other projectiles don't count.
+  - **Why the 0.6 seconds:** Better Combat (in the pack, 1.9.0) swings with a wind-up. The server only gets the hit once the swing lands, by which time a jump attack has usually touched down. Checked in its jar: the attack request runs `ServerPlayer.attack` after the wind-up. So the script notes, each tick, when the axe's holder is falling, and counts a hit inside that window (`CRIT_GRACE_MS`).
   - **Logged:** each bolt is written to the server log (`[AnamianAxe] Judgement by …`).
   - The holder is never hurt by their own bolt: its damage is cancelled for a second, and they get a short Fire Resistance.
   - Any fire it starts is put out.
@@ -84,7 +85,7 @@ All abilities work from the main hand only.
 | `/anamian give <player>` | op | Forge the axe at Level I. Refused if one already exists |
 | `/anamian give <player> force` | op | Forge a new one; the old one becomes an ordinary axe to the script |
 | `/anamian setsouls <n>` | op | Set the Souls of the axe in your hand (testing, fixes) |
-| `/anamian debug` | op | Toggle a hit report for yourself: every hit with the Axe shows the level, the damage, and what the crit check saw (on the ground, fall distance, downward speed), and whether Judgement fired |
+| `/anamian debug` | op | Toggle a hit report for yourself: every hit with the Axe shows the level, the damage, and what the crit check saw (on the ground, fall distance, downward speed, how long ago you last fell), and whether Judgement fired |
 | `/anamian stats` | op | Serial, holder, kills (players, bosses), logs, Souls from offerings |
 
 **Replacing the hand-made axe** (Fortune 255): run `/anamian give <player>` and remove the old one. The script only recognises the axe it forged.
@@ -101,6 +102,7 @@ All abilities work from the main hand only.
 | `HEAL_KILL`, `HEAL_BIG` | Bloodthirst |
 | `HARVEST_MOB`, `HARVEST_PLAYER`, `HARVEST_BOSS` | Blood Harvest |
 | `JUDGEMENT_COOLDOWN_MS`, `JUDGEMENT_SAFE_MS` | Judgement |
+| `CRIT_GRACE_MS` | How long after falling a hit still counts as critical (600, for Better Combat's wind-up) |
 | `SCAN_TICKS` | How often to look for the holder (100 = 5 s) |
 | `LOOSE_AFTER_SCANS` | Checks in a row without it (no window open) before it's announced loose (2) |
 

@@ -76,7 +76,7 @@ function run(args, as) {
 
 // ---------- the books ----------
 const R = global.DeepRecords.records
-ok('eight books', R.length == 8)
+ok('nine books (eight that drop, and the Surveyor\'s notes given by command)', R.length == 9 && R[8].id == 'surveyor_notes' && R[8].giveOnly)
 ok('every title fits a written book (32 characters)', R.every(r => r.title.length <= 32), R.map(r => r.title.length).join(','))
 ok('every page is short enough to show (256 characters)', R.every(r => r.pages.every(p => p.length <= 256)), R.map(r => Math.max.apply(null, r.pages.map(p => p.length))).join(','))
 ok('nothing names the Ministry (it is still unrevealed)', R.every(r => !/ministry/i.test(r.title + r.pages.join(' '))))
@@ -146,13 +146,14 @@ ok('found counts are saved', JSON.parse(persistent.deep_records).found.site_surv
 const ana = { op: false }, admin = { op: true }
 ok('/deeprecords is op-only', run(['list'], ana)[0] == 'DENIED')
 const listing = run(['list'], admin)
-ok('/deeprecords list shows the tier, each book and what is unlocked', /Blood Pool tier 11/.test(listing[0]) && /8\. Protocol Full Measure \(tier 11, End Cities\): unlocked/.test(listing.join('\n')), listing.join(' | '))
+ok('/deeprecords list shows the tier, each book and what is unlocked', /Blood Pool tier 11/.test(listing[0]) && /8\. Protocol Full Measure \(tier 11, End Cities\): unlocked/.test(listing.join('\n')) && /9\. Surveyor's Last Field Notes: given by command/.test(listing.join('\n')), listing.join(' | '))
 ok('/deeprecords tables lists the unlisted loot tables', /betterstrongholds:chests\/library: 2x/.test(run(['tables'], admin).join('\n')))
 const p = { name: 'Ana', got: [], getGameProfile: () => ({ getName: () => 'Ana' }), give: s => p.got.push(s) }
 players.push(p)
-ok('/deeprecords give Ana all hands out all eight', /all 8 Deep Records/.test(run(['give', 'Ana', 'all'], admin)[0]) && p.got.length == 8)
-ok('/deeprecords give Ana 4 hands out the Blood God memo', /Memo: Re: The Blood God/.test(run(['give', 'Ana', '4'], admin)[0]) && p.got.length == 9)
-ok('... and refuses a number out of range', /1 to 8/.test(run(['give', 'Ana', '9'], admin)[0]))
+ok('/deeprecords give Ana all hands out all nine', /all 9 Deep Records/.test(run(['give', 'Ana', 'all'], admin)[0]) && p.got.length == 9)
+ok('/deeprecords give Ana 4 hands out the Blood God memo', /Memo: Re: The Blood God/.test(run(['give', 'Ana', '4'], admin)[0]) && p.got.length == 10)
+ok('/deeprecords give Ana 9 hands out the Surveyor\'s notes', /Surveyor's Last Field Notes/.test(run(['give', 'Ana', '9'], admin)[0]) && snbt(p.got[10].nbt).trollcraft.deeprecord == 'surveyor_notes' && /Deep Record #9/.test(snbt(p.got[10].nbt).display.Lore[0]))
+ok('... and refuses a number out of range', /1 to 9/.test(run(['give', 'Ana', '10'], admin)[0]))
 
 // Twilight Forest chests (BP.t is 11 here: every overworld book is unlocked)
 rand = 0.4
@@ -171,6 +172,16 @@ const tfSeen = []
 ok('Twilight chests give books, but never books 6-8', tfSeen.every(id => id != 'none' && ['pump', 'power_budget', 'full_measure'].indexOf(id) < 0), tfSeen.join(','))
 const key = chestAt(99, 'twilightforest:chests/darktower_key'); openChest(key)
 ok('the Dark Tower key chest is left out (counted as unlisted)', books(key.c).length == 0 && JSON.parse(persistent.deep_records).tables['twilightforest:chests/darktower_key'] == 1)
+
+// the Surveyor's notes never drop, whatever the chest
+BP.t = 12
+rand = 0
+const everySite = []
+global.DeepRecords.sites.forEach((site, si) => site.tables.forEach((tbl, ti) => {
+  for (let k = 0; k < 4; k++) { let ch = chestAt(1000 + si * 100 + ti * 5 + k, tbl); openChest(ch); books(ch.c).forEach(b => everySite.push(idOf(b))) }
+}))
+ok('the Surveyor\'s notes never drop from any chest, even at Tier 12', everySite.length > 50 && everySite.indexOf('surveyor_notes') < 0, everySite.length)
+BP.t = 11
 
 // without the Blood Pool
 global.BloodPool = undefined

@@ -27,6 +27,7 @@ This ties together:
 | 6 | Requisition: Pumping Station | 9 | **End Cities only** | A blood pump beneath the basin. "Do NOT let them ask why a pool needs a drain." |
 | 7 | Citadel Power Budget | 10 | **End Cities only** | One full Blood Pool runs the Bureaucratic Barrier for a century. "They are filling it for us." |
 | 8 | Protocol Full Measure | 11 | **End Cities only** | Open the drain at the twelfth seal. In the margin: "They will think they won." |
+| 9 | Surveyor's Last Field Notes | — | **given by command only** (`/deeprecords give <player> 9`): the admins placed it in a dragon lair | A dead Office surveyor's notes: "Ask why a pool would need a drain", and where the other books are kept (the deep cities, old strongholds, buried chests, mines and dungeons, the Twilight's library and vaults, and the floating cities beyond the End's gate) |
 
 - **A book can only turn up once the Blood Pool has reached its tier**, so the reveal follows the season.
 - **The biggest plot points (6–8) are only in End City chests** (owner decision). The End opens at Tier 9.
@@ -68,8 +69,8 @@ To add some:
 | Command | What it does |
 |---|---|
 | `/deeprecords list` | The current tier, chests rolled per site, and each book: its tier, where it's found, unlocked or sealed, and times found |
-| `/deeprecords give <player> <1-8>` | Hand out one book (to replace a lost one, or to seed the story) |
-| `/deeprecords give <player> all` | All eight, to read them through |
+| `/deeprecords give <player> <1-9>` | Hand out one book (to replace a lost one, or to seed the story). #9, the Surveyor's notes, is only ever given this way |
+| `/deeprecords give <player> all` | All nine, to read them through |
 | `/deeprecords tables` | Unlisted loot tables seen, most common first |
 
 ## Settings (top of deep_records.js)

@@ -63,6 +63,16 @@ const RECORDS = [
     'Step 1: wait for the twelfth seal to break.\nStep 2: open the drain.\nStep 3: thank them for their cooperation.',
     'Step 4: raise the Barrier. The Citadel will be untouchable. Forever, give or take a century.\n\nIn the margin, in red: They will think they won.',
   ] },
+  // Never drops: the admins give it (/deeprecords give <player> 9) and place it, e.g. in a dragon lair.
+  // It points players to the plot and to where the other books are found.
+  { id: 'surveyor_notes', minTier: 0, giveOnly: true, title: 'Surveyor\'s Last Field Notes', pages: [
+    'FIELD NOTES\nSurveyor 7, the Office\n\nDay 41. The dragon has not noticed me yet. I am writing this in case it does.\n\nIf you are reading this, it did.',
+    'The Office sent me to count what the new world can yield. I counted.\n\nThen I read the orders I was carrying. I should not have read them.',
+    'The seals are not locks. Every seal you break, you pay for in blood, and the blood is not going where you think.\n\nAsk why a pool would need a drain.',
+    'The Office keeps its papers where no one wanders: the deep cities, where the Warden listens; the old strongholds; chests buried in sand and under the sea; the mines and the dungeons.',
+    'And in the Twilight: the Lich\'s library above all, and the vaults the great beasts guard.\n\nRead them in order. Each seal you break opens another drawer.',
+    'The last orders are kept beyond the End\'s gate, in the cities that float. Read those before the twelfth seal breaks. After that, it will not matter.\n\n(The rest of the page is scorched.)',
+  ] },
 ]
 const OVERWORLD_BOOKS = ['site_survey', 'records_security', 'seal_log', 'blood_god_memo', 'yield']
 const END_BOOKS = ['pump', 'power_budget', 'full_measure']
@@ -281,8 +291,9 @@ ServerEvents.commandRegistry(event => {
     .then(Commands.literal('list').executes(safe(ctx => {
       const D = db(), tier = currentTier()
       reply(ctx, 'Blood Pool tier ' + tier + '. Chests rolled: ' + (Object.keys(D.chests).map(k => k + ' ' + D.chests[k]).join(', ') || 'none') + '.')
-      RECORDS.forEach(r => reply(ctx, number(r) + '. ' + r.title + ' (tier ' + r.minTier + ', ' + (END_BOOKS.indexOf(r.id) >= 0 ? 'End Cities' : 'overworld') + '): ' +
-        (r.minTier <= tier ? 'unlocked' : 'sealed') + ', found ' + (D.found[r.id] || 0) + 'x'))
+      RECORDS.forEach(r => reply(ctx, number(r) + '. ' + r.title + (r.giveOnly ? ': given by command (/deeprecords give <player> ' + number(r) + ')' :
+        ' (tier ' + r.minTier + ', ' + (END_BOOKS.indexOf(r.id) >= 0 ? 'End Cities' : 'overworld and Twilight Forest') + '): ' +
+        (r.minTier <= tier ? 'unlocked' : 'sealed') + ', found ' + (D.found[r.id] || 0) + 'x')))
       return 1
     })))
     .then(Commands.literal('tables').executes(safe(ctx => {

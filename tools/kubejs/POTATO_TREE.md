@@ -64,16 +64,18 @@ Costs are placeholders. Edit `NODES` in `potato_tree.js`, then run the generator
 
 **Tinkers' Smithy:**
 
+**Potato costs from Tier 4 up are 5× the launch numbers** (owner decision, November 2026, matching the rank change). Tier 0–3 nodes and all item costs are unchanged.
+
 | Node | Needs | Cost | Unlocks |
 |---|---|---|---|
 | Seared Smeltery | Potato Farmer | 250 potatoes, 16 seared bricks | Placing and using a smeltery controller |
 | Steel Smithing | Potato Recruit, Tier 3, Seared Smeltery | 2,500, 32 steel ingots | Steel Tinkers tools |
-| Osmium & Steeleaf | Potato Private, Tier 4, Steel | 5,000, 16 osmium, 16 steeleaf | Osmium and steeleaf tools; TF steeleaf gear |
-| The Foundry | Potato Soldier, Tier 5, Seared Smeltery | 5,000, 64 scorched bricks | Placing and using a foundry controller and scorched alloyer |
-| Cobalt Smithing | Potato Soldier, Tier 5, Osmium & Steeleaf | 10,000, 32 cobalt, 8 knightmetal | Cobalt, knightmetal, knightly and scorched stone tools; TF knightmetal gear |
-| Alloy Smithing | Potato Sergeant, Tier 6, Cobalt | 20,000, 16 electrum, 8 fiery | Electrum, invar, constantan, silver, lead, pewter, aluminum and fiery; TF fiery gear |
-| Masterwork | Potato Captain, Tier 8, Alloy and Foundry | 60,000, 16 manyullyn, 16 hepatizon | Manyullyn, hepatizon, queen's slime, cinderslime, necronium, blazing bone, blazewood, ancient, enderslime and ichor |
-| Dragonsteel | Potato General, Tier 9, Masterwork | 100,000, 8 of each dragonsteel | Dragon scale and the three dragonsteels |
+| Osmium & Steeleaf | Potato Private, Tier 4, Steel | 25,000, 16 osmium, 16 steeleaf | Osmium and steeleaf tools; TF steeleaf gear |
+| The Foundry | Potato Soldier, Tier 5, Seared Smeltery | 25,000, 64 scorched bricks | Placing and using a foundry controller and scorched alloyer |
+| Cobalt Smithing | Potato Soldier, Tier 5, Osmium & Steeleaf | 50,000, 32 cobalt, 8 knightmetal | Cobalt, knightmetal, knightly and scorched stone tools; TF knightmetal gear |
+| Alloy Smithing | Potato Sergeant, Tier 6, Cobalt | 100,000, 16 electrum, 8 fiery | Electrum, invar, constantan, silver, lead, pewter, aluminum and fiery; TF fiery gear |
+| Masterwork | Potato Captain, Tier 8, Alloy and Foundry | 300,000, 16 manyullyn, 16 hepatizon | Manyullyn, hepatizon, queen's slime, cinderslime, necronium, blazing bone, blazewood, ancient, enderslime and ichor |
+| Dragonsteel | Potato General, Tier 9, Masterwork | 500,000, 8 of each dragonsteel | Dragon scale and the three dragonsteels |
 
 Metals in no node (wood, stone, iron, copper, bronze and the rest) are free.
 
@@ -82,26 +84,26 @@ Metals in no node (wood, stone, iron, copper, bronze and the rest) are free.
 | Node | Needs | Cost | Place and use |
 |---|---|---|---|
 | Create Logistics | Potato Farmer, Tier 1 | 500, 16 andesite alloy | Funnels (also on belts), tunnels, smart chute, portable storage interface |
-| Create Automation | Potato Private, Tier 4, Create Logistics | 5,000, 8 precision mechanisms | Deployer, Mechanical Arm (and so Sequenced Assembly) |
+| Create Automation | Potato Private, Tier 4, Create Logistics | 25,000, 8 precision mechanisms | Deployer, Mechanical Arm (and so Sequenced Assembly) |
 | Immersive Logistics | Potato Recruit, Tier 3 | 2,500, 16 IE steel | Conveyor, sorter, fluid sorter |
-| Logistical Transport | Potato Private, Tier 4 | 5,000, 8 basic control circuits | Logistical transporters (all tiers), restrictive and diversion transporters, logistical sorter, QIO importer and exporter |
-| Thermal Servos | Potato Soldier, Tier 5 | 10,000, 8 tin gears | Servo, turbo servo and filter attachments (placing only) |
-| Item Conduits | Potato Soldier, Tier 5 | 10,000, 16 conduit binder | Ender IO item conduits (placing only); the Vacuum Chest and XP Vacuum |
-| ME Logistics | Potato Sergeant, Tier 6 | 20,000, 16 logic processors | Import, export and storage buses; interfaces; annihilation and formation planes; toggle buses; P2P tunnels; Advanced AE's import/export and stock export buses; ME conduits (placing). **Basic ME storage and terminals need no node** |
-| Automated Mining | Potato Lieutenant, Tier 7 | 35,000, 32 osmium | Digital Miner, Mechanical Miner, Ender Quarry (Tier 11 to make), Alex's Caves Quarry (Tier 9 to make) |
+| Logistical Transport | Potato Private, Tier 4 | 25,000, 8 basic control circuits | Logistical transporters (all tiers), restrictive and diversion transporters, logistical sorter, QIO importer and exporter |
+| Thermal Servos | Potato Soldier, Tier 5 | 50,000, 8 tin gears | Servo, turbo servo and filter attachments (placing only) |
+| Item Conduits | Potato Soldier, Tier 5 | 50,000, 16 conduit binder | Ender IO item conduits (placing only); the Vacuum Chest and XP Vacuum |
+| ME Logistics | Potato Sergeant, Tier 6 | 100,000, 16 logic processors | Import, export and storage buses; interfaces; annihilation and formation planes; toggle buses; P2P tunnels; Advanced AE's import/export and stock export buses; ME conduits (placing). **Basic ME storage and terminals need no node** |
+| Automated Mining | Potato Lieutenant, Tier 7 | 175,000, 32 osmium | Digital Miner, Mechanical Miner, Ender Quarry (Tier 11 to make), Alex's Caves Quarry (Tier 9 to make) |
 
 **Autocrafting:**
 
 | Node | Needs | Cost | Place and use |
 |---|---|---|---|
-| Mechanical Crafting | Potato Private, Tier 4, Create Automation | 5,000, 8 precision mechanisms | Mechanical Crafter |
-| Formulaic Assembly | Potato Private, Tier 4 | 5,000, 4 basic control circuits | Formulaic Assemblicator |
-| Ender IO Crafting | Potato Soldier, Tier 5 | 10,000, 2 void chassis | Ender IO Crafter |
-| Thermal Fabrication | Potato Soldier, Tier 5 | 10,000, 4 machine frames | Sequential Fabricator |
-| Immersive Assembly | Potato Private, Tier 4 | 5,000, 8 steel mechanical components | Using IE's Assembler multiblock (it's formed with the hammer, so only using it is locked) |
-| ME Autocrafting | Potato Sergeant, Tier 6, ME Logistics | 20,000, 16 engineering processors | Pattern providers (AE2 and Advanced AE), the pattern encoding terminal, crafting units, accelerators, crafting storage, monitors and Molecular Assemblers; the wireless crafting and pattern terminals (AE2, AE2WTLib, Advanced AE) |
-| RFTools Crafting | Potato Lieutenant, Tier 7, Ender IO Crafting | 35,000, 4 RFTools machine frames | RFTools Crafters 1–3 |
-| Quantum Crafting | Potato Emperor, Tier 11, ME Autocrafting | 100,000, 16 calculation processors | Advanced AE's Quantum Crafter (and its terminal). Tier 11 because its parts are Tier 11 items |
+| Mechanical Crafting | Potato Private, Tier 4, Create Automation | 25,000, 8 precision mechanisms | Mechanical Crafter |
+| Formulaic Assembly | Potato Private, Tier 4 | 25,000, 4 basic control circuits | Formulaic Assemblicator |
+| Ender IO Crafting | Potato Soldier, Tier 5 | 50,000, 2 void chassis | Ender IO Crafter |
+| Thermal Fabrication | Potato Soldier, Tier 5 | 50,000, 4 machine frames | Sequential Fabricator |
+| Immersive Assembly | Potato Private, Tier 4 | 25,000, 8 steel mechanical components | Using IE's Assembler multiblock (it's formed with the hammer, so only using it is locked) |
+| ME Autocrafting | Potato Sergeant, Tier 6, ME Logistics | 100,000, 16 engineering processors | Pattern providers (AE2 and Advanced AE), the pattern encoding terminal, crafting units, accelerators, crafting storage, monitors and Molecular Assemblers; the wireless crafting and pattern terminals (AE2, AE2WTLib, Advanced AE) |
+| RFTools Crafting | Potato Lieutenant, Tier 7, Ender IO Crafting | 175,000, 4 RFTools machine frames | RFTools Crafters 1–3 |
+| Quantum Crafting | Potato Emperor, Tier 11, ME Autocrafting | 500,000, 16 calculation processors | Advanced AE's Quantum Crafter (and its terminal). Tier 11 because its parts are Tier 11 items |
 
 **Farms:**
 
@@ -110,8 +112,8 @@ Metals in no node (wood, stone, iron, copper, bronze and the rest) are free.
 | Create Farming | Potato Farmer, Tier 1 | 500, 8 andesite casings | Mechanical Harvester, Plough |
 | Growth Acceleration | Potato Peeler, Tier 1 | 1,000, 16 inferium essence | The five growth accelerators, the MA Harvester |
 | Garden Cloche | Potato Recruit, Tier 3 | 2,500, 8 treated planks | Garden Cloche |
-| Phytogenic Insolation | Potato Soldier, Tier 5, Garden Cloche | 10,000, 4 phyto-gro | Phytogenic Insolator |
-| Mob Spawning | Potato Soldier, Tier 5 | 10,000, 8 soulium ingots | Ender IO's Powered Spawner, Mystical Agriculture's Soulium Spawner, the RFTools Spawner, Draconic's Stabilized Spawner (each also needs its own tier to be made) |
+| Phytogenic Insolation | Potato Soldier, Tier 5, Garden Cloche | 50,000, 4 phyto-gro | Phytogenic Insolator |
+| Mob Spawning | Potato Soldier, Tier 5 | 50,000, 8 soulium ingots | Ender IO's Powered Spawner, Mystical Agriculture's Soulium Spawner, the RFTools Spawner, Draconic's Stabilized Spawner (each also needs its own tier to be made) |
 
 Every block and item id was checked against the mods' jars, including the AE2WTLib ids, which were checked in its source.
 

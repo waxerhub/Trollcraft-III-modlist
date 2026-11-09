@@ -182,11 +182,11 @@
 				}
 				{
 					consume_items: true
-					count: 10000L
+					count: 50000L
 					id: "507A700000020222"
 					item: "minecraft:potato"
 					tags: ["potato_offer"]
-					title: "10,000 potatoes for the war chest"
+					title: "50,000 potatoes for the war chest"
 					type: "item"
 				}
 				{
@@ -230,11 +230,11 @@
 				}
 				{
 					consume_items: true
-					count: 10000L
+					count: 50000L
 					id: "507A700000020232"
 					item: "minecraft:potato"
 					tags: ["potato_offer"]
-					title: "10,000 potatoes for the war chest"
+					title: "50,000 potatoes for the war chest"
 					type: "item"
 				}
 				{

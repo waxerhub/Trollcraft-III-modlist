@@ -129,11 +129,11 @@
 				}
 				{
 					consume_items: true
-					count: 5000L
+					count: 25000L
 					id: "507A700000020032"
 					item: "minecraft:potato"
 					tags: ["potato_offer"]
-					title: "5,000 potatoes for the war chest"
+					title: "25,000 potatoes for the war chest"
 					type: "item"
 				}
 				{
@@ -185,11 +185,11 @@
 				}
 				{
 					consume_items: true
-					count: 5000L
+					count: 25000L
 					id: "507A700000020042"
 					item: "minecraft:potato"
 					tags: ["potato_offer"]
-					title: "5,000 potatoes for the war chest"
+					title: "25,000 potatoes for the war chest"
 					type: "item"
 				}
 				{
@@ -234,11 +234,11 @@
 				}
 				{
 					consume_items: true
-					count: 10000L
+					count: 50000L
 					id: "507A700000020052"
 					item: "minecraft:potato"
 					tags: ["potato_offer"]
-					title: "10,000 potatoes for the war chest"
+					title: "50,000 potatoes for the war chest"
 					type: "item"
 				}
 				{
@@ -290,11 +290,11 @@
 				}
 				{
 					consume_items: true
-					count: 20000L
+					count: 100000L
 					id: "507A700000020062"
 					item: "minecraft:potato"
 					tags: ["potato_offer"]
-					title: "20,000 potatoes for the war chest"
+					title: "100,000 potatoes for the war chest"
 					type: "item"
 				}
 				{
@@ -346,11 +346,11 @@
 				}
 				{
 					consume_items: true
-					count: 60000L
+					count: 300000L
 					id: "507A700000020072"
 					item: "minecraft:potato"
 					tags: ["potato_offer"]
-					title: "60,000 potatoes for the war chest"
+					title: "300,000 potatoes for the war chest"
 					type: "item"
 				}
 				{
@@ -402,11 +402,11 @@
 				}
 				{
 					consume_items: true
-					count: 100000L
+					count: 500000L
 					id: "507A700000020082"
 					item: "minecraft:potato"
 					tags: ["potato_offer"]
-					title: "100,000 potatoes for the war chest"
+					title: "500,000 potatoes for the war chest"
 					type: "item"
 				}
 				{

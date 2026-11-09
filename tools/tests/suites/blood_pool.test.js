@@ -594,8 +594,8 @@ cmd('potatowar', ana); ok('/potatowar shows your rank', /310 potatoes offered: P
 ok('API: global.BloodPool.standing', glob.BloodPool.standing(ana).tier == 1 && glob.BloodPool.standing(ana).rank == 'Potato Farmer' && glob.BloodPool.standing(bo).tier == 0 && glob.BloodPool.rankName(5) == 'Potato Soldier')
 
 // op commands
-cmd('potatowar set Ana 10000', admin)
-ok('op set 10,000: Potato Soldier, stages 1-5', glob.BloodPool.standing(ana).tier == 5 && [1, 2, 3, 4, 5].every(i => ana.stages.has('potato_standing_' + i)) && !ana.stages.has('potato_standing_6'))
+cmd('potatowar set Ana 50000', admin)
+ok('op set 50,000: Potato Soldier, stages 1-5', glob.BloodPool.standing(ana).tier == 5 && [1, 2, 3, 4, 5].every(i => ana.stages.has('potato_standing_' + i)) && !ana.stages.has('potato_standing_6'))
 cmd('potatowar set Ana 1000', admin)
 ok('op set 1,000: back to Potato Peeler, stages 4-5 taken away (1-3 stay through catch-up)', glob.BloodPool.standing(ana).tier == 2 && ana.stages.has('potato_standing_3') && !ana.stages.has('potato_standing_4') && !ana.stages.has('potato_standing_5'))
 cmd('potatowar add Ana 1500', admin); ok('op add', PDB().standing['ana-1111'].potatoes == 2500 && glob.BloodPool.standing(ana).tier == 3)
@@ -606,7 +606,28 @@ cmd('potatowar set Nobody 5', admin); ok('an unknown player is refused', /Nobody
 replies.length = 0; cmd('potatowar top', bo)
 ok('/potatowar top', replies.length == 2 && /1\. Ana: Potato Recruit \(2,500\)/.test(flat(replies[1])), replies.map(flat).join(' | '))
 replies.length = 0; cmd('potatowar ranks', bo)
-ok('/potatowar ranks: 11 ranks with what they craft', replies.length == 11 && /5\. Potato Soldier: 10,000 potatoes · crafts Tier 5 \(A Spring\)/.test(flat(replies[4])) && /11\. Potato Emperor: 220,000/.test(flat(replies[10])), replies.map(flat).join(' | '))
+ok('/potatowar ranks: 11 ranks with what they craft', replies.length == 11 && /5\. Potato Soldier: 50,000 potatoes · crafts Tier 5 \(A Spring\)/.test(flat(replies[4])) && /11\. Potato Emperor: 1,100,000/.test(flat(replies[10])), replies.map(flat).join(' | '))
+// Ranks 4+ now cost 5x: ranks earned before the change are kept.
+{
+  const D0 = PDB()
+  D0.standing['legacy-1'] = { name: 'OldTimer', potatoes: 6000 }          // a Potato Private under the old numbers, no peak
+  D0.standing['legacy-2'] = { name: 'OldSoldier', potatoes: 12000 }       // a Potato Soldier under the old numbers
+  W.persistent.blood_pool = JSON.stringify(D0)
+  reload()
+  ok('a rank earned under the old numbers is kept (6,000 potatoes: still Potato Private)', glob.BloodPool.standing({ getStringUuid: () => 'legacy-1', getGameProfile: () => ({ getName: () => 'OldTimer' }) }).tier == 4)
+  ok('... and 12,000 is still Potato Soldier', glob.BloodPool.standing({ getStringUuid: () => 'legacy-2', getGameProfile: () => ({ getName: () => 'OldSoldier' }) }).tier == 5)
+  const fresh = { getStringUuid: () => 'fresh-1', getGameProfile: () => ({ getName: () => 'Fresh' }), server }
+  glob.BloodPool.creditStanding(fresh, 6000)
+  ok('a new player with 6,000 potatoes is Potato Recruit (Private now needs 25,000)', glob.BloodPool.standing(fresh).tier == 3)
+  const oldTimer = { getStringUuid: () => 'legacy-1', getGameProfile: () => ({ getName: () => 'OldTimer' }), server }
+  glob.BloodPool.creditStanding(oldTimer, 1000)
+  ok('offering more never lowers a kept rank, and it is saved', glob.BloodPool.standing(oldTimer).tier == 4 && PDB().standing['legacy-1'].peak == 4 && PDB().standing['legacy-1'].potatoes == 7000)
+  ok('... the next rank uses the new numbers (Soldier at 50,000)', glob.BloodPool.standing(oldTimer).next == 50000)
+  cmd('potatowar add OldTimer 100', admin)
+  ok('/potatowar add keeps the rank', glob.BloodPool.standing(oldTimer).tier == 4 && PDB().standing['legacy-1'].potatoes == 7100)
+  cmd('potatowar set OldTimer 7100', admin)
+  ok('/potatowar set (op) can lower it to what the potatoes now buy', glob.BloodPool.standing(oldTimer).tier == 3 && PDB().standing['legacy-1'].peak == 3)
+}
 replies.length = 0; cmd('bloodpool tiers', bo)
 ok('/bloodpool tiers names the rank each tier\'s crafting needs', /Tier 5 .*crafting needs Potato Soldier/.test(flat(replies[4])) && !/crafting needs/.test(flat(replies[11])), flat(replies[4]) + ' | ' + flat(replies[11]))
 setReal(ana, ana.selected, stack('thermal:machine_frame', 1))
@@ -673,7 +694,7 @@ bo.inbox.length = 0
 ok('Potato Farmer: can\'t place an AE2 Molecular Assembler (rank 6), told why', !place(bo, 'ae2:molecular_assembler') &&
   /Only a Potato Sergeant or higher knows how to set up a Molecular Assembler\. You are Potato Farmer/.test(text(bo)), text(bo))
 ok('... nor a Mechanical Crafter (rank 4); ordinary blocks are fine', !place(bo, 'create:mechanical_crafter') && place(bo, 'minecraft:stone') && place(bo, 'ae2:controller'))
-cmd('potatowar set Bo 20000', admin)
+cmd('potatowar set Bo 100000', admin)
 ok('Potato Sergeant: Molecular Assembler, Mechanical Crafter, Assemblicator, Ender IO Crafter yes; RFTools Crafter (7) and Quantum Crafter (8) no',
   place(bo, 'ae2:molecular_assembler') && place(bo, 'create:mechanical_crafter') && place(bo, 'mekanism:formulaic_assemblicator') && place(bo, 'enderio:crafter') &&
   !place(bo, 'rftoolsutility:crafter3') && !place(bo, 'advanced_ae:quantum_crafter'))
@@ -685,7 +706,7 @@ setReal(bo, bo.selected, stack('ae2:molecular_assembler', 1))
 cmd('bloodpool check', bo); ok('/bloodpool check says the rank needed to place it', /Placing it needs Potato Sergeant/.test(flat(lastReply())), flat(lastReply()))
 // ----- /potatowar next (without the tree) -----
 replies.length = 0; cmd('potatowar next', ana)
-ok('/potatowar next: rank and crafting access', replies.some(r => /Crafting access: Tier 3 of 5 open\. Potato Soldier crafts it all: 7,500 potatoes to go/.test(flat(r))), replies.map(flat).join(' | '))
+ok('/potatowar next: rank and crafting access', replies.some(r => /Crafting access: Tier 3 of 5 open\. Potato Soldier crafts it all: 47,500 potatoes to go/.test(flat(r))), replies.map(flat).join(' | '))
 // ----- /bloodpool audit -----
 cmd('bloodpool audit', bo); ok('/bloodpool audit is op-only', lastReply() == 'DENIED')
 cmd('bloodpool audit', admin)

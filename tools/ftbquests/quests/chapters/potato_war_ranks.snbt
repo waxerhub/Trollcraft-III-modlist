@@ -69,7 +69,7 @@
 			description: ["Offer potatoes with &6/potatowar offer&r, or hand them in for nodes in this book.", "Rank 4 lets you craft Tier 4 (A Font)'s items at a crafting table, once the Blood Pool opens it.", "&7Catch-up: when the Blood Pool is 2 tiers past Tier 4, you can craft it whatever your rank (this quest then ticks too)."]
 			icon: "minecraft:potato"
 			id: "507A700000010068"
-			subtitle: "Rank 4 · 5,000 potatoes"
+			subtitle: "Rank 4 · 25,000 potatoes"
 			tags: ["potato_rank"]
 			tasks: [
 				{
@@ -88,7 +88,7 @@
 			description: ["Offer potatoes with &6/potatowar offer&r, or hand them in for nodes in this book.", "Rank 5 lets you craft Tier 5 (A Spring)'s items at a crafting table, once the Blood Pool opens it.", "&7Catch-up: when the Blood Pool is 2 tiers past Tier 5, you can craft it whatever your rank (this quest then ticks too)."]
 			icon: "minecraft:potato"
 			id: "507A700000010069"
-			subtitle: "Rank 5 · 10,000 potatoes"
+			subtitle: "Rank 5 · 50,000 potatoes"
 			tags: ["potato_rank"]
 			tasks: [
 				{
@@ -107,7 +107,7 @@
 			description: ["Offer potatoes with &6/potatowar offer&r, or hand them in for nodes in this book.", "Rank 6 lets you craft Tier 6 (A Stream)'s items at a crafting table, once the Blood Pool opens it.", "&7Catch-up: when the Blood Pool is 2 tiers past Tier 6, you can craft it whatever your rank (this quest then ticks too)."]
 			icon: "minecraft:potato"
 			id: "507A70000001006A"
-			subtitle: "Rank 6 · 20,000 potatoes"
+			subtitle: "Rank 6 · 100,000 potatoes"
 			tags: ["potato_rank"]
 			tasks: [
 				{
@@ -126,7 +126,7 @@
 			description: ["Offer potatoes with &6/potatowar offer&r, or hand them in for nodes in this book.", "Rank 7 lets you craft Tier 7 (A River)'s items at a crafting table, once the Blood Pool opens it.", "&7Catch-up: when the Blood Pool is 2 tiers past Tier 7, you can craft it whatever your rank (this quest then ticks too)."]
 			icon: "minecraft:potato"
 			id: "507A70000001006B"
-			subtitle: "Rank 7 · 35,000 potatoes"
+			subtitle: "Rank 7 · 175,000 potatoes"
 			tags: ["potato_rank"]
 			tasks: [
 				{
@@ -145,7 +145,7 @@
 			description: ["Offer potatoes with &6/potatowar offer&r, or hand them in for nodes in this book.", "Rank 8 lets you craft Tier 8 (A Flood)'s items at a crafting table, once the Blood Pool opens it.", "&7Catch-up: when the Blood Pool is 2 tiers past Tier 8, you can craft it whatever your rank (this quest then ticks too)."]
 			icon: "minecraft:potato"
 			id: "507A70000001006C"
-			subtitle: "Rank 8 · 60,000 potatoes"
+			subtitle: "Rank 8 · 300,000 potatoes"
 			tags: ["potato_rank"]
 			tasks: [
 				{
@@ -164,7 +164,7 @@
 			description: ["Offer potatoes with &6/potatowar offer&r, or hand them in for nodes in this book.", "Rank 9 lets you craft Tier 9 (A Tide)'s items at a crafting table, once the Blood Pool opens it.", "&7Catch-up: when the Blood Pool is 2 tiers past Tier 9, you can craft it whatever your rank (this quest then ticks too)."]
 			icon: "minecraft:potato"
 			id: "507A70000001006D"
-			subtitle: "Rank 9 · 100,000 potatoes"
+			subtitle: "Rank 9 · 500,000 potatoes"
 			tags: ["potato_rank"]
 			tasks: [
 				{
@@ -183,7 +183,7 @@
 			description: ["Offer potatoes with &6/potatowar offer&r, or hand them in for nodes in this book.", "Rank 10 lets you craft Tier 10 (A Sea)'s items at a crafting table, once the Blood Pool opens it.", "&7Catch-up: when the Blood Pool is 2 tiers past Tier 10, you can craft it whatever your rank (this quest then ticks too)."]
 			icon: "minecraft:potato"
 			id: "507A70000001006E"
-			subtitle: "Rank 10 · 150,000 potatoes"
+			subtitle: "Rank 10 · 750,000 potatoes"
 			tags: ["potato_rank"]
 			tasks: [
 				{
@@ -202,7 +202,7 @@
 			description: ["Offer potatoes with &6/potatowar offer&r, or hand them in for nodes in this book.", "Rank 11 lets you craft Tier 11 (An Ocean)'s items at a crafting table, once the Blood Pool opens it.", "&7Catch-up: when the Blood Pool is 2 tiers past Tier 11, you can craft it whatever your rank (this quest then ticks too)."]
 			icon: "minecraft:golden_carrot"
 			id: "507A70000001006F"
-			subtitle: "Rank 11 · 220,000 potatoes"
+			subtitle: "Rank 11 · 1,100,000 potatoes"
 			tags: ["potato_rank"]
 			tasks: [
 				{

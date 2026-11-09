@@ -210,7 +210,7 @@ Everyone stands together under Techno's banner. There are no Loyalists. The Mini
 ### Techno's Potato War: each player's Potato Standing ✅ (`part2/blood_pool.js`, `economy/black_market.js`, see [BLOOD_POOL.md](tools/kubejs/BLOOD_POOL.md#the-potato-war-each-players-potato-standing))
 Technoblade's Potato War, revived. **The Pool decides what the server can make; your rank decides what you can make** (owner decisions).
 - **Raising your rank:** `/potatowar offer` gives potatoes to Techno's war chest. Your **Potato Standing** is the lifetime total, with no cap. Offered potatoes only count toward rank and never fill the Pool, and tithed potatoes never count toward rank.
-- **Ranks:** 11, from **Potato Farmer** (250) through **Potato Soldier** (10,000) and **Potato General** (100,000) to **Potato Emperor** (220,000). Each rank-up gets a title and a server-wide line ("Ana has risen to Potato Soldier in Techno's Potato War").
+- **Ranks:** 11, from **Potato Farmer** (250) through **Potato Soldier** (50,000) and **Potato General** (500,000) to **Potato Emperor** (1,100,000). From rank 4 the potatoes are 5× the launch numbers (owner decision, November 2026); ranks already earned are kept. Each rank-up gets a title and a server-wide line ("Ana has risen to Potato Soldier in Techno's Potato War").
 - **What a rank unlocks:**
   - **Crafting:** rank n lets a player craft Tier n's items **at a crafting table**, once the Pool has opened that tier. Machines stay server-wide (they can't tell who's using them).
   - **Autocrafters** craft for everyone, but setting one up (and using one) takes its node in the upgrade tree.

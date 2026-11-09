@@ -148,16 +148,22 @@ Techno's Potato War runs alongside the Pool. **The Pool decides what the server 
   | 1 | Potato Farmer | 250 | Tier 1 (Create, Mystical Agriculture) |
   | 2 | Potato Peeler | 1,000 | Tier 2 |
   | 3 | Potato Recruit | 2,500 | Tier 3 (IE, so the Garden Cloche) |
-  | 4 | Potato Private | 5,000 | Tier 4 |
-  | 5 | Potato Soldier | 10,000 | Tier 5 (Thermal, so the Insolator) |
-  | 6 | Potato Sergeant | 20,000 | Tier 6 |
-  | 7 | Potato Lieutenant | 35,000 | Tier 7 |
-  | 8 | Potato Captain | 60,000 | Tier 8 |
-  | 9 | Potato General | 100,000 | Tier 9 |
-  | 10 | Potato Warlord | 150,000 | Tier 10 |
-  | 11 | Potato Emperor | 220,000 | Tier 11 (Tier 12 has no recipes) |
+  | 4 | Potato Private | 25,000 | Tier 4 |
+  | 5 | Potato Soldier | 50,000 | Tier 5 (Thermal, so the Insolator) |
+  | 6 | Potato Sergeant | 100,000 | Tier 6 |
+  | 7 | Potato Lieutenant | 175,000 | Tier 7 |
+  | 8 | Potato Captain | 300,000 | Tier 8 |
+  | 9 | Potato General | 500,000 | Tier 9 |
+  | 10 | Potato Warlord | 750,000 | Tier 10 |
+  | 11 | Potato Emperor | 1,100,000 | Tier 11 (Tier 12 has no recipes) |
 
   The early ranks are cheap so a hand-farm reaches the Garden Cloche, and the Cloche reaches the Insolator.
+
+  **From rank 4 the potatoes are 5× what they were** (owner decision, November 2026; previously 5,000 / 10,000 / 20,000 / 35,000 / 60,000 / 100,000 / 150,000 / 220,000).
+  - **Ranks already earned are kept.** Each player's record has a `peak` (the highest rank reached), and a rank never drops below it. Records from before the change use the rank their potatoes bought under the old numbers (`LEGACY_STANDING`).
+  - **The next rank uses the new numbers:** a Potato Private with 6,000 potatoes needs 50,000 for Soldier.
+  - **Only an op can lower a rank,** with `/potatowar set <player> <potatoes>`, which sets it to what that total buys. `/potatowar add`, offers and tree hand-ins never lower it.
+  - **Catch-up still gives crafting** for Tiers up to T−2 when the Pool opens Tier T.
 - **Ranking up:** a title and a sound for the player, and a public line: "Ana has risen to Potato Soldier in Techno's Potato War" (sent to Discord with `TO_DISCORD`; `RANKUP_PUBLIC = false` keeps it quiet).
 
 ### What a rank gates
@@ -281,7 +287,8 @@ floor        5x5 chiseled nether bricks
 | `POTATO_DROPS_CAP_PER_PLAYER` | 0 (off) | Set it (e.g. 4000) if one big farm keeps taking the whole day's quota |
 | `TITHE_ZONE`, `TITHE_RESET_HOUR` | `America/Chicago`, 4 | When the tithe quota reopens |
 | `POTATO_WORTH` | potato 1, the three crates 9 | What the tithe and `/potatowar offer` accept |
-| `STANDING` | 250 … 220,000 (11 ranks) | Lifetime potatoes for each rank; rank n crafts Tier n |
+| `STANDING` | 250, 1,000, 2,500, then 25,000 … 1,100,000 (11 ranks) | Lifetime potatoes for each rank; rank n crafts Tier n |
+| `LEGACY_STANDING` | the old numbers | Only used to keep ranks earned before the 5× change |
 | `RANKS` | Unenlisted, Potato Farmer … Potato Emperor | The rank names (the first is rank 0) |
 | `STANDING_CRAFTING` | true | Rank gates crafting-table recipes for players and placing autocrafters. false = it only gates the black market |
 | `AUTOCRAFTERS` | 8 blocks (see "Autocrafting works") | Autocrafters that need their tier's rank to place. `{ name }`, or `{ name, rank }` for a fixed rank |

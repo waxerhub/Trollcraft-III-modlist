@@ -611,12 +611,12 @@ replies.length = 0; cmd('potatowar next', cy)
 ok('/potatowar next: catch-up access, and the next nodes with what they need', replies.some(r => /Crafting access: Tier 4 \(catch-up\) of 6 open/.test(flat(r))) &&
   replies.some(r => /Next: The Foundry \(needs Potato Soldier\)/.test(flat(r))), replies.map(flat).join(' | '))
 ok('global.PotatoTree.status: owned, ready and soon', PT().status(cy).owned.indexOf('Seared Smeltery') >= 0 && PT().status(cy).ready.length == 0 && PT().status(cy).soon.some(x => x.name == 'Cobalt Smithing'))
-cmd('potatowar set Cy 20000', admin)
+cmd('potatowar set Cy 100000', admin)
 ok('at Potato Sergeant, nodes up to Tier 6 are ready to buy', ['The Foundry', 'Cobalt Smithing', 'Mob Spawning'].every(n => PT().status(cy).ready.indexOf(n) >= 0), PT().status(cy).ready.join(','))
 cy.inbox.length = 0; dee.inbox.length = 0
 const cT = W.cmds.length
 cmd('bloodpool unlock force', admin); advance(25)
-ok('opening a tier tells each player privately what it means for them', cy.inbox.map(x => flat(x)).some(l => /Tier 7 \(A River\) is open\. Crafting its items at a table needs Potato Lieutenant: 15,000 more potatoes .*catch-up at Tier 9\. Ready in the upgrade tree .*Alloy Smithing, ME Logistics/.test(l)) &&
+ok('opening a tier tells each player privately what it means for them', cy.inbox.map(x => flat(x)).some(l => /Tier 7 \(A River\) is open\. Crafting its items at a table needs Potato Lieutenant: 75,000 more potatoes .*catch-up at Tier 9\. Ready in the upgrade tree .*Alloy Smithing, ME Logistics/.test(l)) &&
   dee.inbox.map(x => flat(x)).some(l => /Tier 7 \(A River\) is open/.test(l)), cy.inbox.map(x => flat(x)).join(' || '))
 ok('... never through tellraw @a (Discord)', !W.cmds.slice(cT).some(x => /^tellraw @a .*Crafting its items/.test(x.c)))
 cmd('bloodpool settier 6', admin); advance(25)

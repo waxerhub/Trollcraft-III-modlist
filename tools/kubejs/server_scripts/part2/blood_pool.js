@@ -286,7 +286,10 @@ const POTATO_WORTH = {                  // what the tithe accepts, in potatoes. 
 // STANDING[n - 1]: lifetime potatoes for rank n. Rank n lets a player craft Tier n's items at a crafting table
 // (once the Pool has opened that tier). The early ranks are cheap so the IE Garden Cloche (Tier 3) and Thermal
 // Insolator (Tier 5) potato farms are within reach.
-const STANDING = [250, 1000, 2500, 5000, 10000, 20000, 35000, 60000, 100000, 150000, 220000]
+// From rank 4 (Tier 4) the potatoes are 5x what they were (owner decision, Nov 2026).
+const STANDING = [250, 1000, 2500, 25000, 50000, 100000, 175000, 300000, 500000, 750000, 1100000]
+// The numbers before that change. Only used to keep the ranks players had already earned (see standingOf).
+const LEGACY_STANDING = [250, 1000, 2500, 5000, 10000, 20000, 35000, 60000, 100000, 150000, 220000]
 // RANKS[n]: the name of rank n (RANKS[0] = no rank yet).
 const RANKS = ['Unenlisted', 'Potato Farmer', 'Potato Peeler', 'Potato Recruit', 'Potato Private', 'Potato Soldier',
   'Potato Sergeant', 'Potato Lieutenant', 'Potato Captain', 'Potato General', 'Potato Warlord', 'Potato Emperor']
@@ -857,16 +860,23 @@ function takePotatoes(p, n) {
 
 // ===================== THE POTATO WAR =====================
 
-function standingTierOf(potatoes) {
+function standingTierOf(potatoes, table) {
   let n = 0
-  STANDING.forEach((need, i) => { if (potatoes >= need) n = i + 1 })
+  ;(table || STANDING).forEach((need, i) => { if (potatoes >= need) n = i + 1 })
   return n
+}
+// The highest rank a player has reached and keeps (ranks are never lost to a change of thresholds). A record from
+// before `peak` existed keeps the rank its potatoes bought under the old numbers.
+function peakOf(r) {
+  if (!r) return 0
+  if (r.peak != null) return r.peak
+  return standingTierOf(r.potatoes || 0, LEGACY_STANDING)
 }
 function rankName(n) { return RANKS[n] || ('Potato rank ' + n) }
 // { potatoes, tier, rank, next (potatoes for the next rank, 0 = top), nextRank }
 function standingOf(uuid) {
   const r = db().standing[uuid]
-  const potatoes = r ? r.potatoes || 0 : 0, tier = standingTierOf(potatoes)
+  const potatoes = r ? r.potatoes || 0 : 0, tier = Math.max(standingTierOf(potatoes), peakOf(r))
   const top = tier >= STANDING.length
   return { potatoes: potatoes, tier: tier, rank: rankName(tier), next: top ? 0 : STANDING[tier], nextRank: top ? '' : rankName(tier + 1) }
 }
@@ -909,11 +919,14 @@ function rankUp(server, p, name, n) {
   console.info('[BloodPool] Potato War: ' + name + ' is now rank ' + n + ' (' + rankName(n) + ')')
 }
 // Sets a player's lifetime offered potatoes. Online players get their stages at once (offline ones at login).
-function setStanding(server, uuid, name, potatoes, announceIt) {
+// resetPeak: an op setting a player's total may lower their rank; offers, hand-ins and /potatowar add never do.
+function setStanding(server, uuid, name, potatoes, announceIt, resetPeak) {
   const D = db(), before = standingOf(uuid).tier
   if (!D.standing[uuid]) D.standing[uuid] = { name: name || '?', potatoes: 0 }
   if (name) D.standing[uuid].name = name
   D.standing[uuid].potatoes = Math.max(0, Math.round(potatoes))
+  const earned = standingTierOf(D.standing[uuid].potatoes)
+  D.standing[uuid].peak = resetPeak ? earned : Math.max(before, earned)
   save()
   const after = standingOf(uuid).tier
   const p = server ? playerByUuid(server, uuid) : null
@@ -1142,7 +1155,7 @@ ServerEvents.commandRegistry(event => {
     const t = standingTarget(ctx.source.server, str(ctx, 'player'))
     if (!t) return war(ctx, 'Nobody by that name is online or has offered potatoes.', true)
     const n = num(ctx, 'potatoes'), cur = standingOf(t.uuid).potatoes
-    setStanding(ctx.source.server, t.uuid, t.name, add ? cur + n : n, true)
+    setStanding(ctx.source.server, t.uuid, t.name, add ? cur + n : n, true, !add)
     console.info('[BloodPool] Potato War: ' + who(ctx) + (add ? ' added ' : ' set ') + n + ' potatoes for ' + t.name)
     return war(ctx, t.name + ': ' + standingText(standingOf(t.uuid)))
   }

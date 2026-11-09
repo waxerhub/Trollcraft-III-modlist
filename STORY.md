@@ -250,7 +250,7 @@ Technoblade's Potato War, revived. **The Pool decides what the server can make; 
 **The Castellan** (a player role; owner decision). A Part I **Enforcer** keeps the spawn castle.
 - **The story:** the castle was the Ministry's **Induction Castle**, where recruits were processed and Enforcers stationed. When Clean Slate fired, the Ministry evacuated "officials first" (its own SOP), and its Enforcer at the castle was left to burn with everyone else.
 - **Her loyalty is never confirmed.** The Ministry's files list her as "Enforcer, status: under review". She plays it however she likes.
-- **A light role:** the `[Castellan]` title (FTB Ranks, see [tools/serverconfig/ftbranks_castellan.md](tools/serverconfig/ftbranks_castellan.md)) and the castle as her seat. Only she and ops build there, and everyone can use doors and buttons (`protected_areas.js`, `allowUse`).
+- **A light role:** the `[Castellan]` title (FTB Ranks, see [tools/serverconfig/ftbranks_castellan.md](tools/serverconfig/ftbranks_castellan.md)) and spawn as her seat. She builds there **without being an op**: vanilla spawn protection is off, and `protected_areas.js` protects the same square around world spawn (`spawnRadius`) with her on its allowed list. Everyone can still use doors and buttons there (`allowUse`).
 - **Optional ceremonial jobs:** swearing in arrivals under Techno's banner, reading Purge declarations, and neutral ground for ransom handovers.
 - **A Part II Ministry broadcast line** for `ministry_broadcasts.js`: "The Ministry has not forgotten its Enforcer at the castle. Her file remains open. Her pension does not."
 

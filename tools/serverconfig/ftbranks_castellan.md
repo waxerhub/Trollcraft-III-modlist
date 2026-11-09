@@ -1,34 +1,50 @@
-# The Castellan's title (FTB Ranks)
+# The Castellan: her title, and building at spawn
 
-The Castellan (Part II's keeper of the spawn castle, see [STORY.md](../../STORY.md)) gets a `[Castellan]` title through FTB Ranks, which is already on the server.
+KitKat, the Castellan (Part II's keeper of the spawn castle, see [STORY.md](../../STORY.md)), gets:
+- a `[Castellan]` prefix, from an FTB Ranks rank;
+- the right to build at spawn, **without being an operator**.
 
-## 1. Add the rank to `ranks.snbt`
-The file is in the world's `serverconfig/ftbranks/` folder (`world/serverconfig/ftbranks/ranks.snbt`). Add this entry inside the outer `{ }`, next to the ranks already there:
+## Why spawn needs a script
+In 1.20.1, vanilla spawn protection (`spawn-protection` in `server.properties`) only lets **operators** build. It's checked before any mod or script sees the action, so nothing can make an exception for one player. FTB Ranks can't either: it only handles commands and name formats (checked in its 1.20.1 source).
 
+So vanilla spawn protection is switched off, and `kubejs/server_scripts/protected_areas.js` protects **the same square** instead, with KitKat on its allowed list:
+- **KitKat** can break and place blocks there.
+- **Everyone else** can still open doors, press buttons and use chests (`allowUse`), but can't break or place. Buckets, flint and steel and fire charges stay blocked.
+- **Ops** are never blocked.
+- **KitKat has no operator permissions.**
+
+## 1. The prefix (in game, as an op)
 ```
-castellan: {
-	name: "Castellan"
-	power: 50
-	ftbranks.name_format: "<&6[Castellan]&r {name}>"
-}
+/ftbranks create castellan 50
+/ftbranks node add castellan ftbranks.name_format "&6[Castellan]&r {name}"
+/ftbranks add KitKat castellan
 ```
-- **No `condition`:** the rank only applies to players it's given to.
-- **`power: 50`** beats the default member rank (power 1), so her title wins. Give it a lower power than any staff rank you want to show instead.
-- **Match the brackets to your existing ranks.** If your `member` rank's `name_format` has `<…>` around the name, keep them as above; if it doesn't, drop them.
-- **Check it against your own file before saving.** This follows FTB Ranks' documented format; the FTB Ranks jar wasn't on hand to confirm the exact layout. A typo is reported in the server log and the old ranks stay in force.
+- **The format has no `< >`:** vanilla chat adds them, so her chat line reads `<[Castellan] KitKat> hello`.
+- **The name is applied straight away.** FTB Ranks refreshes display names when a rank is added; if the tab list doesn't change, she can rejoin.
+- **Where it shows:** chat, and Simple Discord Link's name for her messages (both use the display name).
+- **To remove it:** `/ftbranks remove KitKat castellan`.
 
-## 2. Give it to her
-```
-/ftbranks reload
-/ftbranks add <her username> castellan
-```
-Take it away with `/ftbranks remove <her username> castellan`.
+## 2. Building at spawn
+1. Note the current `spawn-protection` value in `server.properties` (Bisect: Config Files → Server Properties). It's the radius: 16 by default.
+2. Set `spawn-protection=0`.
+3. In `kubejs/server_scripts/protected_areas.js`, remove the `//` in front of the **Spawn** entry:
+   ```js
+   { name: 'Spawn', dim: 'minecraft:overworld', spawnRadius: 16, allowed: ['KitKat'], allowUse: true },
+   ```
+   - Set `spawnRadius` to the old `spawn-protection` value.
+   - Check her **real Minecraft username** (not a nickname); add others to `allowed` if needed.
+   - The area is every block within `spawnRadius` of the world spawn, at any height: the same square vanilla protected. It's read live, so it follows `/setworldspawn`.
+4. Restart the server (for `server.properties`). After that, `/reload` is enough for changes to the script.
 
-## Where it shows
-- **In-game chat:** FTB Ranks' `name_format` changes how her name looks in chat messages.
-- **Tab list and Discord:** these use the player's display name, which FTB Ranks may not change. If the title doesn't show there, add it as an FTB Essentials nickname as well: `/nicknamefor <her username> &6[Castellan]&r <her name>`. `tab_nicknames.js` refreshes the tab list, and Simple Discord Link uses the display name.
+**Not covered** (same as vanilla spawn protection): explosions, fluids flowing in, pistons and mod machines. Disguised TNT already breaks nothing within 64 blocks of world spawn.
 
-## The castle
-Her building rights in the castle come from `kubejs/server_scripts/protected_areas.js`: uncomment the "The Castle" entry, fill in the castle's two corners and her username, then `/reload`. `allowUse: true` lets everyone open doors and press buttons there. Only she (and ops) can break or place.
-
-**Vanilla spawn protection:** if `spawn-protection` in `server.properties` covers the castle, she can't build there either, because only ops are exempt. Set it to `0` and let `protected_areas.js` do the job.
+## Troubleshooting
+| Check | How |
+|---|---|
+| Does the rank exist? | `/ftbranks list_all_ranks` |
+| Does she have it? | `/ftbranks list_ranks_of KitKat` |
+| Is the format set? | `/ftbranks node list castellan` |
+| Did FTB Ranks load its file? | The server log says "Loaded N ranks" at startup or after `/ftbranks reload`, or "ranks.snbt failed to load" if it's broken |
+| Is she an op? | If so, FTB Ranks' default **admin** rank (power 1000) gives her its own green name instead. She shouldn't be an op; if she must be, use `/ftbranks create castellan 1100` |
+| Can others still build at spawn? | Is `spawn-protection=0` set and the Spawn entry uncommented? Look for "Loaded script server_scripts:protected_areas.js" in the log |
+| Can she not build? | Is her username exact in `allowed`? Is vanilla `spawn-protection` still above 0 (it blocks her before the script runs)? |

@@ -12,11 +12,17 @@ src = src.replace(/\/\/ \{ name: 'The Castle'[\s\S]*?allowUse: true \},/, m =>
   m.replace(/^\s*\/\/ ?/gm, '').replace("x1: 0, y1: 60, z1: 0, x2: 0, y2: 120, z2: 0", "x1: -20, y1: 60, z1: -20, x2: 20, y2: 120, z2: 20")
     .replace("'CastellanUsername'", "'Castellan'"))
 ok('the castle example can be switched on by removing the //', /\{ name: 'The Castle'/.test(src) && !/\/\/ \{ name: 'The Castle'/.test(src))
+// And the Spawn example (radius 16 around the world spawn, kept by KitKat).
+src = src.replace("  // { name: 'Spawn', dim: 'minecraft:overworld', spawnRadius: 16, allowed: ['KitKat'], allowUse: true },",
+  "  { name: 'Spawn', dim: 'minecraft:overworld', spawnRadius: 16, allowed: ['KitKat'], allowUse: true },")
+ok('the Spawn example can be switched on too', /\n  \{ name: 'Spawn', dim: 'minecraft:overworld', spawnRadius: 16/.test(src))
 
 const handlers = {}
 const BlockEvents = { broken: h => { handlers.broken = h }, placed: h => { handlers.placed = h }, rightClicked: h => { handlers.rightClicked = h } }
 const Text = { red: s => ({ text: s }) }
-new Function('BlockEvents', 'Text', src)(BlockEvents, Text)
+let spawn = { x: 1000, z: -500 }
+const Utils = { server: { overworld: () => ({ getSharedSpawnPos: () => ({ getX: () => spawn.x, getZ: () => spawn.z }) }) } }
+new Function('BlockEvents', 'Text', 'Utils', src)(BlockEvents, Text, Utils)
 
 class Cancel extends Error {}
 function player(name, op) {
@@ -48,5 +54,16 @@ ana.hand = ''
 ok('outside the castle: anything goes', !act('broken', ana, 50, 70, 50) && !act('rightClicked', ana, 50, 70, 50, 'minecraft:lava_bucket'))
 ok('the old Power room (no allowUse) still blocks right-clicks', act('rightClicked', ana, 100, 60, 200, ''))
 ok('... and its allowed player can use it', !act('rightClicked', player('YourUsername'), 100, 60, 200, ''))
+
+// Spawn, by radius
+const kit = player('KitKat')
+ok('Spawn: a visitor can\'t break within 16 of the world spawn', act('broken', ana, 1010, 70, -490))
+ok('... at any height (the vanilla square)', act('placed', ana, 984, -50, -516) && act('placed', ana, 1016, 300, -484))
+ok('... but can 17 blocks out', !act('broken', ana, 1017, 70, -500) && !act('broken', ana, 1000, 70, -517))
+ok('... and can open doors there', !act('rightClicked', ana, 1000, 70, -500, ''))
+ok('... but not pour lava', act('rightClicked', ana, 1000, 70, -500, 'minecraft:lava_bucket'))
+ok('KitKat builds at spawn without being an op', !act('broken', kit, 1000, 70, -500) && !act('placed', kit, 1005, 70, -505))
+spawn = { x: 0, z: 0 }
+ok('it follows /setworldspawn (the spawn is read live)', act('broken', ana, 5, 70, 5) && !act('broken', ana, 1000, 70, -500))
 
 console.log(fails ? fails + ' FAILED' : 'ALL PASSED')

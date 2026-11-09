@@ -567,9 +567,9 @@ function isMekUpgrade(j, outId, dataItems) {
   if (/factory/.test(outId)) return true
   return jsonItems(j.key || {}, []).some(i => /^mekanism/.test(i) && (family(i) == family(outId) || dataItems[i]))
 }
-let CONVERTED = { done: 0, upgrades: 0, skipped: 0, sealed: 0, failed: 0 }
+let CONVERTED = { done: 0, upgrades: 0, skipped: 0, sealed: 0, failed: 0, missing: 0 }
 function convertRecipes(event, open) {
-  CONVERTED = { done: 0, upgrades: 0, skipped: 0, sealed: 0, failed: 0 }
+  CONVERTED = { done: 0, upgrades: 0, skipped: 0, sealed: 0, failed: 0, missing: 0 }
   if (!CONVERT_RECIPE_TYPES.length) return
   const found = [], dataItems = {}
   try {
@@ -595,6 +595,9 @@ function convertRecipes(event, open) {
       if (!ok) { CONVERTED.skipped++; return }
       let count = Number(res.count) || 1
       let result = res.nbt ? Item.of(outId, count, typeof res.nbt == 'string' ? res.nbt : JSON.stringify(res.nbt)) : Item.of(outId, count)
+      // A result item that isn't in the pack (e.g. Mystical Agriculture's chisel essences): leave the recipe as it is.
+      // event.shaped() would log an error before any catch could see it.
+      if (!result || result.isEmpty()) { CONVERTED.missing++; return }
       let nr = event.shaped(result, f.j.pattern, key).noMirror().id(f.id)
       event.remove({ id: f.id })
       CONVERTED.done++
@@ -604,6 +607,7 @@ function convertRecipes(event, open) {
   console.info('[BloodPool] Mod crafting recipes: ' + CONVERTED.done + ' rebuilt with the rank check; ' + CONVERTED.upgrades +
     ' Mekanism upgrades left as they are; ' + CONVERTED.skipped + ' skipped (unusual ingredients or an empty tag)' +
     (CONVERTED.sealed ? '; ' + CONVERTED.sealed + ' sealed (their tier is not open)' : '') +
+    (CONVERTED.missing ? '; ' + CONVERTED.missing + ' skipped (their result item isn\'t in the pack)' : '') +
     (CONVERTED.failed ? '; ' + CONVERTED.failed + ' failed (left as they are)' : ''))
 }
 

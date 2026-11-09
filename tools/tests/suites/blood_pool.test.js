@@ -515,6 +515,8 @@ W.mockRecipes = [
   recipe('mysticalagriculture:essence/twilightforest/steeleaf_ingot', 'cucumber:shaped_no_mirror', null, shapedJson({ item: 'twilightforest:steeleaf_ingot', count: 4 })),
   recipe('mysticalagriculture:essence/common/titanium_ingot', 'cucumber:shaped_tag', null, shapedJson({ tag: 'forge:ingots/titanium', count: 2 })),
   recipe('mysticalagriculture:essence/common/nothing_ingot', 'cucumber:shaped_tag', null, shapedJson({ tag: 'forge:ingots/nothing', count: 2 })),
+  // a result from a mod that isn't in the pack (KubeJS turns an unknown item into air)
+  recipe('mysticalagriculture:essence/chisel/marble', 'cucumber:shaped_no_mirror', null, shapedJson({ item: 'minecraft:air', count: 8 })),
   recipe('mekanism:purification_chamber', 'mekanism:mek_data', null, shapedJson({ item: 'mekanism:purification_chamber' }, { E: { item: 'mekanism:enrichment_chamber' }, C: { tag: 'forge:circuits/advanced' } })),
   recipe('mekanism:energy_cube/advanced', 'mekanism:mek_data', null, shapedJson({ item: 'mekanism:advanced_energy_cube' }, { E: { item: 'mekanism:basic_energy_cube' } })),
   recipe('mekanism:factory/basic/smelting', 'mekanism:mek_data', null, shapedJson({ item: 'mekanism:basic_smelting_factory' }, { E: { item: 'mekanism:energized_smelter' } })),
@@ -558,6 +560,8 @@ ok('Mekanism upgrades are left as they are: tier upgrades, factories, and anythi
 ok('... while the plain jetpack (from components) is rebuilt (Mekanism, rank 4)', !!added('mekanism:jetpack') && gateTier(added('mekanism:jetpack')) == 'potato_standing_4')
 ok('an ingredient only the mod understands: left as it is', !added('mekanism:odd') && removedIds().indexOf('mekanism:odd') < 0)
 ok('a recipe whose tier is still sealed is removed, not rebuilt (QIO drive array, Tier 10)', !added('mekanism:qio_drive_array') && removedIds().indexOf('mekanism:qio_drive_array') >= 0)
+ok('a result item that isn\'t in the pack: left as it is, with no error', !added('mysticalagriculture:essence/chisel/marble') &&
+  removedIds().indexOf('mysticalagriculture:essence/chisel/marble') < 0 && W.logs.some(l => /1 skipped \(their result item isn't in the pack\)/.test(l)), W.logs.filter(l => /Mod crafting/.test(l)).join(' | '))
 ok('the log says what was rebuilt', W.logs.some(l => /Mod crafting recipes: 4 rebuilt with the rank check; 3 Mekanism upgrades left as they are; 2 skipped .*; 1 sealed/.test(l)), W.logs.filter(l => /Mod crafting/.test(l)).join(' | '))
 ok('no recipe is staged (stages would block autocrafters)', W.mockRecipes.every(r => !r.staged))
 ok('one shared check per tier, not one per recipe', W.mockRecipes.find(r => r.id == 'create:crafting/kinetics/cogwheel').gate === W.mockRecipes.find(r => r.id == 'mysticalagriculture:essence/minecraft/iron_ingot').gate)

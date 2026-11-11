@@ -37,7 +37,15 @@ const VAULT_DIR = 'kubejs/purge_vaults/'
 // The arena (set in game with /purge arena set [radius]): every fighter is taken there when they join the fight, and
 // back to where they were at the end. Lethal damage there is a knockout, not a death: healed, a fresh kit, and sent to
 // another random spot in the arena. Without an arena, fighters fight where they stand and die as usual.
-const ARENA_RADIUS = 40               // default landing radius around the arena point (0 = all on the point)
+// While a Purge runs, everyone in it glows (seen through walls) and their name over their head is hidden, through two
+// vanilla scoreboard teams. Players a mode marks (the Heist: the richest war chests) glow gold, everyone else white.
+// Each player's own team, if they had one, is noted and given back at the end. Creative and spectator are left alone.
+const GLOW_EVERYONE = true            // false: only the marked players glow
+const HIDE_NAMETAGS = true            // with both false, no teams are used (the marked still glow, in white)
+const TEAM_ALL = 'purge'              // white glow
+const TEAM_MARKED = 'purge_marked'    // gold glow
+const MARKED_COLOR = 'gold'
+const ARENA_RADIUS = 40              // default landing radius around the arena point (0 = all on the point)
 const ARENA_HEADROOM = 0              // land below arena y + this (for an arena under a roof); 0 = the surface.
                                       // In the Nether the roof is always avoided (arena y + 10).
 const DATA_KEY = 'purge'
@@ -77,7 +85,7 @@ let Serializer = null, StringArg = null, ItemStackClass = null
 try { Serializer = Java.loadClass('net.minecraft.network.chat.Component$Serializer') } catch (e) { }
 try { StringArg = Java.loadClass('com.mojang.brigadier.arguments.StringArgumentType') } catch (e) { }
 try { ItemStackClass = Java.loadClass('net.minecraft.world.item.ItemStack') } catch (e) { }
-const S = { lastHit: {}, slow: 0 }
+const S = { lastHit: {}, slow: 0, team: {} }      // team: name -> the Purge team they were last put on (memo)
 let data = null
 
 // D.cur: the running Purge or null. D.vaults: uuid -> a fighter's locked inventory (until it's handed back).
@@ -191,6 +199,74 @@ function goBack(server, p, V) {
   run(server, 'execute in ' + f.dim + ' run tp ' + nameOf(p) + ' ' + f.x + ' ' + f.y + ' ' + f.z + ' ' + f.yaw + ' ' + f.pitch)
   delete V.from
 }
+// ===================== THE GLOW AND THE HIDDEN NAMES =====================
+
+function useTeams() { return GLOW_EVERYONE || HIDE_NAMETAGS }
+// Who's in the event: a fighter (kit modes), or anyone playing (modes without kits). Never creative or spectator.
+function inEvent(p) {
+  const C = db().cur
+  if (!C || notPlaying(p)) return false
+  return C.kit ? !!C.fighters[uuidOf(p)] : true
+}
+function ensureTeams(server) {
+  if (!useTeams()) return
+  const tags = HIDE_NAMETAGS ? 'never' : 'always'
+  ;[[TEAM_ALL, 'white'], [TEAM_MARKED, MARKED_COLOR]].forEach(t => {
+    run(server, 'team add ' + t[0])                  // already there after a restart: that's fine
+    run(server, 'team modify ' + t[0] + ' color ' + t[1])
+    run(server, 'team modify ' + t[0] + ' nametagVisibility ' + tags)
+    run(server, 'team modify ' + t[0] + ' friendlyFire true')
+    run(server, 'team modify ' + t[0] + ' seeFriendlyInvisibles false')
+  })
+}
+function markedNames(server) {
+  const C = db().cur, M = C ? MODES[C.mode] : null
+  if (!M || !M.marked) return []
+  try { return M.marked(server) || [] } catch (e) { return [] }
+}
+// Puts a player on a Purge team, noting their own team the first time (given back at the end).
+function joinTeam(server, p, team) {
+  const C = db().cur, u = uuidOf(p), n = nameOf(p)
+  if (!C.teams) C.teams = {}
+  if (!C.teams[u]) {
+    let own = ''
+    try {
+      let t = p.getTeam()
+      if (t != null) own = String(t.getName())
+    } catch (e) { }
+    if (own == TEAM_ALL || own == TEAM_MARKED) own = ''
+    C.teams[u] = { name: n, team: own }
+    save()
+  }
+  if (S.team[n] == team) return
+  run(server, 'team join ' + team + ' ' + n)
+  S.team[n] = team
+}
+function glow(server, n) { run(server, 'effect give ' + n + ' minecraft:glowing ' + (SLOW_EVERY + 2) + ' 0 true') }
+// One player: their team (marked or not) and their glow. 'marked' is worked out if not given.
+function highlightOne(server, p, marked) {
+  if (!inEvent(p)) return
+  if (!marked) marked = markedNames(server)
+  const n = nameOf(p), isMarked = marked.indexOf(n) >= 0
+  if (useTeams()) joinTeam(server, p, isMarked ? TEAM_MARKED : TEAM_ALL)
+  if (GLOW_EVERYONE || isMarked) glow(server, n)
+}
+function highlight(server) {
+  if (!db().cur) return
+  const marked = markedNames(server)
+  players(server).forEach(p => highlightOne(server, p, marked))
+}
+// The end: everyone back on their own team (by name, so offline players too), then the Purge teams go.
+function restoreTeams(server, C) {
+  const T = C.teams || {}
+  Object.keys(T).forEach(u => { if (T[u].team) run(server, 'team join ' + T[u].team + ' ' + T[u].name) })
+  if (useTeams() || Object.keys(T).length) {
+    run(server, 'team remove ' + TEAM_ALL)
+    run(server, 'team remove ' + TEAM_MARKED)
+  }
+  S.team = {}
+}
+
 // Lethal damage to a fighter in the arena: healed, a fresh kit (a new life), and a new random spot in the arena.
 function knockout(server, p, u) {
   const C = db().cur, n = nameOf(p)
@@ -203,6 +279,7 @@ function knockout(server, p, u) {
   save()
   giveKit(server, p, C.kit, life)
   sendToArena(server, p)
+  highlightOne(server, p)                            // the effect clear took the glow
   run(server, 'effect give ' + n + ' minecraft:saturation 1 20 true')
   run(server, 'effect give ' + n + ' minecraft:resistance ' + RESPAWN_RESISTANCE_SECONDS + ' 4 true')
   tell(p, 'Knocked out. Back in the arena with a fresh kit.', 'red')
@@ -379,6 +456,7 @@ function enlist(server, p) {
   run(server, 'effect clear ' + nameOf(p))
   giveKit(server, p, C.kit, life)
   if (sendToArena(server, p)) tell(p, 'To the arena. You\'ll be brought back here when the Purge ends.', 'gold')
+  highlightOne(server, p)
   tell(p, 'Your belongings are held until the Purge ends (' + rec.slots.length + ' stacks). Your kit: ' + KITS[C.kit].name + '.', 'gold')
   console.info('[Purge] ' + nameOf(p) + ' is fighting: ' + rec.slots.length + ' stacks vaulted')
   return true
@@ -448,6 +526,7 @@ function restoreIfOwed(server, p) { if (owesVault(uuidOf(p))) restore(server, p,
 // ===================== THE MODES =====================
 // A mode: { name, blurb, rules: [lines], kits: [kit ids] (omit for no kits), score(entry), scoreLabel,
 //   onStart(server), onKill(server, ctx), onTick(server), bossbar(server) -> text, status(server, player) -> text,
+//   marked(server) -> [names] (they glow gold),
 //   onEnd(server, ranked) -> [lines] }. ctx = { killer, killerUuid, killerName, victim (null if offline), victimUuid,
 //   victimName, offline }.
 
@@ -459,14 +538,14 @@ const MODES = {
       'Every kill steals ' + Math.round(STEAL_SHARE * 100) + '% of the victim\'s Potato War total (up to ' + fmt(STEAL_MAX) + '). Ranks are never lost.',
       'Players below rank ' + MIN_VICTIM_RANK + ' can\'t be robbed. Rob the same player again and it\'s worth less.',
       'Kill someone who robbed you and you take back double.',
-      'The richest war chests glow.',
+      GLOW_EVERYONE ? 'The richest war chests glow gold.' : 'The richest war chests glow.',
     ],
     kits: ['soldier', 'peasant', 'archer', 'gladiator'],
     score: e => (e.gain || 0) - (e.loss || 0),
     scoreLabel: 'net potatoes',
     onStart: server => { db().cur.modeData = { pairs: {}, robbed: {} } },
     onKill: (server, ctx) => heistKill(server, ctx),
-    onTick: server => heistGlow(server),
+    marked: server => richestList(server).slice(0, GLOW_TOP).map(r => r.name),
     bossbar: server => {
       const r = richest(server)
       return r ? 'Richest war chest: ' + r.name + ' (' + fmt(r.potatoes) + ')' : ''
@@ -490,9 +569,6 @@ function richestList(server) {
     .filter(r => r.potatoes > 0).sort((a, b) => b.potatoes - a.potatoes)
 }
 function richest(server) { return richestList(server)[0] || null }
-function heistGlow(server) {
-  richestList(server).slice(0, GLOW_TOP).forEach(r => run(server, 'effect give ' + r.name + ' minecraft:glowing ' + (SLOW_EVERY + 2) + ' 0 true'))
-}
 function stealBase(potatoes) { return Math.min(STEAL_MAX, Math.max(STEAL_MIN, Math.round(potatoes * STEAL_SHARE))) }
 function heistKill(server, ctx) {
   const BP = pool()
@@ -583,6 +659,7 @@ function step(server) {
   if (S.slow % SLOW_EVERY) return
   const M = MODES[C.mode]
   if (M.onTick) { try { M.onTick(server) } catch (e) { console.error('[Purge] ' + C.mode + ' tick: ' + e) } }
+  highlight(server)
   updateBossbar(server)
 }
 function updateBossbar(server) {
@@ -634,8 +711,14 @@ function start(server, modeId, minutes, kitId) {
   if (kit) tellAll(server, 'Kit: ' + KITS[kit].name + ' (' + KITS[kit].blurb + '). Everyone fights with it; your own belongings are held and handed back at the end.', 'gray')
   if (kit && arena()) tellAll(server, 'Everyone is taken to the arena, and brought back to where they were when it ends. Nobody dies in there: a fatal blow knocks you out, and you\'re back in with a fresh kit.', 'gray')
   else if (sanctuaryAreas().length) tellAll(server, 'The sanctuary at the castle is neutral ground. Leave it and you fight.', 'gray')
+  if (GLOW_EVERYONE && HIDE_NAMETAGS) tellAll(server, 'Everyone in the fight glows, and no names show over heads.', 'gray')
+  else if (GLOW_EVERYONE) tellAll(server, 'Everyone in the fight glows.', 'gray')
+  else if (HIDE_NAMETAGS) tellAll(server, 'No names show over heads during the fight.', 'gray')
   tellAll(server, 'Your participation is appreciated.', 'dark_gray')
+  S.team = {}
+  ensureTeams(server)
   if (kit) step(server)                   // enlist everyone now (not in a second)
+  highlight(server)
   showBossbar(server)
   loop(server)
   console.info('[Purge] Started ' + modeId + ' for ' + minutes + ' minutes' + (kit ? ' (kit ' + kit + ')' : ''))
@@ -666,6 +749,7 @@ function finish(server, reason) {
     let e = C.ledger[u]
     if (e) tell(p, 'Your Purge: ' + e.kills + ' kill' + (e.kills == 1 ? '' : 's') + ', ' + e.deaths + ' death' + (e.deaths == 1 ? '' : 's') + ', ' + signed(scoreOf(e)) + ' ' + (M.scoreLabel || 'points') + '.', 'gold')
   })
+  restoreTeams(server, C)                            // names over heads come back; own teams given back
   tellAll(server, M.name + ' is over.' + (reason == 'stopped' ? ' (Ended early.)' : ''), 'red')
   lines.forEach(l => tellAll(server, l, 'gold'))
   if (top) tellAll(server, top.e.name + ' wins the Purge (' + signed(top.score) + ' ' + (M.scoreLabel || 'points') + ').', 'gold')
@@ -733,6 +817,7 @@ PlayerEvents.respawned(event => {
     save()
     giveKit(server, p, C.kit, life)
     sendToArena(server, p)
+    highlightOne(server, p)
     run(server, 'effect give ' + nameOf(p) + ' minecraft:resistance ' + RESPAWN_RESISTANCE_SECONDS + ' 4 true')
     return
   }
@@ -786,6 +871,7 @@ function resume(server) {
   const C = db().cur
   if (!C) return
   if (Date.now() >= C.endsAt) { finish(server, 'time'); return }
+  ensureTeams(server)
   showBossbar(server)
   loop(server)
   console.info('[Purge] Resumed ' + C.mode + ': ' + clock(C.endsAt - Date.now()) + ' left')

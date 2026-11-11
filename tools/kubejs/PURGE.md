@@ -23,6 +23,15 @@
   - or, for a fall, lava or mobs, the player who **last hit the victim within 10 seconds**;
   - **combat logging:** logging out within **15 seconds** of a player's hit counts as being killed by them. The theft works while they're offline, and they're told at their next login.
   - **Nothing counts** for killing yourself, an **AFK** victim, `/kill`, or a death **in the sanctuary**.
+- **Everyone glows, and names are hidden:** while a Purge runs, everyone in it glows (an outline seen through walls) and the name over their head is hidden. That's every fighter, or in a mode without kits, everyone playing.
+  - It's done with two vanilla scoreboard teams, both with `nametagVisibility never`: `purge` (white glow) and `purge_marked` (gold glow). A mode can mark players: the Heist marks the **three richest war chests**, who glow gold.
+  - The glow is refreshed every 5 seconds, and straight after a knockout or a respawn (both clear effects). A player is only moved between the teams when their mark changes.
+  - **Their own team comes back:** if a player was already on a vanilla team (`pig_escort.js` uses them), it's noted when they're taken in.
+    - At the end they're put back on it, by name, so offline players are covered too.
+    - Then both Purge teams are removed, and names show again.
+  - The team colour also colours names in chat and the tab list during the Purge: white, or gold for the marked. Colours from FTB Ranks name formats still show.
+  - Creative and spectator players are left alone.
+  - Settings: `GLOW_EVERYONE` and `HIDE_NAMETAGS`. With both off, no teams are used, and only the marked players glow (in white).
 - **The sanctuary:** the areas named in `SANCTUARY` (`Spawn` and `The Castle` from `protected_areas.js`).
   - Nobody can hurt anyone there during a Purge, and nothing counts there.
   - Players there when the Purge starts keep their own gear until they step out.
@@ -142,7 +151,10 @@ Every kill steals from the victim's **Potato War total**, their "war chest": the
 | `TITHE_SHARE` | 0.2 | The cut that vanishes |
 | `MIN_VICTIM_RANK` | 3 | Below this rank, nobody can rob you (except a grudge) |
 | `REPEAT_FACTORS`, `GRUDGE_FACTOR` | [1, 0.5, 0.25], 2 | Repeat robberies and revenge |
-| `GLOW_TOP` | 3 | How many of the richest war chests glow |
+| `GLOW_TOP` | 3 | How many of the richest war chests glow gold (the Heist's marked players) |
+| `GLOW_EVERYONE` | true | Everyone in the Purge glows (false: only the marked, the richest three) |
+| `HIDE_NAMETAGS` | true | Names over heads are hidden during the Purge |
+| `TEAM_ALL`, `TEAM_MARKED`, `MARKED_COLOR` | `purge`, `purge_marked`, gold | The two vanilla teams, and the marked players' glow colour |
 | `ARENA_RADIUS` | 40 | The landing radius when `/purge arena set` is given none |
 | `ARENA_HEADROOM` | 0 | Land below arena y + this (an arena under a roof); 0 = on the surface |
 
@@ -172,6 +184,7 @@ mymode: {
   onStart: server => { },                 // set up db().cur.modeData
   onKill: (server, ctx) => { },           // ctx: killer, killerUuid, killerName, victim (null if they ran), victimUuid, victimName, offline
   onTick: server => { },                  // every 5 seconds
+  marked: server => [],                   // names that glow gold (the Heist: the richest war chests)
   bossbar: server => '',                  // extra boss bar text
   status: (server, player) => '',         // extra /purge line
   onEnd: (server, rows) => [],            // summary lines; rows are ranked { uuid, e, score }
@@ -200,7 +213,9 @@ Optionally create an empty `kubejs/purge_vaults/` folder, so the vault backup fi
 6. **Combat log:** hit them, then they log out: they're robbed, and told at their next login.
 7. **Death:** no corpse with items. You respawn with the kit and Resistance.
 8. **Sanctuary:** standing inside it, you can't be hurt. Someone who starts there keeps their gear until they step out.
-9. **Glow:** the richest war chests glow, and the boss bar names the richest.
+9. **Glow and names:** everyone fighting glows white, the three richest war chests gold, and the boss bar names the richest.
+   - No names show over heads. Check from the other account, or in third person (F5) for your own outline.
+   - Put one account on a team first (`/team add testers`, `/team join testers <name>`). At the end it's back on `testers`, `/team list` shows no `purge` teams, and names show again.
 10. **The end** (`/purge stop` or the timer):
     - your inventory comes back slot for slot, plus the diamond;
     - a Golden Bag of Holding (or a filled EvilCraft Broom) you were carrying still holds what it held;
@@ -251,6 +266,10 @@ This was a copy of the pack with one player, and the Purge started from the cons
   - **Return:** read in the same instant the Purge ended, the player was exactly on the saved spot, facing the saved way, and still there 3 seconds later.
   - Two earlier runs measured the player 10 and 28 blocks off, after they had moved: it was midnight (the Purge's doing) and hostile mobs were attacking.
   - Each teleport logs a vanilla "moved too quickly!" warning, sized to the teleport. It's harmless: the server keeps the new position.
+- **The glow and hidden names (11 Nov 2026):**
+  - The player had been put on their own team, `testers`. During the Purge they were on `purge` and glowing. The glow was back straight after a knockout, with the player still on the team.
+  - At the end the Purge teams were gone (`/team list`: only `testers`), the player was back on `testers`, and the glow was off.
+  - With one account, nobody could look at the hidden name from outside. The gold team for the richest wasn't seen either, since the test server's `blood_pool.js` has no Heist API, so nobody counted as rich.
 - **Not covered:** kills, the Heist, and the test server's `blood_pool.js` (from `local-testing`, without `takeStanding`), since there was only one account.
 
 ## Proposed (not built: the owner decides)

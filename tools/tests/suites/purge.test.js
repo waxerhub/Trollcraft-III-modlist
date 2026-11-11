@@ -61,6 +61,7 @@ function player(name, x, z, opts) {
   const p = { name, x, y: 64, z, dim: OW, online: true, op: !!opts.op, alive: true, creative: !!opts.creative, afk: false, msgs: [], dropped: [], slots,
     yaw: 0, pitch: 0, health: 20, onFire: false, getYRot: () => p.yaw, getXRot: () => p.pitch,
     getMaxHealth: () => 20, setHealth: h => { p.health = h }, clearFire: () => { p.onFire = false },
+    team: null, getTeam: () => (p.team ? { getName: () => p.team } : null),
     isPlayer: () => true, getGameProfile: () => ({ getName: () => p.name }), getStringUuid: () => 'U-' + name,
     getX: () => p.x, getY: () => p.y, getZ: () => p.z, get level() { return { dimension: { location: () => p.dim } } },
     isAlive: () => p.alive, isCreative: () => p.creative, isSpectator: () => false, hasPermissions: () => p.op,
@@ -157,6 +158,7 @@ anamy.slots[38] = Item.of('minecraft:diamond_chestplate', 1, '{Damage:12}')
 anamy.slots[40] = Item.of('minecraft:totem_of_undying', 1)
 goruk.slots[3] = Item.of('minecraft:golden_apple', 12)
 kitkat.slots[0] = Item.of('minecraft:diamond_sword', 1)
+stang.team = 'escorts'              // Stang is on a team of his own (pig_escort.js uses vanilla teams)
 // A bag whose contents live in ForgeCaps (its own capability), not in its tag: only a whole save keeps them.
 stang.slots[2] = stack('extrautilitiesreborn:golden_bag_of_holding', 1, '{Inventory:{Size:54,Items:[]}}', { Parent: { Size: 54, Items: [{ Slot: 0, id: 'minecraft:diamond_block', Count: 64 }] } })
 
@@ -252,6 +254,17 @@ ok('Goruk logs out 3 seconds after a hit: robbed as if killed', potatoes(goruk) 
 // the boss bar and the glow
 seconds(5)
 ok('the richest war chests online glow', cmds.some(c => /^effect give Anamy minecraft:glowing/.test(c)))
+ok('the Purge teams are set up: names hidden, a white and a gold glow, friendly fire on', ['team add purge', 'team modify purge nametagVisibility never', 'team modify purge color white',
+  'team modify purge friendlyFire true', 'team add purge_marked', 'team modify purge_marked nametagVisibility never', 'team modify purge_marked color gold'].every(c => cmds.includes(c)))
+ok('every fighter glows (refreshed every 5 seconds) and is on a Purge team', ['Anamy', 'Stang', 'KitKat'].every(n => cmds.filter(c => c == 'effect give ' + n + ' minecraft:glowing 7 0 true').length >= 2 &&
+  cmds.some(c => c == 'team join purge ' + n || c == 'team join purge_marked ' + n)))
+ok('... the richest war chests are on the gold team', cmds.includes('team join purge_marked Goruk'))
+ok('... the creative op is left alone (no glow, no team)', !cmds.some(c => /^(team join \S+|effect give) Admin\b/.test(c)))
+ok('... a team join is sent only when it changes (Stang moves in and out of the richest three), never repeated', (() => {
+  const j = cmds.filter(c => /^team join purge(_marked)? Stang$/.test(c))
+  return j.length >= 2 && j.every((c, i) => i == 0 || c != j[i - 1])
+})())
+ok('... the Heist\'s rules say the richest glow gold, and the start says names are hidden', said(anamy, /The richest war chests glow gold/) && said(anamy, /Everyone in the fight glows, and no names show over heads/))
 ok('the boss bar counts down', cmds.some(c => /bossbar set purge:timer value \d+/.test(c)))
 // the commands
 ok('/purge shows the mode, the kit, the time left and your score', run('/purge', anamy).some(r => /The Potato Heist \(kit: Peasant\): \d+:\d\d left/.test(r)) && run('/purge', anamy).some(r => /^\[The Purge\] You: \d+ kills, \d+ deaths/.test(r)))
@@ -265,6 +278,7 @@ const rich0 = potatoes(anamy)
 load()
 H.loaded.forEach(h => h({ server }))
 ok('after a restart the Purge carries on (boss bar shown again, vaults kept)', cmds.filter(c => /^bossbar add purge:timer/.test(c)).length >= 2 && DB().cur && DB().vaults['u-anamy'])
+ok('... and the Purge teams are set up again', cmds.filter(c => c == 'team modify purge nametagVisibility never').length >= 2)
 die(stang, anamy); respawn(stang)
 ok('... kills still count', potatoes(anamy) >= rich0)
 // someone logs in mid-Purge
@@ -285,6 +299,11 @@ die(goruk.online ? goruk : kitkat, null, 'lava')       // KitKat dies just befor
 // ---------- the end ----------
 T = DB().cur.endsAt + 1; advance(40)
 ok('time runs out: the Purge ends', !DB().cur && DB().history.length == 1 && DB().history[0].mode == 'heist' && DB().history[0].kit == 'peasant')
+ok('... names show over heads again: the Purge teams are removed', cmds.includes('team remove purge') && cmds.includes('team remove purge_marked'))
+ok('... and Stang (offline) is put back on his own team, by name, before they go', (() => {
+  const j = cmds.lastIndexOf('team join escorts Stang'), r = cmds.lastIndexOf('team remove purge')
+  return j >= 0 && j < r && !cmds.some(c => /^team join \S+ (Anamy|KitKat)$/.test(c) && !/^team join purge/.test(c))
+})())
 ok('... the winner and the biggest hauls are announced', said(stang.online ? stang : anamy, /wins the Purge \([+]/) && said(anamy, /Biggest hauls: /))
 ok('... each fighter is told their own result', said(anamy, /Your Purge: \d+ kills?, \d+ deaths?, [+-][\d,]+ net potatoes/))
 ok('... the boss bar and the glow are cleared, and loose kit on the ground removed', cmds.includes('bossbar remove purge:timer') && cmds.includes('effect clear Anamy minecraft:glowing') &&
@@ -377,11 +396,16 @@ ok('... Goruk is healed, put out, fed and given Resistance', goruk.health == 20 
   cmds.slice(ar1).some(c => /^effect give Goruk minecraft:saturation/.test(c)) && cmds.slice(ar1).some(c => /^effect give Goruk minecraft:resistance 10 4/.test(c)))
 ok('... with a fresh kit (a new life), sent to a new random spot in the arena', lifeOf(slot(goruk, 0)) == 'u-goruk#2' && spreadFor('Goruk', ar1) == 1 && said(goruk, /Knocked out/))
 ok('... and the kill still counts for Anamy', DB().cur.ledger['u-anamy'].kills == k0 + 1)
+ok('... and the glow the knockout cleared comes straight back', (() => {
+  const c = cmds.slice(ar1), cleared = c.indexOf('effect clear Goruk'), glowed = c.lastIndexOf('effect give Goruk minecraft:glowing 7 0 true')
+  return cleared >= 0 && glowed > cleared
+})())
 const ar2 = cmds.length
 ok('/kill still kills (no knockout), and nothing is left on the body', knock(kitkat, null, 'genericKill') === false && slot(kitkat, 0).isEmpty())
 kitkat.alive = false
 respawn(kitkat)
-ok('... the respawn sends KitKat back into the arena with a fresh kit', lifeOf(slot(kitkat, 0)) == 'u-kitkat#2' && spreadFor('KitKat', ar2) == 1)
+ok('... the respawn sends KitKat back into the arena with a fresh kit, glowing', lifeOf(slot(kitkat, 0)) == 'u-kitkat#2' && spreadFor('KitKat', ar2) == 1 &&
+  cmds.slice(ar2).includes('effect give KitKat minecraft:glowing 7 0 true'))
 spreadFails = true
 const ar3 = cmds.length
 knock(anamy, null, 'lava')

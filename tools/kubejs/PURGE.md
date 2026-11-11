@@ -48,10 +48,13 @@ The op names the kit, or one is picked at random. Kit items are plain and unench
 **Who fights:** every player online in survival or adventure. That includes players who log in during the Purge, and players stepping out of the sanctuary. Players in creative or spectator don't fight.
 
 **Becoming a fighter:**
-1. **The vault:** every inventory slot (main inventory, armour and off-hand) is saved **whole**, as the game itself saves a stack: id, count, tag *and* `ForgeCaps`. It goes into the saved data and a backup file, `kubejs/purge_vaults/<name>_<uuid>.json`.
+1. **The vault:** every inventory slot (main inventory, armour and off-hand) is saved **whole**, as the game itself saves a stack (Forge's `serializeNBT()`): id, count, tag *and* `ForgeCaps`.
+   - It goes into the saved data and a backup file, `kubejs/purge_vaults/<name>_<uuid>.json`.
+   - `JsonIO` can't create that folder. If it doesn't exist, the file goes in `kubejs/` as `purge_vault_<name>_<uuid>.json`.
    - **Why whole:** some mods keep an item's contents in a Forge capability, outside its tag. Extra Utilities' **Golden Bag of Holding** keeps its 54 slots there, and EvilCraft's **Broom** keeps its blood there. Rebuilt from id + tag, such an item comes back empty.
+   - KubeJS's own `toNBTJS()` can't be used: it's hidden from scripts, and calling it fails.
    - Each record also keeps `nbt` (the tag) for reading. A record saved before `full` existed is rebuilt from id, count and tag.
-2. **Only if the save worked, and every saved stack rebuilds as the same item and count,** is the inventory cleared. Otherwise the player isn't touched and sits the Purge out, and the ops are told which item it was.
+2. The inventory is cleared only if three things hold: the save worked, every stack was saved whole, and every stack rebuilds as the same item and count, keeping its `ForgeCaps`. Otherwise the player isn't touched and sits the Purge out, and the ops are told which item it was. There's no quiet fallback to id + tag.
 3. Effects are cleared, and the kit is given with the armour worn.
 
 **Keeping it fair:**
@@ -153,11 +156,13 @@ mymode: {
 ## Install
 Copy `purge.js` to `kubejs/server_scripts/part2/`, and the updated `blood_pool.js` (same folder), `anamian_axe.js` and `back_toll.js`. Then run `/reload`.
 
+Optionally create an empty `kubejs/purge_vaults/` folder, so the vault backup files go there and not loose in `kubejs/`.
+
 ## Test plan (two survival accounts at rank 3+, and an op)
 1. **Start:** fill your inventory with enchanted gear and armour, then run `/purge start heist 5 peasant`.
    - The horn, the title, night and thunder, and the boss bar appear.
    - Your inventory becomes a wooden sword, bread and leather armour.
-   - `kubejs/purge_vaults/` has your file.
+   - `kubejs/purge_vaults/` (or `kubejs/purge_vault_…json`) has your file.
 2. **Fairness:**
    - Take a diamond from a chest: within a second it's gone, with the "kept for you" message.
    - Drop your sword and let the other account pick it up: it's taken from them.
@@ -193,8 +198,21 @@ These were checked in the pack's own jars (class files read with `javap`; nothin
   - The SNBT string is parsed by `TagParser` and applied with `withNBT`. That's exact for anything kept in the tag: enchantments, Tinkers tools, Mekanism's `mekData`, backpacks' UUIDs.
   - But `s.nbt` is only the tag. Data a mod keeps in a Forge capability is in `ForgeCaps`, outside it.
   - A real Part I player file had 13 Golden Bags of Holding and 2 Brooms with `ForgeCaps`. The bag's own code (`initCapabilities`, `getShareTag`) shows its inventory lives only in the capability. The `Inventory` copy in its tag is for the client and is overwritten from the capability on the next sync.
-  - **Fixed:** the vault now saves `toNBTJS()` (the whole stack) and rebuilds with `ItemStack.of`.
+  - **Fixed:** the vault now saves `serializeNBT()` (the whole stack) and rebuilds with `ItemStack.of`. It was tested on the local test server (see below).
   - `blood_portal.js` used the old method for the Part I exodus files. That's past, but any bag that came through that way arrived empty.
+
+## Tested on the local test server (10 Nov 2026)
+This was a copy of the pack with one player, and the Purge started from the console.
+- **Round 1, with the first fix (`toNBTJS()`):** the bag came back empty.
+  - A probe showed `toNBTJS` is hidden from scripts, so the save quietly fell back to id + tag.
+  - The backup file wasn't written, because `kubejs/purge_vaults/` didn't exist.
+- **Round 2, with `serializeNBT()`, after both fixes:**
+  - The vault saved a Golden Bag of Holding whole (64 diamond blocks, 16 ender pearls and 5 golden apples in its `ForgeCaps`).
+  - The bag came back in the same slot with all three stacks, and still held them 10 seconds later, after the game had synced it.
+  - The enchanted, renamed sword, the worn chestplate, the potatoes, the extras (3 diamonds taken during the Purge) and the backup file (in `kubejs/`, marked `restored`) all checked out.
+  - There were no Purge errors in the log.
+- **Sanctuary:** a player standing at spawn when the Purge started kept their gear, and was enlisted on stepping out.
+- **Not covered:** kills, the Heist, and the test server's `blood_pool.js` (from `local-testing`, without `takeStanding`), since there was only one account.
 
 ## Proposed (not built: the owner decides)
 - **Vault the Curios slots too**, so curios can't be used in a kit Purge or looted from a corpse.
@@ -207,10 +225,7 @@ These were checked in the pack's own jars (class files read with `javap`; nothin
   - It would follow the same rule as the blocked commands (`BLOCK_OPS_TOO`), and need one restart.
 
 ## What couldn't be verified
-- **The whole-stack vault in game:** `toNBTJS()` and `ItemStack.of(NBT.toTagCompound(...))` from a script.
-  - Rhino's mappings name them `save` and `of`, and the mock tests pass, but they weren't run on a server.
-  - Test 10 covers it: carry a Golden Bag of Holding with something in it.
-  - If it fails, every fighter sits the Purge out with an op message, and nothing is lost.
+- **Other capability items** in the vault: only the Golden Bag of Holding was tested in game. Any item whose `ForgeCaps` doesn't survive the rebuild makes its owner sit the Purge out (with an op message), so nothing is lost.
 - **Beacon effects** near a base still apply to fighters.
 - **Kit items put in a chest or ender chest** stay there after the Purge, as plain items with the kit lore. Loose kit on the ground in loaded chunks is removed at the end.
 - **The live server's Corpse and Curios settings:** the values above come from the local test server's copy (`world/serverconfig/`).

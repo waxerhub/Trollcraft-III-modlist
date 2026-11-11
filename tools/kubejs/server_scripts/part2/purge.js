@@ -164,10 +164,11 @@ function afk(p) {
 }
 function emptyStack() { try { return Item.empty } catch (e) { return Item.of('minecraft:air') } }
 function stackNbt(s) { try { return s.nbt != null ? String(s.nbt) : '' } catch (e) { return '' } }
-// A vaulted stack is saved whole (toNBTJS: id, Count, tag and ForgeCaps). Some mods keep an item's contents in a Forge
-// capability outside its tag: Extra Utilities' Golden Bag of Holding keeps its 54 slots there, EvilCraft's Broom its
-// blood. Rebuilt from id + tag, such an item comes back empty. 'nbt' is kept for reading and for older records.
-function stackFull(s) { try { return String(s.toNBTJS()) } catch (e) { return '' } }
+// A vaulted stack is saved whole (Forge's serializeNBT: id, Count, tag and ForgeCaps). Some mods keep an item's contents
+// in a Forge capability outside its tag: Extra Utilities' Golden Bag of Holding keeps its 54 slots there, EvilCraft's
+// Broom its blood. Rebuilt from id + tag, such an item comes back empty. 'nbt' is kept for reading and older records.
+// (KubeJS's own toNBTJS() is hidden from scripts: calling it fails, which is why serializeNBT is used.)
+function stackFull(s) { try { return String(s.serializeNBT()) } catch (e) { return '' } }
 function savedStack(s, slot) {
   const r = { id: String(s.id), count: Number(s.count), nbt: stackNbt(s), full: stackFull(s) }
   if (slot != null) r.slot = slot
@@ -182,11 +183,14 @@ function rebuild(r) {
   if (!st || st.isEmpty()) throw new Error('unknown item ' + r.id)
   return st
 }
-// Whether a saved stack comes back as the same item and count. Checked before a fighter's inventory is cleared.
+// Whether a saved stack was saved whole and comes back as the same item and count, with its ForgeCaps if it had any.
+// Checked before a fighter's inventory is cleared.
 function rebuilds(r) {
+  if (!r.full) { console.error('[Purge] Can\'t save ' + r.id + ' whole'); return false }
   try {
     let st = rebuild(r)
-    return String(st.id) == r.id && Number(st.count) == r.count
+    if (String(st.id) != r.id || Number(st.count) != r.count) return false
+    return !/ForgeCaps/.test(r.full) || /ForgeCaps/.test(stackFull(st))
   } catch (e) {
     console.error('[Purge] Can\'t rebuild ' + r.id + ': ' + e)
     return false
@@ -271,8 +275,12 @@ function vaultRecord(p) {
   }
   return { name: nameOf(p), uuid: uuidOf(p), t: Date.now(), purge: db().cur ? db().cur.id : 0, slots: slots, extras: [] }
 }
+// JsonIO doesn't create folders: without kubejs/purge_vaults/ the file goes in kubejs/ (as blood_portal.js does).
 function backup(rec) {
-  try { JsonIO.write(VAULT_DIR + rec.name + '_' + rec.uuid + '.json', rec) } catch (e) { console.warn('[Purge] Backup file for ' + rec.name + ': ' + e) }
+  const file = rec.name + '_' + rec.uuid + '.json'
+  try { JsonIO.write(VAULT_DIR + file, rec) } catch (e) {
+    try { JsonIO.write('kubejs/purge_vault_' + file, rec) } catch (e2) { console.warn('[Purge] Backup file for ' + rec.name + ': ' + e2) }
+  }
 }
 // Makes a player a fighter: vault, clear, kit. Only clears the inventory once the vault is safely saved.
 function enlist(server, p) {

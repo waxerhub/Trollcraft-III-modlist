@@ -34,11 +34,13 @@ function advance(n) {
 }
 const seconds = s => { T += s * 1000; advance(s * 20) }
 let goneOk = false
+let noVaultDir = false                // like a fresh server: JsonIO.write can't create kubejs/purge_vaults/
 const EMPTY = { id: 'minecraft:air', count: 0, nbt: null, isEmpty: () => true }
-// A stack like KubeJS's: nbt is the tag; toNBTJS() is the whole save (id, Count, tag and ForgeCaps), here as JSON.
+// A stack like the real one: nbt is the tag; serializeNBT() (Forge's) is the whole save (id, Count, tag and ForgeCaps),
+// here as JSON. Deliberately no toNBTJS(): KubeJS hides it from scripts (checked on the test server).
 function stack(id, count, nbt, caps) {
   const s = { id, count: count == null ? 1 : count, nbt: nbt || null, caps: caps || null, isEmpty: () => false }
-  s.toNBTJS = () => JSON.stringify({ id: s.id, Count: s.count, tag: s.nbt, ForgeCaps: s.caps })
+  s.serializeNBT = () => JSON.stringify(caps ? { id: s.id, Count: s.count, tag: s.nbt, ForgeCaps: s.caps } : { id: s.id, Count: s.count, tag: s.nbt })
   return s
 }
 const Item = {
@@ -49,7 +51,8 @@ const Item = {
   empty: EMPTY,
 }
 // ItemStack.of(tag), as the game loads a saved stack: an unknown item comes back empty. 'broken:item' never rebuilds.
-const ItemStackClass = { of: t => (t.id == 'broken:item' || (t.id == 'gone:item' && !goneOk) ? EMPTY : stack(t.id, t.Count, t.tag, t.ForgeCaps)) }
+// 'leaky:bag' comes back without its ForgeCaps.
+const ItemStackClass = { of: t => (t.id == 'broken:item' || (t.id == 'gone:item' && !goneOk) ? EMPTY : stack(t.id, t.Count, t.tag, t.id == 'leaky:bag' ? null : t.ForgeCaps)) }
 const NBT = { toTagCompound: s => JSON.parse(s) }
 function player(name, x, z, opts) {
   opts = opts || {}
@@ -98,7 +101,7 @@ function load() {
     { respawned: reg('respawned'), loggedOut: reg('loggedOut'), loggedIn: reg('loggedIn') },
     { loadClass: c => (/Serializer/.test(c) ? { fromJsonLenient: j => JSON.parse(j) } : /world\.item\.ItemStack$/.test(c) ? ItemStackClass : { word: () => 'word', getString: (ctx, n) => ctx.args[n] }) },
     { server }, Item, { of: s => s },
-    { write: (p, o) => { files[p] = JSON.parse(JSON.stringify(o)) } },
+    { write: (p, o) => { if (noVaultDir && /^kubejs\/purge_vaults\//.test(p)) throw new Error('NoSuchFileException: ' + p); files[p] = JSON.parse(JSON.stringify(o)) } },
     { info: m => logs.push(m), warn: m => logs.push('WARN ' + m), error: m => logs.push('ERR ' + m) },
     global, PROTECTED_AREAS, protectedAreasSpawn, NBT)
 }
@@ -265,9 +268,13 @@ ok('... kills still count', potatoes(anamy) >= rich0)
 // someone logs in mid-Purge
 const late = player('Late', 200, 200)
 late.slots[2] = Item.of('minecraft:elytra', 1)
+noVaultDir = true
 login(late)
 seconds(2)
+noVaultDir = false
 ok('a player logging in mid-Purge is vaulted and gets the kit', DB().vaults['u-late'] && slot(late, 0).id == 'minecraft:wooden_sword' && said(late, /The Potato Heist is running/))
+ok('... with no kubejs/purge_vaults/ folder, the backup file goes in kubejs/ instead', !!files['kubejs/purge_vault_Late_u-late.json'] && !files['kubejs/purge_vaults/Late_u-late.json'] &&
+  !logs.some(l => /Backup file for Late/.test(l)))
 logout(stang)                       // Stang ends the Purge offline
 anamy.slots[33] = EMPTY
 D = DB(); D.vaults['u-anamy'].slots.push({ slot: 20, id: 'gone:item', count: 1, nbt: '' }); persistent.purge = JSON.stringify(D); load()
@@ -319,6 +326,16 @@ odd.slots[1] = Item.of('minecraft:apple', 5)
 odd.x = 60; seconds(1)
 ok('if an item wouldn\'t come back whole, the player is left untouched and sits it out', slot(odd, 0).id == 'broken:item' && slot(odd, 1).id == 'minecraft:apple' &&
   !DB().vaults['u-odd'] && said(admin, /Odd sits this Purge out: 1 of their items \(broken:item\) could not be saved safely/))
+const plain = player('Plain', 3, 3)
+plain.slots[0] = { id: 'odd:stick', count: 1, nbt: null, isEmpty: () => false }   // no whole save available at all
+plain.x = 70; seconds(1)
+ok('... the same if an item can\'t be saved whole at all (no quiet fallback to id + tag)', slot(plain, 0).id == 'odd:stick' && !DB().vaults['u-plain'] &&
+  said(admin, /Plain sits this Purge out: 1 of their items \(odd:stick\)/))
+const leaky = player('Leaky', 3, 3)
+leaky.slots[0] = stack('leaky:bag', 1, '{}', { Parent: { Items: [{ id: 'minecraft:emerald', Count: 9 }] } })
+leaky.x = 80; seconds(1)
+ok('... and if an item would lose its ForgeCaps (a bag\'s contents) on the way back', slot(leaky, 0).id == 'leaky:bag' && !DB().vaults['u-leaky'] &&
+  said(admin, /Leaky sits this Purge out: 1 of their items \(leaky:bag\)/))
 ok('/purge stop ends it early', /Stopped/.test(run('/purge stop', admin)[0]) && !DB().cur && DB().history[0].reason == 'stopped' && said(anamy, /\(Ended early\.\)/))
 ok('the soldier kit puts the shield in the off-hand', (() => {
   run('/purge start heist 5 soldier', admin)
@@ -327,7 +344,7 @@ ok('the soldier kit puts the shield in the off-hand', (() => {
   return ok2 && slot(anamy, 0).id == 'minecraft:netherite_sword'
 })())
 ok('the API', typeof global.Purge.start == 'function' && global.Purge.active() === false && global.Purge.tithed() == DB().tithe && global.Purge.kits.gladiator.armor.length == 4)
-ok('no errors logged (apart from the item that no longer exists, the failed save and the item that won\'t rebuild)', !logs.some(l => /^ERR/.test(l) && !/gone:item|disk full|Could not vault Careful|broken:item/.test(l)), logs.filter(l => /^ERR/.test(l)).join('; '))
+ok('no errors logged (apart from the item that no longer exists, the failed save and the item that won\'t rebuild)', !logs.some(l => /^ERR/.test(l) && !/gone:item|disk full|Could not vault Careful|broken:item|odd:stick|leaky:bag/.test(l)), logs.filter(l => /^ERR/.test(l)).join('; '))
 
 Date.now = realNow
 console.log(fails ? fails + ' FAILED' : 'ALL PASSED')

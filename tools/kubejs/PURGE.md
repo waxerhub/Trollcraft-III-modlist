@@ -212,6 +212,9 @@ This was a copy of the pack with one player, and the Purge started from the cons
   - The enchanted, renamed sword, the worn chestplate, the potatoes, the extras (3 diamonds taken during the Purge) and the backup file (in `kubejs/`, marked `restored`) all checked out.
   - There were no Purge errors in the log.
 - **Sanctuary:** a player standing at spawn when the Purge started kept their gear, and was enlisted on stepping out.
+- **Blocked commands:**
+  - A non-op fighter's `/back` and `/home` were refused with the red message, and they weren't teleported.
+  - As an op, the same player's `/back` worked, as `BLOCK_OPS_TOO = false` intends. An op who fights can still teleport out unless that's set to `true`.
 - **Not covered:** kills, the Heist, and the test server's `blood_pool.js` (from `local-testing`, without `takeStanding`), since there was only one account.
 
 ## Proposed (not built: the owner decides)

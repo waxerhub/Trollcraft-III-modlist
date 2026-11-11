@@ -48,14 +48,18 @@ The op names the kit, or one is picked at random. Kit items are plain and unench
 **Who fights:** every player online in survival or adventure. That includes players who log in during the Purge, and players stepping out of the sanctuary. Players in creative or spectator don't fight.
 
 **Becoming a fighter:**
-1. **The vault:** every inventory slot (main inventory, armour and off-hand) is saved with its count and NBT. It goes into the saved data and a backup file, `kubejs/purge_vaults/<name>_<uuid>.json`.
-2. **Only if the save worked** is the inventory cleared. If it can't be saved, the player isn't touched and sits the Purge out, and the ops are told.
+1. **The vault:** every inventory slot (main inventory, armour and off-hand) is saved **whole**, as the game itself saves a stack: id, count, tag *and* `ForgeCaps`. It goes into the saved data and a backup file, `kubejs/purge_vaults/<name>_<uuid>.json`.
+   - **Why whole:** some mods keep an item's contents in a Forge capability, outside its tag. Extra Utilities' **Golden Bag of Holding** keeps its 54 slots there, and EvilCraft's **Broom** keeps its blood there. Rebuilt from id + tag, such an item comes back empty.
+   - Each record also keeps `nbt` (the tag) for reading. A record saved before `full` existed is rebuilt from id, count and tag.
+2. **Only if the save worked, and every saved stack rebuilds as the same item and count,** is the inventory cleared. Otherwise the player isn't touched and sits the Purge out, and the ops are told which item it was.
 3. Effects are cleared, and the kit is given with the armour worn.
 
 **Keeping it fair:**
 - **Every second,** anything a fighter has that isn't their kit (from a chest, the ender chest, the ground, a mined block) is moved to their vault's **extras** and handed back at the end. They're told once.
 - **Kit items carry their owner and "life".** A life is one stretch between respawns. Another player's kit, or your own from before you died, is simply taken away. So dropping and picking up kit never adds up to more than one kit.
-- **On death,** a fighter's inventory is cleared first, so nothing drops and there's nothing in their corpse. They respawn with a fresh kit and 10 seconds of **Resistance V** against spawn camping.
+- **On death,** a fighter's inventory is cleared first, so nothing drops and there's no kit in their corpse. They respawn with a fresh kit and 10 seconds of **Resistance V** against spawn camping.
+  - The Corpse mod still makes a corpse: an empty one, gone 30 seconds after death (`corpse.despawn.time = 600` ticks).
+  - **Curios slots aren't vaulted** (see below), so a fighter's own rings, belts and charms drop into that corpse. With `corpse.access.only_owner = false`, anyone can take them.
 
 **Handing back:**
 - At the end, each fighter's inventory is cleared and **every slot is put back exactly**, then the extras are given. They drop at the player's feet if the inventory is full.
@@ -169,16 +173,44 @@ Copy `purge.js` to `kubejs/server_scripts/part2/`, and the updated `blood_pool.j
 9. **Glow:** the richest war chests glow, and the boss bar names the richest.
 10. **The end** (`/purge stop` or the timer):
     - your inventory comes back slot for slot, plus the diamond;
+    - a Golden Bag of Holding (or a filled EvilCraft Broom) you were carrying still holds what it held;
     - an account that was offline gets theirs at login;
     - one that was dead at the end gets theirs at respawn.
 11. **Restart:** restart the server mid-Purge. It carries on with its time and vaults.
 
+## Settled from the mod jars
+These were checked in the pack's own jars (class files read with `javap`; nothing run). They didn't need a game.
+- **Better Combat 1.9.0: delayed hits are seen.** Its server handler (`net.bettercombat.network.ServerNetwork`) applies each hit with the player's own `ServerPlayer.attack`, either directly or through vanilla's attack packet. So `EntityEvents.hurt` gets a normal player-attack damage source with the player as the attacker.
+- **Corpse 1.0.23: the corpse is empty.**
+  - Its death and drops handlers run at `LOWEST` priority, after this script has cleared the inventory. It records only what is still in the inventory and in the drops.
+  - It always spawns a corpse, even an empty one. An empty corpse despawns after `corpse.despawn.time` (600 ticks on this server).
+- **Curios 5.14.1: curios drop into the corpse.** Curios adds worn curios to the drops at `HIGHEST` priority, unless the keepInventory gamerule is on or `keepCurios` says to keep them. This server has `keepCurios = "DEFAULT"`, which follows keepInventory. Corpse then puts them in the corpse.
+- **Waystones 14.1.21 can be blocked.** Every waystone, warp stone and scroll teleport fires `net.blay09.mods.waystones.api.WaystoneTeleportEvent$Pre`.
+  - It's a `@Cancelable` Forge event, posted on Forge's event bus by Balm. Waystones stops the teleport when it's cancelled.
+  - KubeJS 6 only offers `ForgeEvents.onEvent` in **startup** scripts, so a block needs a small startup script and one restart (see "Proposed" below).
+- **`/weather thunder 1800s` is valid.** In 1.20.1 the duration is a time argument (`TimeArgument`, minimum 1 tick), so `s` means seconds.
+- **`Item.of(id, count, snbt)` doesn't rebuild every modded item exactly.**
+  - The SNBT string is parsed by `TagParser` and applied with `withNBT`. That's exact for anything kept in the tag: enchantments, Tinkers tools, Mekanism's `mekData`, backpacks' UUIDs.
+  - But `s.nbt` is only the tag. Data a mod keeps in a Forge capability is in `ForgeCaps`, outside it.
+  - A real Part I player file had 13 Golden Bags of Holding and 2 Brooms with `ForgeCaps`. The bag's own code (`initCapabilities`, `getShareTag`) shows its inventory lives only in the capability. The `Inventory` copy in its tag is for the client and is overwritten from the capability on the next sync.
+  - **Fixed:** the vault now saves `toNBTJS()` (the whole stack) and rebuilds with `ItemStack.of`.
+  - `blood_portal.js` used the old method for the Part I exodus files. That's past, but any bag that came through that way arrived empty.
+
+## Proposed (not built: the owner decides)
+- **Vault the Curios slots too**, so curios can't be used in a kit Purge or looted from a corpse.
+  - Curios 5.14.1's API: `CuriosApi.getCuriosInventory(player)` returns a `LazyOptional<ICuriosItemHandler>`.
+  - `.getCurios()` is a map of slot id → `ICurioStacksHandler`, each with `getStacks()` and `getCosmeticStacks()` (`getSlots`, `getStackInSlot`, `setStackInSlot`).
+  - The vault would save each non-empty curio stack whole, with its slot id, index and cosmetic flag, then empty the slot. At the end it would put it back in the same slot, or give it if that slot no longer exists.
+  - From KubeJS: `Java.loadClass('top.theillusivec4.curios.api.CuriosApi')`.
+- **Block waystones for fighters:** a startup script, `ForgeEvents.onEvent('net.blay09.mods.waystones.api.WaystoneTeleportEvent$Pre', e => ...)`.
+  - It would call `global.Purge` (looked up when the event fires) with `e.getContext().getEntity()`, and run `e.setCanceled(true)` for a fighter.
+  - It would follow the same rule as the blocked commands (`BLOCK_OPS_TOO`), and need one restart.
+
 ## What couldn't be verified
-- **Better Combat:** whether `EntityEvents.hurt` sees the attacking player on its delayed hits (it should, because Better Combat calls `ServerPlayer.attack`). The last-hit credit covers most cases anyway.
-- **The Corpse mod:** whether it leaves an empty corpse when the inventory was cleared on death.
-- **Curios slots** (rings, belts, charms) aren't vaulted, so curio items still work in a kit Purge. This is a known gap to watch.
+- **The whole-stack vault in game:** `toNBTJS()` and `ItemStack.of(NBT.toTagCompound(...))` from a script.
+  - Rhino's mappings name them `save` and `of`, and the mock tests pass, but they weren't run on a server.
+  - Test 10 covers it: carry a Golden Bag of Holding with something in it.
+  - If it fails, every fighter sits the Purge out with an op message, and nothing is lost.
 - **Beacon effects** near a base still apply to fighters.
-- **Waystones** teleport through their own screen, not a command, so they aren't blocked.
 - **Kit items put in a chest or ender chest** stay there after the Purge, as plain items with the kit lore. Loose kit on the ground in loaded chunks is removed at the end.
-- **`Item.of` with saved NBT strings** on every modded item, for the vault. It's the same method `blood_portal.js` uses for the exodus files.
-- **`/weather thunder <n>s`** (the duration as a time argument).
+- **The live server's Corpse and Curios settings:** the values above come from the local test server's copy (`world/serverconfig/`).

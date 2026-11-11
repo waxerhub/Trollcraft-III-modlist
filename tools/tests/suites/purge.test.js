@@ -35,13 +35,22 @@ function advance(n) {
 const seconds = s => { T += s * 1000; advance(s * 20) }
 let goneOk = false
 const EMPTY = { id: 'minecraft:air', count: 0, nbt: null, isEmpty: () => true }
+// A stack like KubeJS's: nbt is the tag; toNBTJS() is the whole save (id, Count, tag and ForgeCaps), here as JSON.
+function stack(id, count, nbt, caps) {
+  const s = { id, count: count == null ? 1 : count, nbt: nbt || null, caps: caps || null, isEmpty: () => false }
+  s.toNBTJS = () => JSON.stringify({ id: s.id, Count: s.count, tag: s.nbt, ForgeCaps: s.caps })
+  return s
+}
 const Item = {
   of: (id, count, nbt) => {
     if (id == 'gone:item' && !goneOk) throw new Error('unknown item gone:item')
-    return { id, count: count == null ? 1 : count, nbt: nbt || null, isEmpty: () => false }
+    return stack(id, count, nbt)
   },
   empty: EMPTY,
 }
+// ItemStack.of(tag), as the game loads a saved stack: an unknown item comes back empty. 'broken:item' never rebuilds.
+const ItemStackClass = { of: t => (t.id == 'broken:item' || (t.id == 'gone:item' && !goneOk) ? EMPTY : stack(t.id, t.Count, t.tag, t.ForgeCaps)) }
+const NBT = { toTagCompound: s => JSON.parse(s) }
 function player(name, x, z, opts) {
   opts = opts || {}
   const slots = []
@@ -81,17 +90,17 @@ const node = (n, kind) => ({ n, kind, ch: [], req: null, f: null, then(c) { this
 function load() {
   H = { hurt: [], death: [], respawned: [], loggedOut: [], loggedIn: [], loaded: [], command: {} }
   const reg = k => h => H[k].push(h)
-  new Function('ServerEvents', 'EntityEvents', 'PlayerEvents', 'Java', 'Utils', 'Item', 'Text', 'JsonIO', 'console', 'global', 'PROTECTED_AREAS', 'protectedAreasSpawn', src)(
+  new Function('ServerEvents', 'EntityEvents', 'PlayerEvents', 'Java', 'Utils', 'Item', 'Text', 'JsonIO', 'console', 'global', 'PROTECTED_AREAS', 'protectedAreasSpawn', 'NBT', src)(
     { loaded: reg('loaded'), commandRegistry: h => h({ commands: { literal: n => node(n, 'lit'), argument: n => node(n, 'arg') },
         arguments: { INTEGER: { create: () => 'int', getResult: (ctx, n) => Number(ctx.args[n]) } }, register: t => { cmdTree = t } }),
       command: (name, h) => { (H.command[name] = H.command[name] || []).push(h) } },
     { hurt: reg('hurt'), death: reg('death') },
     { respawned: reg('respawned'), loggedOut: reg('loggedOut'), loggedIn: reg('loggedIn') },
-    { loadClass: c => (/Serializer/.test(c) ? { fromJsonLenient: j => JSON.parse(j) } : { word: () => 'word', getString: (ctx, n) => ctx.args[n] }) },
+    { loadClass: c => (/Serializer/.test(c) ? { fromJsonLenient: j => JSON.parse(j) } : /world\.item\.ItemStack$/.test(c) ? ItemStackClass : { word: () => 'word', getString: (ctx, n) => ctx.args[n] }) },
     { server }, Item, { of: s => s },
     { write: (p, o) => { files[p] = JSON.parse(JSON.stringify(o)) } },
     { info: m => logs.push(m), warn: m => logs.push('WARN ' + m), error: m => logs.push('ERR ' + m) },
-    global, PROTECTED_AREAS, protectedAreasSpawn)
+    global, PROTECTED_AREAS, protectedAreasSpawn, NBT)
 }
 function fire(kind, ev) {
   let cancelled = false
@@ -143,6 +152,8 @@ anamy.slots[38] = Item.of('minecraft:diamond_chestplate', 1, '{Damage:12}')
 anamy.slots[40] = Item.of('minecraft:totem_of_undying', 1)
 goruk.slots[3] = Item.of('minecraft:golden_apple', 12)
 kitkat.slots[0] = Item.of('minecraft:diamond_sword', 1)
+// A bag whose contents live in ForgeCaps (its own capability), not in its tag: only a whole save keeps them.
+stang.slots[2] = stack('extrautilitiesreborn:golden_bag_of_holding', 1, '{Inventory:{Size:54,Items:[]}}', { Parent: { Size: 54, Items: [{ Slot: 0, id: 'minecraft:diamond_block', Count: 64 }] } })
 
 // ---------- starting ----------
 ok('/purge with nothing running', /No Purge is running/.test(run('/purge', anamy)[0]))
@@ -163,6 +174,10 @@ let D = DB()
 ok('Anamy is vaulted: her 4 stacks are saved, with their slots and NBT', D.vaults['u-anamy'] && D.vaults['u-anamy'].slots.length == 4 &&
   D.vaults['u-anamy'].slots.some(s => s.slot == 0 && s.id == 'minecraft:netherite_sword' && /sharpness/.test(s.nbt)) && D.vaults['u-anamy'].slots.some(s => s.slot == 40 && s.id == 'minecraft:totem_of_undying'))
 ok('... and a backup file', files['kubejs/purge_vaults/Anamy_u-anamy.json'] && files['kubejs/purge_vaults/Anamy_u-anamy.json'].slots.length == 4)
+ok('Stang\'s Golden Bag of Holding is saved whole, with the contents it keeps outside its tag (ForgeCaps)', (() => {
+  const r = D.vaults['u-stang'] && D.vaults['u-stang'].slots.find(s => s.slot == 2)
+  return !!r && r.id == 'extrautilitiesreborn:golden_bag_of_holding' && /ForgeCaps/.test(r.full) && /minecraft:diamond_block/.test(r.full) && !/diamond_block/.test(r.nbt)
+})())
 ok('... she holds the Peasant kit: wooden sword, bread, leather armour in the armour slots', slot(anamy, 0).id == 'minecraft:wooden_sword' && slot(anamy, 1).id == 'minecraft:bread' &&
   slot(anamy, 39).id == 'minecraft:leather_helmet' && slot(anamy, 36).id == 'minecraft:leather_boots' && slot(anamy, 40).isEmpty() && slot(anamy, 7).isEmpty())
 ok('... every kit item is tagged with her and her first life, and has the lore', lifeOf(slot(anamy, 0)) == 'u-anamy#1' && /Purge issue\. Returned at the end\./.test(slot(anamy, 0).nbt))
@@ -280,6 +295,8 @@ ok('... and comes back when she respawns', !DB().vaults['u-kitkat'] && slot(kitk
 ok('Stang (offline) still has his vault', !!DB().vaults['u-stang'])
 login(stang); advance(25)
 ok('... handed back when he logs in', !DB().vaults['u-stang'] && !stang.slots.some(isKit) && said(stang, /belongings are back/))
+ok('... his Golden Bag of Holding still holds its 64 diamond blocks', slot(stang, 2).id == 'extrautilitiesreborn:golden_bag_of_holding' && !!slot(stang, 2).caps &&
+  slot(stang, 2).caps.Parent.Items[0].id == 'minecraft:diamond_block' && slot(stang, 2).caps.Parent.Items[0].Count == 64)
 login(goruk); advance(45)
 ok('Goruk, who ran, is told about the raid at his next login', said(goruk, /logged out mid-fight in the Purge\. Anamy raided your war chest: -[\d,]+ potatoes/))
 ok('after the Purge, /home works again', !typed(anamy, 'home'))
@@ -296,6 +313,12 @@ failSave = false
 ok('if their belongings can\'t be saved, the player is left untouched and sits it out', slot(careful, 0).id == 'minecraft:beacon' && !DB().vaults['u-careful'] && said(admin, /Careful's belongings could not be saved/))
 seconds(2)
 ok('... and isn\'t tried again every second', slot(careful, 0).id == 'minecraft:beacon' && admin.msgs.filter(m => /Careful's belongings could not be saved/.test(m)).length == 1)
+const odd = player('Odd', 3, 3)
+odd.slots[0] = Item.of('broken:item', 1)
+odd.slots[1] = Item.of('minecraft:apple', 5)
+odd.x = 60; seconds(1)
+ok('if an item wouldn\'t come back whole, the player is left untouched and sits it out', slot(odd, 0).id == 'broken:item' && slot(odd, 1).id == 'minecraft:apple' &&
+  !DB().vaults['u-odd'] && said(admin, /Odd sits this Purge out: 1 of their items \(broken:item\) could not be saved safely/))
 ok('/purge stop ends it early', /Stopped/.test(run('/purge stop', admin)[0]) && !DB().cur && DB().history[0].reason == 'stopped' && said(anamy, /\(Ended early\.\)/))
 ok('the soldier kit puts the shield in the off-hand', (() => {
   run('/purge start heist 5 soldier', admin)
@@ -304,7 +327,7 @@ ok('the soldier kit puts the shield in the off-hand', (() => {
   return ok2 && slot(anamy, 0).id == 'minecraft:netherite_sword'
 })())
 ok('the API', typeof global.Purge.start == 'function' && global.Purge.active() === false && global.Purge.tithed() == DB().tithe && global.Purge.kits.gladiator.armor.length == 4)
-ok('no errors logged (apart from the item that no longer exists and the failed save)', !logs.some(l => /^ERR/.test(l) && !/gone:item|disk full|Could not vault Careful/.test(l)), logs.filter(l => /^ERR/.test(l)).join('; '))
+ok('no errors logged (apart from the item that no longer exists, the failed save and the item that won\'t rebuild)', !logs.some(l => /^ERR/.test(l) && !/gone:item|disk full|Could not vault Careful|broken:item/.test(l)), logs.filter(l => /^ERR/.test(l)).join('; '))
 
 Date.now = realNow
 console.log(fails ? fails + ' FAILED' : 'ALL PASSED')

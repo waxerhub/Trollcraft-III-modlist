@@ -65,9 +65,10 @@ const GLOW_TOP = 3                    // the richest war chests online glow
 
 // ===================== STATE =====================
 
-let Serializer = null, StringArg = null
+let Serializer = null, StringArg = null, ItemStackClass = null
 try { Serializer = Java.loadClass('net.minecraft.network.chat.Component$Serializer') } catch (e) { }
 try { StringArg = Java.loadClass('com.mojang.brigadier.arguments.StringArgumentType') } catch (e) { }
+try { ItemStackClass = Java.loadClass('net.minecraft.world.item.ItemStack') } catch (e) { }
 const S = { lastHit: {}, slow: 0 }
 let data = null
 
@@ -163,6 +164,34 @@ function afk(p) {
 }
 function emptyStack() { try { return Item.empty } catch (e) { return Item.of('minecraft:air') } }
 function stackNbt(s) { try { return s.nbt != null ? String(s.nbt) : '' } catch (e) { return '' } }
+// A vaulted stack is saved whole (toNBTJS: id, Count, tag and ForgeCaps). Some mods keep an item's contents in a Forge
+// capability outside its tag: Extra Utilities' Golden Bag of Holding keeps its 54 slots there, EvilCraft's Broom its
+// blood. Rebuilt from id + tag, such an item comes back empty. 'nbt' is kept for reading and for older records.
+function stackFull(s) { try { return String(s.toNBTJS()) } catch (e) { return '' } }
+function savedStack(s, slot) {
+  const r = { id: String(s.id), count: Number(s.count), nbt: stackNbt(s), full: stackFull(s) }
+  if (slot != null) r.slot = slot
+  return r
+}
+// Rebuilds a saved stack: whole with ItemStack.of (as the game loads a chest), or a record saved before 'full' from its
+// id, count and tag. Throws if it can't, so the stack stays in the vault.
+function rebuild(r) {
+  if (!r.full) return Item.of(r.id, r.count, r.nbt || null)
+  if (!ItemStackClass || typeof NBT == 'undefined') throw new Error('ItemStack.of is not available')
+  const st = ItemStackClass.of(NBT.toTagCompound(r.full))
+  if (!st || st.isEmpty()) throw new Error('unknown item ' + r.id)
+  return st
+}
+// Whether a saved stack comes back as the same item and count. Checked before a fighter's inventory is cleared.
+function rebuilds(r) {
+  try {
+    let st = rebuild(r)
+    return String(st.id) == r.id && Number(st.count) == r.count
+  } catch (e) {
+    console.error('[Purge] Can\'t rebuild ' + r.id + ': ' + e)
+    return false
+  }
+}
 
 // ===================== THE SANCTUARY =====================
 
@@ -238,7 +267,7 @@ function vaultRecord(p) {
   const slots = [], n = invSize(p)
   for (let i = 0; i < n; i++) {
     let s = p.inventory.getItem(i)
-    if (s && !s.isEmpty() && !isKitItem(s)) slots.push({ slot: i, id: String(s.id), count: Number(s.count), nbt: stackNbt(s) })
+    if (s && !s.isEmpty() && !isKitItem(s)) slots.push(savedStack(s, i))
   }
   return { name: nameOf(p), uuid: uuidOf(p), t: Date.now(), purge: db().cur ? db().cur.id : 0, slots: slots, extras: [] }
 }
@@ -256,6 +285,13 @@ function enlist(server, p) {
     return false
   }
   const rec = vaultRecord(p)
+  const bad = rec.slots.filter(s => !rebuilds(s))
+  if (bad.length) {                                   // never clear what couldn't be handed back
+    C.skipped[u] = true
+    tellOps(server, nameOf(p) + ' sits this Purge out: ' + bad.length + ' of their items (' + bad[0].id + ') could not be saved safely. Check the server log.')
+    console.error('[Purge] Could not vault ' + nameOf(p) + ': ' + bad.map(s => s.id).join(', ') + ' would not rebuild; left untouched')
+    return false
+  }
   db().vaults[u] = rec
   if (!save()) {
     delete db().vaults[u]
@@ -289,7 +325,7 @@ function enforce(server, p) {
     if (!s || s.isEmpty()) continue
     let life = lifeOf(s)
     if (life == mine) continue
-    if (!life && !isKitItem(s)) { V.extras.push({ id: String(s.id), count: Number(s.count), nbt: stackNbt(s) }); kept++ }
+    if (!life && !isKitItem(s)) { V.extras.push(savedStack(s)); kept++ }
     p.inventory.setItem(i, emptyStack())
   }
   if (!kept) return
@@ -306,12 +342,12 @@ function restore(server, p, quiet) {
   const badSlots = [], badExtras = []
   V.slots.forEach(s => {
     try {
-      if (V.partial) p.give(Item.of(s.id, s.count, s.nbt || null))
-      else p.inventory.setItem(s.slot, Item.of(s.id, s.count, s.nbt || null))
+      if (V.partial) p.give(rebuild(s))
+      else p.inventory.setItem(s.slot, rebuild(s))
     } catch (e) { badSlots.push(s); console.error('[Purge] ' + V.name + ' slot ' + s.slot + ' (' + s.id + '): ' + e) }
   })
   V.extras.forEach(s => {
-    try { p.give(Item.of(s.id, s.count, s.nbt || null)) } catch (e) { badExtras.push(s); console.error('[Purge] ' + V.name + ' extra ' + s.id + ': ' + e) }
+    try { p.give(rebuild(s)) } catch (e) { badExtras.push(s); console.error('[Purge] ' + V.name + ' extra ' + s.id + ': ' + e) }
   })
   if (badSlots.length || badExtras.length) {
     V.slots = badSlots

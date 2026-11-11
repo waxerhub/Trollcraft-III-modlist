@@ -632,6 +632,21 @@ ok('/potatowar ranks: 11 ranks with what they craft', replies.length == 11 && /5
   cmd('potatowar set OldTimer 7100', admin)
   ok('/potatowar set (op) can lower it to what the potatoes now buy', glob.BloodPool.standing(oldTimer).tier == 3 && PDB().standing['legacy-1'].peak == 3)
 }
+// The Purge's Potato Heist: potatoes taken from and given to a player by UUID (online or not); ranks are kept.
+{
+  const BP = glob.BloodPool
+  const rich = { getStringUuid: () => 'heist-rich', getGameProfile: () => ({ getName: () => 'Rich' }), server }
+  BP.creditStanding(rich, 60000)
+  ok('heist setup: 60,000 potatoes is Potato Soldier (rank 5)', BP.standingOfUuid('heist-rich').tier == 5 && BP.standingOfUuid('HEIST-RICH').potatoes == 60000)
+  ok('takeStanding takes what is asked and returns it', BP.takeStanding('heist-rich', 'Rich', 2500) == 2500 && BP.standingOfUuid('heist-rich').potatoes == 57500)
+  ok('... never more than they have', BP.takeStanding('heist-rich', 'Rich', 999999) == 57500 && BP.standingOfUuid('heist-rich').potatoes == 0)
+  ok('... and the rank is kept (the peak)', BP.standingOfUuid('heist-rich').tier == 5 && PDB().standing['heist-rich'].peak == 5)
+  ok('... nothing to take: 0', BP.takeStanding('heist-rich', 'Rich', 100) == 0 && BP.takeStanding('nobody-at-all', 'Nobody', 100) == 0)
+  BP.giveStanding('heist-new', 'Newcomer', 3000)
+  ok('giveStanding works for a player the Potato War has never seen (offline): rank 3', BP.standingOfUuid('heist-new').potatoes == 3000 && BP.standingOfUuid('heist-new').tier == 3 && PDB().standing['heist-new'].name == 'Newcomer')
+  BP.giveStanding('heist-new', '', 0)
+  ok('... 0 or less does nothing, and a blank name keeps the old one', BP.standingOfUuid('heist-new').potatoes == 3000 && PDB().standing['heist-new'].name == 'Newcomer')
+}
 replies.length = 0; cmd('bloodpool tiers', bo)
 ok('/bloodpool tiers names the rank each tier\'s crafting needs', /Tier 5 .*crafting needs Potato Soldier/.test(flat(replies[4])) && !/crafting needs/.test(flat(replies[11])), flat(replies[4]) + ' | ' + flat(replies[11]))
 setReal(ana, ana.selected, stack('thermal:machine_frame', 1))

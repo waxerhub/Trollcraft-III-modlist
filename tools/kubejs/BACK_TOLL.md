@@ -19,6 +19,7 @@ FTB Essentials still applies its own 5 s warmup and 30 s cooldown (`tools/server
 **Who pays nothing:**
 - operators (permission level 2), the console and command blocks;
 - everyone, if `economy/black_market.js` isn't installed. Its coins are needed, and one warning is logged.
+- a fighter during a Purge: `part2/purge.js` refuses their `/back` (no getting away), so it isn't charged.
 
 Messages go only to the player (never `tellraw @a`). The server log gets one `[BackToll]` line per charge, refund and logout.
 

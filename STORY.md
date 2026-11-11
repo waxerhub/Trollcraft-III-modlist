@@ -277,7 +277,27 @@ Technoblade's Potato War, revived. **The Pool decides what the server can make; 
 40. **The Outpost Raid:** players storm a Ministry outpost to take it back. 🔨
 
 ### Act IV: Project Chaos
-41. **Prank Purges:** recurring, timed around relic deliveries. 🔨
+41. **The Purges:** recurring, timed around relic deliveries, with a different game mode each week. ✅ (the engine and the first mode: `part2/purge.js`, see [PURGE.md](tools/kubejs/PURGE.md)) + 🔨 (more modes, scheduling, patrons)
+    - **The premise (owner decisions):**
+      - Inspired by Mianite's Purges.
+      - **The declarations are unsigned.** Nobody knows who runs the Purges, and the script never names the Ministry. The Castellan reads them out at the castle.
+      - **Mianite-style rules:** a gear rule per Purge (the preset kits), most points wins, and a trophy that carries over on a tie.
+    - **The Tithe (the hidden Harvest):** a cut of what each Purge moves quietly vanishes into a secret count (`/purge tithe`, ops only).
+      - The reveal comes later, in a Deep Record or an End City book: the Purges were the Ministry's fastest pump. *"Supervised recreational bloodletting, held weekly, raises yield by 340%. Participants believe it to be their own tradition."*
+      - The count becomes the evidence ("your Purges gave them N").
+    - **The patrons (planned):**
+      - the **Blood God** (Techno) backs a champion with honest gifts;
+      - the unnamed **Benefactor** (secretly the Ministry) gives better gifts, and every kill made with them feeds the Tithe.
+    - **The first mode, the Potato Heist** ✅. Every kill steals from the victim's Potato War total. Owner decisions:
+      - 5% per kill (50 to 2,500), and **ranks are never lost**;
+      - 80% to the killer, and **20% vanishes into the Tithe**;
+      - only rank 3+ can be robbed; repeat robberies are worth less, and revenge on your robber takes double;
+      - **preset kits for everyone** (Soldier, Peasant, Archer, Gladiator), so no player has the clear advantage. Everyone online fights; their belongings are vaulted and handed back at the end;
+      - the spawn castle is the **sanctuary**, where nobody fights.
+    - **Modes to build next (brainstorm):**
+      - **the Swine Heist** (Mianite's Purge 2.0: steal pigs into your pen, with the castle as the neutral hall);
+      - Hot Potato (the Tithe Potato), Body Swap Roulette, Manhunt, Masquerade (Friendly Fire), Blood Moon (co-op), Seize the Hill;
+      - and a Grand Purge before the Siege, with a wheel of mutators.
     - **Super weapons** are the Purges' prizes, each one held by whoever can keep it:
       - **Leelinda's Stake:** the Minotaur Axe from the Minoshroom's labyrinth. Announced by hand.
       - **The Anamian Axe** ✅ (`anamian_axe.js`, see [ANAMIAN_AXE.md](tools/kubejs/ANAMIAN_AXE.md)): a living weapon forged for Lord Anamy. It gains Souls from kills, bosses, felled trees and offerings, and levels I–X. It learns Timber, Cleave, Bloodthirst and Blood Harvest, turns netherite at VIII, and calls lightning on crits at X (Judgement). Only one exists; whoever holds it keeps its level, and the server is told when it changes hands or goes loose (owner decisions).
@@ -317,6 +337,7 @@ Needs Blood Pool Tier 12 and the full Regalia.
 | The Blood Pool, its tiers and the Potato Tithe; the Nether and End gates; the tank | `part2/blood_pool.js`, `part2/dimension_gates.js`, `part2/blood_tank.js` | Part II's progression: blood breaks the Ministry's seals |
 | Techno's Potato War (Potato Standing) | `part2/blood_pool.js`, `economy/black_market.js` | Each player's rank: what they may craft and buy |
 | The Potato War upgrade tree | `part2/potato_tree.js`, `tools/ftbquests/` (FTB Quests) | Per-player nodes: Tinkers metals, smelteries, autocrafting, logistics, farms; catch-up |
+| The Purges (engine, kits and vault, the Potato Heist) | `part2/purge.js` | Act IV's weekly Purges; the hidden Tithe for the Harvest reveal |
 
 ## Build order
 1. ✅ **Batch 1:** `story.js` (acts and decrees) and `economy/trolls.js` (the Troll Log, payouts, reports). The Blood Pool was taken out again and saved for Part II.
@@ -332,7 +353,7 @@ Needs Blood Pool Tier 12 and the full Regalia.
    4a. 🔨 **Part I scripts adapted for Part II** (see [PART2_SCRIPTS.md](PART2_SCRIPTS.md)): the Pig Escort without its Nether unlock and reveal (it counts Escorts for the Swine's Oath), `limit_balance.js` reduced to permanent bans, and the black market and bounties without Part I-only items. Factions, trials, Clean Slate, the Blood Portal and the End Lockdown don't carry over.
    5. 🔨 **The Ministry as the enemy** (`part2/ministry.js`): Inspectors raid everyone, Ministry bounties, and trolls on Ministry NPCs.
    6. 🔨 **The Shrine and the Regalia** (`part2/shrine.js`): `/regalia`, the deliveries, Shrine raids, the Seizure and the Outpost raid.
-   7. 🔨 **Events:** Prank Purges, shared with Part I's batch 2.
+   7. ✅ + 🔨 **Events:** the Purge engine and the Potato Heist (`part2/purge.js`); more Purge modes to come.
    8. 🔨 **The Citadel and the Minister** (`part2/citadel.js`): the Bureaucratic Barrier, the phased fight, and the Crown Restored.
    9. 🔨 **The ruins:** lore books.
 

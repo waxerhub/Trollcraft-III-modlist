@@ -996,6 +996,26 @@ global.BloodPool = {
     setStanding(player.server || Utils.server, u, nameOf(player), standingOf(u).potatoes + n, true)
     console.info('[BloodPool] Potato War: ' + nameOf(player) + ' handed in ' + n + ' potatoes (upgrade tree)')
   },
+  // By UUID, for players who may be offline (part2/purge.js's Potato Heist).
+  standingOfUuid: uuid => standingOf(String(uuid).toLowerCase()),
+  // Takes up to n potatoes from a player's total. Their rank is kept (the peak). Returns how many were taken.
+  takeStanding: (uuid, name, n) => {
+    uuid = String(uuid).toLowerCase()
+    n = Math.floor(Number(n) || 0)
+    const have = standingOf(uuid).potatoes, take = Math.min(have, n)
+    if (!(take > 0)) return 0
+    setStanding(Utils.server, uuid, name ? String(name) : '', have - take, false, false)
+    console.info('[BloodPool] Potato War: ' + (name || uuid) + ' lost ' + take + ' potatoes (Purge)')
+    return take
+  },
+  // Adds n potatoes to a player's total (online or not), with rank-ups.
+  giveStanding: (uuid, name, n) => {
+    uuid = String(uuid).toLowerCase()
+    n = Math.floor(Number(n) || 0)
+    if (!(n > 0)) return
+    setStanding(Utils.server, uuid, name ? String(name) : '', standingOf(uuid).potatoes + n, true)
+    console.info('[BloodPool] Potato War: ' + (name || uuid) + ' gained ' + n + ' potatoes (Purge)')
+  },
   craftAccess: player => craftAccess(uuidOf(player)),   // the highest tier this player can craft (rank or catch-up)
   tiers: TIERS,                                        // read-only: the tier lists (tools, the quest generator, the audit)
   standingThresholds: STANDING,

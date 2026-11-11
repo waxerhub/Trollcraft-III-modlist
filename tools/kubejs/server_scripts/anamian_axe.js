@@ -460,6 +460,8 @@ BlockEvents.broken(event => {
 function scan(server) {
   const D = db()
   if (!D.serial) return
+  // A kit Purge (part2/purge.js) locks every fighter's inventory in its vault, the Axe included: it isn't loose.
+  if (purgeKitActive()) { S.misses = 0; return }
   const players = list(server.players)
   const holder = players.filter(p => hasAxe(p))[0] || null
   if (holder) {
@@ -489,6 +491,9 @@ function scan(server) {
     tellAll(server, voice(NAME + ' is loose. ' + D.holderName + ' no longer has it. Open for grabs.', 'red'))
     console.info('[AnamianAxe] Loose (last held by ' + D.holderName + ')')
   }
+}
+function purgeKitActive() {
+  try { return !!(global.Purge && global.Purge.kitActive()) } catch (e) { return false }
 }
 function startLoop(server) {
   const token = ++S.loopToken

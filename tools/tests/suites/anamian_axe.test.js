@@ -318,6 +318,18 @@ bo.online = false
 advance(240)
 ok('its holder logging off with it doesn\'t make it loose', bo.msgs.filter(m => /is loose/.test(m)).length == 1)
 bo.online = true
+// A kit Purge (part2/purge.js) vaults every fighter's inventory, the Axe included: it isn't loose.
+{
+  const i2 = bo.slots.indexOf(held), msgs0 = bo.msgs.length
+  bo.slots[i2] = EMPTY
+  global.Purge = { kitActive: () => true }
+  advance(480)
+  ok('during a kit Purge the vaulted Axe isn\'t announced loose', bo.msgs.filter(m => /is loose/.test(m)).length == 1)
+  delete global.Purge
+  bo.slots[i2] = held
+  advance(240)
+  ok('... and after the Purge it\'s back with Bo, no claim message', !bo.msgs.slice(msgs0).some(m => /claimed/.test(m)) && /Held by Bo/.test(run([], anamy)[0]))
+}
 ok('/anamian stats is op-only and reports', run(['stats'], anamy)[0] == 'DENIED' && /Serial 1, held by Bo/.test(run(['stats'], admin)[0]))
 ok('/anamian give force forges a new one; the old serial stops counting', /Forged/.test(run(['give', 'Admin', 'force'], admin)[0]) && !global.AnamianAxe.isRealAxe(held))
 ok('no errors logged', !logs.some(l => /^ERR/.test(l)), logs.filter(l => /^ERR/.test(l)).join('; '))

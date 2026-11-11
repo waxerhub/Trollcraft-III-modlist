@@ -1,0 +1,184 @@
+# The Purge (Part II)
+
+`server_scripts/part2/purge.js` runs **the Purges**: timed server events with a game mode, started by an op with `/purge`. It's an engine that game modes plug into. The first mode is **the Potato Heist**.
+
+- **The story:** the Purge's declarations are **unsigned**. Nothing in the script names the Ministry. Players don't know who runs the Purges, or that a cut of every theft quietly disappears (the Tithe). See STORY.md, Act IV.
+- **It needs** `part2/blood_pool.js` for the Heist (the Potato War totals).
+- **It uses, when installed,** `protected_areas.js` (the sanctuary) and `economy/black_market.js` (AFK).
+
+## The engine
+- **A timer and a red boss bar:** the mode, the time left, and a mode line (the Heist's is the richest war chest).
+- **The opening:**
+  - midnight and a thunderstorm for the Purge's length;
+  - the raid horn and a title for everyone;
+  - the rules, the kit and the sanctuary, told to every player.
+- **The closing:**
+  - a title: *"Your participation has been recorded. Thank you."*;
+  - the mode's summary, the winner, and each fighter's own result, sent privately;
+  - the boss bar and glowing cleared, and loose kit on the ground removed;
+  - belongings handed back;
+  - an entry in `/purge history`.
+- **Kills:**
+  - the player who struck the killing blow;
+  - or, for a fall, lava or mobs, the player who **last hit the victim within 10 seconds**;
+  - **combat logging:** logging out within **15 seconds** of a player's hit counts as being killed by them. The theft works while they're offline, and they're told at their next login.
+  - **Nothing counts** for killing yourself, an **AFK** victim, `/kill`, or a death **in the sanctuary**.
+- **The sanctuary:** the areas named in `SANCTUARY` (`Spawn` and `The Castle` from `protected_areas.js`).
+  - Nobody can hurt anyone there during a Purge, and nothing counts there.
+  - Players there when the Purge starts keep their own gear until they step out.
+  - **Once a player is fighting, they fight until the end,** even if they go back in. They're still safe while inside.
+- **No escaping a fight:** FTB Essentials' `home`, `back`, `spawn`, `warp`, `tpa`, `tpahere`, `tpaccept`, `rtp` and `tpl` are refused for fighters.
+  - **Ops are exempt** (`BLOCK_OPS_TOO`). So is anyone in the sanctuary who isn't fighting.
+  - `back_toll.js` doesn't charge for a `/back` the Purge refuses.
+- **The Tithe:** a hidden count that any mode can add to (the Heist adds its 20% cut). Only ops can see it (`/purge tithe`). It's the Benefactor's Harvest count, for the reveal later.
+- **A restart or `/reload` mid-Purge:** it carries on. If its time ran out while the server was down, it ends with the summary and hands everything back.
+
+## Kits and the vault
+A mode with kits (the Heist has all four) makes **everyone fight with the same gear**, so nobody has the clear advantage.
+
+| Kit | Items |
+|---|---|
+| `soldier` | iron sword, shield (off-hand), bow, 32 arrows, full iron armour, 16 steak |
+| `peasant` | wooden sword, full leather armour, 8 bread (Mianite's old rules) |
+| `archer` | bow, 64 arrows, stone sword, full chainmail, 16 steak |
+| `gladiator` | diamond sword, diamond axe, full diamond armour, 4 golden apples, 16 steak |
+
+The op names the kit, or one is picked at random. Kit items are plain and unenchanted, with the lore *"Purge issue. Returned at the end."*
+
+**Who fights:** every player online in survival or adventure. That includes players who log in during the Purge, and players stepping out of the sanctuary. Players in creative or spectator don't fight.
+
+**Becoming a fighter:**
+1. **The vault:** every inventory slot (main inventory, armour and off-hand) is saved with its count and NBT. It goes into the saved data and a backup file, `kubejs/purge_vaults/<name>_<uuid>.json`.
+2. **Only if the save worked** is the inventory cleared. If it can't be saved, the player isn't touched and sits the Purge out, and the ops are told.
+3. Effects are cleared, and the kit is given with the armour worn.
+
+**Keeping it fair:**
+- **Every second,** anything a fighter has that isn't their kit (from a chest, the ender chest, the ground, a mined block) is moved to their vault's **extras** and handed back at the end. They're told once.
+- **Kit items carry their owner and "life".** A life is one stretch between respawns. Another player's kit, or your own from before you died, is simply taken away. So dropping and picking up kit never adds up to more than one kit.
+- **On death,** a fighter's inventory is cleared first, so nothing drops and there's nothing in their corpse. They respawn with a fresh kit and 10 seconds of **Resistance V** against spawn camping.
+
+**Handing back:**
+- At the end, each fighter's inventory is cleared and **every slot is put back exactly**, then the extras are given. They drop at the player's feet if the inventory is full.
+- **A dead player** gets theirs when they respawn. **An offline player** gets theirs when they next log in.
+- If an item can't be made any more (its mod was removed), **only that part stays in the vault**, marked partial. The ops are told, and `/purge restore` hands it over later without clearing anything.
+- The backup file is marked `restored` once it's done.
+
+## The Potato Heist (`heist`)
+Every kill steals from the victim's **Potato War total**, their "war chest": the lifetime potatoes in `/potatowar`.
+
+| Rule | Value (owner decisions) |
+|---|---|
+| Stolen per kill | **5%** of the victim's total, at least 50, at most **2,500** |
+| Kept by the killer | **80%**. The other **20% vanishes** into the hidden Tithe |
+| Ranks | **Never lost.** The victim keeps their rank and crafting access (the peak rank in `blood_pool.js`); theft only costs progress toward the next rank. The killer can rank up |
+| Who can be robbed | **Rank 3 and up** (2,500+ potatoes), so new players aren't farmed |
+| The same killer robbing the same victim again | ×0.5, then ×0.25 |
+| **Grudge:** killing someone who robbed you this Heist | **×2**, even below rank 3. Each robbery gives one grudge |
+| The richest war chests | The top 3 online **glow** |
+
+**Effects:**
+- potato particles burst from the body (particles only, never real items);
+- the killer gets a title (*"+2,000 potatoes"*) and a sound;
+- the victim is told how much they lost, and that their rank is safe;
+- everyone hears *"Anamy raided Goruk's war chest."*
+
+**The summary** gives the biggest hauls and the hardest hit. The winner is the best net gain.
+
+## Commands
+| Command | Who | What it does |
+|---|---|---|
+| `/purge` | anyone | The running Purge: mode, kit, time left, your score, the richest war chest. Otherwise, the last Purge |
+| `/purge top` | anyone | The leaderboard |
+| `/purge modes` | anyone | The game modes |
+| `/purge kits` | anyone | The kits and what's in each |
+| `/purge start <mode> <minutes> [kit]` | op | Start a Purge (1–240 minutes). A random kit if none is named |
+| `/purge stop` | op | End it now, with the summary, and hand everything back |
+| `/purge vaults` | op | Vaults not yet handed back, and why (fighting now, or waiting for them to log in) |
+| `/purge restore <player>` | op | Hand a vault back by hand (online, alive, not fighting) |
+| `/purge history` | op | The last 20 Purges: mode, kit, length, fighters, winner |
+| `/purge tithe` | op | The hidden Tithe total, by source |
+
+## Settings (top of purge.js)
+| Setting | Default | Meaning |
+|---|---|---|
+| `MAX_MINUTES` | 240 | The longest Purge |
+| `LAST_HIT_SECONDS` | 10 | A death this soon after a player's hit is their kill |
+| `COMBAT_LOG_SECONDS` | 15 | Logging out this soon after a hit counts as a death |
+| `RESPAWN_RESISTANCE_SECONDS` | 10 | Resistance V after respawning |
+| `SANCTUARY` | `['Spawn', 'The Castle']` | `protected_areas.js` areas where nobody fights |
+| `BLOCKED_COMMANDS`, `BLOCK_OPS_TOO` | the teleports above, false | Commands fighters can't use |
+| `SKIP_AFK` | true | AFK victims count for nothing |
+| `KITS` | the four above | The kits |
+| `STEAL_SHARE`, `STEAL_MIN`, `STEAL_MAX` | 0.05, 50, 2500 | How much a kill steals |
+| `TITHE_SHARE` | 0.2 | The cut that vanishes |
+| `MIN_VICTIM_RANK` | 3 | Below this rank, nobody can rob you (except a grudge) |
+| `REPEAT_FACTORS`, `GRUDGE_FACTOR` | [1, 0.5, 0.25], 2 | Repeat robberies and revenge |
+| `GLOW_TOP` | 3 | How many of the richest war chests glow |
+
+**Saved data:** `server.persistentData["purge"]` holds:
+- the running Purge (ledger, fighters, lives, the mode's data);
+- the vaults;
+- the Tithe;
+- reports for players who ran;
+- the history.
+
+Unreadable data is kept under `purge_unreadable_<time>`. Last hits are kept in memory only.
+
+**API:** `global.Purge = { start(mode, minutes, kit), stop(reason), active(), mode(), kitActive(), isFighter(player), blocksCommand(player, cmd), ledger(), tithed(), addTithe(n, source), modes, kits }`. `start` returns `''` when it started, or why not.
+
+It also uses `global.BloodPool.standingOfUuid`, `takeStanding` and `giveStanding` (added to `blood_pool.js` for the Heist). `anamian_axe.js` doesn't call the Axe loose during a kit Purge, because it's in its holder's vault.
+
+## Adding a mode
+Add an entry to `MODES`:
+```js
+mymode: {
+  name: 'The Swine Heist', blurb: 'One line for /purge modes.',
+  rules: ['Lines told to everyone at the start.'],
+  kits: ['soldier', 'archer'],            // leave out for "bring your own gear"
+  score: e => e.kills,                    // from the ledger entry { name, kills, deaths, gain, loss }
+  scoreLabel: 'kills',
+  onStart: server => { },                 // set up db().cur.modeData
+  onKill: (server, ctx) => { },           // ctx: killer, killerUuid, killerName, victim (null if they ran), victimUuid, victimName, offline
+  onTick: server => { },                  // every 5 seconds
+  bossbar: server => '',                  // extra boss bar text
+  status: (server, player) => '',         // extra /purge line
+  onEnd: (server, rows) => [],            // summary lines; rows are ranked { uuid, e, score }
+},
+```
+
+## Install
+Copy `purge.js` to `kubejs/server_scripts/part2/`, and the updated `blood_pool.js` (same folder), `anamian_axe.js` and `back_toll.js`. Then run `/reload`.
+
+## Test plan (two survival accounts at rank 3+, and an op)
+1. **Start:** fill your inventory with enchanted gear and armour, then run `/purge start heist 5 peasant`.
+   - The horn, the title, night and thunder, and the boss bar appear.
+   - Your inventory becomes a wooden sword, bread and leather armour.
+   - `kubejs/purge_vaults/` has your file.
+2. **Fairness:**
+   - Take a diamond from a chest: within a second it's gone, with the "kept for you" message.
+   - Drop your sword and let the other account pick it up: it's taken from them.
+   - `/home` is refused.
+3. **The Heist:** kill the other account.
+   - `/potatowar` on both shows 5% moved, 80% to you.
+   - Their rank and crafting are unchanged, and `/purge tithe` shows the 20%.
+4. **Repeat and grudge:** kill them again: half as much. Let them kill you: double.
+5. **Last hit:** hit them, then let them die to a fall within 10 seconds: it's yours.
+6. **Combat log:** hit them, then they log out: they're robbed, and told at their next login.
+7. **Death:** no corpse with items. You respawn with the kit and Resistance.
+8. **Sanctuary:** standing inside it, you can't be hurt. Someone who starts there keeps their gear until they step out.
+9. **Glow:** the richest war chests glow, and the boss bar names the richest.
+10. **The end** (`/purge stop` or the timer):
+    - your inventory comes back slot for slot, plus the diamond;
+    - an account that was offline gets theirs at login;
+    - one that was dead at the end gets theirs at respawn.
+11. **Restart:** restart the server mid-Purge. It carries on with its time and vaults.
+
+## What couldn't be verified
+- **Better Combat:** whether `EntityEvents.hurt` sees the attacking player on its delayed hits (it should, because Better Combat calls `ServerPlayer.attack`). The last-hit credit covers most cases anyway.
+- **The Corpse mod:** whether it leaves an empty corpse when the inventory was cleared on death.
+- **Curios slots** (rings, belts, charms) aren't vaulted, so curio items still work in a kit Purge. This is a known gap to watch.
+- **Beacon effects** near a base still apply to fighters.
+- **Waystones** teleport through their own screen, not a command, so they aren't blocked.
+- **Kit items put in a chest or ender chest** stay there after the Purge, as plain items with the kit lore. Loose kit on the ground in loaded chunks is removed at the end.
+- **`Item.of` with saved NBT strings** on every modded item, for the vault. It's the same method `blood_portal.js` uses for the exodus files.
+- **`/weather thunder <n>s`** (the duration as a time argument).

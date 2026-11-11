@@ -74,6 +74,7 @@ All abilities work from the main hand only.
   - **Not while a window is open.** The black market's shop window takes the player's inventory away until it's closed, so nothing is announced while any chest or shop window is open.
   - The axe still counts as held while it's on the mouse cursor.
 - **A holder who logs off** with the axe keeps it. That isn't "loose".
+- **During a kit Purge** (`part2/purge.js`), the holder's inventory, the Axe included, is locked in their vault until the end. So it isn't announced loose. It can't be used in a kit Purge; it stays the prize of modes without kits.
 - **It isn't soulbound.** The Corpse mod keeps a dead holder's items in their corpse, so looting the corpse claims it.
 
 ## Commands

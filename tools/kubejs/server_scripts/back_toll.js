@@ -130,6 +130,7 @@ ServerEvents.command(COMMAND, event => {
   const p = source.getPlayer()
   if (p == null) return                                   // console and command blocks
   if (EXEMPT_OPS && source.hasPermission(2)) return
+  try { if (global.Purge && global.Purge.blocksCommand(p, COMMAND)) return } catch (e) { }   // the Purge refuses it (part2/purge.js): no charge
   const E = econ()
   if (!E) {
     if (!warnedNoEconomy) console.warn('[BackToll] economy/black_market.js is not installed: /back is free')

@@ -218,6 +218,9 @@ Techno's Potato War runs alongside the Pool. **The Pool decides what the server 
   - The rank's name, rank-ups and the black market still use the real rank.
   - `/potatowar` shows "Crafting access: Tier 3 (catch-up)".
   - The upgrade tree catches its nodes up in the same way.
+- **The Purge's Potato Heist** (`part2/purge.js`, see PURGE.md) moves potatoes between players' totals with `global.BloodPool.takeStanding(uuid, name, n)` and `giveStanding(uuid, name, n)`. These work for offline players too, and `standingOfUuid(uuid)` reads a total.
+  - **A loss never lowers a rank:** the highest rank reached is kept, so only progress toward the next rank is lost.
+  - **A gain can rank the thief up.**
 
 ## Dimensions (`dimension_gates.js`)
 | Dimension | Opens at | How it's held shut before then |

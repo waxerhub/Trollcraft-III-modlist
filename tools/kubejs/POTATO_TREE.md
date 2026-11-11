@@ -38,9 +38,26 @@ A Hypixel-style upgrade tree in the **FTB Quests** book. The potato ranks are th
 **Install:**
 1. Add the four mods and restart once.
 2. Copy the two scripts and the quest files to the server, and put the tooltip script in the modpack.
-3. Run `/reload` and `/ftbquests reload`, or restart again.
+3. Run `/reload`, and `/ftbquests reload` from the server console, or restart again.
 
 There's no `data.snbt` to copy. FTB Quests keeps its own defaults.
+
+**Where the book comes from** (checked in FTB Quests 2001.4.22's own code, `ServerQuestFile` and `BaseQuestFile`):
+- **Only from the server:** the server reads every `.snbt` file in `config/ftbquests/quests/chapters/` (that folder only, not subfolders) and sends the book to each player when they join.
+  - The client never reads quest files from disk. A copy in the modpack or in `defaultconfigs/` is never used.
+  - This version has no `lang/` translation files: the text is in the chapter files themselves.
+- **A running server keeps its book in memory.** New files only show after a restart, or after `/ftbquests reload` typed in the **server console** (an op in game can only run it with editing mode on).
+- **A running server can write its old book back over your new files.** When anything marks the book changed, its next save writes every chapter from memory: every world save (about 5 minutes) and at shutdown.
+  - Changes include an op moving or editing anything in editing mode, or a duplicate id found while loading.
+  - So upload chapter files **with the server stopped**, or run the console reload right after uploading.
+- **A second copy of a chapter loads too.** For example, a browser-renamed `potato_war_ranks (1).snbt` next to the original.
+  - The first file read keeps the ids. The other gets new random ids, so the book shows two "Ranks" chapters, one of them old.
+  - Keep exactly one file per chapter, named as in `tools/ftbquests/quests/chapters/`.
+
+**If the book still shows old numbers:**
+1. Stop the server.
+2. In `config/ftbquests/quests/chapters/`, delete any extra copies, then replace the seven `potato_war_*.snbt` files with the repo's.
+3. Start the server. Make no edits in editing mode before checking the book.
 
 ## How it works
 - **The book:** press the quest key or run `/potatowar tree`.
@@ -176,8 +193,8 @@ Node ids are in `NODES` (e.g. `cobalt_smithing`). `/ftbquests change_progress` a
 
 **After editing `NODES`, the tiers or the ranks:**
 1. Run `node tools/ftbquests/generate_quests.js`. It rebuilds the chapters and the tooltip script.
-2. Upload the changed chapter files, and update the tooltip script in the modpack.
-3. Run `/ftbquests reload` and `/reload`.
+2. Upload the changed chapter files (best with the server stopped; see "Where the book comes from"), and update the tooltip script in the modpack.
+3. Run `/ftbquests reload` from the server console, and `/reload`.
 4. Run the audit again (`python3 -I tools/progression_audit.py …`, see PROGRESSION_AUDIT.md).
 
 Moving nodes around in the book's editor is fine. Keep the ids, and re-run the generator only if you also want your edits replaced.

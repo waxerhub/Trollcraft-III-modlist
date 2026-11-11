@@ -60,9 +60,28 @@ The op names the kit, or one is picked at random. Kit items are plain and unench
 **Keeping it fair:**
 - **Every second,** anything a fighter has that isn't their kit (from a chest, the ender chest, the ground, a mined block) is moved to their vault's **extras** and handed back at the end. They're told once.
 - **Kit items carry their owner and "life".** A life is one stretch between respawns. Another player's kit, or your own from before you died, is simply taken away. So dropping and picking up kit never adds up to more than one kit.
-- **On death,** a fighter's inventory is cleared first, so nothing drops and there's no kit in their corpse. They respawn with a fresh kit and 10 seconds of **Resistance V** against spawn camping.
+- **With an arena set, nobody dies** (see "The arena" below): a fatal blow is a knockout.
+- **Without an arena, on death,** a fighter's inventory is cleared first, so nothing drops and there's no kit in their corpse. They respawn with a fresh kit and 10 seconds of **Resistance V** against spawn camping.
   - The Corpse mod still makes a corpse: an empty one, gone 30 seconds after death (`corpse.despawn.time = 600` ticks).
-  - **Curios slots aren't vaulted** (see below), so a fighter's own rings, belts and charms drop into that corpse. With `corpse.access.only_owner = false`, anyone can take them.
+  - **Curios slots aren't vaulted** (see below), so a fighter's own rings, belts and charms drop into that corpse. With `corpse.access.only_owner = false`, anyone can take them. A knockout in the arena isn't a death, so nothing drops there.
+
+## The arena
+An op sets it in game: stand on the spot and run **`/purge arena set [radius]`** (40 blocks if no radius is given). It's saved, so it survives restarts, and it can be moved or cleared at any time (`/purge arena clear`). With no arena set, fighters fight where they stand and die as usual.
+
+- **Going in:** when a player becomes a fighter (at the start, on logging in mid-Purge, or on leaving the sanctuary), the place they're standing is saved with their vault. That's the dimension, the position and which way they face.
+  - Then they're sent to a **random safe spot** within the radius, chosen by vanilla `spreadplayers`, which avoids lava, water and fire. This works from any dimension.
+  - If no safe spot is found, or the radius is 0, they land on the arena point itself.
+- **The sanctuary doesn't keep anyone out** while an arena is set. Everyone in survival or adventure is taken in.
+  - The sanctuary still stops all fighting inside it.
+  - Creative and spectator players stay where they are.
+- **Knockouts instead of deaths:** damage that would kill a fighter is a knockout, decided at the moment of death (after armour and effects), the way a Totem of Undying works.
+  - **Who gets the kill:** it counts for the player who struck the blow, or who hit them in the last 10 seconds, exactly like a kill.
+  - **What happens to them:** they're healed, put out, fed, and given a **fresh kit** (a new life). They're sent to a **new random spot** in the arena, with 10 seconds of Resistance V.
+  - **Nothing is left behind:** the death never happens, so nothing drops, there's no corpse, and curios stay on.
+  - **`/kill` still kills.** The fighter respawns with a fresh kit and is sent back into the arena.
+- **Coming back:** when their belongings are handed back, each fighter is taken back to the exact spot they left from, then given their things. That's at the end for everyone online, at login for anyone offline, and with `/purge restore`.
+- **Arenas under a roof:** set `ARENA_HEADROOM`, and players land below arena y + that. In the Nether, the roof is always avoided (arena y + 10).
+- **Modes without kits** don't use the arena yet: they have no fighters list to send in.
 
 **Handing back:**
 - At the end, each fighter's inventory is cleared and **every slot is put back exactly**, then the extras are given. They drop at the player's feet if the inventory is full.
@@ -104,6 +123,9 @@ Every kill steals from the victim's **Potato War total**, their "war chest": the
 | `/purge restore <player>` | op | Hand a vault back by hand (online, alive, not fighting) |
 | `/purge history` | op | The last 20 Purges: mode, kit, length, fighters, winner |
 | `/purge tithe` | op | The hidden Tithe total, by source |
+| `/purge arena` | anyone | Where the arena is, and its radius |
+| `/purge arena set [radius]` | op | Set the arena where you stand (radius 0–500; 40 if not given). In game only |
+| `/purge arena clear` | op | No arena: fighters fight where they stand (anyone already taken in is still brought back) |
 
 ## Settings (top of purge.js)
 | Setting | Default | Meaning |
@@ -121,17 +143,20 @@ Every kill steals from the victim's **Potato War total**, their "war chest": the
 | `MIN_VICTIM_RANK` | 3 | Below this rank, nobody can rob you (except a grudge) |
 | `REPEAT_FACTORS`, `GRUDGE_FACTOR` | [1, 0.5, 0.25], 2 | Repeat robberies and revenge |
 | `GLOW_TOP` | 3 | How many of the richest war chests glow |
+| `ARENA_RADIUS` | 40 | The landing radius when `/purge arena set` is given none |
+| `ARENA_HEADROOM` | 0 | Land below arena y + this (an arena under a roof); 0 = on the surface |
 
 **Saved data:** `server.persistentData["purge"]` holds:
 - the running Purge (ledger, fighters, lives, the mode's data);
-- the vaults;
+- the vaults (each with `from`, where its owner is taken back to);
+- the arena;
 - the Tithe;
 - reports for players who ran;
 - the history.
 
 Unreadable data is kept under `purge_unreadable_<time>`. Last hits are kept in memory only.
 
-**API:** `global.Purge = { start(mode, minutes, kit), stop(reason), active(), mode(), kitActive(), isFighter(player), blocksCommand(player, cmd), ledger(), tithed(), addTithe(n, source), modes, kits }`. `start` returns `''` when it started, or why not.
+**API:** `global.Purge = { start(mode, minutes, kit), stop(reason), active(), mode(), kitActive(), arena(), isFighter(player), blocksCommand(player, cmd), ledger(), tithed(), addTithe(n, source), modes, kits }`. `start` returns `''` when it started, or why not.
 
 It also uses `global.BloodPool.standingOfUuid`, `takeStanding` and `giveStanding` (added to `blood_pool.js` for the Heist). `anamian_axe.js` doesn't call the Axe loose during a kit Purge, because it's in its holder's vault.
 
@@ -182,6 +207,11 @@ Optionally create an empty `kubejs/purge_vaults/` folder, so the vault backup fi
     - an account that was offline gets theirs at login;
     - one that was dead at the end gets theirs at respawn.
 11. **Restart:** restart the server mid-Purge. It carries on with its time and vaults.
+12. **The arena:** stand where it should be and run `/purge arena set 20`. Go somewhere else, the sanctuary included, and start a Purge.
+    - Everyone lands at a random spot within 20 blocks of the arena, the account at spawn too.
+    - Take a fatal blow (a fall, or the other account): no death screen and no corpse. You're healed, have a fresh kit, and are at a new spot in the arena. The kill counts for whoever hit you.
+    - `/kill` yourself: you die, respawn, and are sent back into the arena with a kit.
+    - At the end, each account lands exactly where it was before, facing the same way, with its own things. An account that was offline at the end is moved at its next login.
 
 ## Settled from the mod jars
 These were checked in the pack's own jars (class files read with `javap`; nothing run). They didn't need a game.
@@ -215,6 +245,12 @@ This was a copy of the pack with one player, and the Purge started from the cons
 - **Blocked commands:**
   - A non-op fighter's `/back` and `/home` were refused with the red message, and they weren't teleported.
   - As an op, the same player's `/back` worked, as `BLOCK_OPS_TOO = false` intends. An op who fights can still teleport out unless that's set to `true`.
+- **The arena (11 Nov 2026):**
+  - Set in game with `/purge arena set 20`. A player standing in the spawn sanctuary was pulled in, landing 16 blocks from the arena point.
+  - **Knockout:** 1,000 fall damage. There was no death message, no corpse and no death screen. Health was back to 20, the kit was fresh (second life), and the player was at a new spot in the arena.
+  - **Return:** read in the same instant the Purge ended, the player was exactly on the saved spot, facing the saved way, and still there 3 seconds later.
+  - Two earlier runs measured the player 10 and 28 blocks off, after they had moved: it was midnight (the Purge's doing) and hostile mobs were attacking.
+  - Each teleport logs a vanilla "moved too quickly!" warning, sized to the teleport. It's harmless: the server keeps the new position.
 - **Not covered:** kills, the Heist, and the test server's `blood_pool.js` (from `local-testing`, without `takeStanding`), since there was only one account.
 
 ## Proposed (not built: the owner decides)

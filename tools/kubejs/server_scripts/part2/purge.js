@@ -3,6 +3,8 @@
 //     logging), the sanctuary (no fighting there), a score ledger, the history and the hidden Tithe count.
 //   - Kits: a mode can make everyone fight with the same preset kit. Each fighter's own inventory is locked in a vault
 //     (saved data plus a backup file) and handed back slot for slot at the end.
+//   - The arena (/purge arena set): fighters are taken to random spots in it and brought back to where they were at
+//     the end. A fatal blow there is a knockout (healed, fresh kit, a new spot), not a death.
 //   - Modes plug in as entries in MODES. The first is the Potato Heist: every kill steals from the victim's Potato War
 //     total (part2/blood_pool.js), and a cut of every theft quietly vanishes (the Tithe).
 // The Purge's declarations are unsigned. Nothing here names the Ministry.
@@ -32,6 +34,12 @@ const BLOCK_OPS_TOO = false           // ops can still use them
 const SKIP_AFK = true                 // an AFK victim's death counts for nothing
 const HISTORY_SIZE = 20
 const VAULT_DIR = 'kubejs/purge_vaults/'
+// The arena (set in game with /purge arena set [radius]): every fighter is taken there when they join the fight, and
+// back to where they were at the end. Lethal damage there is a knockout, not a death: healed, a fresh kit, and sent to
+// another random spot in the arena. Without an arena, fighters fight where they stand and die as usual.
+const ARENA_RADIUS = 40               // default landing radius around the arena point (0 = all on the point)
+const ARENA_HEADROOM = 0              // land below arena y + this (for an arena under a roof); 0 = the surface.
+                                      // In the Nether the roof is always avoided (arena y + 10).
 const DATA_KEY = 'purge'
 
 // The kits. Plain, unenchanted, the same for everyone. armor: [head, chest, legs, feet]; offhand: one item.
@@ -121,6 +129,16 @@ function pos(e) {
   try { return { x: Number(e.getX()), y: Number(e.getY()), z: Number(e.getZ()) } } catch (err) { }
   return { x: Number(e.x), y: Number(e.y), z: Number(e.z) }
 }
+function r2(n) { return Math.round(Number(n) * 100) / 100 }
+// Where a player is, facing included: the spot they're taken back to after the Purge.
+function whereIs(p) {
+  const q = pos(p)
+  let yaw = 0, pitch = 0
+  try { yaw = Number(p.getYRot()); pitch = Number(p.getXRot()) } catch (e) {
+    try { yaw = Number(p.yaw) || 0; pitch = Number(p.pitch) || 0 } catch (e2) { }
+  }
+  return { dim: dimOf(p), x: r2(q.x), y: r2(q.y), z: r2(q.z), yaw: r2(yaw), pitch: r2(pitch) }
+}
 function list(javaList) { const out = []; for (let i = 0; i < javaList.size(); i++) out.push(javaList.get(i)); return out }
 function players(server) { try { return list(server.players) } catch (e) { return [] } }
 function playerByUuid(server, u) { return players(server).filter(p => uuidOf(p) == u)[0] || null }
@@ -147,6 +165,48 @@ function title(server, name, big, small, color) {
   run(server, 'title ' + name + ' title ' + JSON.stringify({ text: big, color: color || 'dark_red', bold: true }))
 }
 function actionbar(server, name, text, color) { run(server, 'title ' + name + ' actionbar ' + JSON.stringify({ text: text, color: color || 'gold' })) }
+
+// ===================== THE ARENA =====================
+
+function arena() { const A = db().arena; return A && A.dim ? A : null }
+// Sends a player to a random safe spot within the arena's radius (vanilla spreadplayers: no lava, water or fire),
+// or onto the arena point if the radius is 0 or no safe spot is found.
+function sendToArena(server, p) {
+  const A = arena()
+  if (!A) return false
+  const n = nameOf(p), r = Math.max(0, Math.round(Number(A.radius) || 0))
+  if (r >= 1) {
+    let under = ''
+    if (ARENA_HEADROOM > 0) under = ' under ' + Math.floor(A.y + ARENA_HEADROOM)
+    else if (/the_nether$/.test(A.dim)) under = ' under ' + Math.floor(A.y + 10)
+    if (run(server, 'execute in ' + A.dim + ' run spreadplayers ' + A.x + ' ' + A.z + ' 0 ' + r + under + ' false ' + n)) return true
+  }
+  run(server, 'execute in ' + A.dim + ' run tp ' + n + ' ' + A.x + ' ' + A.y + ' ' + A.z)
+  return true
+}
+// Takes a player back to where they were when they joined the fight (once).
+function goBack(server, p, V) {
+  const f = V.from
+  if (!f) return
+  run(server, 'execute in ' + f.dim + ' run tp ' + nameOf(p) + ' ' + f.x + ' ' + f.y + ' ' + f.z + ' ' + f.yaw + ' ' + f.pitch)
+  delete V.from
+}
+// Lethal damage to a fighter in the arena: healed, a fresh kit (a new life), and a new random spot in the arena.
+function knockout(server, p, u) {
+  const C = db().cur, n = nameOf(p)
+  try { p.setHealth(p.getMaxHealth()) } catch (e) { try { p.health = 20 } catch (e2) { } }
+  try { p.clearFire() } catch (e) { }
+  try { p.fallDistance = 0 } catch (e) { }
+  run(server, 'effect clear ' + n)
+  const life = (C.lives[u] || 0) + 1
+  C.lives[u] = life
+  save()
+  giveKit(server, p, C.kit, life)
+  sendToArena(server, p)
+  run(server, 'effect give ' + n + ' minecraft:saturation 1 20 true')
+  run(server, 'effect give ' + n + ' minecraft:resistance ' + RESPAWN_RESISTANCE_SECONDS + ' 4 true')
+  tell(p, 'Knocked out. Back in the arena with a fresh kit.', 'red')
+}
 function soundAt(server, name, sound, vol, pitch) {
   run(server, 'execute as ' + name + ' at @s run playsound ' + sound + ' master @s ~ ~ ~ ' + (vol || 1) + ' ' + (pitch || 1))
 }
@@ -300,6 +360,7 @@ function enlist(server, p) {
     console.error('[Purge] Could not vault ' + nameOf(p) + ': ' + bad.map(s => s.id).join(', ') + ' would not rebuild; left untouched')
     return false
   }
+  if (arena()) rec.from = whereIs(p)                  // taken back here at the end
   db().vaults[u] = rec
   if (!save()) {
     delete db().vaults[u]
@@ -317,6 +378,7 @@ function enlist(server, p) {
   save()
   run(server, 'effect clear ' + nameOf(p))
   giveKit(server, p, C.kit, life)
+  if (sendToArena(server, p)) tell(p, 'To the arena. You\'ll be brought back here when the Purge ends.', 'gold')
   tell(p, 'Your belongings are held until the Purge ends (' + rec.slots.length + ' stacks). Your kit: ' + KITS[C.kit].name + '.', 'gold')
   console.info('[Purge] ' + nameOf(p) + ' is fighting: ' + rec.slots.length + ' stacks vaulted')
   return true
@@ -346,6 +408,7 @@ function enforce(server, p) {
 function restore(server, p, quiet) {
   const D = db(), u = uuidOf(p), V = D.vaults[u]
   if (!V || !isAlive(p)) return false
+  goBack(server, p, V)                                // back to where they were when they joined the fight
   if (!V.partial) clearInventory(p)
   const badSlots = [], badExtras = []
   V.slots.forEach(s => {
@@ -509,7 +572,7 @@ function step(server) {
       let u = uuidOf(p)
       if (C.fighters[u]) { if (isAlive(p)) enforce(server, p); return }
       if (C.skipped[u] || notPlaying(p) || !isAlive(p)) return
-      if (inSanctuary(p)) {
+      if (inSanctuary(p) && !arena()) {                // with an arena, everyone is taken in
         if (!C.sheltered[u]) { C.sheltered[u] = true; tell(p, 'You\'re in the sanctuary: nobody fights here. Step out and you fight with the kit.', 'gold') }
         return
       }
@@ -569,7 +632,8 @@ function start(server, modeId, minutes, kitId) {
   tellAll(server, M.name.toUpperCase() + ' has begun. ' + minutes + ' minutes.', 'red')
   M.rules.forEach(r => tellAll(server, r, 'gray'))
   if (kit) tellAll(server, 'Kit: ' + KITS[kit].name + ' (' + KITS[kit].blurb + '). Everyone fights with it; your own belongings are held and handed back at the end.', 'gray')
-  if (sanctuaryAreas().length) tellAll(server, 'The sanctuary at the castle is neutral ground. Leave it and you fight.', 'gray')
+  if (kit && arena()) tellAll(server, 'Everyone is taken to the arena, and brought back to where they were when it ends. Nobody dies in there: a fatal blow knocks you out, and you\'re back in with a fresh kit.', 'gray')
+  else if (sanctuaryAreas().length) tellAll(server, 'The sanctuary at the castle is neutral ground. Leave it and you fight.', 'gray')
   tellAll(server, 'Your participation is appreciated.', 'dark_gray')
   if (kit) step(server)                   // enlist everyone now (not in a second)
   showBossbar(server)
@@ -653,7 +717,12 @@ EntityEvents.death(event => {
   else if (damageType(event.source) != 'genericKill') killer = recentHit(vu, LAST_HIT_SECONDS)
   delete S.lastHit[vu]
   if (killer) creditKill(server, killer.uuid, killer.name, v, vu, nameOf(v), false)
-  if (C.kit && C.fighters[vu]) clearInventory(v)     // nothing drops: no kit on the ground, no corpse to loot
+  if (!C.kit || !C.fighters[vu]) return
+  if (arena() && damageType(event.source) != 'genericKill') {   // /kill still kills
+    knockout(server, v, vu)                          // like a totem: no death, no drops, no corpse
+    event.cancel()
+  }
+  clearInventory(v)                                  // a real death: nothing drops, no kit on the ground, no corpse
 })
 
 PlayerEvents.respawned(event => {
@@ -663,6 +732,7 @@ PlayerEvents.respawned(event => {
     C.lives[u] = life
     save()
     giveKit(server, p, C.kit, life)
+    sendToArena(server, p)
     run(server, 'effect give ' + nameOf(p) + ' minecraft:resistance ' + RESPAWN_RESISTANCE_SECONDS + ' 4 true')
     return
   }
@@ -762,6 +832,22 @@ ServerEvents.commandRegistry(event => {
     const why = start(ctx.source.server, str(ctx, 'mode'), Number(Arguments.INTEGER.getResult(ctx, 'minutes')), withKit ? str(ctx, 'kit') : '')
     return why ? reply(ctx, why, true) : reply(ctx, 'Started.')
   }
+  const arenaText = A => A.dim + ' ' + Math.floor(A.x) + ' ' + A.y + ' ' + Math.floor(A.z) + ', radius ' + A.radius
+  const arenaShow = ctx => {
+    const A = arena()
+    return A ? reply(ctx, 'Arena: ' + arenaText(A) + '. Fighters are taken there and brought back at the end.')
+      : reply(ctx, 'No arena is set: fighters fight where they stand. An op sets one with /purge arena set [radius], standing on the spot.')
+  }
+  const arenaSet = (ctx, radius) => {
+    const p = ctx.source.getPlayer()
+    if (!p) return reply(ctx, 'Run it in game, standing where the arena should be.', true)
+    radius = Math.round(Number(radius))
+    if (!(radius >= 0 && radius <= 500)) return reply(ctx, 'The radius is 0 to 500 blocks.', true)
+    const w = whereIs(p)
+    db().arena = { dim: w.dim, x: Math.floor(w.x) + 0.5, y: Math.floor(w.y), z: Math.floor(w.z) + 0.5, radius: radius }
+    save()
+    return reply(ctx, 'Arena set: ' + arenaText(db().arena) + '.' + (db().cur ? ' Used from now on in this Purge.' : ''))
+  }
   const restoreCmd = ctx => {
     const name = str(ctx, 'player'), server = ctx.source.server, p = playerByName(server, name)
     if (!p) return reply(ctx, name + ' must be online to get their belongings back.', true)
@@ -804,6 +890,16 @@ ServerEvents.commandRegistry(event => {
         (h.kit ? ' (' + h.kit + ')' : '') + ', ' + h.minutes + ' min, ' + h.fighters + ' fighters: ' + (h.winner ? h.winner + ' won (' + signed(h.score) + ')' : 'no winner') + (h.reason == 'stopped' ? ', stopped early' : '')))
       return 1
     })))
+    .then(Commands.literal('arena')
+      .executes(safe(arenaShow))
+      .then(Commands.literal('set').requires(op)
+        .executes(safe(ctx => arenaSet(ctx, ARENA_RADIUS)))
+        .then(Commands.argument('radius', Arguments.INTEGER.create(event)).executes(safe(ctx => arenaSet(ctx, Number(Arguments.INTEGER.getResult(ctx, 'radius')))))))
+      .then(Commands.literal('clear').requires(op).executes(safe(ctx => {
+        db().arena = null
+        save()
+        return reply(ctx, 'Arena cleared. Fighters now fight where they stand' + (db().cur ? ' (anyone already in the arena is still brought back at the end).' : '.'))
+      }))))
     .then(Commands.literal('tithe').requires(op).executes(safe(ctx => {
       const D = db()
       return reply(ctx, 'The Tithe (secret): ' + fmt(D.tithe) + ' in all. ' + Object.keys(D.titheBy).map(k => k + ' ' + fmt(D.titheBy[k])).join(', '))
@@ -818,6 +914,7 @@ global.Purge = {
   active: () => !!db().cur,
   mode: () => (db().cur ? db().cur.mode : ''),
   kitActive: () => kitMode(),
+  arena: () => (arena() ? JSON.parse(JSON.stringify(arena())) : null),
   isFighter: player => isFighter(uuidOf(player)),
   blocksCommand: (player, cmd) => blocksCommand(player, cmd),
   ledger: () => (db().cur ? JSON.parse(JSON.stringify(db().cur.ledger)) : {}),

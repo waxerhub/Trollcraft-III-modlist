@@ -12,7 +12,7 @@ let T = 1700000000000
 const realNow = Date.now
 Date.now = () => T
 const persistent = {}, files = {}, cmds = [], logs = []
-let failSave = false, tick = 0, queue = []
+let failSave = false, tick = 0, queue = [], spreadFails = false
 const players = []
 const jlist = arr => ({ size: () => arr.length, get: i => arr[i] })
 const server = {
@@ -21,7 +21,7 @@ const server = {
     getString: k => persistent[k] || '',
     putString: (k, v) => { if (failSave && k == 'purge') throw new Error('disk full'); persistent[k] = v },
   },
-  runCommandSilent: c => { cmds.push(c); return 1 },
+  runCommandSilent: c => { cmds.push(c); return spreadFails && /spreadplayers/.test(c) ? 0 : 1 },
   scheduleInTicks: (n, f) => { queue.push({ at: tick + n, f }) },
 }
 function advance(n) {
@@ -59,6 +59,8 @@ function player(name, x, z, opts) {
   const slots = []
   for (let i = 0; i < 41; i++) slots.push(EMPTY)
   const p = { name, x, y: 64, z, dim: OW, online: true, op: !!opts.op, alive: true, creative: !!opts.creative, afk: false, msgs: [], dropped: [], slots,
+    yaw: 0, pitch: 0, health: 20, onFire: false, getYRot: () => p.yaw, getXRot: () => p.pitch,
+    getMaxHealth: () => 20, setHealth: h => { p.health = h }, clearFire: () => { p.onFire = false },
     isPlayer: () => true, getGameProfile: () => ({ getName: () => p.name }), getStringUuid: () => 'U-' + name,
     getX: () => p.x, getY: () => p.y, getZ: () => p.z, get level() { return { dimension: { location: () => p.dim } } },
     isAlive: () => p.alive, isCreative: () => p.creative, isSpectator: () => false, hasPermissions: () => p.op,
@@ -343,6 +345,66 @@ ok('the soldier kit puts the shield in the off-hand', (() => {
   run('/purge stop', admin)
   return ok2 && slot(anamy, 0).id == 'minecraft:netherite_sword'
 })())
+// ---------- the arena ----------
+;[odd, plain, leaky, careful, late].forEach(p => { p.online = false })
+ok('/purge arena with none set says how to set one', /No arena is set/.test(run('/purge arena', anamy)[0]))
+ok('/purge arena set is op-only', run('/purge arena set', anamy)[0] == 'DENIED')
+ok('... and must be run in game, standing on the spot', /Run it in game/.test(run('/purge arena set', null)[0]))
+admin.x = 500.7; admin.y = 70; admin.z = -300.2; admin.yaw = 45
+ok('an op sets it where they stand, with a radius', /Arena set: minecraft:overworld 500 70 -301, radius 30/.test(run('/purge arena set 30', admin)[0]) &&
+  DB().arena.x == 500.5 && DB().arena.y == 70 && DB().arena.z == -300.5 && DB().arena.radius == 30)
+ok('/purge arena shows it to anyone', /Arena: minecraft:overworld 500 70 -301, radius 30/.test(run('/purge arena', anamy)[0]))
+ok('... with no radius given, the default (40)', /radius 40/.test(run('/purge arena set', admin)[0]) && /radius 30/.test(run('/purge arena set 30', admin)[0]))
+anamy.x = 100; anamy.z = 100; anamy.yaw = 90; anamy.pitch = 10
+kitkat.x = 3; kitkat.z = 3
+goruk.dim = 'minecraft:the_nether'; goruk.x = 10; goruk.y = 40; goruk.z = -20
+const ar0 = cmds.length
+run('/purge start heist 5 peasant', admin)
+const spreadFor = (n, from) => cmds.slice(from).filter(c => c == 'execute in minecraft:overworld run spreadplayers 500.5 -300.5 0 30 false ' + n).length
+ok('at the start every fighter is sent to a random spot in the arena', spreadFor('Anamy', ar0) == 1 && spreadFor('Goruk', ar0) == 1 && spreadFor('Stang', ar0) == 1 && spreadFor('Admin', ar0) == 0)
+ok('... the sanctuary keeps nobody out: KitKat is taken in too', spreadFor('KitKat', ar0) == 1 && !!DB().vaults['u-kitkat'] && said(kitkat, /To the arena\. You'll be brought back here/))
+ok('... and the start says so', said(anamy, /Everyone is taken to the arena/) && said(anamy, /a fatal blow knocks you out/))
+ok('... each vault remembers where its owner was, facing included (Goruk in the Nether)', (() => {
+  const a = DB().vaults['u-anamy'].from, g = DB().vaults['u-goruk'].from
+  return !!a && a.dim == OW && a.x == 100 && a.y == 64 && a.z == 100 && a.yaw == 90 && a.pitch == 10 && !!g && g.dim == 'minecraft:the_nether' && g.y == 40 && g.z == -20
+})())
+// knockouts
+const knock = (victim, killer, msgId) => fire('death', { entity: victim, server, source: { getActual: () => killer || null, getMsgId: () => msgId || (killer ? 'player' : 'fall') } })
+goruk.health = 0; goruk.onFire = true
+const k0 = (DB().cur.ledger['u-anamy'] || { kills: 0 }).kills, ar1 = cmds.length
+ok('a fatal blow in the arena is a knockout: the death is cancelled', knock(goruk, anamy) === true && goruk.alive)
+ok('... Goruk is healed, put out, fed and given Resistance', goruk.health == 20 && !goruk.onFire &&
+  cmds.slice(ar1).some(c => /^effect give Goruk minecraft:saturation/.test(c)) && cmds.slice(ar1).some(c => /^effect give Goruk minecraft:resistance 10 4/.test(c)))
+ok('... with a fresh kit (a new life), sent to a new random spot in the arena', lifeOf(slot(goruk, 0)) == 'u-goruk#2' && spreadFor('Goruk', ar1) == 1 && said(goruk, /Knocked out/))
+ok('... and the kill still counts for Anamy', DB().cur.ledger['u-anamy'].kills == k0 + 1)
+const ar2 = cmds.length
+ok('/kill still kills (no knockout), and nothing is left on the body', knock(kitkat, null, 'genericKill') === false && slot(kitkat, 0).isEmpty())
+kitkat.alive = false
+respawn(kitkat)
+ok('... the respawn sends KitKat back into the arena with a fresh kit', lifeOf(slot(kitkat, 0)) == 'u-kitkat#2' && spreadFor('KitKat', ar2) == 1)
+spreadFails = true
+const ar3 = cmds.length
+knock(anamy, null, 'lava')
+spreadFails = false
+ok('if no safe spot is found, the knockout lands on the arena point itself', cmds.slice(ar3).includes('execute in minecraft:overworld run tp Anamy 500.5 70 -300.5'))
+// the end
+logout(stang)
+const ar4 = cmds.length
+run('/purge stop', admin)
+const back = cmds.slice(ar4)
+ok('at the end everyone is brought back where they were: Anamy, facing the same way', back.includes('execute in minecraft:overworld run tp Anamy 100 64 100 90 10'))
+ok('... Goruk back to the Nether', back.includes('execute in minecraft:the_nether run tp Goruk 10 40 -20 0 0'))
+ok('... KitKat back to the castle', back.some(c => /^execute in minecraft:overworld run tp KitKat 3 64 3 /.test(c)))
+ok('... with their belongings', slot(anamy, 0).id == 'minecraft:netherite_sword' && !DB().vaults['u-anamy'] && !DB().vaults['u-goruk'])
+ok('Stang, offline at the end, isn\'t moved yet', !back.some(c => / tp Stang /.test(c)) && !!DB().vaults['u-stang'] && !!DB().vaults['u-stang'].from)
+login(stang); advance(25)
+ok('... and is brought back when he logs in', cmds.slice(ar4).some(c => /^execute in minecraft:overworld run tp Stang 120 64 100 /.test(c)) && !DB().vaults['u-stang'])
+ok('/purge arena clear (op): fighters fight where they stand again', /Arena cleared/.test(run('/purge arena clear', admin)[0]) && !DB().arena && /No arena is set/.test(run('/purge arena', anamy)[0]))
+const ar5 = cmds.length
+run('/purge start heist 5 peasant', admin)
+ok('... the next Purge sends nobody anywhere', !cmds.slice(ar5).some(c => /spreadplayers| run tp /.test(c)) && said(anamy, /sanctuary at the castle is neutral ground/))
+run('/purge stop', admin)
+goruk.dim = OW
 ok('the API', typeof global.Purge.start == 'function' && global.Purge.active() === false && global.Purge.tithed() == DB().tithe && global.Purge.kits.gladiator.armor.length == 4)
 ok('no errors logged (apart from the item that no longer exists, the failed save and the item that won\'t rebuild)', !logs.some(l => /^ERR/.test(l) && !/gone:item|disk full|Could not vault Careful|broken:item|odd:stick|leaky:bag/.test(l)), logs.filter(l => /^ERR/.test(l)).join('; '))
 

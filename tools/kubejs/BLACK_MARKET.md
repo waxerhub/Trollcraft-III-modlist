@@ -32,7 +32,7 @@ In Part II, `part2/blood_pool.js` gives each player a **Potato Standing**: a ran
 | 4 Potato Private | Disguised TNT (`tnt`), Tracker Compass (`tracker`), Squad contract (`squad`) |
 | 6 Potato Sergeant | Teleport Trap (`tpblock`), Homing Pig (`pig`) |
 | 8 Potato Captain | War Party contract (`warparty`) |
-| anyone | Certified Alibi (`alibi`), Unsanctioned Eye (`eye`), under-the-counter stock (`custom`), bounties |
+| anyone | Certified Alibi (`alibi`), Unsigned Declaration (`declaration`), Unsanctioned Eye (`eye`), under-the-counter stock (`custom`), bounties |
 
 - **Refused before paying:** a locked purchase is refused with "The merchant only sells that to a Potato Recruit or higher in Techno's Potato War", and no coins are taken. That holds for the command, the chat menu and the window.
 - **In the shop:**
@@ -93,6 +93,7 @@ In Part II, `part2/blood_pool.js` gives each player a **Potato Standing**: a ran
 | Ambush Contract: War Party | 45 | 6–8 mobs, lethal-raid strength (1.5× health, 1.25× damage, Strength I), brutes or vindicators among them, no evokers |
 | Writ of Protection | 15 | Turns away the next contract called on you (see below) |
 | Certified Alibi | 50 | Dismisses one open charge at a trial (see [Tracking and alibis](#tracking-and-alibis)) |
+| Unsigned Declaration | 60 | Declares a Purge: the buyer picks the kit and the length, and nobody is told who (see [The Unsigned Declaration](#the-unsigned-declaration); only sold while [part2/purge.js](PURGE.md) is installed) |
 | Tracker Compass | 25 | Points to one online player for 5 minutes once switched on |
 | Homing Pig | 20 | Walks toward a player's bed for 3 minutes. Hurting it breaks the Sanctity of Swine Act |
 | Unsanctioned Eye of Ender | 20 each | The only Eye the End Portal frames take during the End Lockdown Initiative (only sold while [end_lockdown.js](END_LOCKDOWN.md) is installed) |
@@ -117,7 +118,7 @@ Right-clicking the merchant opens a chest-style window. It's a vanilla chest scr
 
 | Row | |
 |---|---|
-| Contracts | Tip-off, Squad, War Party. Clicking one opens a page of player heads with each player's price; click a head to buy. Then **Place a Bounty** and **Wanted** (with bounties.js; see [BOUNTIES.md](BOUNTIES.md#the-shop-window)). |
+| Contracts | Tip-off, Squad, War Party. Clicking one opens a page of player heads with each player's price; click a head to buy. Then **Place a Bounty** and **Wanted** (with bounties.js; see [BOUNTIES.md](BOUNTIES.md#the-shop-window)), and at the end of the row the **Unsigned Declaration** (with part2/purge.js; a click buys it). |
 | Protection & Tracking | Writ of Protection, Certified Alibi (with trials.js), Tracker Compass and Homing Pig (each opens a page of player heads), Unsanctioned Eye of Ender (with end_lockdown.js; a click buys one) |
 | Traps | Disguised TNT, Mimic Chest, Teleport Trap (clicking it closes the window and puts `/bmbuy tpblock ` in your chat box, since the window can't take coordinates) |
 | Pranks | Itching Powder, Cursed Food (opens its own page of six foods), Anonymous Summons (clicking it opens the player heads), Butterfingers |
@@ -249,6 +250,21 @@ Right-clicking the merchant opens a chest-style window. It's a vanilla chest scr
 
 **For trials:** `/bm inspect` while holding any of these shows the buyer (and who switched it on or used it), even if they're offline. Like contracts, they can't be put up as custom stock.
 
+## The Unsigned Declaration
+**60 coins** (`DECLARATION`), for anyone: there's no Potato Standing lock. It's only sold while [part2/purge.js](PURGE.md) is installed. It's a paper with a serial number, and it **declares a Purge**.
+- **Using it:** right-click it. A menu in chat offers the Heist's four kits, each with **[5 min] [10 min] [15 min] [30 min]**.
+  - Clicking one (it runs `/blackmarket declare <serial> <kit> <minutes>`) starts the Purge's 30-second countdown.
+  - Everyone is told *"An unsigned declaration has been posted. THE PURGE begins in 30 seconds…"*.
+  - The paper is used up, and the buyer is told privately: *"Your declaration has been posted. Nobody will know it was you."*
+- **Refused, and kept for later,** when:
+  - a Purge is running or counting down;
+  - the last Purge ended less than **12 hours** ago (`cooldownHours`; it says how long to wait);
+  - fewer than **3 players** are online in survival or adventure (`minPlayers`; creative and spectators don't count).
+- **Nobody is named:** players are never told who declared it.
+  - Ops can look it up: `/bm declarations` lists the last 10 (who bought each and who posted it, with the kit and length), and `/bm inspect` works on one held in hand.
+- **On record:** a copy of a posted declaration ("already been posted") or a made-up one ("isn't on file") does nothing. Only the player carrying it can post it. `/bm hand add` refuses it.
+- **Op starts count too:** a Purge started with `/purge start` holds off the next declaration until 12 hours after it ends.
+
 ## The Troll Log
 If `economy/trolls.js` is installed, the black market logs its trolls there, and the troller is paid in Hush Coins (see [TROLLS.md](TROLLS.md)):
 - **Anonymous Summons:** when it's delivered (buyer → target).
@@ -326,6 +342,9 @@ Ops can sell **any item exactly as it is**, NBT included, for example an item th
 | `/blackmarket buy tracker [player]`, `buy pig [player]`, `buy alibi` | anyone at the merchant | Tracking and alibis. Without a player: the list of players to choose from. |
 | `/blackmarket buy eye [count]` | anyone at the merchant | Unsanctioned Eyes of Ender (1–12), while the End Lockdown Initiative is on |
 | `/blackmarket buy contract <tier> [player]`, `buy writ`, `buy custom <id>`, `sell <item>` | anyone at the merchant | What the menu buttons run. Tiers: `tipoff`, `squad`, `warparty`. `sell` only works if `SELL_LIST` has entries. |
+| `/blackmarket buy declaration` | anyone at the merchant | Buy an Unsigned Declaration (with part2/purge.js) |
+| `/blackmarket declare <serial> <kit> <minutes>` | the declaration's holder, anywhere | Post it (what its menu buttons run) |
+| `/blackmarket declarations` | op | The last 10 Unsigned Declarations: who bought each, who posted it, the kit and the length |
 | `/blackmarket inspect` | op | While holding a contract: target, **buyer's name** (even if they're offline), tier, issue date, status. For Ministry trials: a confiscated contract proves who ordered the hit. Also for a Tracker Compass, Homing Pig or Certified Alibi (who bought it and who used it) and an Unsanctioned Eye (who bought it, when, how many). |
 | `/blackmarket contracts` | op | The 20 most recent contracts: id, tier, target, buyer, status |
 | `/blackmarket heat <player> [reset]` | op | Their heat and contract cooldown, or reset the heat |
@@ -347,6 +366,7 @@ Everything is in `persistentData["economy"]` as one JSON string:
 - custom stock;
 - Tracker Compasses and Homing Pigs (buyer, target, used or not), the pigs that are out, and each player's last known spawn point;
 - Certified Alibi serial numbers (buyer, used or not);
+- Unsigned Declaration serial numbers (buyer, and once posted: who, when, kit and length);
 - Unsanctioned Eye purchases (buyer, count; kept 30 days).
 
 Logging out, `/reload` and restarts never reset a cooldown or reuse a contract id. Finished contracts, old notices, and compasses, pigs and alibis used more than 30 days ago are pruned after 30 days. Unused ones are kept, so a compass or alibi in a chest still works.
@@ -357,6 +377,7 @@ Logging out, `/reload` and restarts never reset a cooldown or reuse a contract i
 |---|---|---|
 | `ALLOW_SAME_FACTION` | true | Contracts on your own faction |
 | `MAX_CALL_RANGE` | 0 | 0 = any distance; otherwise the caller must be this close to the target, in the same dimension |
+| `DECLARATION` | price 60, mode heist, lengths 5/10/15/30, cooldownHours 12, minPlayers 3 | The Unsigned Declaration |
 | `BLOCK_COIN_CRAFTING` | false | true = crafting-table recipes refuse coins as gold nuggets (it also broke Ender IO's capacitors, so it's off) |
 | `COIN_NAME` / `COIN_PLURAL` | Hush Coin / Hush Coins | The currency's name, used everywhere (bounties.js too). Coins already in players' inventories are renamed automatically. |
 | `AMBUSH_COIN_DROPS` | on, 25%, 1 coin | The chance an ambush mob killed by a player drops a coin, and how many |
@@ -473,10 +494,23 @@ Logging out, `/reload` and restarts never reset a cooldown or reuse a contract i
     - have an Enforcer `/accuse A Testing`;
     - A right-clicks the alibi and clicks [USE]: the charge is dismissed and the paper is gone;
     - `/bm inspect` on a used copy shows who bought it and the charge it cleared.
+23. **Unsigned Declaration** (needs part2/purge.js, 3 players in survival, and no Purge in the last 12 hours):
+    - buy one: the shop window's top-right slot, 60 coins;
+    - right-click it: the menu of kits and lengths. With only 2 players about, it's refused and kept;
+    - click [Peasant] [5 min]: everyone sees the unsigned announcement and the 30-second countdown, the paper is gone, and only A is told it was posted;
+    - after the Purge, a second declaration is refused ("try again in 11 h …");
+    - `/bm declarations` shows A as the buyer and poster.
 
 ## What couldn't be verified for KubeJS 6 on 1.20.1
 
 A mock-server test passed all 248 checks (with bounties.js loaded), and a second one passed all 84 tracking and trial checks: coins, the merchant, the shop window and the chat menu, range, contracts and every refusal, the writ, dupes and forgeries, heat, outcomes, `/reload`, custom stock, selling (refused by default; working when SELL_LIST has entries), the rotation, Disguised TNT (sprinting across, jumping over, owner, protected areas, replaced blocks, breaking, the limit), the Teleport Trap (every refusal, the Nether lock, landing, owner, Pig Escort, reload, replaced blocks, the limit), the Mimic Chest, the four pranks (Cursed Food included), bounties, the coin rename (old coins swapped) and the ambush coin drops. These parts depend on the real game:
+
+**The Unsigned Declaration** passes 20 mock checks in the tracking suite, against a stand-in for `global.Purge`, and black_market.js loads on the test server. No player has bought or posted one yet; it's left for the live server (test plan step 23). Things to watch there:
+- the top-right slot of the shop window, and the purchase;
+- the chat menu's buttons when right-clicked;
+- the refusals (12 hours, 3 players) and the item being kept;
+- the unsigned countdown after a post, with the paper used up;
+- `/bm declarations`.
 
 **Potato Standing locks** were checked in the Blood Pool's mock test (refusals with no coins taken, the chat menu, the window, buying at the rank). The black market test above passes unchanged without the Blood Pool (Part I).
 

@@ -2,7 +2,10 @@
 // Run with: node tools/tests/run_all.js purge   (or node tools/tests/suites/purge.test.js)
 const fs = require('fs')
 const paths = require('../lib/paths')
-const src = fs.readFileSync(paths.server('part2/purge.js'), 'utf8')
+const srcReal = fs.readFileSync(paths.server('part2/purge.js'), 'utf8')
+// Most of these checks start Purges at once; "the countdown" section near the end loads the real setting.
+if (!/const COUNTDOWN_SECONDS = \d+/.test(srcReal)) throw new Error('COUNTDOWN_SECONDS not found in purge.js')
+let src = srcReal.replace(/const COUNTDOWN_SECONDS = \d+/, 'const COUNTDOWN_SECONDS = 0')
 let fails = 0
 const ok = (l, c, e) => { console.log((c ? 'ok   ' : 'FAIL ') + l + (!c && e !== undefined ? '  ' + e : '')); if (!c) fails++ }
 
@@ -264,7 +267,9 @@ ok('... a team join is sent only when it changes (Stang moves in and out of the 
   const j = cmds.filter(c => /^team join purge(_marked)? Stang$/.test(c))
   return j.length >= 2 && j.every((c, i) => i == 0 || c != j[i - 1])
 })())
-ok('... the Heist\'s rules say the richest glow gold, and the start says names are hidden', said(anamy, /The richest war chests glow gold/) && said(anamy, /Everyone in the fight glows, and no names show over heads/))
+ok('... the Heist\'s rules say the richest glow gold, and the start says names are hidden', said(anamy, /The richest war chests glow gold/) && said(anamy, /Everyone in the fight is invisible, but glows, and no names show over heads/))
+ok('everyone in the fight is invisible, with no particles (refreshed with the glow)', ['Anamy', 'Stang', 'KitKat'].every(n => cmds.filter(c => c == 'effect give ' + n + ' minecraft:invisibility 7 0 true').length >= 2) &&
+  !cmds.some(c => /^effect give Admin minecraft:invisibility/.test(c)))
 ok('the boss bar counts down', cmds.some(c => /bossbar set purge:timer value \d+/.test(c)))
 // the commands
 ok('/purge shows the mode, the kit, the time left and your score', run('/purge', anamy).some(r => /The Potato Heist \(kit: Peasant\): \d+:\d\d left/.test(r)) && run('/purge', anamy).some(r => /^\[The Purge\] You: \d+ kills, \d+ deaths/.test(r)))
@@ -299,6 +304,7 @@ die(goruk.online ? goruk : kitkat, null, 'lava')       // KitKat dies just befor
 // ---------- the end ----------
 T = DB().cur.endsAt + 1; advance(40)
 ok('time runs out: the Purge ends', !DB().cur && DB().history.length == 1 && DB().history[0].mode == 'heist' && DB().history[0].kit == 'peasant')
+ok('... the invisibility it gave is cleared (only from those it made invisible)', cmds.includes('effect clear Anamy minecraft:invisibility') && !cmds.includes('effect clear Admin minecraft:invisibility'))
 ok('... names show over heads again: the Purge teams are removed', cmds.includes('team remove purge') && cmds.includes('team remove purge_marked'))
 ok('... and Stang (offline) is put back on his own team, by name, before they go', (() => {
   const j = cmds.lastIndexOf('team join escorts Stang'), r = cmds.lastIndexOf('team remove purge')
@@ -429,6 +435,45 @@ run('/purge start heist 5 peasant', admin)
 ok('... the next Purge sends nobody anywhere', !cmds.slice(ar5).some(c => /spreadplayers| run tp /.test(c)) && said(anamy, /sanctuary at the castle is neutral ground/))
 run('/purge stop', admin)
 goruk.dim = OW
+// ---------- the countdown (the real setting) ----------
+const tickBy = n => { for (let i = 0; i < n; i++) seconds(1) }   // a second at a time, as on a real server
+src = srcReal
+load()
+const cd0 = cmds.length
+ok('/purge start opens a 30-second countdown, not the Purge', /countdown is on \(30 seconds\)/.test(run('/purge start heist 5 soldier', admin)[0]) &&
+  !DB().cur && !!DB().pending && DB().pending.kit == 'soldier' && DB().pending.minutes == 5)
+ok('... everyone is told what\'s coming, and to get ready', said(anamy, /THE PURGE begins in 30 seconds: The Potato Heist, 5 minutes, kit: Soldier/) && said(anamy, /belongings will be held until it ends\. Get ready/))
+ok('... with a title at 30 seconds', cmds.slice(cd0).some(c => /^title Anamy subtitle .*begins in 30 seconds/.test(c)))
+ok('... /purge shows it', /The Potato Heist \(kit: Soldier\), 5 minutes, begins in 0:30/.test(run('/purge', anamy)[0]))
+ok('... a second start is refused while it counts down', /already counting down/.test(run('/purge start heist 5', admin)[0]))
+ok('... nobody is vaulted yet: belongings can still be put away', slot(anamy, 0).id == 'minecraft:netherite_sword' && !DB().vaults['u-anamy'])
+tickBy(20)
+ok('... a title at 10 seconds', cmds.slice(cd0).some(c => /^title Anamy subtitle .*begins in 10 seconds/.test(c)) && !DB().cur)
+tickBy(11)
+ok('... the last five seconds counted down one by one', ['5', '4', '3', '2', '1'].every(k => cmds.slice(cd0).includes('title Anamy title ' + JSON.stringify({ text: k, color: 'red', bold: true }))))
+ok('after 30 seconds the Purge begins: the horn, and the kit', !!DB().cur && !DB().pending && cmds.slice(cd0).some(c => /raid\.horn/.test(c)) && slot(anamy, 0).id == 'minecraft:iron_sword')
+run('/purge stop', admin)
+const cd1 = cmds.length
+run('/purge start heist 5 peasant', admin)
+tickBy(5)
+ok('/purge stop during the countdown calls it off', /Called off/.test(run('/purge stop', admin)[0]) && !DB().pending && !DB().cur && said(anamy, /The Purge has been called off/))
+tickBy(30)
+ok('... and nothing begins afterwards', !DB().cur && !cmds.slice(cd1).some(c => /raid\.horn/.test(c)))
+run('/purge start heist 5 peasant', admin)
+tickBy(10)
+load()
+H.loaded.forEach(h => h({ server }))
+tickBy(15)
+ok('a restart mid-countdown carries on...', !DB().cur && !!DB().pending)
+tickBy(6)
+ok('... and the Purge begins on time', !!DB().cur && !DB().pending)
+run('/purge stop', admin)
+ok('lastEnded() is when the last Purge ended', global.Purge.lastEnded() == DB().history[0].ended && DB().history[0].ended > 0)
+ok('a declared start (the black market\'s Unsigned Declaration) names nobody', global.Purge.start('heist', 10, 'archer', { declared: true }) === '' &&
+  said(anamy, /An unsigned declaration has been posted\. THE PURGE begins in 30 seconds: The Potato Heist, 10 minutes, kit: Archer/))
+ok('... busy() says why another can\'t start', /counting down/.test(global.Purge.busy()) && global.Purge.pending().kit == 'archer')
+global.Purge.stop()
+ok('... and stop() calls off a countdown', !DB().pending && !DB().cur && global.Purge.busy() === '')
 ok('the API', typeof global.Purge.start == 'function' && global.Purge.active() === false && global.Purge.tithed() == DB().tithe && global.Purge.kits.gladiator.armor.length == 4)
 ok('no errors logged (apart from the item that no longer exists, the failed save and the item that won\'t rebuild)', !logs.some(l => /^ERR/.test(l) && !/gone:item|disk full|Could not vault Careful|broken:item|odd:stick|leaky:bag/.test(l)), logs.filter(l => /^ERR/.test(l)).join('; '))
 

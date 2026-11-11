@@ -544,6 +544,81 @@ cmd('bm hand add 10', admin)
 setReal(admin, admin.selected, stack('minecraft:paper', 1, al.snbtStr)); cmd('bm hand add 10', admin)
 ok('alibis can\'t be put up for sale with /bm hand add', /can't be sold this way/.test(tReply()), tReply())
 
+// ----- the Unsigned Declaration (with a stand-in for part2/purge.js's global.Purge) -----
+const purgeCalls = []
+const PurgeStub = {
+  why: '', last: 0,
+  start: (mode, minutes, kit, opts) => { if (PurgeStub.why) return PurgeStub.why; purgeCalls.push({ mode, minutes, kit, opts }); PurgeStub.why = 'A Purge is already counting down.'; return '' },
+  busy: () => PurgeStub.why,
+  lastEnded: () => PurgeStub.last,
+  modes: { heist: { name: 'The Potato Heist', kits: ['soldier', 'peasant', 'archer', 'gladiator'] } },
+  kits: { soldier: { name: 'Soldier', blurb: 'iron' }, peasant: { name: 'Peasant', blurb: 'wood' }, archer: { name: 'Archer', blurb: 'bow' }, gladiator: { name: 'Gladiator', blurb: 'diamond' } },
+}
+const isDecl = s => tc(s) && tc(s).declaration
+const dReply = () => flat(lastReply())
+openWin(alice)
+ok('without part2/purge.js there\'s no Unsigned Declaration in the shop (just the blank pane)', slotName(alice, 8, 0) != 'Unsigned Declaration' && slotName(alice, 8, 0).trim() == '')
+glob.Purge = PurgeStub
+cmd('coins give Alice 100', admin)
+openWin(alice)
+ok('with it, the top row ends with the Unsigned Declaration: 60 Hush Coins, for anyone (no rank)', slotName(alice, 8, 0) == 'Unsigned Declaration' &&
+  /60 Hush Coins/.test(slotLore(alice, 8, 0)) && !/Needs/.test(slotLore(alice, 8, 0)), slotLore(alice, 8, 0))
+const dc0 = coinsOf(alice)
+guiClick(alice, 8, 0)
+const decl = findItem(alice, isDecl)
+const dSerial = decl ? String(tc(decl).declaration.serial).replace(/"/g, '') : ''
+ok('bought: 60 coins, a serial-numbered paper, on file with its buyer, not posted', coinsOf(alice) == dc0 - 60 && !!decl && decl.id == 'minecraft:paper' &&
+  !!DB().declarations[dSerial] && DB().declarations[dSerial].buyerName == 'Alice' && !DB().declarations[dSerial].used, dSerial)
+alice.closeMenu(); advance(1)
+hold(alice, isDecl)
+PurgeStub.last = W.time - 3 * 3600000
+alice.inbox = []; clickT(alice)
+ok('right-click 3 hours after the last Purge: too soon (12 hours), and it\'s kept', /Too soon after the last Purge: try again in 9 h/.test(ftext(alice)) && !!findItem(alice, isDecl), ftext(alice))
+PurgeStub.last = W.time - 13 * 3600000
+const carlWas = carl.online
+bob.online = false; carl.online = false; admin.creative = true
+alice.inbox = []; clickT(alice)
+ok('... with only Alice and Dave playing (the admin in creative): not enough people about (3 needed)', /needs 3 players online/.test(ftext(alice)) && /There are 2/.test(ftext(alice)), ftext(alice))
+bob.online = true; carl.online = carlWas; admin.creative = false
+alice.inbox = []; clickT(alice)
+const menu = alice.inbox.join('\n')
+ok('... with enough people: a menu of the four kits, each with 5, 10, 15 and 30 minutes', /choose the kit and how long/i.test(ftext(alice)) &&
+  ['soldier', 'peasant', 'archer', 'gladiator'].every(k => [5, 10, 15, 30].every(m => menu.indexOf('/blackmarket declare ' + dSerial + ' ' + k + ' ' + m) >= 0)) && !purgeCalls.length, ftext(alice))
+ok('... that says nobody will know', /Nobody will know it was you/.test(ftext(alice)))
+cmd('blackmarket declare ' + dSerial + ' gladiator 7', alice)
+ok('only the offered lengths', /lasts 5, 10, 15, 30 minutes/.test(dReply()) && !purgeCalls.length, dReply())
+cmd('blackmarket declare ' + dSerial + ' wizard 10', alice)
+ok('... and the kits', /no kit called "wizard"/.test(dReply()) && !purgeCalls.length)
+cmd('blackmarket declare ' + dSerial + ' gladiator 15', bob)
+ok('Bob can\'t post Alice\'s declaration', /don't have that declaration on you/.test(dReply()) && !purgeCalls.length)
+PurgeStub.why = 'A Purge is already running.'
+cmd('blackmarket declare ' + dSerial + ' gladiator 15', alice)
+ok('while a Purge runs: refused, kept', /already running or counting down/.test(dReply()) && !!findItem(alice, isDecl) && !purgeCalls.length, dReply())
+PurgeStub.why = ''
+cmd('blackmarket declare ' + dSerial + ' gladiator 15', alice)
+ok('posted: the Purge\'s countdown starts (the Heist, gladiator, 15 minutes, declared)', purgeCalls.length == 1 && purgeCalls[0].mode == 'heist' && purgeCalls[0].kit == 'gladiator' &&
+  purgeCalls[0].minutes == 15 && purgeCalls[0].opts && purgeCalls[0].opts.declared === true, JSON.stringify(purgeCalls))
+ok('... the paper is used up and on file as posted', !findItem(alice, isDecl) && !!DB().declarations[dSerial].used && DB().declarations[dSerial].postedBy == 'Alice' &&
+  DB().declarations[dSerial].kit == 'gladiator' && DB().declarations[dSerial].minutes == 15)
+ok('... and Alice is told privately', /Your declaration has been posted\. Nobody will know it was you\./.test(dReply()))
+setReal(alice, alice.selected, stack('minecraft:paper', 1, decl.snbtStr))
+alice.inbox = []; clickT(alice)
+ok('a copy of a posted declaration does nothing', /has already been posted/.test(ftext(alice)), ftext(alice))
+setReal(alice, alice.selected, stack('minecraft:paper', 1, '{trollcraft:{declaration:{serial:"FAKE1"}}}'))
+alice.inbox = []; clickT(alice)
+ok('... nor does a forged one', /isn't on file\. A forgery/.test(ftext(alice)), ftext(alice))
+setReal(alice, alice.selected, EMPTY())
+cmd('bm declarations', alice)
+ok('/bm declarations is op-only', lastReply() == 'DENIED')
+cmd('bm declarations', admin)
+ok('... and shows ops who bought and who posted it', replies.some(r => new RegExp('No\\. ' + dSerial + ': bought by Alice .*posted by Alice .*\\(gladiator, 15 min\\)').test(flat(r))), replies.slice(-3).map(flat).join(' / '))
+setReal(admin, admin.selected, stack('minecraft:paper', 1, decl.snbtStr)); cmd('bm inspect', admin)
+ok('/bm inspect on a declaration: its buyer', /Unsigned Declaration No\. .* bought by Alice/.test(dReply()) && /already posted/.test(dReply()), dReply())
+cmd('bm hand add 10', admin)
+ok('... and it can\'t be put up for sale with /bm hand add', /declarations can't be sold this way/.test(dReply()), dReply())
+setReal(admin, admin.selected, EMPTY())
+delete glob.Purge
+
 // ----- /reload keeps everything -----
 const before = W.persistent.trials
 loadAll(); fire('loaded', { server }); advance(5)

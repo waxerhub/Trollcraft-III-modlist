@@ -13,6 +13,7 @@
 //    player's bed; hurting it breaks the Sanctity of Swine Act). The Certified Alibi clears one open charge at a
 //    trial (factions/trials.js).
 //  - Unsanctioned Eyes of Ender while the End Lockdown Initiative (end_lockdown.js) is on.
+//  - Part II: the Unsigned Declaration declares a Purge (part2/purge.js): the buyer picks the kit and length, unnamed.
 //  - Part II: some items are only sold to players of a high enough Potato Standing (STANDING_LOCKS; the Potato
 //    War in part2/blood_pool.js). Without that script (Part I) everything is sold to everyone.
 //
@@ -194,11 +195,18 @@ const ALIBI = { price: 50 }
 // Eyes carry its id, so /bm inspect on a confiscated Eye shows who bought it. maxPerPlayer: 0 = no limit.
 const UNSANCTIONED_EYE = { price: 20, maxPerPurchase: 12, maxPerPlayer: 0 }
 
+// --- Part II: the Unsigned Declaration (part2/purge.js) ---
+// A paper that declares a Purge. Right-click it to choose the kit and the length; after part2/purge.js's countdown,
+// the Purge begins. Nobody is told who declared it (ops can look it up: /blackmarket declarations). It's refused, and
+// kept for later, while a Purge is running or counting down, until cooldownHours after the last Purge ended, and
+// while fewer than minPlayers are online in survival or adventure. Only sold while part2/purge.js is installed.
+const DECLARATION = { price: 60, mode: 'heist', lengths: [5, 10, 15, 30], cooldownHours: 12, minPlayers: 3 }
+
 // --- Part II: the Potato War ---
 // The Potato Standing (rank) a player needs to buy each item: 1 = the first rank (Potato Farmer) ... 11 (the ranks
 // and their names are in part2/blood_pool.js, /potatowar). An item left out is sold to everyone. Keys: the contract
 // ids (tipoff, squad, warparty), writ, alibi, eye, tracker, pig, tnt, tpblock, mimic, itching, butterfingers, food,
-// summons, custom (everything under the counter). Only applies while part2/blood_pool.js is installed (Part II).
+// summons, declaration, custom (everything under the counter). Only applies while part2/blood_pool.js is installed.
 const STANDING_LOCKS = {
   itching: 1, butterfingers: 1, summons: 1,
   mimic: 2, food: 2, tipoff: 2,
@@ -327,6 +335,7 @@ function button(label, color, command, hover) {
 //     trackItems: { id: { kind: tracker|pig, buyer, buyerName, target, targetName, bought, used, expires } },
 //     homingPigs: { id: { buyer, target, targetName, dim, bed, released, expires, entity, struck, arrived } },
 //     beds: { uuid: { name, dim, x, y, z } or { name, none } }, alibis: { serial: { buyer, buyerName, bought, used } },
+//     declarations: { serial: { buyer, buyerName, bought, used, postedBy, kit, minutes } },
 //     eyeBatches: { id: { buyer, buyerName, count, bought } } }
 // Contract statuses: issued, calling, active, fulfilled, survived, interrupted, refused, expired.
 
@@ -346,7 +355,7 @@ function db() {
   DB = parsed && parsed.v ? parsed : { v: 1 }
   if (typeof DB.enabled != 'boolean') DB.enabled = ENABLED_BY_DEFAULT
   if (!DB.nextId) DB.nextId = 1
-  ;['contracts', 'heat', 'cooldowns', 'notices', 'trackItems', 'homingPigs', 'beds', 'alibis', 'eyeBatches'].forEach(k => { if (!DB[k]) DB[k] = {} })
+  ;['contracts', 'heat', 'cooldowns', 'notices', 'trackItems', 'homingPigs', 'beds', 'alibis', 'eyeBatches', 'declarations'].forEach(k => { if (!DB[k]) DB[k] = {} })
   if (!DB.vendor) DB.vendor = { present: false, nextAt: 0 }
   if (!DB.vendorSpots) DB.vendorSpots = []
   if (!DB.shop) DB.shop = {}
@@ -385,6 +394,7 @@ function prune() {
   // Unused tracking items and alibis are kept (the papers in people's chests must still work).
   Object.keys(D.trackItems).forEach(id => { let t = D.trackItems[id]; if (t.used && now - Math.max(t.used, t.expires || 0) > month) delete D.trackItems[id] })
   Object.keys(D.alibis).forEach(k => { if (D.alibis[k].used && now - D.alibis[k].used > month) delete D.alibis[k] })
+  Object.keys(D.declarations).forEach(k => { if (D.declarations[k].used && now - D.declarations[k].used > month) delete D.declarations[k] })
   Object.keys(D.eyeBatches).forEach(k => { if (now - D.eyeBatches[k].bought > month) delete D.eyeBatches[k] })
   dirty = true
 }
@@ -926,6 +936,8 @@ function openShop(p) {
     { text: ' - ' + WRIT_PRICE + ' coins ', color: 'gray' }, buyButton(p, 'writ', '[BUY]', '/blackmarket buy writ', 'Buy a Writ of Protection')])
   if (TRIALS()) menuLine(p, [{ text: '  Certified Alibi', color: 'aqua', hoverEvent: { action: 'show_text', contents: 'Dismisses one open charge at a trial. Serial-numbered and on file.' } },
     { text: ' - ' + ALIBI.price + ' coins ', color: 'gray' }, buyButton(p, 'alibi', '[BUY]', '/blackmarket buy alibi', 'Buy a Certified Alibi')])
+  if (PURGE()) menuLine(p, [{ text: '  Unsigned Declaration', color: 'dark_red', hoverEvent: { action: 'show_text', contents: 'Declares a Purge: you choose the kit and how long. Nobody will know it was you.' } },
+    { text: ' - ' + DECLARATION.price + ' coins ', color: 'gray' }, buyButton(p, 'declaration', '[BUY]', '/blackmarket buy declaration', 'Buy an Unsigned Declaration')])
   menuLine(p, [{ text: ' Tracking', color: 'dark_aqua', bold: true }])
   menuLine(p, [{ text: '  Tracker Compass', color: 'dark_aqua', hoverEvent: { action: 'show_text', contents: 'Points to one player for ' + TRACKER.minutes + ' minutes once you switch it on. They only feel watched.' } },
     { text: ' - ' + TRACKER.price + ' coins ', color: 'gray' }, buyButton(p, 'tracker', '[BUY]', '/blackmarket buy tracker', 'Choose who')])
@@ -1377,7 +1389,7 @@ function alibiStack(serial) {
     { text: 'No. ' + serial, color: 'dark_gray' },
   ]) + ',Enchantments:[{id:"minecraft:unbreaking",lvl:1s}],HideFlags:1}')
 }
-function isTrackingItem(stack) { return trackerOf(stack) != null || pigItemOf(stack) != null || alibiSerialOf(stack) != null }
+function isTrackingItem(stack) { return trackerOf(stack) != null || pigItemOf(stack) != null || alibiSerialOf(stack) != null || declarationSerialOf(stack) != null }
 
 // --- spawn points (for the Homing Pig) ---
 // A player's spawn point (bed, respawn anchor or /spawnpoint) as { dim, x, y, z }, or null.
@@ -1473,6 +1485,109 @@ function buyAlibi(p) {
   console.info('[BlackMarket] ' + nameOf(p) + ' bought Certified Alibi ' + serial)
   return 'Certified Alibi No. ' + serial + ' bought. When you stand accused, right-click it.'
 }
+// --- The Unsigned Declaration (part2/purge.js) ---
+function PURGE() { const g = global.Purge; return g && typeof g.start == 'function' && typeof g.busy == 'function' ? g : null }
+function declarationSerialOf(stack) {
+  const t = trollcraftTag(stack)
+  if (t == null || !t.contains('declaration')) return null
+  return String(t.getCompound('declaration').getString('serial'))
+}
+function declarationStack(serial) {
+  return Item.of('minecraft:paper', 1, '{trollcraft:{declaration:{serial:"' + serial + '"}},' + displayNbt('Unsigned Declaration', 'dark_red', [
+    { text: 'A Purge, declared by nobody in particular.', color: 'gray' },
+    { text: 'Right-click to choose the kit and how long.', color: 'gray' },
+    { text: 'No. ' + serial, color: 'dark_gray' },
+  ]) + ',Enchantments:[{id:"minecraft:unbreaking",lvl:1s}],HideFlags:1}')
+}
+function buyDeclaration(p) {
+  const locked = standingBlock(p, 'declaration')
+  if (locked) return locked
+  if (!PURGE()) return 'Nobody is holding Purges. There\'s nothing to declare.'
+  if (countCoins(p) < DECLARATION.price) return 'An Unsigned Declaration costs ' + coinText(DECLARATION.price) + '. You have ' + countCoins(p) + '.'
+  const D = db()
+  let serial = ''
+  do { serial = shortId().toUpperCase() } while (D.declarations[serial])
+  const item = declarationStack(serial)
+  takeCoins(p, DECLARATION.price)
+  p.give(item)
+  D.declarations[serial] = { buyer: uuidOf(p), buyerName: nameOf(p), bought: Date.now() }
+  save()
+  console.info('[BlackMarket] ' + nameOf(p) + ' bought Unsigned Declaration ' + serial)
+  return 'Unsigned Declaration No. ' + serial + ' bought. Right-click it when you want a Purge.'
+}
+function hoursText(ms) {
+  const m = Math.max(1, Math.ceil(ms / 60000)), h = Math.floor(m / 60)
+  return h ? h + ' h ' + (m % 60) + ' min' : m + ' min'
+}
+// Why a declaration can't be posted right now ('' if it can).
+function declarationBlock(server) {
+  const P = PURGE()
+  if (!P) return 'Nobody is holding Purges right now.'
+  if (P.busy()) return 'A Purge is already running or counting down.'
+  const wait = Number(P.lastEnded() || 0) + DECLARATION.cooldownHours * 3600000 - Date.now()
+  if (wait > 0) return 'Too soon after the last Purge: try again in ' + hoursText(wait) + '.'
+  const n = onlinePlayers(server).filter(q => {
+    try { return !q.isCreative() && !q.isSpectator() } catch (e) { return true }
+  }).length
+  if (n < DECLARATION.minPlayers) return 'Not enough people about: a Purge needs ' + DECLARATION.minPlayers + ' players online (creative and spectators don\'t count). There ' + (n == 1 ? 'is 1' : 'are ' + n) + '.'
+  return ''
+}
+// The declaration and its record, if this player carries a genuine, unused one with that serial. { slot, rec } or { why }.
+function heldDeclaration(p, serial) {
+  const D = db(), inv = p.inventory
+  let slot = -1
+  invSlots(true).forEach(i => { if (slot < 0 && declarationSerialOf(inv.getItem(i)) == serial) slot = i })
+  if (slot < 0) return { why: 'You don\'t have that declaration on you.' }
+  const rec = D.declarations[serial]
+  if (!rec) return { why: 'Declaration No. ' + serial + ' isn\'t on file. A forgery.' }
+  if (rec.used) return { why: 'Declaration No. ' + serial + ' has already been posted.' }
+  return { slot: slot, rec: rec }
+}
+// Right-click: the menu of kits and lengths (or why not now). Returns a line to say, or '' after showing the menu.
+function declarationMenu(server, p, stack) {
+  const serial = declarationSerialOf(stack), h = heldDeclaration(p, serial)
+  if (h.why) return h.why
+  const why = declarationBlock(server)
+  if (why) return why + ' Keep the declaration for later.'
+  const P = PURGE(), M = P.modes[DECLARATION.mode]
+  menuLine(p, [{ text: 'Unsigned Declaration No. ' + serial + ': ' + M.name + '. Choose the kit and how long.', color: 'dark_red', bold: true }])
+  M.kits.forEach(k => {
+    let parts = [{ text: '  ' + P.kits[k].name + ' ', color: 'gold', hoverEvent: { action: 'show_text', contents: P.kits[k].blurb } }]
+    DECLARATION.lengths.forEach(m => {
+      parts.push(button('[' + m + ' min]', 'red', '/blackmarket declare ' + serial + ' ' + k + ' ' + m, 'Declare it: ' + P.kits[k].name + ', ' + m + ' minutes'))
+      parts.push(' ')
+    })
+    menuLine(p, parts)
+  })
+  menuLine(p, [{ text: '  The countdown starts at once. Nobody will know it was you.', color: 'dark_gray', italic: true }])
+  return ''
+}
+// Posts a declaration: starts the Purge's countdown, then uses up the paper. Refused (and kept) if it can't start.
+function postDeclaration(server, p, serial, kit, minutes) {
+  serial = String(serial).toUpperCase()
+  kit = String(kit).toLowerCase()
+  minutes = Math.round(Number(minutes))
+  const h = heldDeclaration(p, serial)
+  if (h.why) return h.why
+  const P = PURGE()
+  if (!P) return 'Nobody is holding Purges right now.'
+  const M = P.modes[DECLARATION.mode]
+  if (M.kits.indexOf(kit) < 0) return 'There\'s no kit called "' + kit + '". Kits: ' + M.kits.join(', ') + '.'
+  if (DECLARATION.lengths.indexOf(minutes) < 0) return 'A declared Purge lasts ' + DECLARATION.lengths.join(', ') + ' minutes.'
+  const why = declarationBlock(server)
+  if (why) return why + ' Keep the declaration for later.'
+  const r = P.start(DECLARATION.mode, minutes, kit, { declared: true })
+  if (r) return r + ' Keep the declaration for later.'
+  h.rec.used = Date.now()
+  h.rec.postedBy = nameOf(p)
+  h.rec.kit = kit
+  h.rec.minutes = minutes
+  save()
+  try { p.inventory.getItem(h.slot).shrink(1) } catch (e) { console.warn('[BlackMarket] Declaration ' + serial + ': ' + e) }
+  console.info('[BlackMarket] ' + nameOf(p) + ' posted Unsigned Declaration ' + serial + ': ' + kit + ', ' + minutes + ' min')
+  return 'Your declaration has been posted. Nobody will know it was you.'
+}
+
 // --- Unsanctioned Eyes of Ender (the End Lockdown Initiative, end_lockdown.js) ---
 // The purchase id on an Unsanctioned Eye ('' for one issued with /endlockdown give), or null if it isn't one.
 function eyeBatchOf(stack) {
@@ -1749,6 +1864,7 @@ function trackingClick(event) {
       try {
         if (trackerOf(stack)) r = useTracker(server, p, stack)
         else if (pigItemOf(stack)) r = releasePig(server, p, stack)
+        else if (declarationSerialOf(stack) != null) r = declarationMenu(server, p, stack)
         else if (TRIALS()) TRIALS().alibiMenu(p)
         else r = 'Nobody is holding trials right now.'
       } catch (e) { console.error('[BlackMarket] Tracking item: ' + e) }
@@ -2093,6 +2209,8 @@ function fillMain(gui, p) {
       { text: 'Any amount you carry', color: 'gold' }, { text: 'Click to choose the player', color: 'dark_gray', italic: true }]), () => nav(p, { kind: 'bounty', page: 0 }))
     guiButton(gui, 7, 0, guiItem('minecraft:paper', 'Wanted', 'gold', ['The prices on heads right now.']), () => nav(p, { kind: 'wanted', page: 0 }))
   }
+  if (PURGE()) guiButton(gui, 8, 0, guiItem('minecraft:paper', 'Unsigned Declaration', 'dark_red', ['Declares a Purge: you choose the kit', 'and how long. Nobody will know it was you.',
+    { text: coinText(DECLARATION.price), color: 'gold' }].concat(standingLore(p, 'declaration')), { glint: true }), () => guiAct(p, () => buyDeclaration(p)))
   guiLabel(gui, 1, 'minecraft:white_stained_glass_pane', 'Protection & Tracking', 'white')
   guiButton(gui, 2, 1, guiItem('minecraft:paper', 'Writ of Protection', 'gold', ['Keep it on you: the next contract called', 'on you is refused, and the writ is used up.',
     { text: WRIT_PRICE + ' ' + COIN_PLURAL, color: 'gold' }].concat(standingLore(p, 'writ')), { glint: true }), () => guiAct(p, () => buyWrit(p)))
@@ -2618,6 +2736,7 @@ ServerEvents.commandRegistry(event => {
         .then(word('target').executes(atVendor((ctx, p) => buyContract(ctx.source.server, p, str(ctx, 'tier'), str(ctx, 'target')))))))
       .then(Commands.literal('writ').executes(atVendor((ctx, p) => buyWrit(p))))
       .then(Commands.literal('alibi').executes(atVendor((ctx, p) => buyAlibi(p))))
+      .then(Commands.literal('declaration').executes(atVendor((ctx, p) => buyDeclaration(p))))
       .then(Commands.literal('eye').executes(atVendor((ctx, p) => buyEye(p, 1)))
         .then(int('count').executes(atVendor((ctx, p) => buyEye(p, num(ctx, 'count'))))))
       .then(Commands.literal('tracker').executes(atVendor((ctx, p) => { openTrackMenu(p, 'tracker'); return null }))
@@ -2638,6 +2757,23 @@ ServerEvents.commandRegistry(event => {
         .then(word('target').executes(atVendor((ctx, p) => buySummons(ctx.source.server, p, str(ctx, 'target'))))))
       .then(Commands.literal('custom').then(word('id').executes(atVendor((ctx, p) => buyCustom(p, str(ctx, 'id')))))))
     .then(Commands.literal('sell').then(word('item').executes(atVendor((ctx, p) => sell(p, str(ctx, 'item'))))))
+    // An Unsigned Declaration's menu buttons run this. Anywhere (not at the vendor): the player must carry it.
+    .then(Commands.literal('declare').then(word('serial').then(word('kit').then(int('minutes').executes(safe(ctx => {
+      const p = me(ctx)
+      if (!p) return reply(ctx, 'Players only.', true)
+      const r = postDeclaration(ctx.source.server, p, str(ctx, 'serial'), str(ctx, 'kit'), num(ctx, 'minutes'))
+      return reply(ctx, r, !/^Your declaration has been posted/.test(r))
+    }))))))
+    .then(Commands.literal('declarations').requires(op).executes(safe(ctx => {
+      const D = db(), keys = Object.keys(D.declarations).sort((a, b) => D.declarations[b].bought - D.declarations[a].bought).slice(0, 10)
+      if (!keys.length) return reply(ctx, 'No Unsigned Declarations on file.')
+      keys.forEach(k => {
+        let d = D.declarations[k]
+        reply(ctx, 'No. ' + k + ': bought by ' + d.buyerName + ' on ' + dateText(d.bought) +
+          (d.used ? '; posted by ' + d.postedBy + ' on ' + dateText(d.used) + ' (' + d.kit + ', ' + d.minutes + ' min)' : '; not posted yet') + '.')
+      })
+      return 1
+    })))
     // --- op ---
     .then(Commands.literal('inspect').requires(op).executes(safe(ctx => {
       const p = me(ctx)
@@ -2662,8 +2798,14 @@ ServerEvents.commandRegistry(event => {
         return reply(ctx, 'Certified Alibi No. ' + serial + ', bought by ' + a.buyerName + ' on ' + dateText(a.bought) +
           (a.used ? '; used by ' + a.usedBy + ' on ' + a.on + ', ' + dateText(a.used) : '; not used yet') + '.')
       }
+      const dser = declarationSerialOf(held)
+      if (dser != null) {
+        let d = D.declarations[dser]
+        if (!d) return reply(ctx, 'Unsigned Declaration No. ' + dser + ': not on file. Forged.')
+        return reply(ctx, 'Unsigned Declaration No. ' + dser + ', bought by ' + d.buyerName + ' on ' + dateText(d.bought) + (d.used ? '; already posted.' : '; not posted yet.'))
+      }
       const id = contractIdOf(held)
-      if (id == null) return reply(ctx, 'Hold an Ambush Contract, Tracker Compass, Homing Pig, Certified Alibi or Unsanctioned Eye in your main hand.', true)
+      if (id == null) return reply(ctx, 'Hold an Ambush Contract, Tracker Compass, Homing Pig, Certified Alibi, Unsigned Declaration or Unsanctioned Eye in your main hand.', true)
       const c = db().contracts[id]
       if (!c) return reply(ctx, 'Contract ' + id + ': not on record (forged or from another world). It is void.')
       return reply(ctx, 'Contract ' + id + ': ' + c.tier + ' on ' + c.targetName + ', bought by ' + c.buyerName + ' on ' + dateText(c.issued) + ' for ' + (c.price || 0) + ' coins. Status: ' + c.status + '.')
@@ -2812,7 +2954,7 @@ ServerEvents.commandRegistry(event => {
     if (!stack || stack.isEmpty()) return reply(ctx, 'Hold the item to sell in your main hand.', true)
     if (price < 1) return reply(ctx, 'The price must be at least 1.', true)
     if (stock < 0) return reply(ctx, 'The stock can\'t be negative (0 = unlimited).', true)
-    if (isCoin(stack) || contractIdOf(stack) != null || isWrit(stack) || isTrackingItem(stack)) return reply(ctx, COIN_PLURAL + ', contracts, writs, compasses, pigs and alibis can\'t be sold this way (copies would be fake or void).', true)
+    if (isCoin(stack) || contractIdOf(stack) != null || isWrit(stack) || isTrackingItem(stack)) return reply(ctx, COIN_PLURAL + ', contracts, writs, compasses, pigs, alibis and declarations can\'t be sold this way (copies would be fake or void).', true)
     if (eyeBatchOf(stack) != null) return reply(ctx, 'Unsanctioned Eyes are already for sale (UNSANCTIONED_EYE, ' + UNSANCTIONED_EYE.price + ' each), with every sale logged.', true)
     const id = String(stack.id), nbt = stack.nbt
     let name = id

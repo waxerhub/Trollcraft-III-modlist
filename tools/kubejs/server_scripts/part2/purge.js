@@ -19,6 +19,8 @@
 
 const VOICE = { tag: '[The Purge]', tagColor: 'dark_red', textColor: 'red' }
 const MAX_MINUTES = 240
+const COUNTDOWN_SECONDS = 30          // between /purge start (or an Unsigned Declaration) and the Purge; 0 = at once
+const COUNTDOWN_MARKS = [30, 20, 10, 5, 4, 3, 2, 1]   // seconds left when everyone gets a title and a tick
 const TICK = 20                       // the engine runs every second
 const SLOW_EVERY = 5                  // boss bar, glow and the mode's onTick every 5 seconds
 const BOSSBAR = 'purge:timer'
@@ -40,6 +42,8 @@ const VAULT_DIR = 'kubejs/purge_vaults/'
 // While a Purge runs, everyone in it glows (seen through walls) and their name over their head is hidden, through two
 // vanilla scoreboard teams. Players a mode marks (the Heist: the richest war chests) glow gold, everyone else white.
 // Each player's own team, if they had one, is noted and given back at the end. Creative and spectator are left alone.
+const INVISIBLE_EVERYONE = true       // everyone in the Purge is invisible, with no particles (armour and held items
+                                      // still show; with the glow, they're seen as an outline)
 const GLOW_EVERYONE = true            // false: only the marked players glow
 const HIDE_NAMETAGS = true            // with both false, no teams are used (the marked still glow, in white)
 const TEAM_ALL = 'purge'              // white glow
@@ -85,13 +89,14 @@ let Serializer = null, StringArg = null, ItemStackClass = null
 try { Serializer = Java.loadClass('net.minecraft.network.chat.Component$Serializer') } catch (e) { }
 try { StringArg = Java.loadClass('com.mojang.brigadier.arguments.StringArgumentType') } catch (e) { }
 try { ItemStackClass = Java.loadClass('net.minecraft.world.item.ItemStack') } catch (e) { }
-const S = { lastHit: {}, slow: 0, team: {} }      // team: name -> the Purge team they were last put on (memo)
+const S = { lastHit: {}, slow: 0, team: {}, said: {} }   // team: name -> the Purge team they're on (memo);
+                                                         // said: countdown marks already announced
 let data = null
 
 // D.cur: the running Purge or null. D.vaults: uuid -> a fighter's locked inventory (until it's handed back).
 function db() {
   if (data) return data
-  data = { cur: null, vaults: {}, tithe: 0, titheBy: {}, reports: {}, history: [] }
+  data = { cur: null, pending: null, vaults: {}, tithe: 0, titheBy: {}, reports: {}, history: [] }
   let raw = ''
   try { raw = String(Utils.server.persistentData.getString(DATA_KEY) || '') } catch (e) { }
   if (raw) {
@@ -250,6 +255,12 @@ function highlightOne(server, p, marked) {
   const n = nameOf(p), isMarked = marked.indexOf(n) >= 0
   if (useTeams()) joinTeam(server, p, isMarked ? TEAM_MARKED : TEAM_ALL)
   if (GLOW_EVERYONE || isMarked) glow(server, n)
+  if (INVISIBLE_EVERYONE) {
+    run(server, 'effect give ' + n + ' minecraft:invisibility ' + (SLOW_EVERY + 2) + ' 0 true')   // true: no particles
+    let C = db().cur
+    if (!C.lit) C.lit = {}
+    if (!C.lit[uuidOf(p)]) { C.lit[uuidOf(p)] = n; save() }   // made invisible: cleared at the end
+  }
 }
 function highlight(server) {
   if (!db().cur) return
@@ -680,11 +691,28 @@ function showBossbar(server) {
   updateBossbar(server)
 }
 
-function start(server, modeId, minutes, kitId) {
+// Why a Purge can't be started now ('' if it can).
+function busy() {
   const D = db()
+  if (D.cur) return 'A Purge is already running (' + MODES[D.cur.mode].name + '). /purge stop ends it.'
+  if (D.pending) return 'A Purge is already counting down (' + clock(D.pending.at - Date.now()) + ' left). /purge stop calls it off.'
+  return ''
+}
+// When the last Purge ended (0 if there hasn't been one).
+function lastEnded() {
+  const h = db().history[0]
+  if (!h) return 0
+  return h.ended || (h.started + h.minutes * 60000)
+}
+// Starts the countdown (or the Purge itself, with no countdown). opts.declared: set off by an Unsigned Declaration.
+// Returns '' when it's under way, or why not.
+function start(server, modeId, minutes, kitId, opts) {
+  const D = db()
+  opts = opts || {}
   modeId = String(modeId || '').toLowerCase()
   const M = MODES[modeId]
-  if (D.cur) return 'A Purge is already running (' + MODES[D.cur.mode].name + '). /purge stop ends it.'
+  const why = busy()
+  if (why) return why
   if (!M) return 'There\'s no mode called "' + modeId + '". Modes: ' + Object.keys(MODES).join(', ') + '.'
   minutes = Math.round(Number(minutes))
   if (!(minutes >= 1 && minutes <= MAX_MINUTES)) return 'A Purge lasts 1 to ' + MAX_MINUTES + ' minutes.'
@@ -693,6 +721,62 @@ function start(server, modeId, minutes, kitId) {
     kit = kitId ? String(kitId).toLowerCase() : M.kits[Math.floor(Math.random() * M.kits.length)]
     if (M.kits.indexOf(kit) < 0) return 'There\'s no kit called "' + kitId + '" for ' + M.name + '. Kits: ' + M.kits.join(', ') + '.'
   }
+  if (!(COUNTDOWN_SECONDS > 0)) { begin(server, modeId, minutes, kit); return '' }
+  D.pending = { mode: modeId, kit: kit, minutes: minutes, at: Date.now() + COUNTDOWN_SECONDS * 1000, declared: !!opts.declared }
+  save()
+  const lead = opts.declared ? 'An unsigned declaration has been posted. ' : ''
+  tellAll(server, lead + 'THE PURGE begins in ' + COUNTDOWN_SECONDS + ' seconds: ' + M.name + ', ' + minutes + ' minutes' +
+    (kit ? ', kit: ' + KITS[kit].name : '') + '.', 'red')
+  if (kit) tellAll(server, 'Your belongings will be held until it ends' + (arena() ? ', and you\'ll be taken to the arena.' : '.') + ' Get ready.', 'gray')
+  S.said = {}
+  countdown(server)
+  console.info('[Purge] Countdown: ' + modeId + ' for ' + minutes + ' minutes' + (kit ? ' (kit ' + kit + ')' : '') + (opts.declared ? ', declared' : ''))
+  return ''
+}
+// The countdown: a title and a tick for everyone at each of COUNTDOWN_MARKS, then the Purge. One loop, even across
+// /reload; it reads the saved countdown each second, so a restart carries on (or begins at once if it ran out).
+function countdown(server) {
+  const token = (global.__purgeCountdown = (global.__purgeCountdown || 0) + 1)
+  const tick = () => {
+    if (global.__purgeCountdown != token) return
+    const D = db(), P = D.pending
+    if (!P) return
+    const left = Math.ceil((P.at - Date.now()) / 1000)
+    if (left <= 0) {
+      D.pending = null
+      save()
+      try { begin(server, P.mode, P.minutes, P.kit) } catch (e) { console.error('[Purge] Begin: ' + e) }
+      return
+    }
+    if (COUNTDOWN_MARKS.indexOf(left) >= 0 && !S.said[left]) {
+      S.said[left] = true
+      players(server).forEach(p => {
+        let n = nameOf(p)
+        if (left <= 5) title(server, n, String(left), '', 'red')
+        else title(server, n, 'THE PURGE', 'begins in ' + left + ' seconds', 'dark_red')
+        soundAt(server, n, left <= 5 ? 'minecraft:block.note_block.pling' : 'minecraft:block.bell.use', 1, left <= 5 ? 0.5 + (6 - left) * 0.25 : 1)
+      })
+    }
+    server.scheduleInTicks(TICK, tick)
+  }
+  tick()
+}
+// Calls off a countdown. Returns false if there wasn't one.
+function callOff(server) {
+  const D = db()
+  if (!D.pending) return false
+  D.pending = null
+  save()
+  global.__purgeCountdown = (global.__purgeCountdown || 0) + 1
+  players(server).forEach(p => run(server, 'title ' + nameOf(p) + ' clear'))
+  tellAll(server, 'The Purge has been called off.', 'gray')
+  console.info('[Purge] Countdown called off')
+  return true
+}
+// The Purge itself, after the countdown.
+function begin(server, modeId, minutes, kit) {
+  const D = db(), M = MODES[modeId]
+  if (D.cur) return
   const now = Date.now()
   D.cur = { id: now, mode: modeId, kit: kit, minutes: minutes, started: now, endsAt: now + minutes * 60000,
     ledger: {}, fighters: {}, sheltered: {}, skipped: {}, lives: {}, warned: {}, modeData: {} }
@@ -711,8 +795,8 @@ function start(server, modeId, minutes, kitId) {
   if (kit) tellAll(server, 'Kit: ' + KITS[kit].name + ' (' + KITS[kit].blurb + '). Everyone fights with it; your own belongings are held and handed back at the end.', 'gray')
   if (kit && arena()) tellAll(server, 'Everyone is taken to the arena, and brought back to where they were when it ends. Nobody dies in there: a fatal blow knocks you out, and you\'re back in with a fresh kit.', 'gray')
   else if (sanctuaryAreas().length) tellAll(server, 'The sanctuary at the castle is neutral ground. Leave it and you fight.', 'gray')
-  if (GLOW_EVERYONE && HIDE_NAMETAGS) tellAll(server, 'Everyone in the fight glows, and no names show over heads.', 'gray')
-  else if (GLOW_EVERYONE) tellAll(server, 'Everyone in the fight glows.', 'gray')
+  const seen = INVISIBLE_EVERYONE && GLOW_EVERYONE ? 'is invisible, but glows' : INVISIBLE_EVERYONE ? 'is invisible' : GLOW_EVERYONE ? 'glows' : ''
+  if (seen) tellAll(server, 'Everyone in the fight ' + seen + (HIDE_NAMETAGS ? ', and no names show over heads.' : '.'), 'gray')
   else if (HIDE_NAMETAGS) tellAll(server, 'No names show over heads during the fight.', 'gray')
   tellAll(server, 'Your participation is appreciated.', 'dark_gray')
   S.team = {}
@@ -733,7 +817,7 @@ function finish(server, reason) {
   let lines = []
   if (M.onEnd) { try { lines = M.onEnd(server, rows) || [] } catch (e) { console.error('[Purge] ' + C.mode + ' end: ' + e) } }
   const top = rows[0] && rows[0].score > 0 ? rows[0] : null
-  D.history.unshift({ mode: C.mode, kit: C.kit, started: C.started, minutes: Math.round((Date.now() - C.started) / 60000), reason: reason,
+  D.history.unshift({ mode: C.mode, kit: C.kit, started: C.started, ended: Date.now(), minutes: Math.round((Date.now() - C.started) / 60000), reason: reason,
     winner: top ? top.e.name : '', score: top ? top.score : 0, fighters: Object.keys(C.ledger).length })
   if (D.history.length > HISTORY_SIZE) D.history.length = HISTORY_SIZE
   D.cur = null
@@ -744,6 +828,7 @@ function finish(server, reason) {
   players(server).forEach(p => {
     let n = nameOf(p), u = uuidOf(p)
     run(server, 'effect clear ' + n + ' minecraft:glowing')
+    if (C.lit && C.lit[u]) run(server, 'effect clear ' + n + ' minecraft:invisibility')   // only those it made invisible
     title(server, n, 'THE PURGE IS OVER', 'Your participation has been recorded. Thank you.', 'gray')
     if (D.vaults[u]) restore(server, p, false)       // a dead player gets it when they respawn
     let e = C.ledger[u]
@@ -869,6 +954,12 @@ BLOCKED_COMMANDS.forEach(cmd => {
 // After a restart or /reload: carry on (or wrap up a Purge whose time ran out while the server was down).
 function resume(server) {
   const C = db().cur
+  if (!C && db().pending) {                        // a countdown was on: carry on (or begin, if it ran out)
+    S.said = {}
+    countdown(server)
+    console.info('[Purge] Resumed the countdown')
+    return
+  }
   if (!C) return
   if (Date.now() >= C.endsAt) { finish(server, 'time'); return }
   ensureTeams(server)
@@ -892,7 +983,8 @@ ServerEvents.commandRegistry(event => {
   }
   const word = (name, values) => suggest(Commands.argument(name, StringArg.word()), values)
   const status = ctx => {
-    const C = db().cur, server = ctx.source.server
+    const C = db().cur, server = ctx.source.server, P = db().pending
+    if (!C && P) return reply(ctx, MODES[P.mode].name + (P.kit ? ' (kit: ' + KITS[P.kit].name + ')' : '') + ', ' + P.minutes + ' minutes, begins in ' + clock(P.at - Date.now()) + '.')
     if (!C) {
       let h = db().history[0]
       return reply(ctx, 'No Purge is running.' + (h ? ' The last was ' + MODES[h.mode].name + (h.winner ? ', won by ' + h.winner : '') + '.' : ''))
@@ -916,7 +1008,7 @@ ServerEvents.commandRegistry(event => {
   }
   const startCmd = (ctx, withKit) => {
     const why = start(ctx.source.server, str(ctx, 'mode'), Number(Arguments.INTEGER.getResult(ctx, 'minutes')), withKit ? str(ctx, 'kit') : '')
-    return why ? reply(ctx, why, true) : reply(ctx, 'Started.')
+    return why ? reply(ctx, why, true) : reply(ctx, COUNTDOWN_SECONDS > 0 ? 'Started: the countdown is on (' + COUNTDOWN_SECONDS + ' seconds).' : 'Started.')
   }
   const arenaText = A => A.dim + ' ' + Math.floor(A.x) + ' ' + A.y + ' ' + Math.floor(A.z) + ', radius ' + A.radius
   const arenaShow = ctx => {
@@ -958,6 +1050,7 @@ ServerEvents.commandRegistry(event => {
       .then(Commands.argument('minutes', Arguments.INTEGER.create(event)).executes(safe(ctx => startCmd(ctx, false)))
         .then(word('kit', () => Object.keys(KITS)).executes(safe(ctx => startCmd(ctx, true)))))))
     .then(Commands.literal('stop').requires(op).executes(safe(ctx => {
+      if (callOff(ctx.source.server)) return reply(ctx, 'Called off: the countdown is stopped.')
       if (!db().cur) return reply(ctx, 'No Purge is running.', true)
       finish(ctx.source.server, 'stopped')
       return reply(ctx, 'Stopped.')
@@ -995,8 +1088,12 @@ ServerEvents.commandRegistry(event => {
 // ===================== API =====================
 
 global.Purge = {
-  start: (mode, minutes, kit) => start(Utils.server, mode, minutes, kit),   // '' when started, else why not
-  stop: reason => finish(Utils.server, reason || 'stopped'),
+  start: (mode, minutes, kit, opts) => start(Utils.server, mode, minutes, kit, opts),   // '' when under way, else why not
+  busy: () => busy(),                                // why a Purge can't start now ('' if it can)
+  pending: () => (db().pending ? JSON.parse(JSON.stringify(db().pending)) : null),
+  lastEnded: () => lastEnded(),
+  maxMinutes: MAX_MINUTES,
+  stop: reason => { if (!callOff(Utils.server)) finish(Utils.server, reason || 'stopped') },   // a countdown is called off
   active: () => !!db().cur,
   mode: () => (db().cur ? db().cur.mode : ''),
   kitActive: () => kitMode(),

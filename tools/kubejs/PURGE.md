@@ -8,6 +8,12 @@
 
 ## The engine
 - **A timer and a red boss bar:** the mode, the time left, and a mode line (the Heist's is the richest war chest).
+- **A 30-second countdown first** (`COUNTDOWN_SECONDS`), for every start: `/purge start` or an [Unsigned Declaration](BLACK_MARKET.md#the-unsigned-declaration) from the black market.
+  - Everyone is told what's coming (mode, length, kit) and that their belongings will be held, so they can put things away. A declared one starts *"An unsigned declaration has been posted."*: nobody is named.
+  - A title and a bell at 30, 20 and 10 seconds, then the last five counted down one by one, with a rising note.
+  - Nothing is vaulted and no teleport is blocked until the Purge itself begins.
+  - `/purge` shows the time left, a second start is refused, and `/purge stop` calls it off ("The Purge has been called off.").
+  - It's saved: a restart or `/reload` carries on, and if it ran out while the server was down, the Purge begins at once.
 - **The opening:**
   - midnight and a thunderstorm for the Purge's length;
   - the raid horn and a title for everyone;
@@ -23,7 +29,9 @@
   - or, for a fall, lava or mobs, the player who **last hit the victim within 10 seconds**;
   - **combat logging:** logging out within **15 seconds** of a player's hit counts as being killed by them. The theft works while they're offline, and they're told at their next login.
   - **Nothing counts** for killing yourself, an **AFK** victim, `/kill`, or a death **in the sanctuary**.
-- **Everyone glows, and names are hidden:** while a Purge runs, everyone in it glows (an outline seen through walls) and the name over their head is hidden. That's every fighter, or in a mode without kits, everyone playing.
+- **Everyone is invisible, glows, and has their name hidden:** while a Purge runs, everyone in it is invisible (no particles), glows (an outline seen through walls), and the name over their head is hidden. That's every fighter, or in a mode without kits, everyone playing.
+  - **Invisible but glowing,** a fighter shows as an outline. Vanilla invisibility doesn't hide armour or held items, so the kit stays visible. Teammates can't see each other's faint shapes either (`seeFriendlyInvisibles false`).
+  - The invisibility is refreshed with the glow, and cleared at the end, but only for the players the Purge made invisible (`INVISIBLE_EVERYONE`).
   - It's done with two vanilla scoreboard teams, both with `nametagVisibility never`: `purge` (white glow) and `purge_marked` (gold glow). A mode can mark players: the Heist marks the **three richest war chests**, who glow gold.
   - The glow is refreshed every 5 seconds, and straight after a knockout or a respawn (both clear effects). A player is only moved between the teams when their mark changes.
   - **Their own team comes back:** if a player was already on a vanilla team (`pig_escort.js` uses them), it's noted when they're taken in.
@@ -126,8 +134,8 @@ Every kill steals from the victim's **Potato War total**, their "war chest": the
 | `/purge top` | anyone | The leaderboard |
 | `/purge modes` | anyone | The game modes |
 | `/purge kits` | anyone | The kits and what's in each |
-| `/purge start <mode> <minutes> [kit]` | op | Start a Purge (1–240 minutes). A random kit if none is named |
-| `/purge stop` | op | End it now, with the summary, and hand everything back |
+| `/purge start <mode> <minutes> [kit]` | op | Start the 30-second countdown to a Purge (1–240 minutes). A random kit if none is named |
+| `/purge stop` | op | During the countdown: call it off. During a Purge: end it now, with the summary, and hand everything back |
 | `/purge vaults` | op | Vaults not yet handed back, and why (fighting now, or waiting for them to log in) |
 | `/purge restore <player>` | op | Hand a vault back by hand (online, alive, not fighting) |
 | `/purge history` | op | The last 20 Purges: mode, kit, length, fighters, winner |
@@ -140,6 +148,8 @@ Every kill steals from the victim's **Potato War total**, their "war chest": the
 | Setting | Default | Meaning |
 |---|---|---|
 | `MAX_MINUTES` | 240 | The longest Purge |
+| `COUNTDOWN_SECONDS`, `COUNTDOWN_MARKS` | 30, [30, 20, 10, 5, 4, 3, 2, 1] | The countdown before every Purge (0 = none), and when everyone gets a title and a tick |
+| `INVISIBLE_EVERYONE` | true | Everyone in the Purge is invisible, with no particles |
 | `LAST_HIT_SECONDS` | 10 | A death this soon after a player's hit is their kill |
 | `COMBAT_LOG_SECONDS` | 15 | Logging out this soon after a hit counts as a death |
 | `RESPAWN_RESISTANCE_SECONDS` | 10 | Resistance V after respawning |
@@ -159,7 +169,8 @@ Every kill steals from the victim's **Potato War total**, their "war chest": the
 | `ARENA_HEADROOM` | 0 | Land below arena y + this (an arena under a roof); 0 = on the surface |
 
 **Saved data:** `server.persistentData["purge"]` holds:
-- the running Purge (ledger, fighters, lives, the mode's data);
+- the countdown, if one is on (mode, kit, minutes, when it ends, whether it was declared);
+- the running Purge (ledger, fighters, lives, the mode's data, who it made invisible, everyone's own team);
 - the vaults (each with `from`, where its owner is taken back to);
 - the arena;
 - the Tithe;
@@ -168,7 +179,7 @@ Every kill steals from the victim's **Potato War total**, their "war chest": the
 
 Unreadable data is kept under `purge_unreadable_<time>`. Last hits are kept in memory only.
 
-**API:** `global.Purge = { start(mode, minutes, kit), stop(reason), active(), mode(), kitActive(), arena(), isFighter(player), blocksCommand(player, cmd), ledger(), tithed(), addTithe(n, source), modes, kits }`. `start` returns `''` when it started, or why not.
+**API:** `global.Purge = { start(mode, minutes, kit, opts), stop(reason), busy(), pending(), lastEnded(), maxMinutes, active(), mode(), kitActive(), arena(), isFighter(player), blocksCommand(player, cmd), ledger(), tithed(), addTithe(n, source), modes, kits }`. `start` returns `''` when the countdown (or, with no countdown, the Purge) is under way, or why not. `opts.declared` marks a start from an Unsigned Declaration. `stop` also calls off a countdown. `busy()` says why a Purge can't start now (`''` if it can). `lastEnded()` is when the last Purge ended. The black market's Unsigned Declaration uses these.
 
 It also uses `global.BloodPool.standingOfUuid`, `takeStanding` and `giveStanding` (added to `blood_pool.js` for the Heist). `anamian_axe.js` doesn't call the Axe loose during a kit Purge, because it's in its holder's vault.
 
@@ -198,7 +209,9 @@ Optionally create an empty `kubejs/purge_vaults/` folder, so the vault backup fi
 
 ## Test plan (two survival accounts at rank 3+, and an op)
 1. **Start:** fill your inventory with enchanted gear and armour, then run `/purge start heist 5 peasant`.
+   - **The countdown:** "THE PURGE begins in 30 seconds", titles at 30, 20 and 10, then 5, 4, 3, 2, 1. Your things are still yours until it ends. Try `/purge stop` in another one: "called off".
    - The horn, the title, night and thunder, and the boss bar appear.
+   - You're invisible with no particles, and glowing.
    - Your inventory becomes a wooden sword, bread and leather armour.
    - `kubejs/purge_vaults/` (or `kubejs/purge_vault_…json`) has your file.
 2. **Fairness:**
@@ -283,6 +296,10 @@ This was a copy of the pack with one player, and the Purge started from the cons
   - It would follow the same rule as the blocked commands (`BLOCK_OPS_TOO`), and need one restart.
 
 ## What couldn't be verified
+- **The countdown and invisibility in game.** Both pass the mock tests, and the scripts load on the test server, but no player has watched them yet; it's left for the live server. To check:
+  - the titles at 30, 20 and 10 and the counted-down 5–1, with their sounds;
+  - that `/purge stop` calls the countdown off;
+  - that fighters are invisible with no particles, show as glowing outlines (armour and held items visible), can't see each other's faint shapes, and are visible again at the end.
 - **Other capability items** in the vault: only the Golden Bag of Holding was tested in game. Any item whose `ForgeCaps` doesn't survive the rebuild makes its owner sit the Purge out (with an op message), so nothing is lost.
 - **Beacon effects** near a base still apply to fighters.
 - **Kit items put in a chest or ender chest** stay there after the Purge, as plain items with the kit lore. Loose kit on the ground in loaded chunks is removed at the end.

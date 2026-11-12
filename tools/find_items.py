@@ -4,20 +4,20 @@
 Usage:
     python3 find_items.py <world folder or .zip> [usercache.json] [--items id1,id2,...]
 
---items defaults to the three ProjectE Energy Collectors.
+--items is required: a comma-separated list of the item or block ids to look for.
 usercache.json (from the server's main folder) turns player UUIDs into names.
 
 What it reads:
   - region/*.mca     placed blocks (with coordinates) and block-entity inventories
                      (chests, barrels, Iron Chests, Create vaults, shulker boxes inside chests, ...)
   - entities/*.mca   dropped items, item frames, chest minecarts, mobs holding items
-  - playerdata/*.dat player inventories, ender chests, Curios slots, ProjectE Alchemical Bags
+  - playerdata/*.dat player inventories, ender chests, Curios slots and bag inventories
   - any other .dat   e.g. world/data and mod save files
   - AE2 storage cells (best effort: items stored inside drives / chests / inventories)
 for the Overworld, Nether, End and modded dimensions.
 
 It also lists "mentions": places the item ID appears without being an actual item stack,
-such as a player's ProjectE transmutation knowledge or an AE2 pattern. Those aren't counted.
+such as an AE2 crafting pattern or a machine filter. Those aren't counted.
 
 Stop the server (or use a copy of the world) so the files are up to date. Only needs Python 3.
 """
@@ -31,7 +31,6 @@ import zipfile
 import zlib
 from collections import defaultdict
 
-DEFAULT_ITEMS = ["projecte:collector_mk1", "projecte:collector_mk2", "projecte:collector_mk3"]
 
 
 # --- NBT reader -----------------------------------------------------------
@@ -298,7 +297,7 @@ def report(res):
                 print("    %4d  %s" % (count, where))
         mentions = res.mentions.get(item, [])
         if mentions:
-            print("  Mentioned (not counted - e.g. ProjectE knowledge, AE2 patterns, filters):")
+            print("  Mentioned (not counted - e.g. AE2 patterns, machine filters):")
             for m in sorted(set(mentions)):
                 print("          " + m)
         if not (placed or stored or mentions):
@@ -306,11 +305,16 @@ def report(res):
 
 
 def main(argv):
-    items = DEFAULT_ITEMS
-    if "--items" in argv:
-        i = argv.index("--items")
-        items = [s.strip() for s in argv[i + 1].split(",") if s.strip()]
-        argv = argv[:i] + argv[i + 2:]
+    if "--items" not in argv or argv.index("--items") == len(argv) - 1:
+        print(__doc__)
+        print("error: --items is required, e.g. --items mekanism:digital_miner")
+        return 1
+    i = argv.index("--items")
+    items = [s.strip() for s in argv[i + 1].split(",") if s.strip()]
+    argv = argv[:i] + argv[i + 2:]
+    if not items:
+        print("error: --items was given an empty list")
+        return 1
     if not argv:
         print(__doc__)
         return 1

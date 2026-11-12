@@ -1,7 +1,5 @@
 # Trollcraft III — Which Mods to Start With
 
-> **Note (pack change):** ProjectE has since been removed from the pack, together with AppliedE and Tinkers' EMC, which needed it. Mentions of them below describe the old pack.
-
 This is a recommendation for where to put your first sessions. It combines:
 
 - **The pack's own data:** what each mod needs before it can start, and what it unlocks in other mods. See
@@ -62,10 +60,6 @@ budding certus home early makes the AE2 build easier later. You don't need to bu
 - **AE2:** community wikis say to look for meteorites early even though AE2 is mostly a late-game storage mod.
   Reviewers describe it as fiddly early on and much better from the mid game. A common tip is to start with small
   (1k–4k) cells.
-- **ProjectE:** the most consistent advice is to *wait*. Community wikis list its usual problems: infinite resources
-  once a setup runs, skipping mining and farming, and early flight from Red Matter armor. Many packs gate it with
-  quests, blacklists or balance addons. Trollcraft III has **no** ProjectE balance addon, so it's up to the player to
-  hold off.
 
 ---
 
@@ -88,7 +82,6 @@ alternatives:
 
 | Mod | Wait until | Why |
 |-----|-----------|-----|
-| **ProjectE** | Mid or late game | EMC can skip other mods' progression, and the pack doesn't rebalance it |
 | **Draconic Evolution** | You can fight the Wither | Its Wyvern tier needs a Nether Star, and later tiers need the Ender Dragon and the Chaos Guardian |
 | **RFTools Dimensions** | You have large, steady FE power | Dimensions drain power constantly and must stay chunkloaded |
 | **Extreme Reactors 2** | Your generators can't keep up | Turbines need Cyanite from a running reactor, and the Reinforced tier needs steel |
@@ -148,7 +141,3 @@ only shaped the starting recommendations.
 - AE2:
   - [ModdedMC wiki: Applied Energistics 2](https://moddedmc.net/wiki/applied-energistics-2)
   - [MMC Reviews: Applied Energistics 2](https://mmcreviews.com/all/mods/applied-energistics-2)
-- ProjectE balance:
-  - [ModdedMC wiki: ProjectE](https://moddedmc.net/wiki/project-e)
-  - [ProjectE Rebalanced addon](https://www.modpackindex.com/mod/152944/projecte-rebalanced-adjustment)
-  - [Project Overpowered review](https://moddex.gg/modpack/project-overpowered/reviews/928)

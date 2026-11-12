@@ -22,7 +22,7 @@ function setup(nPlayers) {
   const roots = {}
   const node = (n, type) => ({ n, type, ch: [], then(c) { this.ch.push(c); return this }, requires(f) { this.req = f; return this }, executes(f) { this.f = f; return this } })
   const event = { commands: { literal: n => node(n, 'lit'), argument: (n, t) => node(n, t) },
-    arguments: { PLAYER: { create: () => 'player', getResult: (ctx, n) => ctx.args[n] }, PLAYERS: { create: () => 'players', getResult: (ctx, n) => ctx.args[n] } },
+    arguments: { PLAYER: { create: () => 'player', getResult: (ctx, n) => ctx.args[n] }, PLAYERS: { create: () => 'players', getResult: (ctx, n) => ctx.args[n] }, INTEGER: { create: () => 'int', getResult: (ctx, n) => ctx.args[n] } },
     register: r => { roots[r.n] = r } }
   const Java = { loadClass: n => { if (n == 'net.minecraft.network.chat.Component$Serializer') return { fromJsonLenient: s => ({ json: s }) }; throw new Error('no ' + n) } }
   new Function('ServerEvents', 'Text', 'console', 'Java', src)({ commandRegistry: f => f(event) }, { red: t => 'RED ' + t, of: t => String(t) }, { error: m => console.log('ERR ' + m) }, Java)

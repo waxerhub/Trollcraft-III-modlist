@@ -6,21 +6,21 @@ Usage:
 
 <stats> can be the world/stats folder or a .zip containing it.
 usercache.json (from the server's main folder) turns UUIDs into player names; without it UUIDs are shown.
---items defaults to the three ProjectE Energy Collectors.
+--items is required: a comma-separated list of the item or block ids to report on.
 
 Notes:
   - "Crafted" counts crafting by hand (crafting table / inventory). It does not count items made by
-    autocrafting (AE2, etc.), transmuted from EMC, given with /give, or picked up.
+    autocrafting (AE2, etc.), given with /give, or picked up.
   - "Placed" minus "Broken" is roughly how many that player still has down in the world
     (it can't see blocks someone else broke, or ones moved by other mods).
-  - Upgrading MK1 -> MK2 -> MK3 uses up the lower tier, so a crafted MK1 may now be an MK2 or MK3.
+  - A tiered machine or tool whose upgrade recipe consumes the lower tier can show a "crafted" count
+    for a tier the player no longer has.
 """
 import json
 import os
 import sys
 import zipfile
 
-DEFAULT_ITEMS = ["projecte:collector_mk1", "projecte:collector_mk2", "projecte:collector_mk3"]
 
 
 def load_names(path):
@@ -46,11 +46,16 @@ def stats_files(path):
 
 
 def main(argv):
-    items = DEFAULT_ITEMS
-    if "--items" in argv:
-        i = argv.index("--items")
-        items = [s.strip() for s in argv[i + 1].split(",") if s.strip()]
-        argv = argv[:i] + argv[i + 2:]
+    if "--items" not in argv or argv.index("--items") == len(argv) - 1:
+        print(__doc__)
+        print("error: --items is required, e.g. --items mekanism:digital_miner")
+        return 1
+    i = argv.index("--items")
+    items = [s.strip() for s in argv[i + 1].split(",") if s.strip()]
+    argv = argv[:i] + argv[i + 2:]
+    if not items:
+        print("error: --items was given an empty list")
+        return 1
     if not argv:
         print(__doc__)
         return 1

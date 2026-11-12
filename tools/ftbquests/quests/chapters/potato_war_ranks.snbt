@@ -28,10 +28,10 @@
 		}
 		{
 			dependencies: ["507A700000010065"]
-			description: ["Offer potatoes with &6/potatowar offer&r, or hand them in for nodes in this book.", "Rank 2 lets you craft Tier 2 (A Puddle)'s items at a crafting table, once the Blood Pool opens it.", "&7Catch-up: when the Blood Pool is 2 tiers past Tier 2, you can craft it whatever your rank (this quest then ticks too)."]
+			description: ["Offer potatoes with &6/potatowar offer&r, or hand them in for nodes in this book.", "&cNeeds the Blood Pool at Tier 1.&r Until it opens, your rank stops below this one; the potatoes you offer still count, and the rank comes when the tier opens.", "Rank 2 lets you craft Tier 2 (A Puddle)'s items at a crafting table, once the Blood Pool opens it.", "&7Catch-up: when the Blood Pool is 2 tiers past Tier 2, you can craft it whatever your rank (this quest then ticks too)."]
 			icon: "minecraft:potato"
 			id: "507A700000010066"
-			subtitle: "Rank 2 · 1,000 potatoes"
+			subtitle: "Rank 2 · 1,000 potatoes · Blood Pool Tier 1"
 			tags: ["potato_rank"]
 			tasks: [
 				{
@@ -47,10 +47,10 @@
 		}
 		{
 			dependencies: ["507A700000010066"]
-			description: ["Offer potatoes with &6/potatowar offer&r, or hand them in for nodes in this book.", "Rank 3 lets you craft Tier 3 (A Basin)'s items at a crafting table, once the Blood Pool opens it.", "&7Catch-up: when the Blood Pool is 2 tiers past Tier 3, you can craft it whatever your rank (this quest then ticks too)."]
+			description: ["Offer potatoes with &6/potatowar offer&r, or hand them in for nodes in this book.", "&cNeeds the Blood Pool at Tier 2.&r Until it opens, your rank stops below this one; the potatoes you offer still count, and the rank comes when the tier opens.", "Rank 3 lets you craft Tier 3 (A Basin)'s items at a crafting table, once the Blood Pool opens it.", "&7Catch-up: when the Blood Pool is 2 tiers past Tier 3, you can craft it whatever your rank (this quest then ticks too)."]
 			icon: "minecraft:potato"
 			id: "507A700000010067"
-			subtitle: "Rank 3 · 2,500 potatoes"
+			subtitle: "Rank 3 · 2,500 potatoes · Blood Pool Tier 2"
 			tags: ["potato_rank"]
 			tasks: [
 				{
@@ -66,10 +66,10 @@
 		}
 		{
 			dependencies: ["507A700000010067"]
-			description: ["Offer potatoes with &6/potatowar offer&r, or hand them in for nodes in this book.", "Rank 4 lets you craft Tier 4 (A Font)'s items at a crafting table, once the Blood Pool opens it.", "&7Catch-up: when the Blood Pool is 2 tiers past Tier 4, you can craft it whatever your rank (this quest then ticks too)."]
+			description: ["Offer potatoes with &6/potatowar offer&r, or hand them in for nodes in this book.", "&cNeeds the Blood Pool at Tier 3.&r Until it opens, your rank stops below this one; the potatoes you offer still count, and the rank comes when the tier opens.", "Rank 4 lets you craft Tier 4 (A Font)'s items at a crafting table, once the Blood Pool opens it.", "&7Catch-up: when the Blood Pool is 2 tiers past Tier 4, you can craft it whatever your rank (this quest then ticks too)."]
 			icon: "minecraft:potato"
 			id: "507A700000010068"
-			subtitle: "Rank 4 · 25,000 potatoes"
+			subtitle: "Rank 4 · 25,000 potatoes · Blood Pool Tier 3"
 			tags: ["potato_rank"]
 			tasks: [
 				{
@@ -85,10 +85,10 @@
 		}
 		{
 			dependencies: ["507A700000010068"]
-			description: ["Offer potatoes with &6/potatowar offer&r, or hand them in for nodes in this book.", "Rank 5 lets you craft Tier 5 (A Spring)'s items at a crafting table, once the Blood Pool opens it.", "&7Catch-up: when the Blood Pool is 2 tiers past Tier 5, you can craft it whatever your rank (this quest then ticks too)."]
+			description: ["Offer potatoes with &6/potatowar offer&r, or hand them in for nodes in this book.", "&cNeeds the Blood Pool at Tier 4.&r Until it opens, your rank stops below this one; the potatoes you offer still count, and the rank comes when the tier opens.", "Rank 5 lets you craft Tier 5 (A Spring)'s items at a crafting table, once the Blood Pool opens it.", "&7Catch-up: when the Blood Pool is 2 tiers past Tier 5, you can craft it whatever your rank (this quest then ticks too)."]
 			icon: "minecraft:potato"
 			id: "507A700000010069"
-			subtitle: "Rank 5 · 50,000 potatoes"
+			subtitle: "Rank 5 · 50,000 potatoes · Blood Pool Tier 4"
 			tags: ["potato_rank"]
 			tasks: [
 				{
@@ -104,10 +104,10 @@
 		}
 		{
 			dependencies: ["507A700000010069"]
-			description: ["Offer potatoes with &6/potatowar offer&r, or hand them in for nodes in this book.", "Rank 6 lets you craft Tier 6 (A Stream)'s items at a crafting table, once the Blood Pool opens it.", "&7Catch-up: when the Blood Pool is 2 tiers past Tier 6, you can craft it whatever your rank (this quest then ticks too)."]
+			description: ["Offer potatoes with &6/potatowar offer&r, or hand them in for nodes in this book.", "&cNeeds the Blood Pool at Tier 5.&r Until it opens, your rank stops below this one; the potatoes you offer still count, and the rank comes when the tier opens.", "Rank 6 lets you craft Tier 6 (A Stream)'s items at a crafting table, once the Blood Pool opens it.", "&7Catch-up: when the Blood Pool is 2 tiers past Tier 6, you can craft it whatever your rank (this quest then ticks too)."]
 			icon: "minecraft:potato"
 			id: "507A70000001006A"
-			subtitle: "Rank 6 · 100,000 potatoes"
+			subtitle: "Rank 6 · 400,000 potatoes · Blood Pool Tier 5"
 			tags: ["potato_rank"]
 			tasks: [
 				{
@@ -123,10 +123,10 @@
 		}
 		{
 			dependencies: ["507A70000001006A"]
-			description: ["Offer potatoes with &6/potatowar offer&r, or hand them in for nodes in this book.", "Rank 7 lets you craft Tier 7 (A River)'s items at a crafting table, once the Blood Pool opens it.", "&7Catch-up: when the Blood Pool is 2 tiers past Tier 7, you can craft it whatever your rank (this quest then ticks too)."]
+			description: ["Offer potatoes with &6/potatowar offer&r, or hand them in for nodes in this book.", "&cNeeds the Blood Pool at Tier 6.&r Until it opens, your rank stops below this one; the potatoes you offer still count, and the rank comes when the tier opens.", "Rank 7 lets you craft Tier 7 (A River)'s items at a crafting table, once the Blood Pool opens it.", "&7Catch-up: when the Blood Pool is 2 tiers past Tier 7, you can craft it whatever your rank (this quest then ticks too)."]
 			icon: "minecraft:potato"
 			id: "507A70000001006B"
-			subtitle: "Rank 7 · 175,000 potatoes"
+			subtitle: "Rank 7 · 700,000 potatoes · Blood Pool Tier 6"
 			tags: ["potato_rank"]
 			tasks: [
 				{
@@ -142,10 +142,10 @@
 		}
 		{
 			dependencies: ["507A70000001006B"]
-			description: ["Offer potatoes with &6/potatowar offer&r, or hand them in for nodes in this book.", "Rank 8 lets you craft Tier 8 (A Flood)'s items at a crafting table, once the Blood Pool opens it.", "&7Catch-up: when the Blood Pool is 2 tiers past Tier 8, you can craft it whatever your rank (this quest then ticks too)."]
+			description: ["Offer potatoes with &6/potatowar offer&r, or hand them in for nodes in this book.", "&cNeeds the Blood Pool at Tier 7.&r Until it opens, your rank stops below this one; the potatoes you offer still count, and the rank comes when the tier opens.", "Rank 8 lets you craft Tier 8 (A Flood)'s items at a crafting table, once the Blood Pool opens it.", "&7Catch-up: when the Blood Pool is 2 tiers past Tier 8, you can craft it whatever your rank (this quest then ticks too)."]
 			icon: "minecraft:potato"
 			id: "507A70000001006C"
-			subtitle: "Rank 8 · 300,000 potatoes"
+			subtitle: "Rank 8 · 1,200,000 potatoes · Blood Pool Tier 7"
 			tags: ["potato_rank"]
 			tasks: [
 				{
@@ -161,10 +161,10 @@
 		}
 		{
 			dependencies: ["507A70000001006C"]
-			description: ["Offer potatoes with &6/potatowar offer&r, or hand them in for nodes in this book.", "Rank 9 lets you craft Tier 9 (A Tide)'s items at a crafting table, once the Blood Pool opens it.", "&7Catch-up: when the Blood Pool is 2 tiers past Tier 9, you can craft it whatever your rank (this quest then ticks too)."]
+			description: ["Offer potatoes with &6/potatowar offer&r, or hand them in for nodes in this book.", "&cNeeds the Blood Pool at Tier 8.&r Until it opens, your rank stops below this one; the potatoes you offer still count, and the rank comes when the tier opens.", "Rank 9 lets you craft Tier 9 (A Tide)'s items at a crafting table, once the Blood Pool opens it.", "&7Catch-up: when the Blood Pool is 2 tiers past Tier 9, you can craft it whatever your rank (this quest then ticks too)."]
 			icon: "minecraft:potato"
 			id: "507A70000001006D"
-			subtitle: "Rank 9 · 500,000 potatoes"
+			subtitle: "Rank 9 · 2,000,000 potatoes · Blood Pool Tier 8"
 			tags: ["potato_rank"]
 			tasks: [
 				{
@@ -180,10 +180,10 @@
 		}
 		{
 			dependencies: ["507A70000001006D"]
-			description: ["Offer potatoes with &6/potatowar offer&r, or hand them in for nodes in this book.", "Rank 10 lets you craft Tier 10 (A Sea)'s items at a crafting table, once the Blood Pool opens it.", "&7Catch-up: when the Blood Pool is 2 tiers past Tier 10, you can craft it whatever your rank (this quest then ticks too)."]
+			description: ["Offer potatoes with &6/potatowar offer&r, or hand them in for nodes in this book.", "&cNeeds the Blood Pool at Tier 9.&r Until it opens, your rank stops below this one; the potatoes you offer still count, and the rank comes when the tier opens.", "Rank 10 lets you craft Tier 10 (A Sea)'s items at a crafting table, once the Blood Pool opens it.", "&7Catch-up: when the Blood Pool is 2 tiers past Tier 10, you can craft it whatever your rank (this quest then ticks too)."]
 			icon: "minecraft:potato"
 			id: "507A70000001006E"
-			subtitle: "Rank 10 · 750,000 potatoes"
+			subtitle: "Rank 10 · 3,000,000 potatoes · Blood Pool Tier 9"
 			tags: ["potato_rank"]
 			tasks: [
 				{
@@ -199,10 +199,10 @@
 		}
 		{
 			dependencies: ["507A70000001006E"]
-			description: ["Offer potatoes with &6/potatowar offer&r, or hand them in for nodes in this book.", "Rank 11 lets you craft Tier 11 (An Ocean)'s items at a crafting table, once the Blood Pool opens it.", "&7Catch-up: when the Blood Pool is 2 tiers past Tier 11, you can craft it whatever your rank (this quest then ticks too)."]
+			description: ["Offer potatoes with &6/potatowar offer&r, or hand them in for nodes in this book.", "&cNeeds the Blood Pool at Tier 10.&r Until it opens, your rank stops below this one; the potatoes you offer still count, and the rank comes when the tier opens.", "Rank 11 lets you craft Tier 11 (An Ocean)'s items at a crafting table, once the Blood Pool opens it.", "&7Catch-up: when the Blood Pool is 2 tiers past Tier 11, you can craft it whatever your rank (this quest then ticks too)."]
 			icon: "minecraft:golden_carrot"
 			id: "507A70000001006F"
-			subtitle: "Rank 11 · 1,100,000 potatoes"
+			subtitle: "Rank 11 · 4,400,000 potatoes · Blood Pool Tier 10"
 			tags: ["potato_rank"]
 			tasks: [
 				{

@@ -66,9 +66,9 @@ ok('uses the real account UUID and capitals', add.pk.ops[2][1] == '069a79f4-44e9
 ok('skin properties passed', add.pk.ops[4][1]._p.textures == 'skin')
 const msg = JSON.parse(W.sys[0])
 ok('no tellraw used (so Discord does not relay it as chat)', W.cmds.length == 0)
-ok('Discord JOIN post like a real join', W.discord.length == 1 && W.discord[0].type == 'JOIN' && W.discord[0].msg == '🪂 **Notch** has deployed. The Ministry is watching.' && W.discord[0].auth.name == 'Notch' && W.discord[0].auth.avatar == '069a79f4-44e9-4726-a5be-fca90e38aaf5')
+ok('Discord JOIN post like a real join', W.discord.length == 1 && W.discord[0].type == 'JOIN' && W.discord[0].msg == '🩸 **Notch** stepped out of the blood. The Ministry has been notified, and does not approve.' && W.discord[0].auth.name == 'Notch' && W.discord[0].auth.avatar == '069a79f4-44e9-4726-a5be-fca90e38aaf5')
 ok('yellow vanilla join message', msg.translate == 'multiplayer.player.joined' && msg.color == 'yellow' && msg.with[0].text == 'Notch' && msg.with[0].hoverEvent.contents.id == '069a79f4-44e9-4726-a5be-fca90e38aaf5')
-ok('reply mentions skin and Discord result', /with their skin\). Discord: sent "🪂 \*\*Notch\*\* has deployed/.test(last()), last())
+ok('reply mentions skin and Discord result', /with their skin\). Discord: sent "🩸 \*\*Notch\*\* stepped out of the blood/.test(last()), last())
 
 run('fakejoin', 'Notch')
 ok('duplicate refused', /already pretending/.test(last()))
@@ -104,7 +104,7 @@ run('fakeleave', 'goruk_the_dwarf')
 const rm = W.sent[before]
 ok('remove packet with the right uuid', rm.pk.kind == 'remove' && rm.pk.uuids[0] == 'offline-goruk_the_dwarf')
 ok('yellow vanilla leave message', JSON.parse(W.sys[W.sys.length - 1]).translate == 'multiplayer.player.left')
-ok('Discord LEAVE post', W.discord[W.discord.length - 1].type == 'LEAVE' && W.discord[W.discord.length - 1].msg == '📋 **Goruk_The_Dwarf** has left the battlefield. Their absence has been noted.')
+ok('Discord LEAVE post', W.discord[W.discord.length - 1].type == 'LEAVE' && W.discord[W.discord.length - 1].msg == '🌫️ **Goruk_The_Dwarf** slipped back into the static. The Ministry has lost track of them, again.')
 run('fakeleave', 'nobody')
 ok('leaving a non-pretend name refused', /not a pretend player/.test(last()))
 
@@ -135,7 +135,7 @@ run('fakejoin', 'NoBot'); advance(12)
 ok('bot offline reported', /Discord: not posted, the bot is not connected/.test(last()), last())
 classes['com.hypherionmc.sdlink.core.discord.BotController'] = { INSTANCE: { isBotReady: () => true } }
 run('fakeleave', 'NoBot')
-ok('leave posted again once the bot is back', /Discord: sent "📋 \*\*NoBot\*\* has left the battlefield/.test(last()), last())
+ok('leave posted again once the bot is back', /Discord: sent "🌫️ \*\*NoBot\*\* slipped back into the static/.test(last()), last())
 
 // ----- /fakesay -----
 const sayCmd = (name, message) => nodes.fakesay.ch[0].ch[0].f({ name, message, source: { server, sendSystemMessage: m => replies.push(m) } })

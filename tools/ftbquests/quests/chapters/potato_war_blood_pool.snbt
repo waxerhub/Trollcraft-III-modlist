@@ -28,7 +28,7 @@
 		}
 		{
 			dependencies: ["507A7000000100C9"]
-			description: ["The whole server fills the Blood Pool: trolls in the Troll Log, Hush Coins (/bloodpool donate) and the Potato Tithe (/bloodpool tithe).", "", "&6Opens at 60,000 Drops&r", "- Mods: botania, ars_nouveau, evilcraft", "- 2 items, e.g. mixing cauldron, blood bottle", "", "&7Crafting its items at a table also needs Potato Peeler (or catch-up at Tier 4). Machines work for everyone."]
+			description: ["The whole server fills the Blood Pool: trolls in the Troll Log, Hush Coins (/bloodpool donate) and the Potato Tithe (/bloodpool tithe).", "", "&6Opens at 60,000 Drops&r", "- Mods: botania, ars_nouveau, evilcraft", "- 8 items, e.g. mixing cauldron, blood bottle, wooden spikes, stone spikes, iron spikes, golden spikes", "", "&7Crafting its items at a table also needs Potato Peeler (or catch-up at Tier 4). Machines work for everyone."]
 			icon: "minecraft:redstone"
 			id: "507A7000000100CA"
 			subtitle: "60,000 Drops"
@@ -85,7 +85,7 @@
 		}
 		{
 			dependencies: ["507A7000000100CC"]
-			description: ["The whole server fills the Blood Pool: trolls in the Troll Log, Hush Coins (/bloodpool donate) and the Potato Tithe (/bloodpool tithe).", "", "&6Opens at 320,000 Drops&r", "- Mods: thermal, enderio", "- 33 items, e.g. cobalt ingot, raw cobalt, raw cobalt block, cobalt block, nether grout, scorched brick", "", "&7Crafting its items at a table also needs Potato Soldier (or catch-up at Tier 7). Machines work for everyone."]
+			description: ["The whole server fills the Blood Pool: trolls in the Troll Log, Hush Coins (/bloodpool donate) and the Potato Tithe (/bloodpool tithe).", "", "&6Opens at 320,000 Drops&r", "- Mods: thermal, enderio", "- 62 items, e.g. cobalt ingot, raw cobalt, raw cobalt block, cobalt block, nether grout, scorched brick", "", "&7Crafting its items at a table also needs Potato Soldier (or catch-up at Tier 7). Machines work for everyone."]
 			icon: "minecraft:redstone"
 			id: "507A7000000100CD"
 			subtitle: "320,000 Drops"

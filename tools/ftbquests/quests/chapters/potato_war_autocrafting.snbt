@@ -396,6 +396,102 @@
 			x: 12.0d
 			y: 0.0d
 		}
+		{
+			description: ["Place and use the Quark Crafter and Botania's Crafty Crate.", "", "&6Unlocks&r", "- Place: crafter, crafty crate", "- Use (whoever placed it): crafter, crafty crate", "", "&7Needs Potato Private, Blood Pool Tier 4.", "&7Potatoes handed in here count toward your rank. Items are taken when you submit them (loose potatoes only).", "&7Comes to you for free once the Blood Pool is 2 tiers past Tier 4 (catch-up)."]
+			icon: "quark:crafter"
+			id: "507A70000001001D"
+			rewards: [
+				{
+					auto: "invisible"
+					id: "507A7000000301D0"
+					stage: "potato_tree_simple_crafting"
+					type: "gamestage"
+				}
+			]
+			subtitle: "Potato Private · Tier 4"
+			tags: ["potato_tree"]
+			tasks: [
+				{
+					id: "507A7000000201D0"
+					stage: "potato_standing_4"
+					title: "Rank: Potato Private"
+					type: "gamestage"
+				}
+				{
+					id: "507A7000000201D1"
+					stage: "blood_pool_tier_4"
+					title: "Blood Pool: Tier 4"
+					type: "gamestage"
+				}
+				{
+					consume_items: true
+					count: 25000L
+					id: "507A7000000201D2"
+					item: "minecraft:potato"
+					tags: ["potato_offer"]
+					title: "25,000 potatoes for the war chest"
+					type: "item"
+				}
+				{
+					consume_items: true
+					count: 8L
+					id: "507A7000000201D3"
+					item: "minecraft:crafting_table"
+					type: "item"
+				}
+			]
+			title: "Simple Crafters"
+			x: 15.0d
+			y: 0.0d
+		}
+		{
+			description: ["Place and use Blue Power's Auto Project Table.", "", "&6Unlocks&r", "- Place: auto project table", "- Use (whoever placed it): auto project table", "", "&7Needs Potato Lieutenant, Blood Pool Tier 7.", "&7Potatoes handed in here count toward your rank. Items are taken when you submit them (loose potatoes only).", "&7Comes to you for free once the Blood Pool is 2 tiers past Tier 7 (catch-up)."]
+			icon: "bluepower:auto_project_table"
+			id: "507A70000001001E"
+			rewards: [
+				{
+					auto: "invisible"
+					id: "507A7000000301E0"
+					stage: "potato_tree_project_automation"
+					type: "gamestage"
+				}
+			]
+			subtitle: "Potato Lieutenant · Tier 7"
+			tags: ["potato_tree"]
+			tasks: [
+				{
+					id: "507A7000000201E0"
+					stage: "potato_standing_7"
+					title: "Rank: Potato Lieutenant"
+					type: "gamestage"
+				}
+				{
+					id: "507A7000000201E1"
+					stage: "blood_pool_tier_7"
+					title: "Blood Pool: Tier 7"
+					type: "gamestage"
+				}
+				{
+					consume_items: true
+					count: 175000L
+					id: "507A7000000201E2"
+					item: "minecraft:potato"
+					tags: ["potato_offer"]
+					title: "175,000 potatoes for the war chest"
+					type: "item"
+				}
+				{
+					consume_items: true
+					count: 4L
+					id: "507A7000000201E3"
+					item: "bluepower:project_table"
+					type: "item"
+				}
+			]
+			title: "Project Automation"
+			x: 15.0d
+			y: -2.0d
+		}
 	]
 	subtitle: ["Machines that craft for you."]
 	title: "Autocrafting"

@@ -8,7 +8,7 @@
 
 // ===================== SETTINGS =====================
 
-// Items that can't be given. * matches anything, e.g. 'projecte:*' or '*_spawn_egg'.
+// Items that can't be given. * matches anything, e.g. '*_spawn_egg' or 'mekanism:*'.
 const BLOCKED_ITEMS = [
   // Admin / creative-only
   'minecraft:command_block', 'minecraft:chain_command_block', 'minecraft:repeating_command_block',

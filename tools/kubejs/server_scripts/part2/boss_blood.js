@@ -1,6 +1,7 @@
-// Part II: Twilight Forest boss kills fill the Blood Pool. Each boss pays Drops of Blood on a reward ladder that
-// follows Twilight Forest's progression. The Pool gets the full amount; the credit (/bloodpool top) is split equally
-// among the fighters, the survival players within FIGHTER_RADIUS blocks when the boss dies. Every kill pays.
+// Part II: Twilight Forest boss kills fill the Blood Pool. Each boss pays Drops of Blood by how hard it is: the same
+// ranking, easiest first, as the boss chests in part2/twilight_bosses.js. The Pool gets the full amount; the credit
+// (/bloodpool top) is split equally among the fighters, the survival players within FIGHTER_RADIUS blocks when the
+// boss dies. Every kill pays.
 //   - The Lich's shadow clones are also "twilightforest:lich": only the real Lich pays.
 //   - Knight Phantoms come six to a group: the group pays once, when the last one dies.
 //   - /kill and the void pay nothing, and nor does a boss with no player nearby.
@@ -12,17 +13,19 @@
 
 // ===================== SETTINGS =====================
 
-// Entity id -> what it's worth. ladder: the rung on the reward ladder (Twilight Forest's order).
+// Entity id -> what it's worth. rank: how hard it is, 1 = easiest (keep in step with BOSSES in twilight_bosses.js).
+// Each rank pays about a quarter more than the one before, from 200 for the Naga to 1,000 for the Snow Queen.
 const BOSSES = {
-  'twilightforest:naga':           { name: 'the Naga', drops: 200,  ladder: 1 },
-  'twilightforest:lich':           { name: 'the Lich', drops: 300,  ladder: 1 },
-  'twilightforest:minoshroom':     { name: 'the Minoshroom', drops: 350,  ladder: 2 },
-  'twilightforest:knight_phantom': { name: 'the Knight Phantoms', drops: 400, ladder: 2 },
-  'twilightforest:hydra':          { name: 'the Hydra', drops: 600,  ladder: 3 },
-  'twilightforest:ur_ghast':       { name: 'the Ur-Ghast', drops: 600,  ladder: 3 },
-  'twilightforest:alpha_yeti':     { name: 'the Alpha Yeti', drops: 800,  ladder: 4 },
-  'twilightforest:snow_queen':     { name: 'the Snow Queen', drops: 1000, ladder: 4 },
+  'twilightforest:naga':           { name: 'the Naga', drops: 200, rank: 1 },             // 120 health, melee only
+  'twilightforest:minoshroom':     { name: 'the Minoshroom', drops: 250, rank: 2 },       // axe charges, end of the Labyrinth
+  'twilightforest:alpha_yeti':     { name: 'the Alpha Yeti', drops: 300, rank: 3 },       // 200 health, throws, slow
+  'twilightforest:lich':           { name: 'the Lich', drops: 400, rank: 4 },             // harder in play than those two
+  'twilightforest:knight_phantom': { name: 'the Knight Phantoms', drops: 500, rank: 5 },  // six armoured knights
+  'twilightforest:hydra':          { name: 'the Hydra', drops: 650, rank: 6 },            // 360 health, heads only, fire
+  'twilightforest:ur_ghast':       { name: 'the Ur-Ghast', drops: 800, rank: 7 },         // flies; needs the ghast traps
+  'twilightforest:snow_queen':     { name: 'the Snow Queen', drops: 1000, rank: 8 },      // hardest hits, shields, flies
 }
+const NUMERALS = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X']
 const LICH_ID = 'twilightforest:lich'
 const KNIGHT_ID = 'twilightforest:knight_phantom'
 const FIGHTER_RADIUS = 64            // players this close (same dimension) when the boss dies share the credit
@@ -180,10 +183,10 @@ ServerEvents.commandRegistry(event => {
   event.register(Commands.literal('bossblood')
     .executes(safe(ctx => {
       const D = db()
-      reply(ctx, 'Twilight Forest bosses fill the Blood Pool (the credit is shared by everyone within ' + FIGHTER_RADIUS + ' blocks):')
-      Object.keys(BOSSES).forEach(id => {
+      reply(ctx, 'Twilight Forest bosses fill the Blood Pool, easiest first (the credit is shared by everyone within ' + FIGHTER_RADIUS + ' blocks):')
+      Object.keys(BOSSES).sort((a, b) => BOSSES[a].rank - BOSSES[b].rank).forEach(id => {
         let B = BOSSES[id]
-        reply(ctx, ['I', 'II', 'III', 'IV', 'V'][B.ladder - 1] + '. ' + B.name.charAt(0).toUpperCase() + B.name.slice(1) +
+        reply(ctx, (NUMERALS[B.rank - 1] || String(B.rank)) + '. ' + B.name.charAt(0).toUpperCase() + B.name.slice(1) +
           ': ' + fmt(B.drops) + ' Drops' + (D.kills[id] ? ' (slain ' + D.kills[id] + 'x, ' + fmt(D.drops[id]) + ' so far)' : ''))
       })
       return 1

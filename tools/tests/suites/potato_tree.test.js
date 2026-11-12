@@ -242,7 +242,7 @@ function loadOne(src) {
   const ftbq = W.noFtbq ? undefined : { completed: (tag, cb) => { (handlers['ftbq:' + tag] = handlers['ftbq:' + tag] || []).push(cb) } }
   new Function('PlayerEvents', 'EntityEvents', 'ServerEvents', 'ItemEvents', 'BlockEvents', 'Utils', 'Text', 'Item', 'Ingredient', 'console', 'global', 'Java', 'Date', 'JsonIO', 'FTBQuestsEvents', src)(
     { loggedIn: on('loggedIn'), loggedOut: on('loggedOut'), chestOpened: on('chestOpened'), inventoryChanged: on('inventoryChanged') }, { hurt: on('hurt'), death: on('death'), spawned: on('spawned') },
-    { loaded: on('loaded'), commandRegistry: f => f(ev), recipes: f => { const rev = { replaceInput: (filter, from, to) => W.recipes.push({ filter, from, to }), remove: filt => { (W.removedRecipes = W.removedRecipes || []).push(JSON.parse(JSON.stringify(filt, (k, v) => v instanceof RegExp ? 're:' + v.source : v))) },
+    { loaded: on('loaded'), commandRegistry: f => f(ev), tags: (reg, f) => f({ add: (t, v) => { (W.addedTags = W.addedTags || {})[reg + ' ' + t] = v } }), recipes: f => { const rev = { replaceInput: (filter, from, to) => W.recipes.push({ filter, from, to }), remove: filt => { (W.removedRecipes = W.removedRecipes || []).push(JSON.parse(JSON.stringify(filt, (k, v) => v instanceof RegExp ? 're:' + v.source : v))) },
       forEachRecipe: (filt, cb) => {
         W.forEachCalls = (W.forEachCalls || 0) + 1
         const all = filt === '*', types = all ? [] : (Array.isArray(filt) ? filt : [filt]).map(x => x.type)
@@ -562,9 +562,29 @@ ok('a Create funnel placed on a belt (a belt funnel block) needs Create Logistic
 ok('... AE2 parts on a cable (a pattern provider) and Thermal servos on a duct are refused', rclick(bo, 'ae2:cable_bus', stack('ae2:cable_pattern_provider', 1)) && rclick(bo, 'thermal:energy_duct', stack('thermal:servo_attachment', 1)))
 ok('... the message names the node', /ME Autocrafting needed/.test(statusOf(bo)) || /ME Logistics needed/.test(statusOf(bo)), statusOf(bo))
 ok('ordinary blocks are placed as normal', !rclick(bo, 'minecraft:stone', stack('minecraft:stone', 1)) && !place(bo, 'minecraft:stone') && !place(bo, 'thermal:machine_pulverizer'))
+const syncCount = (p, fn) => {
+  advance(2)   // resends still queued from earlier refusals in this suite
+  const menu = { equals: o => o === menu, sendAllDataToRemote() { W.syncs = (W.syncs || 0) + 1 } }
+  p._menu = menu; W.syncs = 0
+  fn()
+  const soon = W.syncs
+  advance(2)
+  p._menu = null
+  return [soon, W.syncs]
+}
+ok('a placement or click the tree refuses sends the player\'s inventory again, a tick later', syncCount(bo, () => place(bo, 'create:mechanical_crafter')).join() == '0,1' &&
+  syncCount(bo, () => rclick(bo, 'thermal:machine_insolator')).join() == '0,1')
+ok('... but not an ordinary placement', syncCount(bo, () => place(bo, 'minecraft:stone')).join() == '0,0')
 cmd('potatotree grant Bo mechanical_crafting', admin)
 ok('with Mechanical Crafting, an Unenlisted player places a Mechanical Crafter (blood_pool.js\'s rank rule steps aside)', glob.BloodPool.standing(bo).tier == 0 && !place(bo, 'create:mechanical_crafter') && !rclick(bo, 'minecraft:stone', stack('create:mechanical_crafter', 1)))
 ok('using someone else\'s Insolator or RFTools Crafter without the node: refused', rclick(bo, 'thermal:machine_insolator') && rclick(bo, 'rftoolsutility:crafter2'))
+const SIMPLE = ['quark:crafter', 'botania:crafty_crate']
+ok('placing or using a cheap autocrafter without Simple Crafters: refused', SIMPLE.every(id => place(bo, id) && rclick(bo, id)), SIMPLE.filter(id => !place(bo, id) || !rclick(bo, id)).join(','))
+ok('placing or using Blue Power\'s Auto Project Table needs Project Automation', place(bo, 'bluepower:auto_project_table') && rclick(bo, 'bluepower:auto_project_table'))
+cmd('potatotree grant Bo simple_crafting', admin); cmd('potatotree grant Bo project_automation', admin)
+ok('with the nodes, all of them work', SIMPLE.concat('bluepower:auto_project_table').every(id => !place(bo, id) && !rclick(bo, id)))
+ok('... but not Fancy Crafters or a Wixie, which no node unlocks', place(bo, 'bibliocraft:oak_fancy_crafter') && rclick(bo, 'bibliocraft:oak_fancy_crafter') && rclick(bo, 'minecraft:cauldron', stack('ars_nouveau:wixie_charm', 1)))
+cmd('potatotree revoke Bo simple_crafting', admin); cmd('potatotree revoke Bo project_automation', admin)
 ok('... the Garden Cloche (caught up at Tier 3) can be used', !rclick(bo, 'immersiveengineering:cloche'))
 ok('... ordinary machines can be used by anyone', !rclick(bo, 'thermal:machine_pulverizer') && !rclick(bo, 'minecraft:chest'))
 ok('basic AE2 storage is free: opening a terminal on a cable, and the plain wireless terminal, need no node', !rclick(bo, 'ae2:cable_bus') && !useItem(bo, stack('ae2:wireless_terminal', 1)))
@@ -611,12 +631,12 @@ replies.length = 0; cmd('potatowar next', cy)
 ok('/potatowar next: catch-up access, and the next nodes with what they need', replies.some(r => /Crafting access: Tier 4 \(catch-up\) of 6 open/.test(flat(r))) &&
   replies.some(r => /Next: The Foundry \(needs Potato Soldier\)/.test(flat(r))), replies.map(flat).join(' | '))
 ok('global.PotatoTree.status: owned, ready and soon', PT().status(cy).owned.indexOf('Seared Smeltery') >= 0 && PT().status(cy).ready.length == 0 && PT().status(cy).soon.some(x => x.name == 'Cobalt Smithing'))
-cmd('potatowar set Cy 100000', admin)
+cmd('potatowar set Cy 400000', admin)
 ok('at Potato Sergeant, nodes up to Tier 6 are ready to buy', ['The Foundry', 'Cobalt Smithing', 'Mob Spawning'].every(n => PT().status(cy).ready.indexOf(n) >= 0), PT().status(cy).ready.join(','))
 cy.inbox.length = 0; dee.inbox.length = 0
 const cT = W.cmds.length
 cmd('bloodpool unlock force', admin); advance(25)
-ok('opening a tier tells each player privately what it means for them', cy.inbox.map(x => flat(x)).some(l => /Tier 7 \(A River\) is open\. Crafting its items at a table needs Potato Lieutenant: 75,000 more potatoes .*catch-up at Tier 9\. Ready in the upgrade tree .*Alloy Smithing, ME Logistics/.test(l)) &&
+ok('opening a tier tells each player privately what it means for them', cy.inbox.map(x => flat(x)).some(l => /Tier 7 \(A River\) is open\. Crafting its items at a table needs Potato Lieutenant: 300,000 more potatoes .*catch-up at Tier 9\. Ready in the upgrade tree .*Alloy Smithing, ME Logistics/.test(l)) &&
   dee.inbox.map(x => flat(x)).some(l => /Tier 7 \(A River\) is open/.test(l)), cy.inbox.map(x => flat(x)).join(' || '))
 ok('... never through tellraw @a (Discord)', !W.cmds.slice(cT).some(x => /^tellraw @a .*Crafting its items/.test(x.c)))
 cmd('bloodpool settier 6', admin); advance(25)
@@ -625,7 +645,7 @@ cmd('bloodpool settier 6', admin); advance(25)
 cmd('potatowar tree', bo)
 ok('/potatowar tree opens the book at the ranks chapter for the player', W.cmds.some(x => x.c == 'execute as Bo run ftbquests open_book 507A70000000C001'))
 replies.length = 0; cmd('potatotree check Bo', admin)
-ok('/potatotree check lists the nodes', /Bo has \d+ of 29 nodes: .*Cobalt Smithing/.test(flat(lastReply())), flat(lastReply()))
+ok('/potatotree check lists the nodes', /Bo has \d+ of 31 nodes: .*Cobalt Smithing/.test(flat(lastReply())), flat(lastReply()))
 cmd('potatotree revoke Bo cobalt_smithing', admin)
 ok('/potatotree revoke: the stage goes and the quest is reset', !bo.stages.has(SP('cobalt_smithing')) && W.ftbqCmds.some(c => c == 'ftbquests change_progress Bo reset 507A700000010005'))
 cmd('potatotree grant Bo nonsense', admin); ok('an unknown node is refused with the list of ids', /No such node\. Ids: seared_smeltery/.test(flat(lastReply())))

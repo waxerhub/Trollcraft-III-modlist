@@ -51,7 +51,7 @@ const BLOCK_COIN_CRAFTING = false
 // by a player has `chance` to drop `amount` coins. Vexes summoned by evokers drop nothing.
 const AMBUSH_COIN_DROPS = { enabled: true, chance: 0.25, amount: 1 }
 
-// What the merchant buys from players. EMPTY on purpose: Magical Crops, ProjectE and similar mods make most
+// What the merchant buys from players. EMPTY on purpose: Magical Crops and similar mods make most
 // items farmable, so anything sellable would be an endless coin source. Only add things nobody can farm.
 // Entry: { key: what /blackmarket sell <key> uses, item: exact item id (plain items only, no NBT),
 //          per: how many items make one sale, coins: paid per sale }

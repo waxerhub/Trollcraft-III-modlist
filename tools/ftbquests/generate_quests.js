@@ -100,8 +100,10 @@ function rankQuest(r) {
   const T = BP.tiers.find(x => x.tier === r)
   const q = {
     id: questId(n), title: BP.rankName(r), icon: r == BP.rankCount ? 'minecraft:golden_carrot' : 'minecraft:potato',
-    x: D(0), y: D(-(r - 1) * 1.5), subtitle: 'Rank ' + r + ' · ' + fmt(BP.standingThresholds[r - 1]) + ' potatoes',
+    x: D(0), y: D(-(r - 1) * 1.5), subtitle: 'Rank ' + r + ' · ' + fmt(BP.standingThresholds[r - 1]) + ' potatoes' +
+      (BP.rankTier(r) ? ' · Blood Pool Tier ' + BP.rankTier(r) : ''),
     description: ['Offer potatoes with &6/potatowar offer&r, or hand them in for nodes in this book.',
+      ...(BP.rankTier(r) ? ['&cNeeds the Blood Pool at Tier ' + BP.rankTier(r) + '.&r Until it opens, your rank stops below this one; the potatoes you offer still count, and the rank comes when the tier opens.'] : []),
       'Rank ' + r + ' lets you craft Tier ' + r + (T ? ' (' + T.name + ')' : '') + '\'s items at a crafting table, once the Blood Pool opens it.',
       '&7Catch-up: when the Blood Pool is ' + BP.catchUpGap + ' tiers past Tier ' + r + ', you can craft it whatever your rank (this quest then ticks too).'],
     tags: ['potato_rank'], tasks: [rankTask(n, 0, r)],
@@ -141,7 +143,8 @@ const START = [
     'Until a tier opens, its items can\'t be crafted by anyone. Things you find or trade still work.',
     'See the chapter "The Blood Pool" and /bloodpool tiers.']],
   ['Your rank', 'minecraft:baked_potato', [
-    'Offer potatoes with &6/potatowar offer&r (crates count as 9). Your rank is the lifetime total, with no cap.',
+    'Offer potatoes with &6/potatowar offer&r (crates count as 9). Your rank comes from the lifetime total.',
+    'It can be at most one rank above the tier the Blood Pool has opened. Potatoes past that still count, and the rank comes when the tier opens.',
     'Rank n lets you craft Tier n\'s items at a crafting table (also mods\' own crafting recipes). Machines work for everyone.',
     'See the chapter "The Ranks" and /potatowar.']],
   ['Tithe or offer?', 'minecraft:poisonous_potato', [
@@ -154,6 +157,7 @@ const START = [
     'A node unlocks things for you alone: Tinkers metals your tools may be made of, building smelteries, and placing and using autocrafters, logistics and farm machines.']],
   ['Nobody falls behind', 'minecraft:clock', [
     'When the Blood Pool is ' + BP.catchUpGap + ' tiers past something, it comes to everyone for free: crafting access and every tree node up to that tier.',
+    'Autocrafters only make what every player can already craft, so recipes from the newest ' + BP.catchUpGap + ' tiers have to be crafted by hand.',
     'Your rank\'s name and black market perks still come only from potatoes.']],
   ['The black market', 'minecraft:gold_nugget', [
     'The Hooded Merchant sells some items only to high enough ranks: pranks from Potato Farmer, up to the War Party contract at Potato Captain.']],

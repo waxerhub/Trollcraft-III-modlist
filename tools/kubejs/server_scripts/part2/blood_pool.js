@@ -1,18 +1,23 @@
 // Part II: Blood for the Blood God. The Blood Pool and its tier locks (see STORY.md, tools/kubejs/BLOOD_POOL.md).
 //
 //  - All progression is locked into 12 tiers. Locks are crafting only: a tier's mods, items and tags can't be crafted
-//    (their recipes are removed, in every recipe type) until the server-wide Blood Pool reaches it AND an op breaks the
-//    seal with /bloodpool unlock (which reloads, so the recipes come back). Found, looted or traded items work normally.
+//    (their recipes are removed, in every recipe type) until the server-wide Blood Pool reaches it AND the seal is
+//    broken: 5 players' /bloodpool vote (VOTES_TO_BREAK), or an op's /bloodpool unlock. Either reloads, so the recipes
+//    come back. Found, looted or traded items work normally,
+//    except the ones players may have brought from Part I: USE_LOCKS (guns, staffs, teleporters...) can't be used,
+//    and PLACE_LOCKS (the Nuclear Bomb...) can't be placed, until their tier opens.
 //  - The Pool fills with every troll in the Troll Log (economy/trolls.js), with donated Hush Coins and with the
 //    Potato Tithe (4,000 potatoes = 1,000 Drops, capped per day; the quota resets at 4 am Central).
 //  - Anything not listed in any tier is always open. The Nether and End open at their tiers (part2/dimension_gates.js).
 //  - The Potato War: each player's Potato Standing (rank) is the lifetime count of potatoes they've offered to
 //    Techno's war chest with /potatowar offer. Those potatoes never fill the Pool (and tithed ones never raise rank).
+//    A rank can be at most one above the Pool's open tier (RANK_LEAD); potatoes past that wait for the tier.
 //    A tier's crafting-table recipes need the tier open AND, for a player crafting them, their rank at that tier
-//    (KubeJS stages potato_standing_<n>, checked when the result is made). Machines and autocrafters work for
-//    everyone, but placing an autocrafter needs its tier's rank. economy/black_market.js locks some items by rank too.
+//    (KubeJS stages potato_standing_<n>, checked when the result is made). Machines work for everyone.
+//    Autocrafters only make what every player can already craft, and placing one needs a rank.
+//    economy/black_market.js locks some items by rank too.
 //
-// Commands: /bloodpool [donate <coins>|tithe [potatoes]|top|tiers|check] (anyone);
+// Commands: /bloodpool [vote|unvote|donate <coins>|tithe [potatoes]|top|tiers|check] (anyone);
 //           /bloodpool unlock [force]|settier <n>|add|set (op).
 //           /potatowar [offer [potatoes]|top|ranks] (anyone); /potatowar check|add|set <player> ... (op).
 // Copy to <server>/kubejs/server_scripts/part2/ and run /reload. Part II only: not for the Part I server.
@@ -44,14 +49,114 @@ const TINKERS_CASTING = list => new RegExp('^tconstruct:smeltery/casting/metal/(
 const TINKERS_MELTING = list => new RegExp('^tconstruct:smeltery/melting/(metal/)?(' + list.join('|') + ')/')
 const MA_ESSENCE = (dir, list) => new RegExp('^mysticalagriculture:essence/' + dir + '/(' + list.join('|') + ')$')
 const MA_SEEDS = list => new RegExp('^mysticalagriculture:seed/(infusion|crafting)/(' + list.join('|') + ')$')
+// A compat recipe in one mod that makes ANOTHER mod's sealed item (Ender IO's SAG mill and alloy smelter,
+// Thermal's machines, Botania's elven trade). Their results are tags or secondary outputs, so KubeJS cannot
+// see them (kubejsSeesIt: false) and an item lock misses them. Found in game by /bloodpool audit at Tier 5.
+// Exact ids, keyed by the tier of the item they leak, so nothing is sealed that did not leak.
+const COMPAT_LEAKS = {
+  6: [
+    'botania:elven_trade/dragonstone', 'botania:elven_trade/dreamwood_log',
+    'botania:elven_trade/elementium', 'botania:elven_trade/pixie_dust',
+    'enderio:smelting/ae2/blasting/sky_stone_block', 'enderio:smelting/ae2/decorative/smooth_quartz_block',
+    'enderio:smelting/ae2/smelting/silicon_from_certus_quartz_dust', 'enderio:smelting/ae2/smelting/smooth_sky_stone_block',
+    'enderio:smelting/alexscaves/furnace/cooked_dinosaur_chop_smelting', 'enderio:smelting/alexscaves/furnace/cooked_lanternfish_smelting',
+    'enderio:smelting/alexscaves/furnace/cooked_mussel_smelting', 'enderio:smelting/alexscaves/furnace/cooked_radgill_smelting',
+    'enderio:smelting/alexscaves/furnace/cooked_trilocaris_tail_smelting', 'enderio:smelting/alexscaves/furnace/cooked_tripodfish_smelting',
+    'enderio:smelting/alexscaves/furnace/gelatin_blue_smelting', 'enderio:smelting/alexscaves/furnace/gelatin_green_smelting',
+    'enderio:smelting/alexscaves/furnace/gelatin_pink_smelting', 'enderio:smelting/alexscaves/furnace/gelatin_red_smelting',
+    'enderio:smelting/alexscaves/furnace/gelatin_yellow_smelting', 'enderio:smelting/alexscaves/furnace/guanostone_smelting',
+    'enderio:smelting/alexscaves/furnace/pewen_sap_smelting', 'enderio:smelting/alexscaves/furnace/scrap_metal_smelting',
+    'enderio:smelting/alexscaves/furnace/smooth_bone_smelting', 'enderio:smelting/alexscaves/furnace/smooth_coprolith_smelting',
+    'enderio:smelting/alexscaves/furnace/smooth_limestone_smelting', 'enderio:smelting/bigreactors/smelting/cyanite_from_dust',
+    'enderio:smelting/bigreactors/smelting/graphite_from_charcoal', 'enderio:smelting/bigreactors/smelting/graphite_from_coal',
+    'enderio:smelting/bigreactors/smelting/graphite_from_coalblock', 'enderio:smelting/bigreactors/smelting/graphite_from_dust',
+    'enderio:smelting/iceandfire/furnace/dread_stone_bricks_cracked', 'enderio:smelting/iceandfire/furnace/myrmex_desert_resin_glass',
+    'enderio:smelting/iceandfire/furnace/myrmex_jungle_resin_glass', 'thermal:machine/pulverizer_cyanite_ingot_to_dust',
+    'thermal:machine/pulverizer_graphite_ingot_to_dust'
+  ],
+  7: [
+    'enderio:smelting/bluepower/furnace/basalt', 'enderio:smelting/bluepower/furnace/basalt_tile',
+    'enderio:smelting/bluepower/furnace/basaltbrick_cracked', 'enderio:smelting/bluepower/furnace/marble_tile',
+    'enderio:smelting/bluepower/furnace/tungsten_ingot', 'enderio:smelting/bluepower/furnace/tungsten_ingot_from_raw_tungsten',
+    'enderio:smelting/bluepower/furnace/tungsten_ingot_from_tungsten_dust', 'enderio:smelting/extrautilitiesreborn/clear_glass_rcp',
+    'enderio:smelting/redstone_arsenal/smelting/flux_ingot_from_dust_smelting', 'thermal:compat/mekanism/press_mek_refined_obsidian_nugget_packing',
+    'thermal:compat/mekanism/press_mek_refined_obsidian_unpacking', 'thermal:compat/redstone_arsenal/bottler_rsa_flux_gem',
+    'thermal:compat/redstone_arsenal/press_rsa_flux_gem_packing', 'thermal:compat/redstone_arsenal/press_rsa_flux_gem_unpacking',
+    'thermal:compat/redstone_arsenal/press_rsa_flux_ingot_to_gear', 'thermal:compat/redstone_arsenal/press_rsa_flux_metal_packing',
+    'thermal:compat/redstone_arsenal/press_rsa_flux_metal_unpacking', 'thermal:compat/redstone_arsenal/pulverizer_rsa_flux_ingot_to_dust',
+    'thermal:compat/redstone_arsenal/smelter_rsa_alloy_flux', 'thermal:compat/redstone_arsenal/smelter_rsa_flux_dust'
+  ],
+  8: [
+    'enderio:smelting/createbigcannons/hardened_nitro', 'enderio:smelting/taiga/smelting/abyssum_dust',
+    'enderio:smelting/taiga/smelting/abyssum_ore', 'enderio:smelting/taiga/smelting/adamant_dust',
+    'enderio:smelting/taiga/smelting/astrium_dust', 'enderio:smelting/taiga/smelting/aurorium_dust',
+    'enderio:smelting/taiga/smelting/aurorium_ore', 'enderio:smelting/taiga/smelting/basalt_dust',
+    'enderio:smelting/taiga/smelting/deepslate_vibranium_ore', 'enderio:smelting/taiga/smelting/dilithium_dust',
+    'enderio:smelting/taiga/smelting/duranite_dust', 'enderio:smelting/taiga/smelting/duranite_ore',
+    'enderio:smelting/taiga/smelting/dyonite_dust', 'enderio:smelting/taiga/smelting/eezo_dust',
+    'enderio:smelting/taiga/smelting/eezo_ore', 'enderio:smelting/taiga/smelting/fractum_dust',
+    'enderio:smelting/taiga/smelting/ignitz_dust', 'enderio:smelting/taiga/smelting/imperomite_dust',
+    'enderio:smelting/taiga/smelting/iox_dust', 'enderio:smelting/taiga/smelting/jauxum_dust',
+    'enderio:smelting/taiga/smelting/jauxum_ore', 'enderio:smelting/taiga/smelting/karmesine_dust',
+    'enderio:smelting/taiga/smelting/karmesine_ore', 'enderio:smelting/taiga/smelting/lumix_dust',
+    'enderio:smelting/taiga/smelting/meteorite_cobble', 'enderio:smelting/taiga/smelting/meteorite_dust',
+    'enderio:smelting/taiga/smelting/nihilite_dust', 'enderio:smelting/taiga/smelting/niob_dust',
+    'enderio:smelting/taiga/smelting/nucleum_dust', 'enderio:smelting/taiga/smelting/obsidiorite_cobble',
+    'enderio:smelting/taiga/smelting/obsidiorite_dust', 'enderio:smelting/taiga/smelting/osram_dust',
+    'enderio:smelting/taiga/smelting/osram_ore', 'enderio:smelting/taiga/smelting/ovium_dust',
+    'enderio:smelting/taiga/smelting/ovium_ore', 'enderio:smelting/taiga/smelting/palladium_dust',
+    'enderio:smelting/taiga/smelting/palladium_ore', 'enderio:smelting/taiga/smelting/prometheum_dust',
+    'enderio:smelting/taiga/smelting/prometheum_ore', 'enderio:smelting/taiga/smelting/proxii_dust',
+    'enderio:smelting/taiga/smelting/seismum_dust', 'enderio:smelting/taiga/smelting/solarium_dust',
+    'enderio:smelting/taiga/smelting/terrax_dust', 'enderio:smelting/taiga/smelting/tiberium_dust',
+    'enderio:smelting/taiga/smelting/triberium_dust', 'enderio:smelting/taiga/smelting/tritonite_dust',
+    'enderio:smelting/taiga/smelting/uru_dust', 'enderio:smelting/taiga/smelting/uru_ore',
+    'enderio:smelting/taiga/smelting/valyrium_dust', 'enderio:smelting/taiga/smelting/valyrium_ore',
+    'enderio:smelting/taiga/smelting/vibranium_dust', 'enderio:smelting/taiga/smelting/vibranium_ore',
+    'enderio:smelting/taiga/smelting/violium_dust', 'enderio:smelting/taiga/smelting/yrdeen_dust',
+    'thermal:compat/tconstruct/chiller_tconstruct_hepatizon_ingot', 'thermal:compat/tconstruct/chiller_tconstruct_manyullyn_ingot',
+    'thermal:compat/tconstruct/chiller_tconstruct_queens_slime_ingot', 'thermal:compat/tconstruct/press_tconstruct_hepatizon_nugget_packing',
+    'thermal:compat/tconstruct/press_tconstruct_hepatizon_nugget_unpacking', 'thermal:compat/tconstruct/press_tconstruct_hepatizon_packing',
+    'thermal:compat/tconstruct/press_tconstruct_hepatizon_unpacking', 'thermal:compat/tconstruct/press_tconstruct_manyullyn_nugget_packing',
+    'thermal:compat/tconstruct/press_tconstruct_manyullyn_nugget_unpacking', 'thermal:compat/tconstruct/press_tconstruct_manyullyn_packing',
+    'thermal:compat/tconstruct/press_tconstruct_manyullyn_unpacking', 'thermal:compat/tconstruct/press_tconstruct_queens_slime_nugget_packing',
+    'thermal:compat/tconstruct/press_tconstruct_queens_slime_nugget_unpacking', 'thermal:compat/tconstruct/press_tconstruct_queens_slime_packing',
+    'thermal:compat/tconstruct/press_tconstruct_queens_slime_unpacking', 'thermal:compat/tconstruct/smelter_alloy_tconstruct_hepatizon_ingot',
+    'thermal:compat/tconstruct/smelter_alloy_tconstruct_manyullyn_ingot', 'thermal:compat/tconstruct/smelter_alloy_tconstruct_queens_slime_ingot'
+  ],
+  9: [
+    'enderio:alloy_smelting/end_steel_ingot', 'enderio:smelting/draconicevolution/components/draconium_ingot_from_dust',
+    'enderio:smelting/draconicevolution/components/draconium_ingot_from_ore', 'enderio:soulbinding/powered_spawner'
+  ],
+  10: [
+    'enderio:smelting/bigreactors/smelting/blutonium_from_dust', 'enderio:smelting/bigreactors/smelting/magentite_from_dust'
+  ],
+  11: [
+    'enderio:smelting/draconicevolution/components/awakened_draconium_ingot_from_dust'
+  ],
+}
+const COMPAT = t => new RegExp('^(' + COMPAT_LEAKS[t].join('|') + ')$')
+
 const TIERS = [
   { tier: 1, name: 'A Trickle', drops: 20000, unlocks: {
       mods: ['create', 'mysticalagriculture'],
-      items: [], tags: [], recipes: [] } },
+      items: [], tags: [],
+      // Create Aquatic Ambitions crushing recipes whose SECONDARY outputs are Tier 1 Create items
+      // (experience and copper nuggets). KubeJS never sees a secondary output, so the create namespace
+      // lock misses them. Found in game by /bloodpool audit at Tier 0; the mod is one of the
+      // "not on hand" mods the offline audit could not check (PROGRESSION_AUDIT.md).
+      recipes: [
+        'create_aquatic_ambitions:crushing/prismarine_bricks_to_lapis_and_copper',
+        'create_aquatic_ambitions:crushing/nautilus_shards',
+        'create_aquatic_ambitions:crushing/prismarine_to_lapis'] } },
 
   { tier: 2, name: 'A Puddle', drops: 60000, unlocks: {
       mods: ['botania', 'ars_nouveau', 'evilcraft'],
-      items: ['hexerei:mixing_cauldron', 'hexerei:blood_bottle'],
+      items: ['hexerei:mixing_cauldron', 'hexerei:blood_bottle',
+        // Extra Utilities' spikes, ahead of the rest of the mod (Tier 7) (owner decision, 2026-11-10). Stone spikes are
+        // made with its compressed cobblestone, so that opens too.
+        'extrautilitiesreborn:wooden_spikes', 'extrautilitiesreborn:stone_spikes', 'extrautilitiesreborn:iron_spikes',
+        'extrautilitiesreborn:golden_spikes', 'extrautilitiesreborn:diamond_spikes', 'extrautilitiesreborn:compressed_cobblestone'],
       tags: [],
       recipes: [
         MA_ESSENCE('botania', ['manasteel_ingot', '[a-z_]+_mystical_flower']), MA_SEEDS(['manasteel', 'mystical_flower'])] } },
@@ -102,9 +207,26 @@ const TIERS = [
         'twilightforest:knightmetal_helmet', 'twilightforest:knightmetal_chestplate',
         'twilightforest:knightmetal_leggings', 'twilightforest:knightmetal_boots',
         'twilightforest:knightmetal_sword', 'twilightforest:knightmetal_axe', 'twilightforest:knightmetal_pickaxe',
-        'twilightforest:knightmetal_ring', 'twilightforest:knightmetal_shield', 'twilightforest:block_and_chain'],
+        'twilightforest:knightmetal_ring', 'twilightforest:knightmetal_shield', 'twilightforest:block_and_chain',
+        // Netherite (owner decision). Crafting only, like every lock: debris can be mined and looted netherite keeps
+        // working. Mystical Agriculture's and AgriCraft's netherite crops stay at Tier 8.
+        'minecraft:netherite_scrap', 'minecraft:netherite_ingot', 'minecraft:netherite_block',
+        'minecraft:netherite_sword', 'minecraft:netherite_pickaxe', 'minecraft:netherite_axe', 'minecraft:netherite_shovel',
+        'minecraft:netherite_hoe', 'minecraft:netherite_helmet', 'minecraft:netherite_chestplate',
+        'minecraft:netherite_leggings', 'minecraft:netherite_boots',
+        'tconstruct:netherite_nugget', 'tconstruct:debris_nugget', 'tconstruct:netherite_item_frame',
+        'mekanism:dust_netherite', 'mekanism:dirty_netherite_scrap',
+        'createdeco:netherite_nugget', 'createdeco:netherite_sheet', 'createdeco:netherite_coin', 'createdeco:netherite_coinstack',
+        'bygonenether:netherite_scrap_nugget', 'bygonenether:netherite_scrap_ingot',
+        'create:netherite_backtank', 'create:netherite_diving_helmet', 'create:netherite_diving_boots',
+        'farmersdelight:netherite_knife', 'supplementaries:netherite_door', 'supplementaries:netherite_trapdoor'],
       tags: [],
       recipes: [
+        // Netherite's other routes: results that are tags or secondary outputs, or that make ancient debris itself
+        TINKERS_CASTING(['netherite']), TINKERS_MELTING(['netherite', 'molten_debris']), /^tconstruct:smeltery\/alloys\/molten_netherite$/,
+        /^tconstruct:tools\/modifiers\/(salvage\/)?upgrade\/netherite$/,
+        /^mekanism:processing\/netherite\//, /^immersiveengineering:.*(netherite|ancient_debris)/, 'botania:orechid_ignem/ancient_debris',
+        /^bygonenether:(crushing\/withered_|splashing\/crushed_withered_debris|(mixing|pressing)\/netherite_scrap_ingot)/,
         TINKERS_MATERIALS(['cobalt', 'scorched_stone', 'knightmetal', 'knightly']), TINKERS_CASTING(['cobalt', 'knightmetal']),
         // the audit found these routes, whose results are tags the item locks can't see: Thermal's alloys made in the
         // Tinkers smeltery, and Immersive Engineering's cobalt (crusher, arc furnace, press, hammer)
@@ -147,7 +269,8 @@ const TIERS = [
         /^mysticalagriculture:essence\/(appliedenergistics2|extremereactors2)\//,
         MA_ESSENCE('botania', ['terrasteel_ingot', 'elementium_ingot']), MA_ESSENCE('common', ['uranium_ingot']),
         MA_ESSENCE('twilightforest', ['fiery_ingot']),
-        MA_SEEDS(['certus_quartz', 'fluix', 'sky_stone', 'terrasteel', 'elementium', 'yellorium', 'cyanite', 'uranium', 'uraninite', 'fiery_ingot'])] } },
+        MA_SEEDS(['certus_quartz', 'fluix', 'sky_stone', 'terrasteel', 'elementium', 'yellorium', 'cyanite', 'uranium', 'uraninite', 'fiery_ingot']),
+        COMPAT(6)] } },
 
   { tier: 7, name: 'A River', drops: 700000, unlocks: {
       mods: ['rftoolsbase', 'rftoolsutility', 'rftoolsbuilder', 'powersuits', 'numina',
@@ -173,7 +296,8 @@ const TIERS = [
         TINKERS_MELTING(['refined_obsidian']),
         TINKERS_CASTING(['refined_obsidian']), 'tconstruct:compat/refined_obsidian_ingot', 'tconstruct:smeltery/alloys/molten_refined_obsidian',
         /^mysticalagriculture:essence\/redstone_arsenal\//, MA_ESSENCE('mekanism', ['refined_obsidian_ingot']),
-        MA_SEEDS(['flux_infused_ingot', 'flux_infused_gem', 'refined_obsidian'])] } },
+        MA_SEEDS(['flux_infused_ingot', 'flux_infused_gem', 'refined_obsidian']),
+        COMPAT(7)] } },
 
   { tier: 8, name: 'A Flood', drops: 1000000, unlocks: {
       mods: ['taiga', 'tcintegrations', 'createbigcannons', 'mekanismtools', 'mekanism_weaponry',
@@ -196,7 +320,8 @@ const TIERS = [
         'agricraft:diamond', 'agricraft:emerald', 'agricraft:netherite_scrap',
         MA_ESSENCE('tconstruct', ['manyullyn_ingot', 'hepatizon_ingot', 'queens_slime_ingot']),
         MA_ESSENCE('minecraft', ['netherite_ingot']),
-        MA_SEEDS(['manyullyn', 'hepatizon', 'queens_slime', 'netherite', 'diamond', 'emerald'])] } },
+        MA_SEEDS(['manyullyn', 'hepatizon', 'queens_slime', 'netherite', 'diamond', 'emerald']),
+        COMPAT(8)] } },
 
   { tier: 9, name: 'A Tide', drops: 1400000, unlocks: {
       mods: ['draconicevolution'],
@@ -218,7 +343,8 @@ const TIERS = [
         'iceandfire:dragonforge/dragonsteel_fire_ingot', 'iceandfire:dragonforge/dragonsteel_ice_ingot',
         'iceandfire:dragonforge/dragonsteel_lightning_ingot',
         /^mysticalagriculture:essence\/draconicevolution\//, MA_ESSENCE('enderio', ['end_steel_ingot']),
-        MA_SEEDS(['draconium', 'end_steel'])] } },
+        MA_SEEDS(['draconium', 'end_steel']),
+        COMPAT(9)] } },
 
   { tier: 10, name: 'A Sea', drops: 1900000, unlocks: {
       mods: ['rftoolsdim'],
@@ -235,7 +361,7 @@ const TIERS = [
         'bigreactors:ridiculite_ingot', 'bigreactors:inanite_ingot', 'bigreactors:magentite_ingot',
         'ae2:cell_component_64k', 'ae2:cell_component_256k', 'ae2:singularity', 'ae2:quantum_ring',
         'ae2:quantum_link', 'ae2:spatial_io_port', 'ae2:me_p2p_tunnel', 'ae2:spatial_cell_component_2'],
-      tags: [], recipes: [] } },
+      tags: [], recipes: [COMPAT(10)] } },
 
   { tier: 11, name: 'An Ocean', drops: 2400000, unlocks: {
       mods: [],
@@ -257,7 +383,7 @@ const TIERS = [
         'extrautilitiesreborn:ender_quarry', 'extrautilitiesreborn:rainbow_generator',
         'alexsmobs:dimensional_carver', 'alexscaves:tremorzilla_egg', 'alexscaves:nuclear_bomb'],
       tags: [],
-      recipes: [/^mekanism:nucleosynthesizing\//] } },
+      recipes: [/^mekanism:nucleosynthesizing\//, COMPAT(11)] } },
 
   // Tier 12 unlocks no recipes. It opens the Siege: part2/citadel.js checks global.BloodPool.tier() >= 12.
   { tier: 12, name: 'The Siege', drops: 3000000, unlocks: { mods: [], items: [], tags: [], recipes: [] } },
@@ -284,19 +410,24 @@ const POTATO_WORTH = {                  // what the tithe accepts, in potatoes. 
 // /potatowar offer: potatoes (and crates, by POTATO_WORTH) go to Techno's war chest. They count only toward the
 // giver's Standing, never the Pool; the tithe counts only toward the Pool. Standing is the lifetime total, no cap.
 // STANDING[n - 1]: lifetime potatoes for rank n. Rank n lets a player craft Tier n's items at a crafting table
-// (once the Pool has opened that tier). The early ranks are cheap so the IE Garden Cloche (Tier 3) and Thermal
-// Insolator (Tier 5) potato farms are within reach.
-// From rank 4 (Tier 4) the potatoes are 5x what they were (owner decision, Nov 2026).
-const STANDING = [250, 1000, 2500, 25000, 50000, 100000, 175000, 300000, 500000, 750000, 1100000]
-// The numbers before that change. Only used to keep the ranks players had already earned (see standingOf).
-const LEGACY_STANDING = [250, 1000, 2500, 5000, 10000, 20000, 35000, 60000, 100000, 150000, 220000]
+// (once the Pool has opened that tier). Owner decisions, 2026-11-09: ranks 1-3 are the first ladder's (250 to
+// 2,500), ranks 4 and 5 are 25,000 and 50,000, and ranks 6 and up are 20x the first ladder (400,000 to 4,400,000).
+// Raising a threshold can take a rank away: stages follow the new ladder at /reload (players online) or at login.
+// Tree nodes already bought stay, and catch-up still opens crafting up to Tier T-2.
+const STANDING = [250, 1000, 2500, 25000, 50000, 400000, 700000, 1200000, 2000000, 3000000, 4400000]
+// The Blood Pool caps rank: a player's rank can be at most RANK_LEAD above the open Pool tier, so rank n needs Tier
+// n - RANK_LEAD (owner decision, 2026-11-09). Potatoes offered past the cap still count, and the rank they've earned
+// comes (with its rank-up line) when the tier opens. Ranks players already held above the cap when it first loaded
+// are kept (see db()). null = no cap.
+const RANK_LEAD = 1
 // RANKS[n]: the name of rank n (RANKS[0] = no rank yet).
 const RANKS = ['Unenlisted', 'Potato Farmer', 'Potato Peeler', 'Potato Recruit', 'Potato Private', 'Potato Soldier',
   'Potato Sergeant', 'Potato Lieutenant', 'Potato Captain', 'Potato General', 'Potato Warlord', 'Potato Emperor']
 // true: crafting-table recipes (minecraft:crafting_shaped / crafting_shapeless) of open tiers need the rank when a
 // player crafts them (a crafting table, the inventory grid, or a mod's crafting grid the player has open: the result
-// stays empty without the rank). Autocrafters, which have no player, craft them for anyone; placing an autocrafter
-// needs its own tier's rank (AUTOCRAFTERS). false = rank only gates the black market.
+// stays empty without the rank). Autocrafters have no player, and a script can't tell whose machine it is, so they
+// only make what every player can already craft (see openToAllTier); placing one needs a rank (AUTOCRAFTERS).
+// false = rank only gates the black market.
 const STANDING_CRAFTING = true
 const STAGE_PREFIX = 'potato_standing_'  // the KubeJS stage for rank n is potato_standing_<n>
 // Mods' own crafting-table recipe formats, which the rank check can't see. Each is rebuilt as a KubeJS shaped recipe
@@ -305,6 +436,10 @@ const STAGE_PREFIX = 'potato_standing_'  // the KubeJS stage for rank n is potat
 // a factory, or anything another mek_data recipe makes) are left as they are, so upgrading keeps contents and
 // installed upgrades. Owner decision. [] = convert nothing.
 const CONVERT_RECIPE_TYPES = ['cucumber:shaped_no_mirror', 'cucumber:shaped_tag', 'mekanism:mek_data']
+// Byproducts Tinkers' ore melting may not give, at any tier (a regex on the byproduct's fluid or tag). The Foundry also
+// makes molten debris when it melts diamond ore, and debris casts into netherite scrap: netherite from diamonds, with
+// no Nether trip. Owner decision. The ore still melts into molten diamond. null = leave every byproduct on.
+const STRIP_BYPRODUCTS = /molten_debris$/
 // /bloodpool audit: the next /reload writes this report (every crafting-type recipe without the rank check, and
 // every recipe whose result is still sealed). The request is kept in AUDIT_FLAG_FILE until then.
 const AUDIT_FILE = 'kubejs/progression_audit.json'
@@ -320,7 +455,69 @@ const AUTOCRAFTERS = {
   'rftoolsutility:crafter2': { name: 'Crafter' },
   'rftoolsutility:crafter3': { name: 'Crafter' },
   'advanced_ae:quantum_crafter': { name: 'Quantum Crafter' },            // Tier 8
+  // Cheap or early ones, at the first rank with proper autocrafters (owner decision).
+  'quark:crafter': { name: 'Crafter', rank: 4 },
+  'botania:crafty_crate': { name: 'Crafty Crate', rank: 4 },
+  'bluepower:auto_project_table': { name: 'Auto Project Table' },        // Tier 7
 }
+// Autocrafters no check can reach, because they read a recipe's result themselves: Bibliocraft's Fancy Crafters fill
+// their result slot with it, and the Ars Nouveau Wixie collects recipes on its own. They could make anything in an open
+// tier for anyone, so they're out of the game (owner's rule: an autocrafter can't make what a player hasn't unlocked).
+// Their recipes are removed, and placing or using one is refused; a Wixie Charm turns a plain cauldron into a Wixie
+// Cauldron, so it's refused too. Ops and creative players are exempt. Take an id out of this list to allow it again.
+const BANNED_CRAFTERS = { 'ars_nouveau:wixie_cauldron': 'Wixie Cauldron', 'ars_nouveau:wixie_charm': 'Wixie Charm' }
+;['acacia', 'bamboo', 'birch', 'cherry', 'crimson', 'dark_oak', 'jungle', 'mangrove', 'oak', 'spruce', 'warped'].forEach(w => {
+  BANNED_CRAFTERS['bibliocraft:' + w + '_fancy_crafter'] = 'Fancy Crafter'
+})
+// The one banned item that works by being used on a block. The others are blocks: they're refused when placed, so
+// holding one doesn't stop a player using anything else.
+const BANNED_USE_ITEM = 'ars_nouveau:wixie_charm'
+// Use, place and spawn locks: for sealed things players brought from Part I. Every other lock is crafting only, but
+// players kept their whole Part I inventory (STORY.md), so a sealed item made in Part I would otherwise work from day
+// one. Each item's tier is its own in TIERS (its id, tag or mod), so it works again the moment that tier opens.
+// Creative players are exempt; ops in survival are not. Take an id out to let it work again.
+//
+// USE_LOCKS: items that can't be used until their tier opens. id -> where the click is refused:
+//   'use'    right-clicking with it (in the air, or on a block or mob that doesn't take the click);
+//   'block'  that, and right-clicking a block with it (tools that act on the block they're used on);
+//   'mob'    that, and right-clicking a mob with it (items used on a mob).
+// Only for items that work by being used. Weapons that hit, tools that mine and armour need other checks.
+const USE_LOCKS = {
+  // Guns and bows
+  'immersiveengineering:railgun': 'use', 'immersiveengineering:revolver': 'use',
+  'immersiveengineering:chemthrower': 'use',                                                  // Tier 3
+  'mekanism:electric_bow': 'use', 'mekanism:flamethrower': 'use',                             // Tier 4
+  'alexscaves:raygun': 'use', 'alexscaves:dreadbow': 'use', 'ae2:matter_cannon': 'use',
+  'reliquary:handgun': 'use',                                                                 // Tier 6
+  'redstone_arsenal:flux_bow': 'use', 'redstone_arsenal:flux_trident': 'use',                 // Tier 7
+  'mekanism_weaponry:railgun': 'use', 'mekanism_weaponry:tesla_minigun': 'use',               // Tier 8
+  'draconicevolution:wyvern_bow': 'use', 'draconicevolution:draconic_bow': 'use',
+  'draconicevolution:chaotic_bow': 'use',                                                     // Tier 9
+  // Staffs, maces and grenades
+  'evilcraft:necromancer_staff': 'use', 'evilcraft:mace_of_distortion': 'use',
+  'evilcraft:lightning_grenade': 'use',                                                       // Tier 2
+  'reliquary:pyromancer_staff': 'use', 'reliquary:glacial_staff': 'use', 'reliquary:ice_magus_rod': 'use',
+  'reliquary:destruction_catalyst': 'block', 'alexscaves:galena_gauntlet': 'use',             // Tier 6
+  'evilcraft:mace_of_destruction': 'use',                                                     // Tier 11
+  // Travel and flight
+  'evilcraft:broom': 'use', 'botania:tornado_rod': 'use',                                     // Tier 2
+  'mekanism:portable_teleporter': 'use',                                                      // Tier 4
+  'enderio:staff_of_travelling': 'use',                                                       // Tier 5
+  'reliquary:ender_staff': 'use', 'reliquary:rending_gale': 'use',                            // Tier 6
+  'draconicevolution:dislocator': 'use',                                                      // Tier 9
+  'alexsmobs:dimensional_carver': 'use',                                                      // Tier 11
+  // Used on blocks or mobs
+  'botania:dirt_rod': 'block', 'botania:skydirt_rod': 'block', 'botania:terraform_rod': 'use',
+  'botania:exchange_rod': 'block',                                                            // Tier 2
+  'ae2:entropy_manipulator': 'block', 'alexscaves:totem_of_possession': 'mob',                // Tier 6
+}
+// PLACE_LOCKS: blocks that can't be placed until their tier opens, by a player, a fake player (a Deployer) or any
+// other entity.
+const PLACE_LOCKS = ['alexscaves:nuclear_bomb', 'alexscaves:tremorzilla_egg', 'extrautilitiesreborn:ender_quarry']   // Tier 11
+// SPAWN_LOCKS: entity type -> the item whose tier decides. The entity is stopped from coming into the world while
+// that item is sealed. A dispenser fires a Nuclear Bomb as a primed bomb (Alex's Caves' own dispenser behaviour),
+// with no block placed, so the placement lock alone can't stop it. The dispenser still uses up the bomb.
+const SPAWN_LOCKS = { 'alexscaves:nuclear_bomb': 'alexscaves:nuclear_bomb' }
 const RANKUP_PUBLIC = true               // announce rank-ups to everyone (and Discord, with TO_DISCORD)
 // Catch-up: when the Pool opens Tier T, every player can craft Tiers 1..T-CATCH_UP_GAP whatever their rank (their
 // rank's name still comes from potatoes only, and the black market uses that). part2/potato_tree.js uses the same
@@ -331,6 +528,12 @@ const TIER_STAGE_PREFIX = 'blood_pool_tier_' // every player gets blood_pool_tie
 const TO_DISCORD = true                // public Pool lines with tellraw @a (posted to Discord); false = in game only
 const TIER_FILE = 'kubejs/blood_pool_tier.json'
 const RELOAD_DELAY_TICKS = 20          // /bloodpool unlock reloads this long after announcing
+// Breaking the seal by vote (owner decision, 2026-11-10): once the Pool reaches the next tier, players open it with
+// /bloodpool vote. VOTES_TO_BREAK different players' votes open it, one tier at a time. Votes are saved (they add up
+// across sessions) and start again when a tier opens. Ops can still open it at once with /bloodpool unlock.
+// 0 = no voting (ops only).
+const VOTES_TO_BREAK = 5
+const LOGIN_NOTICE_DELAY_TICKS = 100   // while a tier is ready, each player is told at login, after the join messages
 
 const VOICE_BLOOD = { tag: '[BLOOD GOD]', tagColor: 'dark_red', textColor: 'red' }
 const VOICE_POOL = { tag: '[Blood Pool]', tagColor: 'dark_red', textColor: 'gray' }
@@ -388,7 +591,8 @@ function tierDef(n) { return TIERS.filter(T => T.tier == n)[0] || null }
 // server.persistentData['blood_pool'] = JSON { v, drops, tier, announced: { n: true }, from: { troll, coins, potatoes, op },
 //   contributors: { uuid: { name, drops, coins } }, unlocks: [ { tier, t, by } ],
 //   potatoDay: 'YYYY-MM-DD' (the tithe day), potatoDrops: Drops tithed that day, potatoByPlayer: { uuid: Drops },
-//   standing: { uuid: { name, potatoes } } (the Potato War: lifetime potatoes offered) }
+//   standing: { uuid: { name, potatoes } } (the Potato War: lifetime potatoes offered),
+//   rankFloor: { uuid: rank } (ranks kept from before the Pool cap), rankFloorSince: when that snapshot was taken }
 
 let DB = null
 function db() {
@@ -413,6 +617,20 @@ function db() {
   if (!DB.potatoDrops) DB.potatoDrops = 0
   if (!DB.potatoByPlayer) DB.potatoByPlayer = {}
   if (!DB.standing) DB.standing = {}
+  if (!DB.rankFloor) DB.rankFloor = {}
+  // Ranks players already held above the Pool cap (RANK_LEAD) when it first loaded are kept (owner decision,
+  // 2026-11-09). One snapshot, from their potatoes, saved with the time it was taken; later ranks follow the cap.
+  if (RANK_LEAD != null && !DB.rankFloorSince) {
+    let cap = Math.max(0, Math.min(STANDING.length, (DB.tier || 0) + RANK_LEAD)), kept = []
+    Object.keys(DB.standing).forEach(u => {
+      let n = standingTierOf(DB.standing[u].potatoes || 0)
+      if (n > cap) { DB.rankFloor[u] = n; kept.push(DB.standing[u].name + ' (' + rankName(n) + ')') }
+    })
+    DB.rankFloorSince = Date.now()
+    console.info('[BloodPool] Potato War: ranks now wait for the Blood Pool (Tier ' + (DB.tier || 0) + ' allows up to ' + rankName(cap) +
+      '). Kept from before: ' + (kept.length ? kept.join(', ') : 'nobody was above that'))
+    save()
+  }
   return DB
 }
 function save() {
@@ -469,15 +687,28 @@ function isLocked(id, obj) { return tierOf(id, obj) > db().tier }
 // ===================== RECIPES =====================
 
 // The Potato War: every crafting-table recipe left in an open tier gets that tier's result check, so only players of
-// that rank can craft it (autocrafters, with no player, always can). A recipe's tier is the highest that locks it, the same rules the removal below uses: its
+// that rank can craft it (a machine, with no player, never can). A recipe's tier is the highest that locks it, the same rules the removal below uses: its
 // result (item, then tag, then the result's mod), its own mod (unless its result is listed by id) and the recipe
 // id rules. One pass over the crafting recipes.
 const CRAFTING_TYPES = [{ type: 'minecraft:crafting_shaped' }, { type: 'minecraft:crafting_shapeless' }]
-// Who is crafting: the player at a crafting table or inventory grid, else the online player whose open window is
-// this grid's (a mod's crafting grid). null = no player: an autocrafter.
+// The player a mod's grid has named to Forge while it assembles. The Tinkers Crafting Station and Create's Blueprint
+// have no window KubeJS can see, so they're only found this way. Machines may name a fake player, which isn't online,
+// so they still count as autocrafters.
+let ForgeHooks = null
+try { ForgeHooks = Java.loadClass('net.minecraftforge.common.ForgeHooks') } catch (e) { }
+function forgeCraftingPlayer() {
+  let p = null
+  try { p = ForgeHooks ? ForgeHooks.getCraftingPlayer() : null } catch (e) { }
+  if (!p || !Utils.server) return null
+  return onlinePlayers(Utils.server).filter(o => o == p)[0] || null
+}
+// Who is crafting: the player at a crafting table or inventory grid, else the player named to Forge, else the online
+// player whose open window is this grid's (a mod's crafting grid). null = no player: an autocrafter.
 function crafterOf(grid) {
   let p = null
   try { p = grid.getPlayer() } catch (e) { }
+  if (p) return p
+  p = forgeCraftingPlayer()
   if (p) return p
   let menu = null
   try { menu = grid.getMenu() } catch (e) { }
@@ -494,7 +725,7 @@ function rankGate(n) {
   return (grid, result) => {
     try {
       let p = crafterOf(grid)
-      return !p || hasRank(p, n) ? result : Item.empty
+      return p && hasRank(p, n) ? result : Item.empty
     } catch (e) {
       if (gateErrors++ < 3) console.error('[BloodPool] Potato War crafting check (the craft was allowed): ' + e)
       return result
@@ -526,6 +757,17 @@ function gate(r, id, t) {
   GATED[id] = t
   GATED_BY_TIER[t] = (GATED_BY_TIER[t] || 0) + 1
 }
+// KubeJS only runs a result check on its own crafting recipes, and RecipeJS.createRecipe picks a recipe's serializer
+// from its type. So a vanilla recipe ignores modifyResult (seen in game) unless its type is switched first. The recipe
+// stays where it is with the same JSON, so its id, group, category, custom ingredients, result and mirroring don't change.
+function useKubeJSType(event, r) {
+  r.type = String(r.getType()) == 'minecraft:crafting_shapeless' ? event.shapeless : event.shaped
+}
+// Every player can craft up to this tier through catch-up, so recipes up to it need no check: they stay as the mod wrote
+// them, and any machine can make them. Above it, some players haven't unlocked the recipe. A script can't tell whose
+// machine is crafting (KubeJS gives the check the grid's items and window, nothing about the block), so no player means
+// no result: an autocrafter can't make what anyone hasn't unlocked, and the two newest tiers are crafted by hand.
+function openToAllTier(open) { return CATCH_UP_GAP > 0 ? Math.max(0, open - CATCH_UP_GAP) : 0 }
 function stageCrafting(event, open) {
   let staged = 0, failed = 0
   const counts = {}
@@ -533,12 +775,12 @@ function stageCrafting(event, open) {
     event.forEachRecipe(CRAFTING_TYPES, r => {
       let t = 0
       try { t = recipeTier(r, open) } catch (e) { failed++; return }
-      if (!(t >= 1 && t <= open && t <= STANDING.length)) return
-      try { gate(r, String(r.getId()), t); staged++; counts[t] = (counts[t] || 0) + 1 } catch (e) { failed++ }
+      if (!(t > openToAllTier(open) && t <= open && t <= STANDING.length)) return
+      try { useKubeJSType(event, r); gate(r, String(r.getId()), t); staged++; counts[t] = (counts[t] || 0) + 1 } catch (e) { failed++ }
     })
   } catch (e) { console.error('[BloodPool] Potato War: crafting recipes could not be given a rank check (rank does not gate crafting): ' + e); return }
   console.info('[BloodPool] Potato War: ' + staged + ' crafting recipes need a rank (' +
-    Object.keys(counts).map(k => 'rank ' + k + ': ' + counts[k]).join(', ') + ')' + (failed ? '; ' + failed + ' could not be read' : ''))
+    Object.keys(counts).map(k => 'rank ' + k + ': ' + counts[k]).join(', ') + ')' + (failed ? '; ' + failed + ' could not be given one' : ''))
 }
 
 // ----- Mods' own crafting-table formats (CONVERT_RECIPE_TYPES) -----
@@ -567,9 +809,9 @@ function isMekUpgrade(j, outId, dataItems) {
   if (/factory/.test(outId)) return true
   return jsonItems(j.key || {}, []).some(i => /^mekanism/.test(i) && (family(i) == family(outId) || dataItems[i]))
 }
-let CONVERTED = { done: 0, upgrades: 0, skipped: 0, sealed: 0, failed: 0, missing: 0 }
+let CONVERTED = { done: 0, upgrades: 0, skipped: 0, sealed: 0, failed: 0 }
 function convertRecipes(event, open) {
-  CONVERTED = { done: 0, upgrades: 0, skipped: 0, sealed: 0, failed: 0, missing: 0 }
+  CONVERTED = { done: 0, upgrades: 0, skipped: 0, sealed: 0, failed: 0 }
   if (!CONVERT_RECIPE_TYPES.length) return
   const found = [], dataItems = {}
   try {
@@ -589,15 +831,19 @@ function convertRecipes(event, open) {
       if (!outId || !f.j.pattern || !f.j.key) { CONVERTED.skipped++; return }
       let t = recipeTierFor(f.id, outId, null, open)
       if (t > open) { event.remove({ id: f.id }); CONVERTED.sealed++; return }   // missed by the removal (a tag result): seal it now
+      if (t <= openToAllTier(open)) return                                       // open to everyone: left as it is
       if (f.type == 'mekanism:mek_data' && isMekUpgrade(f.j, outId, dataItems)) { CONVERTED.upgrades++; return }
       let key = {}, ok = true
       Object.keys(f.j.key).forEach(k => { let v = keyIngredient(f.j.key[k]); if (v == null) ok = false; else key[k] = v })
       if (!ok) { CONVERTED.skipped++; return }
       let count = Number(res.count) || 1
       let result = res.nbt ? Item.of(outId, count, typeof res.nbt == 'string' ? res.nbt : JSON.stringify(res.nbt)) : Item.of(outId, count)
-      // A result item that isn't in the pack (e.g. Mystical Agriculture's chisel essences): leave the recipe as it is.
-      // event.shaped() would log an error before any catch could see it.
-      if (!result || result.isEmpty()) { CONVERTED.missing++; return }
+      // The result item is not registered, so the recipe cannot make anything and needs no rank check.
+      // Mystical Agriculture ships three of these: essence/chisel/{marble,basalt,limestone} are guarded by
+      // forge:mod_loaded for chisel, which passes, but Chisel 2.0.0 for 1.20.1 no longer has those stone
+      // types, so chisel:marble/raw and friends do not exist. Handing event.shaped an empty result logged
+      // "ItemStack 'result' can't be empty!" on every reload and left the server on "KubeJS errors found [3]".
+      if (result.isEmpty()) { CONVERTED.skipped++; return }
       let nr = event.shaped(result, f.j.pattern, key).noMirror().id(f.id)
       event.remove({ id: f.id })
       CONVERTED.done++
@@ -605,9 +851,8 @@ function convertRecipes(event, open) {
     } catch (e) { CONVERTED.failed++ }
   })
   console.info('[BloodPool] Mod crafting recipes: ' + CONVERTED.done + ' rebuilt with the rank check; ' + CONVERTED.upgrades +
-    ' Mekanism upgrades left as they are; ' + CONVERTED.skipped + ' skipped (unusual ingredients or an empty tag)' +
+    ' Mekanism upgrades left as they are; ' + CONVERTED.skipped + ' skipped (unusual ingredients, an empty tag, or a result item that is not registered)' +
     (CONVERTED.sealed ? '; ' + CONVERTED.sealed + ' sealed (their tier is not open)' : '') +
-    (CONVERTED.missing ? '; ' + CONVERTED.missing + ' skipped (their result item isn\'t in the pack)' : '') +
     (CONVERTED.failed ? '; ' + CONVERTED.failed + ' failed (left as they are)' : ''))
 }
 
@@ -640,7 +885,7 @@ function runAudit(event, open) {
     if (TABLE_TYPES.test(type.split(':')[1] || '') && !NOT_TABLE[type] && GATED[id] == null && CRAFTING_TYPES.every(c => c.type != type)) {
       let t = 0
       try { t = recipeTierFor(id, outId, out, open) } catch (e) { }
-      if (t >= 1 && ungated.length < 1000) ungated.push({ type: type, id: id, result: outId, tier: t })
+      if (t > openToAllTier(open) && ungated.length < 1000) ungated.push({ type: type, id: id, result: outId, tier: t })
     }
     let j = null
     try { j = JSON.parse(String(r.json)) } catch (e) { }
@@ -657,6 +902,56 @@ function runAudit(event, open) {
     ungated.length + ' crafting-type recipes in a tier do not; ' + survivors.length + ' recipes still make a sealed item. Written to ' + AUDIT_FILE)
 }
 
+// ----- /bloodpool gatecheck -----
+// The recipes the game holds now, not what this script tried: of those given a rank check on the last reload, how many
+// have it. GATED alone can't tell: it recorded every attempt while most of them did nothing.
+function gateCheck(server) {
+  const seen = {}, inert = []
+  let live = 0
+  server.getRecipeManager().getRecipes().forEach(r => {
+    let id = String(r.getId())
+    if (GATED[id] == null) return
+    seen[id] = true
+    let has = false
+    try { has = r.kjs$getModifyResult() != null } catch (e) { }
+    if (has) live++
+    else inert.push(id)
+  })
+  return { total: Object.keys(GATED).length, live: live, inert: inert, missing: Object.keys(GATED).filter(id => !seen[id]) }
+}
+
+// Create's Mixer, Press and Mechanical Crafter don't all run a recipe's check (the first two only read its result), but
+// they all respect this list of Create's. Only recipes with a check use KubeJS's types, so these machines skip exactly
+// those, and pick a recipe up once catch-up puts it back to vanilla.
+ServerEvents.tags('minecraft:recipe_serializer', event => {
+  if (STANDING_CRAFTING) event.add('create:automation_ignore', ['kubejs:shaped', 'kubejs:shapeless'])
+})
+
+// Rebuilds ore melting recipes without the byproducts in STRIP_BYPRODUCTS: the same id, ingredient, result, heat and time.
+// (A recipe that loaded has already passed its conditions, so they aren't kept.)
+function stripByproducts(event) {
+  if (!STRIP_BYPRODUCTS) return
+  const found = []
+  event.forEachRecipe({ type: 'tconstruct:ore_melting' }, r => {
+    try {
+      let j = JSON.parse(String(r.json))
+      let all = j.byproducts || []
+      let keep = all.filter(b => !STRIP_BYPRODUCTS.test(String(b.fluid || b.tag || '')))
+      if (keep.length == all.length) return
+      if (keep.length) j.byproducts = keep
+      else delete j.byproducts
+      delete j.conditions
+      found.push({ id: String(r.getId()), j: j })
+    } catch (e) { console.error('[BloodPool] Byproducts: ' + e) }
+  })
+  found.forEach(f => {
+    try {
+      event.remove({ id: f.id })
+      event.custom(f.j).id(f.id)
+    } catch (e) { console.error('[BloodPool] Byproducts: ' + f.id + ': ' + e) }
+  })
+  console.info('[BloodPool] Byproducts removed from ' + found.length + ' ore melting recipes')
+}
 ServerEvents.recipes(event => {
   const open = tierFromFile()
   let removed = 0
@@ -675,7 +970,9 @@ ServerEvents.recipes(event => {
     ;(u.tags || []).forEach(t => { event.remove({ output: '#' + String(t).replace(/^#/, '') }); removed++ })
     ;(u.recipes || []).forEach(r => { event.remove({ id: r }); removed++ })   // exact id or regex
   })
+  if (STANDING_CRAFTING) Object.keys(BANNED_CRAFTERS).forEach(id => event.remove({ output: id }))
   console.info('[BloodPool] Recipes: tier ' + open + ' open; ' + removed + ' locked entries removed')
+  try { stripByproducts(event) } catch (e) { console.error('[BloodPool] Byproducts: ' + e) }
   GATED = {}
   GATED_BY_TIER = {}
   convertRecipes(event, open)
@@ -702,7 +999,9 @@ function checkReady(server) {
     D.announced[T.tier] = true
     if (!server) return
     announce(server, VOICE_BLOOD, line('ready', T))
-    onlinePlayers(server).filter(isOp).forEach(o => tell(o, VOICE_POOL, 'Tier ' + T.tier + ' is ready. Unlock it with /bloodpool unlock (one tier at a time).'))
+    if (VOTES_TO_BREAK > 0 && T.tier == D.tier + 1) onlinePlayers(server).forEach(o => tell(o, VOICE_POOL, readyNotice(T, o)))
+    onlinePlayers(server).filter(isOp).forEach(o => tell(o, VOICE_POOL, 'Tier ' + T.tier + ' is ready. ' +
+      (VOTES_TO_BREAK > 0 ? 'Players break the seal with /bloodpool vote (' + VOTES_TO_BREAK + ' votes), or open it now with /bloodpool unlock.' : 'Unlock it with /bloodpool unlock (one tier at a time).')))
     console.info('[BloodPool] Tier ' + T.tier + ' is ready (' + D.drops + ' Drops)')
   })
 }
@@ -723,7 +1022,58 @@ function statusText() {
   let t = 'The Blood Pool: ' + fmt(D.drops) + ' Drops. ' + (cur ? 'Tier ' + cur.tier + ' (' + cur.name + ') is open.' : 'No tier is open yet.')
   if (!next) return t + ' Every tier is open.'
   t += ' Next: Tier ' + next.tier + ' (' + next.name + ') at ' + fmt(next.drops)
-  return t + (D.drops >= next.drops ? ': ready, waiting for the seal to break.' : ' (' + fmt(next.drops - D.drops) + ' to go).')
+  if (D.drops < next.drops) return t + ' (' + fmt(next.drops - D.drops) + ' to go).'
+  return t + (VOTES_TO_BREAK > 0 ? ': ready. ' + voteCount(next) + ' of ' + VOTES_TO_BREAK + ' votes to break the seal (/bloodpool vote).' : ': ready, waiting for the seal to break.')
+}
+
+// ----- Breaking the seal by vote (VOTES_TO_BREAK) -----
+// db().vote = { tier, voters: { uuid: name } }: the votes for the next tier. Any tier change clears it (setTier).
+function readyTier() { const D = db(), next = nextTier(); return next && D.drops >= next.drops ? next : null }
+function votersFor(T) { const V = db().vote; return V && T && V.tier == T.tier && V.voters ? V.voters : {} }
+function voteCount(T) { return Object.keys(votersFor(T)).length }
+function readyNotice(T, p) {
+  const mine = p && votersFor(T)[uuidOf(p)]
+  return 'The Blood Pool overflows: Tier ' + T.tier + ' (' + T.name + ') is ready. ' + voteCount(T) + ' of ' + VOTES_TO_BREAK +
+    ' votes break the Ministry\'s seal. ' + (mine ? 'You have voted.' : 'Vote with /bloodpool vote.')
+}
+// A player's vote. { bad, text } for the reply. The last vote opens the tier through setTier, as /bloodpool unlock does.
+function castVote(server, p) {
+  if (!(VOTES_TO_BREAK > 0)) return { bad: true, text: 'Only the Ministry\'s overseers (ops) can break the seal.' }
+  const D = db(), T = readyTier(), next = nextTier()
+  if (!next) return { bad: true, text: 'Every tier is already open.' }
+  if (!T) return { bad: true, text: 'Tier ' + next.tier + ' (' + next.name + ') isn\'t ready: the Pool needs ' + fmt(next.drops - D.drops) + ' more Drops.' }
+  const u = uuidOf(p)
+  if (!D.vote || D.vote.tier != T.tier) D.vote = { tier: T.tier, voters: {} }
+  if (D.vote.voters[u]) return { bad: true, text: 'You have already voted to break the seal on Tier ' + T.tier + ' (' + voteCount(T) + ' of ' + VOTES_TO_BREAK + ').' }
+  D.vote.voters[u] = nameOf(p)
+  save()
+  const n = voteCount(T)
+  console.info('[BloodPool] ' + nameOf(p) + ' voted to break the seal on Tier ' + T.tier + ' (' + n + ' of ' + VOTES_TO_BREAK + ')')
+  if (n < VOTES_TO_BREAK) {
+    onlinePlayers(server).forEach(o => tell(o, VOICE_POOL, nameOf(p) + ' voted to break the seal on Tier ' + T.tier + ' (' + T.name + '): ' +
+      n + ' of ' + VOTES_TO_BREAK + '. /bloodpool vote'))
+    return { text: 'Your vote is counted: ' + n + ' of ' + VOTES_TO_BREAK + '.' }
+  }
+  const names = Object.keys(D.vote.voters).map(k => D.vote.voters[k])
+  announce(server, VOICE_BLOOD, names.length + ' voices broke the Ministry\'s seal: ' + names.join(', ') + '.')
+  setTier(server, T.tier, 'a vote (' + names.join(', ') + ')', true)
+  const again = readyTier()
+  if (again) onlinePlayers(server).forEach(o => tell(o, VOICE_POOL, 'The Pool already fills Tier ' + again.tier + ' too. A new vote: /bloodpool vote'))
+  return { text: 'Yours was the vote that broke the seal. Tier ' + T.tier + ' (' + T.name + ') is open.' }
+}
+// A player takes their vote back while the seal still holds (once it breaks, the vote is spent).
+function withdrawVote(server, p) {
+  const D = db(), next = nextTier(), u = uuidOf(p)
+  if (!next) return { bad: true, text: 'Every tier is already open.' }
+  if (!D.vote || D.vote.tier != next.tier || !D.vote.voters || !D.vote.voters[u])
+    return { bad: true, text: 'You haven\'t voted on Tier ' + next.tier + ' (' + next.name + '), so there is no vote to take back.' }
+  delete D.vote.voters[u]
+  save()
+  const n = voteCount(next)
+  console.info('[BloodPool] ' + nameOf(p) + ' withdrew a vote on Tier ' + next.tier + ' (' + n + ' of ' + VOTES_TO_BREAK + ')')
+  onlinePlayers(server).forEach(o => tell(o, VOICE_POOL, nameOf(p) + ' withdrew a vote to break the seal on Tier ' + next.tier + ' (' + next.name + '): ' +
+    n + ' of ' + VOTES_TO_BREAK + '.'))
+  return { text: 'Your vote is withdrawn: ' + n + ' of ' + VOTES_TO_BREAK + '. You can vote again with /bloodpool vote.' }
 }
 function contents(T) {
   const u = T.unlocks || {}, parts = []
@@ -739,7 +1089,10 @@ function contents(T) {
 // Opens tier n (and everything below): saved, written to TIER_FILE, announced, then /reload brings the recipes back.
 function setTier(server, n, by, announceIt) {
   const D = db()
+  const rankBefore = {}
+  Object.keys(D.standing).forEach(u => { rankBefore[u] = standingOf(u).tier })
   D.tier = Math.max(0, Math.min(TIERS.length, n))
+  D.vote = null                                   // votes to break the seal start again for the next tier
   D.unlocks.push({ tier: D.tier, t: Date.now(), by: by })
   Object.keys(D.announced).forEach(k => { if (Number(k) <= D.tier) delete D.announced[k] })
   save()
@@ -761,6 +1114,11 @@ function setTier(server, n, by, announceIt) {
   const K = global.BloodTank
   if (K) { try { K.sync(server, true) } catch (e) { console.error('[BloodPool] tank: ' + e) } }
   onlinePlayers(server).forEach(p => { try { syncStages(p) } catch (e) { } })
+  // Ranks the Pool was holding back (RANK_LEAD) come now, with their rank-up lines.
+  if (announceIt) Object.keys(rankBefore).forEach(u => {
+    let after = standingOf(u).tier
+    if (after > rankBefore[u]) { try { rankUp(server, playerByUuid(server, u), D.standing[u].name, after) } catch (e) { console.error('[BloodPool] rank-up: ' + e) } }
+  })
   const PT = global.PotatoTree
   if (PT) { try { PT.catchUp(server) } catch (e) { console.error('[BloodPool] potato tree catch-up: ' + e) } }
   if (announceIt && T) onlinePlayers(server).forEach(p => { try { tierMessage(p, T) } catch (e) { console.error('[BloodPool] tier message: ' + e) } })
@@ -864,29 +1222,41 @@ function takePotatoes(p, n) {
 
 // ===================== THE POTATO WAR =====================
 
-function standingTierOf(potatoes, table) {
+function standingTierOf(potatoes) {
   let n = 0
-  ;(table || STANDING).forEach((need, i) => { if (potatoes >= need) n = i + 1 })
+  STANDING.forEach((need, i) => { if (potatoes >= need) n = i + 1 })
   return n
 }
-// The highest rank a player has reached and keeps (ranks are never lost to a change of thresholds). A record from
-// before `peak` existed keeps the rank its potatoes bought under the old numbers.
+function rankName(n) { return RANKS[n] || ('Potato rank ' + n) }
+// The highest rank a player's potatoes have bought (kept when potatoes are lost). A record from before `peak` existed
+// starts at the rank its potatoes buy now, so nobody's rank changed when it was added.
 function peakOf(r) {
   if (!r) return 0
   if (r.peak != null) return r.peak
-  return standingTierOf(r.potatoes || 0, LEGACY_STANDING)
+  return standingTierOf(r.potatoes || 0)
 }
-function rankName(n) { return RANKS[n] || ('Potato rank ' + n) }
-// { potatoes, tier, rank, next (potatoes for the next rank, 0 = top), nextRank }
+// The Pool tier rank n needs (RANK_LEAD), and the highest rank the open tier allows.
+function tierForRank(n) { return RANK_LEAD == null ? 0 : Math.max(0, n - RANK_LEAD) }
+function rankCap() { return RANK_LEAD == null ? STANDING.length : Math.max(0, Math.min(STANDING.length, db().tier + RANK_LEAD)) }
+// { potatoes, tier (the rank: capped by the Pool, or kept from before the cap), rank (its name), next (potatoes for the
+//   next rank, 0 = top), nextRank, earned (the rank the potatoes alone would give), held (the Pool tier the next rank
+//   waits for, 0 = none), kept (true when the rank is above the cap because it was held before the cap) }
+// earned is the highest rank the potatoes have ever bought (the peak): losing potatoes (a Purge's Potato Heist) never
+// lowers a rank. Only an op's /potatowar set resets the peak. A kept rank never exceeds what was earned.
 function standingOf(uuid) {
-  const r = db().standing[uuid]
-  const potatoes = r ? r.potatoes || 0 : 0, tier = Math.max(standingTierOf(potatoes), peakOf(r))
+  const D = db(), r = D.standing[uuid]
+  const potatoes = r ? r.potatoes || 0 : 0, earned = Math.max(standingTierOf(potatoes), peakOf(r)), capped = Math.min(earned, rankCap())
+  const tier = Math.max(capped, Math.min(D.rankFloor[uuid] || 0, earned))
   const top = tier >= STANDING.length
-  return { potatoes: potatoes, tier: tier, rank: rankName(tier), next: top ? 0 : STANDING[tier], nextRank: top ? '' : rankName(tier + 1) }
+  return { potatoes: potatoes, tier: tier, rank: rankName(tier), next: top ? 0 : STANDING[tier], nextRank: top ? '' : rankName(tier + 1),
+    earned: earned, held: !top && tier >= rankCap() ? tierForRank(tier + 1) : 0, kept: tier > capped }
 }
 function standingText(s) {
-  let t = fmt(s.potatoes) + ' potatoes offered: ' + s.rank + '.'
-  return t + (s.next ? ' ' + s.nextRank + ' at ' + fmt(s.next) + ' (' + fmt(s.next - s.potatoes) + ' to go).' : ' The highest rank there is.')
+  let t = fmt(s.potatoes) + ' potatoes offered: ' + s.rank + (s.kept ? ' (kept from before ranks waited for the Blood Pool)' : '') + '.'
+  if (!s.next) return t + ' The highest rank there is.'
+  if (s.held) return t + ' ' + s.nextRank + ' waits for the Blood Pool to open Tier ' + s.held +
+    (s.potatoes >= s.next ? ' (your potatoes already cover it).' : ', and needs ' + fmt(s.next) + ' potatoes (' + fmt(s.next - s.potatoes) + ' to go).')
+  return t + ' ' + s.nextRank + ' at ' + fmt(s.next) + ' (' + fmt(s.next - s.potatoes) + ' to go).'
 }
 function playerByUuid(server, uuid) { return onlinePlayers(server).filter(o => uuidOf(o) == uuid)[0] || null }
 // Gives the player the stages for every rank they hold and takes away the rest (an op may lower a rank).
@@ -923,14 +1293,15 @@ function rankUp(server, p, name, n) {
   console.info('[BloodPool] Potato War: ' + name + ' is now rank ' + n + ' (' + rankName(n) + ')')
 }
 // Sets a player's lifetime offered potatoes. Online players get their stages at once (offline ones at login).
-// resetPeak: an op setting a player's total may lower their rank; offers, hand-ins and /potatowar add never do.
+// resetPeak: an op setting a player's total may lower their rank; offers, hand-ins, /potatowar add and Heist thefts
+// never do (the peak keeps it).
 function setStanding(server, uuid, name, potatoes, announceIt, resetPeak) {
-  const D = db(), before = standingOf(uuid).tier
+  const D = db(), before = standingOf(uuid).tier, peakBefore = standingOf(uuid).earned
   if (!D.standing[uuid]) D.standing[uuid] = { name: name || '?', potatoes: 0 }
   if (name) D.standing[uuid].name = name
   D.standing[uuid].potatoes = Math.max(0, Math.round(potatoes))
-  const earned = standingTierOf(D.standing[uuid].potatoes)
-  D.standing[uuid].peak = resetPeak ? earned : Math.max(before, earned)
+  const bought = standingTierOf(D.standing[uuid].potatoes)
+  D.standing[uuid].peak = resetPeak ? bought : Math.max(peakBefore, bought)
   save()
   const after = standingOf(uuid).tier
   const p = server ? playerByUuid(server, uuid) : null
@@ -948,6 +1319,16 @@ function standingTarget(server, name) {
 }
 
 PlayerEvents.loggedIn(event => { try { syncStages(event.player) } catch (e) { console.error('[BloodPool] login stages: ' + e) } })
+// While the next tier is ready, everyone who logs on is told, with the vote count (after the join messages).
+PlayerEvents.loggedIn(event => {
+  const p = event.player
+  if (!p || !(VOTES_TO_BREAK > 0) || !Utils.server) return
+  try {
+    Utils.server.scheduleInTicks(LOGIN_NOTICE_DELAY_TICKS, () => {
+      try { let T = readyTier(); if (T) tell(p, VOICE_POOL, readyNotice(T, p)) } catch (e) { }
+    })
+  } catch (e) { }
+})
 
 // The rank needed to place this block (an autocrafter), or 0.
 function autocrafterRank(id) {
@@ -956,17 +1337,115 @@ function autocrafterRank(id) {
   const n = Number(a.rank) > 0 ? Number(a.rank) : tierOf(id, null)
   return Math.max(0, Math.min(STANDING.length, n))
 }
+// After a refused placement the client thinks the item was used and takes it off the screen. The server still holds it
+// and never corrects the client, because its own copy didn't change, so the whole window has to be sent again. KubeJS's
+// sendInventoryUpdate only sends changes, which isn't enough. A tick later, once the refusal has finished.
+function resyncInventory(p) {
+  try {
+    Utils.server.scheduleInTicks(1, () => { try { p.containerMenu.sendAllDataToRemote() } catch (e) { } })
+  } catch (e) { }
+}
+function bannedFor(p, id) {
+  if (!p || !Object.prototype.hasOwnProperty.call(BANNED_CRAFTERS, id) || isOp(p)) return false
+  try { if (p.isCreative()) return false } catch (e) { }
+  return true
+}
+function tellBanned(p, id) { tell(p, VOICE_WAR, 'The ' + BANNED_CRAFTERS[id] + ' can\'t be used in the Potato War: it would craft things for players who haven\'t unlocked them.') }
+BlockEvents.rightClicked(event => {
+  if (!STANDING_CRAFTING) return
+  const p = event.player
+  let id = String(event.block.id)
+  if (!bannedFor(p, id)) {
+    let s = event.item
+    id = s && !s.isEmpty() ? String(s.id) : ''
+    if (id != BANNED_USE_ITEM || !bannedFor(p, id)) return
+  }
+  tellBanned(p, id)
+  resyncInventory(p)
+  event.cancel()
+})
 BlockEvents.placed(event => {
   if (!STANDING_CRAFTING) return
-  if (global.PotatoTree && global.PotatoTree.handlesPlacing) return   // the upgrade tree decides (part2/potato_tree.js)
   const p = event.player
   if (!p) return
-  const id = String(event.block.id), need = autocrafterRank(id)
+  const id = String(event.block.id)
+  if (bannedFor(p, id)) { tellBanned(p, id); resyncInventory(p); event.cancel() }
+  if (global.PotatoTree && global.PotatoTree.handlesPlacing) return   // the upgrade tree decides (part2/potato_tree.js)
+  const need = autocrafterRank(id)
   if (!need || isOp(p)) return
   try { if (p.isCreative()) return } catch (e) { }
   const mine = standingOf(uuidOf(p))
   if (mine.tier >= need) return
   tell(p, VOICE_WAR, 'Only a ' + rankName(need) + ' or higher knows how to set up a ' + AUTOCRAFTERS[id].name + '. You are ' + mine.rank + '. (/potatowar)')
+  resyncInventory(p)
+  event.cancel()
+})
+
+// Use, place and spawn locks (USE_LOCKS, PLACE_LOCKS, SPAWN_LOCKS). A refused click stops the item's own use before
+// it starts, so nothing happens on the server. The client has already started it on its own screen (and may have
+// spent ammo there: the raygun reloads with a Uranium Rod), so the inventory is sent again.
+const own = (o, k) => Object.prototype.hasOwnProperty.call(o, k)
+const PLACE_LOCKED = {}
+PLACE_LOCKS.forEach(id => { PLACE_LOCKED[String(id)] = true })
+Object.keys(USE_LOCKS).forEach(id => {
+  if (['use', 'block', 'mob'].indexOf(USE_LOCKS[id]) < 0) console.warn('[BloodPool] USE_LOCKS: ' + id + ': "' + USE_LOCKS[id] + '" should be use, block or mob')
+  if (!tierOf(id, null)) console.warn('[BloodPool] USE_LOCKS: ' + id + ' is in no tier, so it is never locked')
+})
+PLACE_LOCKS.forEach(id => { if (!tierOf(id, null)) console.warn('[BloodPool] PLACE_LOCKS: ' + id + ' is in no tier, so it is never locked') })
+Object.keys(SPAWN_LOCKS).forEach(t => { if (!tierOf(SPAWN_LOCKS[t], null)) console.warn('[BloodPool] SPAWN_LOCKS: ' + SPAWN_LOCKS[t] + ' is in no tier, so ' + t + ' is never stopped') })
+// The click modes an item is refused in: 'use' everywhere it's used; 'block' or 'mob' also when clicked on one.
+function useLockOf(s, where) {
+  if (!s || s.isEmpty()) return ''
+  const id = String(s.id)
+  if (!own(USE_LOCKS, id)) return ''
+  const mode = USE_LOCKS[id]
+  if (where != 'use' && mode != where) return ''
+  return isLocked(id, s) ? mode : ''
+}
+function exemptFromSeals(p) {
+  try { return !!(p.isCreative() || p.isSpectator()) } catch (e) { return false }
+}
+// The item's own name, translated on the player's screen (a renamed item keeps its real name here).
+function itemKey(s) {
+  let key = ''
+  try { key = String(s.getDescriptionId()) } catch (e) { }
+  return key || 'item.' + String(s.id).replace(':', '.')
+}
+// "The <name> is sealed until the Blood Pool opens Tier n (name)." on the action bar (chat if that fails).
+function tellSealed(p, key, n) {
+  const T = tierDef(n)
+  const parts = [{ text: 'The ', color: 'red' }, { translate: key, color: 'red' },
+    { text: ' is sealed until the Blood Pool opens Tier ' + n + (T ? ' (' + T.name + ')' : '') + '.', color: 'red' }]
+  let shown = false
+  try { p.setStatusMessage(comp(parts)); shown = true } catch (e) { }
+  if (!shown) { try { p.tell(comp(parts)) } catch (e) { } }
+  resyncInventory(p)
+}
+function refuseUse(event, where) {
+  const p = event.player, s = event.item
+  if (!p || !useLockOf(s, where) || exemptFromSeals(p)) return
+  tellSealed(p, itemKey(s), tierOf(String(s.id), s))
+  event.cancel()
+}
+ItemEvents.rightClicked(event => refuseUse(event, 'use'))
+BlockEvents.rightClicked(event => refuseUse(event, 'block'))
+ItemEvents.entityInteracted(event => refuseUse(event, 'mob'))
+BlockEvents.placed(event => {
+  const id = String(event.block.id)
+  if (!own(PLACE_LOCKED, id) || !isLocked(id, null)) return
+  const p = event.player
+  if (p && exemptFromSeals(p)) return
+  if (p) tellSealed(p, 'block.' + id.replace(':', '.'), tierOf(id, null))
+  event.cancel()
+})
+function entityType(e) {
+  try { let t = e.getEncodeId(); if (t != null) return String(t) } catch (err) { }
+  try { return String(e.type) } catch (err) { return '' }
+}
+EntityEvents.spawned(event => {
+  const t = entityType(event.entity)
+  if (!own(SPAWN_LOCKS, t) || !isLocked(SPAWN_LOCKS[t], null)) return
+  console.info('[BloodPool] Stopped ' + t + ' from spawning: ' + SPAWN_LOCKS[t] + ' is sealed until Tier ' + tierOf(SPAWN_LOCKS[t], null))
   event.cancel()
 })
 if (Utils.server) onlinePlayers(Utils.server).forEach(p => { try { syncStages(p) } catch (e) { } })
@@ -988,6 +1467,8 @@ global.BloodPool = {
   standing: player => standingOf(uuidOf(player)),
   rankName: n => rankName(Number(n)),
   rankCount: STANDING.length,
+  rankTier: n => tierForRank(Number(n)),             // the Pool tier rank n needs (RANK_LEAD); 0 = none
+  rankCap: () => rankCap(),                           // the highest rank the open tier allows
   // Adds potatoes handed in elsewhere (part2/potato_tree.js's quest costs) to the player's Standing, with rank-ups.
   creditStanding: (player, n) => {
     n = Math.floor(Number(n) || 0)
@@ -1018,8 +1499,10 @@ global.BloodPool = {
   },
   craftAccess: player => craftAccess(uuidOf(player)),   // the highest tier this player can craft (rank or catch-up)
   tiers: TIERS,                                        // read-only: the tier lists (tools, the quest generator, the audit)
+  useLocks: USE_LOCKS,                                 // read-only: id -> 'use'/'block'/'mob' (the quest generator's client script)
   standingThresholds: STANDING,
   autocrafters: AUTOCRAFTERS,
+  resyncInventory: resyncInventory,
   catchUpGap: CATCH_UP_GAP,
   syncStages: player => syncStages(player),
 }
@@ -1078,6 +1561,18 @@ ServerEvents.commandRegistry(event => {
 
   event.register(Commands.literal('bloodpool')
     .executes(safe(ctx => reply(ctx, statusText())))
+    .then(Commands.literal('vote').executes(safe(ctx => {
+      const p = me(ctx)
+      if (!p) return reply(ctx, 'Players only.', true)
+      const r = castVote(ctx.source.server, p)
+      return reply(ctx, r.text, r.bad)
+    })))
+    .then(Commands.literal('unvote').executes(safe(ctx => {
+      const p = me(ctx)
+      if (!p) return reply(ctx, 'Players only.', true)
+      const r = withdrawVote(ctx.source.server, p)
+      return reply(ctx, r.text, r.bad)
+    })))
     .then(Commands.literal('donate').then(int('coins').executes(safe(ctx => {
       const p = me(ctx), e = global.Economy, n = Math.floor(num(ctx, 'coins'))
       if (!p) return reply(ctx, 'Players only.', true)
@@ -1124,12 +1619,22 @@ ServerEvents.commandRegistry(event => {
         else if (place && !(PT && PT.handlesPlacing)) rank += ' Placing it needs ' + rankName(place) + '.'
       }
       return reply(ctx, String(s.id) + ' can be crafted from Tier ' + n + (T ? ' (' + T.name + ')' : '') + ': ' +
-        (n <= db().tier ? 'open now.' : 'sealed for now (found ones still work).') + rank)
+        (n <= db().tier ? 'open now.' : own(USE_LOCKS, String(s.id)) ? 'sealed for now, and so is using one, however it was got.' :
+          own(PLACE_LOCKED, String(s.id)) ? 'sealed for now, and so is placing one, however it was got.' :
+          'sealed for now (found ones still work).') + rank)
     })))
     .then(Commands.literal('audit').requires(op).executes(safe(ctx => {
       try { JsonIO.write(AUDIT_FLAG_FILE, { requested: 'true' }) } catch (e) { return reply(ctx, 'Could not write ' + AUDIT_FLAG_FILE + ': ' + e, true) }
       ctx.source.server.scheduleInTicks(RELOAD_DELAY_TICKS, () => { try { ctx.source.server.runCommandSilent('reload') } catch (e) { } })
       return reply(ctx, 'Reloading. The report goes to ' + AUDIT_FILE + ' (a summary in the server log).')
+    })))
+    .then(Commands.literal('gatecheck').requires(op).executes(safe(ctx => {
+      const c = gateCheck(ctx.source.server)
+      if (c.inert.length) console.error('[BloodPool] Gate check: these recipes ignore their rank check: ' + c.inert.join(', '))
+      if (c.missing.length) console.warn('[BloodPool] Gate check: these recipes failed to load: ' + c.missing.join(', '))
+      return reply(ctx, c.live + ' of ' + c.total + ' rank checks are live.' +
+        (c.inert.length ? ' Ignored by ' + c.inert.length + ': ' + c.inert.slice(0, 5).join(', ') + '.' : '') +
+        (c.missing.length ? ' Failed to load, ' + c.missing.length + ': ' + c.missing.slice(0, 5).join(', ') + '.' : ''), c.inert.length > 0)
     })))
     .then(Commands.literal('unlock').requires(op)
       .executes(safe(ctx => unlock(ctx, false)))
@@ -1179,7 +1684,7 @@ ServerEvents.commandRegistry(event => {
     const t = standingTarget(ctx.source.server, str(ctx, 'player'))
     if (!t) return war(ctx, 'Nobody by that name is online or has offered potatoes.', true)
     const n = num(ctx, 'potatoes'), cur = standingOf(t.uuid).potatoes
-    setStanding(ctx.source.server, t.uuid, t.name, add ? cur + n : n, true, !add)
+    setStanding(ctx.source.server, t.uuid, t.name, add ? cur + n : n, true, !add)   // set may lower the rank; add never does
     console.info('[BloodPool] Potato War: ' + who(ctx) + (add ? ' added ' : ' set ') + n + ' potatoes for ' + t.name)
     return war(ctx, t.name + ': ' + standingText(standingOf(t.uuid)))
   }
@@ -1222,12 +1727,13 @@ ServerEvents.commandRegistry(event => {
       const S = db().standing, list = Object.keys(S).filter(u => S[u].potatoes > 0).sort((a, b) => S[b].potatoes - S[a].potatoes).slice(0, 10)
       if (!list.length) return war(ctx, 'Nobody has offered a potato yet.')
       war(ctx, 'Techno\'s Potato War, by potatoes offered:')
-      list.forEach((u, i) => war(ctx, '  ' + (i + 1) + '. ' + S[u].name + ': ' + rankName(standingTierOf(S[u].potatoes)) + ' (' + fmt(S[u].potatoes) + ')'))
+      list.forEach((u, i) => war(ctx, '  ' + (i + 1) + '. ' + S[u].name + ': ' + standingOf(u).rank + ' (' + fmt(S[u].potatoes) + ')'))
       return 1
     })))
     .then(Commands.literal('ranks').executes(safe(ctx => {
       STANDING.forEach((need, i) => war(ctx, (i + 1) + '. ' + rankName(i + 1) + ': ' + fmt(need) + ' potatoes' +
-        (STANDING_CRAFTING ? ' · crafts Tier ' + (i + 1) + ' (' + (tierDef(i + 1) || { name: '?' }).name + ')' : '')))
+        (STANDING_CRAFTING ? ' · crafts Tier ' + (i + 1) + ' (' + (tierDef(i + 1) || { name: '?' }).name + ')' : '') +
+        (tierForRank(i + 1) ? ' · needs the Blood Pool at Tier ' + tierForRank(i + 1) : '')))
       return 1
     })))
     .then(Commands.literal('check').requires(op).then(word('player').executes(safe(ctx => {

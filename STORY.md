@@ -176,9 +176,9 @@ Everyone stands together under Techno's banner. There are no Loyalists. The Mini
   - **trolls:** each logged troll adds its value as Drops of Blood (see [Scoring](#scoring));
   - **Hush Coins:** donated at **1,000 Drops each**, a sink for the economy;
   - **the Potato Tithe:** potatoes spilled into the Pool for the Blood God. **4,000 potatoes = 1,000 Drops**, capped at **30,000 Drops a day** server-wide. The quota reopens at 4 am Central (owner decisions). Tithed potatoes never count toward anyone's Potato War rank;
-  - **boss kills** ✅ (`part2/boss_blood.js`, see [BOSS_BLOOD.md](tools/kubejs/BOSS_BLOOD.md)): Twilight Forest bosses pay on a ladder, Naga 200 up to the Snow Queen 1,000. Every kill pays, and the credit is split among the fighters within 64 blocks (owner decisions).
-- **Group unlocks:** when the Pool reaches a milestone, that tier unlocks for everyone. **An op confirms each unlock**; the confirm includes the `/reload` that brings the tier's recipes back.
-- **A locked tier blocks crafting only** (owner decision): its recipes are removed in every recipe type. Sealed items that players find, loot or trade for work normally.
+  - **boss kills** ✅ (`part2/boss_blood.js`, see [BOSS_BLOOD.md](tools/kubejs/BOSS_BLOOD.md)): Twilight Forest bosses pay by how hard they are, the same ranking as the boss chests in `part2/twilight_bosses.js`: the Naga 200 up to the Snow Queen 1,000. Every kill pays, and the credit is split among the fighters within 64 blocks (owner decisions).
+- **Group unlocks:** when the Pool reaches a milestone, that tier unlocks for everyone. **The players break the seal by vote** (owner decision, 2026-11-10): five different players' `/bloodpool vote` open it (`/bloodpool unvote` takes a vote back while the seal holds), and an op's `/bloodpool unlock` still opens it at once. Everyone who logs on while a tier is ready is told, with the count. Opening includes the `/reload` that brings the tier's recipes back.
+- **A locked tier blocks crafting only** (owner decision): its recipes are removed in every recipe type. Sealed items that players find, loot or trade for work normally. The exception is what players may have brought from Part I, since they kept their inventories (owner decisions, 2026-11-09). 39 items that work by being used (guns, bows, staffs, teleporters, the Raygun) can't be used until their tier opens (`USE_LOCKS` in `blood_pool.js`). The Nuclear Bomb, Tremorzilla Egg and Ender Quarry can't be placed until Tier 11 (`PLACE_LOCKS`), and a dispensed Nuclear Bomb doesn't spawn (`SPAWN_LOCKS`). Gear that's worn or wielded isn't locked yet.
 
   The tiers are lists of mods, items, tags and recipe ids in `blood_pool.js`, filled from the progression research ([research/TIER_PROPOSAL.md](research/TIER_PROPOSAL.md)). Twilight Forest and Tinkers are open from day 0 (gear tiered by item); ironwood is open.
 - **The tank** (`part2/blood_tank.js`): a tower of chiseled nether bricks, glass and nether gold ore whose 3×3×6 chamber fills one layer of blood for every 2 tiers, full at the Siege.
@@ -210,10 +210,10 @@ Everyone stands together under Techno's banner. There are no Loyalists. The Mini
 ### Techno's Potato War: each player's Potato Standing ✅ (`part2/blood_pool.js`, `economy/black_market.js`, see [BLOOD_POOL.md](tools/kubejs/BLOOD_POOL.md#the-potato-war-each-players-potato-standing))
 Technoblade's Potato War, revived. **The Pool decides what the server can make; your rank decides what you can make** (owner decisions).
 - **Raising your rank:** `/potatowar offer` gives potatoes to Techno's war chest. Your **Potato Standing** is the lifetime total, with no cap. Offered potatoes only count toward rank and never fill the Pool, and tithed potatoes never count toward rank.
-- **Ranks:** 11, from **Potato Farmer** (250) through **Potato Soldier** (50,000) and **Potato General** (500,000) to **Potato Emperor** (1,100,000). From rank 4 the potatoes are 5× the launch numbers (owner decision, November 2026); ranks already earned are kept. Each rank-up gets a title and a server-wide line ("Ana has risen to Potato Soldier in Techno's Potato War").
+- **Ranks:** 11, from **Potato Farmer** (250) through **Potato Soldier** (50,000) and **Potato General** (2,000,000) to **Potato Emperor** (4,400,000). Owner decisions, 2026-11-09: ranks 4 and 5 are 25,000 and 50,000, and ranks 6 and up are 20x the first ladder. Tree nodes from Potato Private up cost 5x their first draft (owner decision, same day). **Ranks wait for the Blood Pool** (owner decision, same day): a rank can be at most one above the Pool's open tier, so rank n needs Tier n−1. Potatoes offered past that still count, and the rank comes when the tier opens. Ranks players already held above the cap when it arrived are kept (owner decision, same day); only later progress is capped. **A rank, once earned, is never lost** (owner decision): it's the highest the potatoes have ever bought, so a Purge's Potato Heist can take potatoes but not the rank; only an op's `/potatowar set` can lower it. Each rank-up gets a title and a server-wide line ("Ana has risen to Potato Soldier in Techno's Potato War").
 - **What a rank unlocks:**
   - **Crafting:** rank n lets a player craft Tier n's items **at a crafting table**, once the Pool has opened that tier. Machines stay server-wide (they can't tell who's using them).
-  - **Autocrafters** craft for everyone, but setting one up (and using one) takes its node in the upgrade tree.
+  - **Autocrafters** only make what every player can already craft, and setting one up (and using one) takes its node in the upgrade tree.
   - **The black market:** the Hooded Merchant only sells certain items to high enough ranks: pranks from Potato Farmer, the Writ from Potato Recruit, Disguised TNT and the Tracker from Potato Private, up to the War Party contract at Potato Captain. There's no discount (owner decision).
 - **The early ranks are cheap** so a hand farm reaches IE's Garden Cloche (Tier 3), and the Cloche reaches Thermal's Insolator (Tier 5).
 - **The upgrade tree** ✅ (`part2/potato_tree.js` + FTB Quests, see [POTATO_TREE.md](tools/kubejs/POTATO_TREE.md)): Hypixel-style branches on top of the ranks (owner decisions).
@@ -233,7 +233,7 @@ Technoblade's Potato War, revived. **The Pool decides what the server can make; 
 - **Nobody falls behind** (owner decision): when the Blood Pool opens Tier T, every player gets crafting access and every tree node for Tiers 1..T−2 for free. Their rank's name and black market perks still come from potatoes only.
 
 ### Act I: The Awakening
-34. **Waking Up:** players arrive in the new world through the Blood Portal. Each picks **9 items** from the inventory they carried through (saved by the Blood Portal; only items whose mod is still in the pack), and gets their legacy:
+34. **Waking Up:** players arrive in the new world through the Blood Portal. Each keeps **their whole inventory** (owner decision 2026-11-05, replacing the earlier 9-item pick), and gets their legacy:
     - titles such as "Survivor of the Clean Slate", "Founder of the Syndicate" and "Grand Trollmaster";
     - their Part I trial records, now evidence of the Ministry's crimes.
 
@@ -348,7 +348,7 @@ Needs Blood Pool Tier 12 and the full Regalia.
    1a. ✅ **Techno's Potato War** (in `part2/blood_pool.js`): each player's Potato Standing gates crafting-table recipes, and the black market's `STANDING_LOCKS`.
    1b. ✅ **The upgrade tree** (`part2/potato_tree.js`, FTB Quests chapters in `tools/ftbquests/`) and catch-up.
    2. 🔨 **A Part I patch, before the finale is played:** the exodus files also save trial records and what titles need.
-   3. 🔨 **Arrival** (`part2/arrival.js`): a 9-item satchel picked from the saved inventory (only items still in the pack), legacy titles, and trial records as books.
+   3. 🔨 **Arrival** (`part2/arrival.js`): legacy titles, and trial records as books. No satchel is needed: players keep their whole inventory through edited player files that keep only the inventory and ender chest and place them at the new world's spawn. XP, effects, game mode, respawn points, the recipe book and mods' saved player data reset.
    4. 🔨 **The Part II story driver** (`story.js` with Part II acts).
    4a. 🔨 **Part I scripts adapted for Part II** (see [PART2_SCRIPTS.md](PART2_SCRIPTS.md)): the Pig Escort without its Nether unlock and reveal (it counts Escorts for the Swine's Oath), `limit_balance.js` reduced to permanent bans, and the black market and bounties without Part I-only items. Factions, trials, Clean Slate, the Blood Portal and the End Lockdown don't carry over.
    5. 🔨 **The Ministry as the enemy** (`part2/ministry.js`): Inspectors raid everyone, Ministry bounties, and trolls on Ministry NPCs.
@@ -361,13 +361,14 @@ Needs Blood Pool Tier 12 and the full Regalia.
 - **Events:** how long the Moratorium lasts, and what a Ministry Meltdown gives.
 - **Troll Log:** tune the values and payouts after a week of play; whether Anonymous Summons (cheap, needs no aim) should go to manual reports.
 - **Crownsworn players:** whether active Crownsworn players will role-play the defection, or the loyalists are mostly NPCs.
-- **Clean Slate:** tune the Blood Portal event (40 kill points to fill, the Relic chance) once it's been tried; how much of each player's saved inventory Part II gives back.
+- **Clean Slate:** tune the Blood Portal event (40 kill points to fill, the Relic chance) once it's been tried.
 - **Part II world:** a new seed, or the same seed regenerated.
 - **The Castellan:** her loyalty stays unconfirmed, unless she wants a story arc later (e.g. a double-agent turn in Act III, the Seizure).
 - **Part II tiers:** decided (see BLOOD_POOL.md). Still to check on the server: Thermal's machine-frame recipes in JEI, the AlmostUnified config, and a Dragon Heart drop before Tier 10.
 - **The Potato War:**
   - tune the rank thresholds and the black market locks after a week of Part II;
-  - **autocrafting** (decided): autocrafters craft every open tier's recipes. Placing and using one needs its node in the upgrade tree. The remaining gaps: machines fed by their owner's hoppers or belts, and AE2 crafts ordered on someone else's network. Watch whether that matters in play;
+  - **autocrafting** (decided, changed 2026-11-03): an autocrafter can't make what a player hasn't unlocked. A script can't tell whose machine is crafting, so machines only make what everyone can already craft (Tiers up to T−2), and the newest two tiers are crafted by hand. Fancy Crafters and the Wixie are banned because no check reaches them. Placing and using an autocrafter needs its node in the upgrade tree. The remaining gaps: machines fed by their owner's hoppers or belts, and AE2 crafts ordered on someone else's network. Watch whether that matters in play;
+  - **netherite** (decided 2026-11-05): crafting it opens at Blood Pool Tier 5, and its crops at Tier 8. Debris can still be mined, and looted netherite keeps working. The Foundry's molten debris byproduct from melting diamond ore is off at every tier, so netherite needs a Nether trip until the crops open; diamond ore still melts;
   - **the upgrade tree's costs** are placeholders: tune them after a week of Part II;
   - the relic called **"The Potato Tithe"** (10,000 potatoes) now shares its name with the Blood Pool's tithe. Rename it, and decide whether its potatoes are a third, separate count.
 - **Regalia:**

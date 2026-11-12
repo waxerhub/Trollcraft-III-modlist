@@ -77,7 +77,7 @@ There's no `data.snbt` to copy. FTB Quests keeps its own defaults.
   - Parties made before install keep their shared progress, so disband them.
 
 ## The nodes
-Costs are placeholders. Edit `NODES` in `potato_tree.js`, then run the generator.
+Costs set by the owner (9 November 2026: every node from Potato Private up costs 5x the first draft). Edit `NODES` in `potato_tree.js`, then run the generator: the quests take what the generated files say, not the script.
 
 **Tinkers' Smithy:**
 
@@ -117,10 +117,14 @@ Metals in no node (wood, stone, iron, copper, bronze and the rest) are free.
 | Formulaic Assembly | Potato Private, Tier 4 | 25,000, 4 basic control circuits | Formulaic Assemblicator |
 | Ender IO Crafting | Potato Soldier, Tier 5 | 50,000, 2 void chassis | Ender IO Crafter |
 | Thermal Fabrication | Potato Soldier, Tier 5 | 50,000, 4 machine frames | Sequential Fabricator |
+| Simple Crafters | Potato Private, Tier 4 | 25,000, 8 crafting tables | Quark Crafter, Botania's Crafty Crate |
 | Immersive Assembly | Potato Private, Tier 4 | 25,000, 8 steel mechanical components | Using IE's Assembler multiblock (it's formed with the hammer, so only using it is locked) |
 | ME Autocrafting | Potato Sergeant, Tier 6, ME Logistics | 100,000, 16 engineering processors | Pattern providers (AE2 and Advanced AE), the pattern encoding terminal, crafting units, accelerators, crafting storage, monitors and Molecular Assemblers; the wireless crafting and pattern terminals (AE2, AE2WTLib, Advanced AE) |
+| Project Automation | Potato Lieutenant, Tier 7 | 175,000, 4 project tables | Blue Power's Auto Project Table |
 | RFTools Crafting | Potato Lieutenant, Tier 7, Ender IO Crafting | 175,000, 4 RFTools machine frames | RFTools Crafters 1–3 |
 | Quantum Crafting | Potato Emperor, Tier 11, ME Autocrafting | 500,000, 16 calculation processors | Advanced AE's Quantum Crafter (and its terminal). Tier 11 because its parts are Tier 11 items |
+
+A node lets you run an autocrafter, but it only makes what every player can already craft: Tiers up to T−2 at Pool Tier T (see BLOOD_POOL.md). No node unlocks Bibliocraft's Fancy Crafters or the Ars Nouveau Wixie, which are banned because no check can reach them.
 
 **Farms:**
 
@@ -183,7 +187,7 @@ Node ids are in `NODES` (e.g. `cobalt_smithing`). `/ftbquests change_progress` a
 ## Settings (top of `potato_tree.js`)
 | Setting | Default | |
 |---|---|---|
-| `NODES` | 29 nodes | Every node: number `n` (fixes its quest id; never reuse one), rank, tier, needs, potatoes, items, materials, gear, places, parts, use, wireless, position, description |
+| `NODES` | 31 nodes | Every node: number `n` (fixes its quest id; never reuse one), rank, tier, needs, potatoes, items, materials, gear, places, parts, use, wireless, position, description |
 | `CHAPTERS` | 7 | Chapter ids, titles, icons and file names, in book order |
 | `NO_PARTIES` | true | Switch FTB Teams parties off |
 | `LOCK_ARMOR`, `ARMOR_CHECK_TICKS` | true, 40 | Take locked armour off, every 2 s |
@@ -215,7 +219,7 @@ Moving nodes around in the book's editor is fine. Keep the ids, and re-run the g
 9. **`/potatowar next`** and the message when a tier opens (`/bloodpool unlock force`): each player is told privately what they can craft and buy.
 
 ## What couldn't be verified for KubeJS 6 on 1.20.1
-A mock-server test passed 111 checks (with the Blood Pool's tests). The Blood Pool's own suite passes with the tree absent (135), and the tooltip script passed 10:
+A mock-server test passed 117 checks (with the Blood Pool's tests). The Blood Pool's own suite passes with the tree absent (135), and the tooltip script passed 10:
 - **gear:** Tinkers NBT, the variant suffix, TF gear, ops and creative exempt, armour taken off and kept on;
 - **placing:** the held item and the block fallback, AE2 parts and Thermal attachments, a node letting an unranked player place a Mechanical Crafter (`blood_pool.js`'s rank rule stepping aside);
 - **using:** someone else's blocks, free basic AE2 storage, the wireless terminals; the new nodes (spawners, Digital Miner, IE Assembler, vacuums);
@@ -243,11 +247,16 @@ The quest files were checked by a separate parser against FTB Quests 2001.4.22's
 - **FTB Teams 2001.3.2:** `FTBTeamsAPI.api().setPartyCreationFromAPIOnly(boolean)` exists, and both the "Create Party" button and `/ftbteams party create` check it.
 - **FTB Library 2001.2.13:** its SNBT reader (the source matches this exact version) reads the generated files' syntax: newline-separated entries, quoted strings, `L` and `d` numbers, empty lists.
 
-In game:
-- **FTB Quests:** that the book loads the files, stage tasks tick, item tasks take the potatoes, the hidden stage reward is claimed, and `change_progress` from the console completes a quest for a named player.
-- **The `#potato_offer` event** reaching the script in game, with the player and the task's count (the classes and names are confirmed in the jar).
-- **Parties off:** that the call from the script takes effect on the live server ("Create Party" refused).
-- **Gear locks on real Tinkers tools:** area mining (hammers, excavators), Tinkers bows, and armour moving off.
+**Confirmed in game (see `TEST_REPORT.md`):**
+- **FTB Quests:** the book loads the files, stage tasks tick, item tasks take the potatoes, the hidden stage reward is claimed, and `change_progress` completes a quest for a named player.
+- **The `#potato_offer` event** reaches the script, and handed-in potatoes count toward the rank.
+- **Parties off:** "Create Party" is refused.
+- **Gear locks on real Tinkers tools:** pickaxes, a sledge hammer's area mining and melee hits are stopped, and locked Twilight Forest armour comes off. A locked longbow still shows the draw, but no arrow fires.
+- **The tooltips:** ✘ and ✔ lines, and the change after a grant.
+
+**Known gap:** a locked Tinkers tool's on-hit effects can still land. A cobalt pickaxe's "pierced" effect did, with no real damage.
+
+**Still to try in game:**
+- **Excavators,** and locked Tinkers armour coming off.
 - **Right-click cancelling** placing AE2 parts and Thermal attachments.
-- **The tooltips in game:** `addAdvancedToAll`, `event.shift` inside the callback, and the client seeing the synced stages straight after they change.
 - **Deployers** placing a locked block (they should be refused).

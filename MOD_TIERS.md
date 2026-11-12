@@ -1,7 +1,5 @@
 # Trollcraft III — Per-Mod Tiers
 
-> **Note (pack change):** ProjectE has since been removed from the pack, together with AppliedE and Tinkers' EMC, which needed it. Mentions of them below describe the old pack.
-
 Each progression mod split into its own **early game**, **mid game** and **end game** stages.
 
 - These stages are **inside each mod**. A mod's "early game" isn't always early in the pack: Draconic Evolution's early
@@ -23,8 +21,7 @@ Each progression mod split into its own **early game**, **mid game** and **end g
   [Alex's Caves](#alexs-caves) · [RFTools Utility and Builder](#rftools)
 - Tier 1 smaller mods: [Hexerei](#hexerei) · [Reliquary](#reliquary) · [AgriCraft](#agricraft) ·
   [Extra Utilities Reborn](#extra-utilities-reborn) · [Mowzie's Mobs](#mowzies-mobs) · [Alex's Mobs](#alexs-mobs)
-- Tier 2 (end game): [Draconic Evolution](#draconic-evolution) · [ProjectE](#projecte) ·
-  [RFTools Dimensions](#rftools)
+- Tier 2 (end game): [Draconic Evolution](#draconic-evolution) · [RFTools Dimensions](#rftools)
 
 ---
 
@@ -216,7 +213,7 @@ batteries, and alloy blocks for the Tinker's Anvil.
 
 ### Applied Energistics 2
 
-*15.4.11 + Advanced AE, AppliedE and other addons · In-game guide: Guide (Book in a Charger)*
+*15.4.11 + Advanced AE and other addons · In-game guide: Guide (Book in a Charger)*
 
 **Early game**
 - Build a **Charger** and a **Crank**. Charge a compass into a **Meteorite Compass**.
@@ -235,9 +232,8 @@ batteries, and alloy blocks for the Tinker's Anvil.
 **End game**
 - **Quantum Network Bridge**, **P2P Tunnels** and **Spatial IO**.
 - **Advanced AE**: the Reaction Chamber, Quantum Alloy, the **Quantum Computer** multiblock and Quantum armor.
-- **AppliedE** connects ProjectE's EMC to the network. It needs ProjectE Red Matter and a Transmutation Tablet.
 
-**Needs from outside:** FE power from any tech mod. AppliedE needs ProjectE's end game.
+**Needs from outside:** FE power from any tech mod.
 
 ---
 
@@ -542,31 +538,3 @@ There's no crafting ladder, and bosses can be fought in any order. This split is
 - Build the **Draconic Reactor**.
 
 **Needs from outside:** the Wither, the Ender Dragon (respawn it for more hearts), huge amounts of power.
-
----
-
-### ProjectE
-
-*PE1.0.1 · In-game guide: none*
-
-ProjectE can technically be started on day one, but it's placed in Tier 2 on purpose: EMC can skip most other mods'
-progression. See [STARTING_MODS.md](STARTING_MODS.md).
-
-**Early game**
-- Craft the **Philosopher's Stone**: world transmutation and a portable crafting grid.
-- Build the **Transmutation Table**. Burning items there teaches them and adds EMC.
-- Make **Alchemical Coal**, Covalence Dust and the **Alchemical Chest**.
-- **Move on when:** you have an **Energy Condenser** and **Energy Collector MK1**.
-
-**Mid game**
-- **Anti-Matter Relays**.
-- Upgrade fuel: **Mobius Fuel**, then **Aeternalis Fuel**. **Klein Stars** store EMC.
-- Make **Dark Matter**, then DM tools, armor and the furnace, plus Collector and Relay MK2.
-- **Move on when:** you can make **Red Matter**.
-
-**End game**
-- Red Matter gear, **Collector** and **Relay MK3**, and **Energy Condenser MK2**. There's no MK3 condenser.
-- **Transmutation Tablet**, Dark Matter Pedestal, Gem armor and **Klein Star Omega**.
-- **AppliedE** links EMC to AE2.
-
-**Needs from outside:** nothing. That's why it can bypass other mods.

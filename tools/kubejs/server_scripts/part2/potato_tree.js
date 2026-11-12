@@ -159,6 +159,13 @@ const NODES = [
     potatoes: 25000, items: [['immersiveengineering:component_steel', 8]], icon: 'immersiveengineering:component_steel', x: 12, y: 0,
     places: [], use: ['immersiveengineering:assembler'],
     desc: 'Use Immersive Engineering\'s Assembler multiblock (it is formed with the hammer, so only using it is locked).' },
+  { n: 29, id: 'simple_crafting', name: 'Simple Crafters', chapter: 'autocrafting', rank: 4, tier: 4, needs: [],
+    potatoes: 25000, items: [['minecraft:crafting_table', 8]], icon: 'quark:crafter', x: 15, y: 0,
+    places: ['quark:crafter', 'botania:crafty_crate'],
+    desc: 'Place and use the Quark Crafter and Botania\'s Crafty Crate.' },
+  { n: 30, id: 'project_automation', name: 'Project Automation', chapter: 'autocrafting', rank: 7, tier: 7, needs: [],
+    potatoes: 175000, items: [['bluepower:project_table', 4]], icon: 'bluepower:auto_project_table', x: 15, y: -2,
+    places: ['bluepower:auto_project_table'], desc: 'Place and use Blue Power\'s Auto Project Table.' },
 
   // ---- Farms ----
   { n: 31, id: 'create_farming', name: 'Create Farming', chapter: 'farms', rank: 1, tier: 1, needs: [],
@@ -240,6 +247,11 @@ function comp(text) {
 }
 function tell(p, text) { try { p.tell(comp(text)) } catch (e) { } }
 // A short notice on the action bar, at most once every MESSAGE_COOLDOWN_TICKS per player.
+// A refused placement leaves the item off the player's screen until the window is sent again (part2/blood_pool.js).
+function resync(p) {
+  const b = BP()
+  try { if (b && b.resyncInventory) b.resyncInventory(p) } catch (e) { }
+}
 function warn(p, text) {
   const server = p.server || Utils.server, u = uuidOf(p), now = server ? server.tickCount : 0
   if (S.lastMsg[u] != null && now - S.lastMsg[u] < MESSAGE_COOLDOWN_TICKS) return
@@ -355,6 +367,7 @@ BlockEvents.rightClicked(event => {
   }
   if (!N) return
   warn(p, needText(N))
+  resync(p)
   event.cancel()
 })
 
@@ -365,6 +378,7 @@ BlockEvents.placed(event => {
   const N = PLACE_NODE[String(event.block.id)]
   if (!N || has(p, N)) return
   warn(p, needText(N))
+  resync(p)
   event.cancel()
 })
 

@@ -229,7 +229,11 @@ function guarded(event) {
   return true
 }
 BlockEvents.broken(event => { if (guarded(event)) event.cancel() })
-BlockEvents.placed(event => { if (guarded(event)) event.cancel() })
+BlockEvents.placed(event => {
+  if (!guarded(event)) return
+  try { global.BloodPool.resyncInventory(event.player) } catch (e) { }   // or the item looks used up (part2/blood_pool.js)
+  event.cancel()
+})
 
 
 // ===================== API =====================

@@ -32,9 +32,9 @@ const POST_CHAT_TO_DISCORD = true // post /fakesay lines to Discord's chat chann
 const MAX_CHAT_LENGTH = 256       // the same limit as real chat
 // The Discord wording, matching playerJoined/playerLeft in config/simple-discord-link/simple-discord-link.toml.
 // If you change those, change these too. (Scripts can't read that config themselves.)
-// 🪂 is the parachute emoji and 📋 the clipboard; ** ** makes the name bold.
-const DISCORD_JOINED = '🪂 **%player%** has deployed. The Ministry is watching.'
-const DISCORD_LEFT = '📋 **%player%** has left the battlefield. Their absence has been noted.'
+// 🩸 is the drop-of-blood emoji and 🌫️ the fog; ** ** makes the name bold.
+const DISCORD_JOINED = '🩸 **%player%** stepped out of the blood. The Ministry has been notified, and does not approve.'
+const DISCORD_LEFT = '🌫️ **%player%** slipped back into the static. The Ministry has lost track of them, again.'
 
 
 // ===================== HELPERS =====================

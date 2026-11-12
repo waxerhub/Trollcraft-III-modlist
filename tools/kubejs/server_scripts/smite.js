@@ -1,5 +1,7 @@
-// /smite <player>  - strikes the player with lightning. It damages as normal, but any fire it starts
-//                    (blocks or the player) is put out at once. Fire that was already burning nearby is kept.
+// /smite <player> [times]  - strikes the player with lightning, that many times in a row (default 1, up to
+//                    SMITE_MAX_TIMES), following them as they move. It damages as normal, so a few strikes can kill,
+//                    and it stops if they die or log out. Any fire it starts (blocks or the player) is put out at
+//                    once. Fire that was already burning nearby is kept.
 // /aura <player>   - a swarm of lightning around the player for 2 seconds that follows them as they move.
 //                    By default it's visual only: flash and thunder, no damage, no fire.
 // /superaura <players> [lightning|blood|both]  (default both; @a works, up to SUPER_AURA_MAX_TARGETS players)
@@ -21,7 +23,12 @@
 // ===================== SETTINGS =====================
 
 const ANNOUNCE = true            // tell everyone who was smitten
+const VOICE_SYNDICATE = { tag: '[SYNDICATE]', tagColor: 'dark_red', textColor: 'red' }   // who announces /smite and /aura
 const EXTINGUISH_TARGET = true   // put out the player if the strike sets them on fire
+const SMITE_MAX_TIMES = 20       // the most strikes one /smite can order
+// Between strikes (20 ticks = 1 second). Keep it above 10, or the player's hit immunity soaks up the next bolt, and
+// above FIRE_CHECK_TICKS, or the last bolt's fire counts as "already burning" and is left alone.
+const SMITE_EVERY_TICKS = 15
 
 const AURA_SECONDS = 2
 const AURA_EVERY_TICKS = 2       // a pulse of lightning this often (20 ticks = 1 second)
@@ -97,9 +104,9 @@ function bloodLine(server, text) {
   onlinePlayers(server).forEach(p => { try { p.tell(c) } catch (e) { } })
 }
 
-function ministry(server, text) {
+function syndicate(server, text) {
   server.runCommandSilent('tellraw @a ' + JSON.stringify(['',
-    { text: '[MINISTRY]', color: 'gold', bold: true }, { text: ' ' + text, color: 'yellow' }]))
+    { text: VOICE_SYNDICATE.tag, color: VOICE_SYNDICATE.tagColor, bold: true }, { text: ' ' + text, color: VOICE_SYNDICATE.textColor }]))
 }
 
 function isFire(level, x, y, z) {
@@ -141,13 +148,23 @@ function visualBolt(server, level, dim, x, y, z) {
   server.runCommandSilent('execute in ' + dim + ' run playsound minecraft:entity.lightning_bolt.thunder weather @a ' + num(x) + ' ' + num(y) + ' ' + num(z) + ' 4 1')
 }
 
-function smite(server, target) {
+function strike(server, target) {
   const level = levelOf(target), dim = dimensionId(level), p = pos(target)
   realBolt(server, level, dim, p.x, p.y, p.z)
   if (EXTINGUISH_TARGET) {
     for (let t = 1; t <= 10; t += 3) server.scheduleInTicks(t, () => extinguish(target))
   }
-  if (ANNOUNCE) ministry(server, nameOf(target) + ' has been smitten by order of the Ministry.')
+}
+function smite(server, target, times) {
+  const count = Math.max(1, Math.min(SMITE_MAX_TIMES, Math.floor(Number(times) || 1)))
+  strike(server, target)
+  for (let i = 1; i < count; i++) {
+    server.scheduleInTicks(i * SMITE_EVERY_TICKS, () => {
+      if (target.isRemoved() || !target.isAlive()) return // logged out or dead
+      strike(server, target)
+    })
+  }
+  if (ANNOUNCE) syndicate(server, nameOf(target) + ' has been smitten ' + (count > 1 ? count + ' times ' : '') + 'by order of the Syndicate.')
 }
 
 function aura(server, target) {
@@ -166,7 +183,7 @@ function aura(server, target) {
       if (AURA_DAMAGES && EXTINGUISH_TARGET) extinguish(target)
     })
   }
-  if (ANNOUNCE) ministry(server, nameOf(target) + ' has been granted a Ministry-sanctioned aura.')
+  if (ANNOUNCE) syndicate(server, nameOf(target) + ' has been granted a Syndicate-sanctioned aura.')
 }
 
 // 100 visual-only bolts over 5 seconds, around wherever the player is at each pulse.
@@ -252,9 +269,27 @@ ServerEvents.commandRegistry(event => {
     }
   }
 
+  const smiteTimes = ctx => {
+    try {
+      let n = Number(Arguments.INTEGER.getResult(ctx, 'times'))
+      if (!(n >= 1)) {
+        ctx.source.sendSystemMessage(Text.red('Smite at least once.'))
+        return 0
+      }
+      smite(ctx.source.server, Arguments.PLAYER.getResult(ctx, 'player'), n)
+      if (n > SMITE_MAX_TIMES) ctx.source.sendSystemMessage(Text.of('Capped at ' + SMITE_MAX_TIMES + ' strikes.'))
+      return 1
+    } catch (e) {
+      console.error('[Smite] /smite failed: ' + e)
+      ctx.source.sendSystemMessage(Text.red('/smite failed: ' + e))
+      return 0
+    }
+  }
+
   event.register(Commands.literal('smite')
     .requires(source => source.hasPermission(2))
-    .then(Commands.argument('player', Arguments.PLAYER.create(event)).executes(run(smite, 'smite'))))
+    .then(Commands.argument('player', Arguments.PLAYER.create(event)).executes(run((server, target) => smite(server, target), 'smite'))
+      .then(Commands.argument('times', Arguments.INTEGER.create(event)).executes(smiteTimes))))
 
   event.register(Commands.literal('aura')
     .requires(source => source.hasPermission(2))

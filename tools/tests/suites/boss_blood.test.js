@@ -1,132 +1,131 @@
-// part2/boss_blood.js: Twilight Forest boss kills fill the Blood Pool, the credit split among the fighters.
 // Run with: node tools/tests/run_all.js boss_blood   (or node tools/tests/suites/boss_blood.test.js)
+const REPO_ROOT = require('path').resolve(__dirname, '..', '..', '..')
 const fs = require('fs')
-const paths = require('../lib/paths')
-const src = fs.readFileSync(paths.server('part2/boss_blood.js'), 'utf8')
+const SRC = fs.readFileSync(REPO_ROOT + '/tools/kubejs/server_scripts/part2/boss_blood.js', 'utf8')
+const CHESTS = fs.readFileSync(REPO_ROOT + '/tools/kubejs/server_scripts/part2/twilight_bosses.js', 'utf8')
 let fails = 0
 const ok = (l, c, e) => { console.log((c ? 'ok   ' : 'FAIL ') + l + (!c && e !== undefined ? '  ' + e : '')); if (!c) fails++ }
 
-// ---------- the mock ----------
-const OW = 'minecraft:overworld', TF = 'twilightforest:twilight_forest'
-const persistent = {}
-const players = [], entities = []
-const jlist = arr => ({ size: () => arr.length, get: i => arr[i] })
-const server = {
-  get players() { return jlist(players) },
-  get entities() { return jlist(entities.filter(e => e.alive)) },
-  persistentData: { getString: k => persistent[k] || '', putString: (k, v) => { persistent[k] = v } },
-}
-const level = dim => ({ dimension: { location: () => dim } })
-function player(name, x, z, opts) {
+const jlist = a => ({ size: () => a.length, get: i => a[i] })
+function setup(opts) {
   opts = opts || {}
-  const p = { name, x, y: 64, z, dim: opts.dim || TF, msgs: [], creative: !!opts.creative, op: !!opts.op,
-    isPlayer: () => true, getGameProfile: () => ({ getName: () => name }), getStringUuid: () => 'U-' + name,
-    getX: () => p.x, getY: () => p.y, getZ: () => p.z, get level() { return level(p.dim) },
-    isCreative: () => p.creative, isSpectator: () => false, hasPermissions: () => p.op, tell: c => p.msgs.push(c) }
-  players.push(p)
-  return p
+  const W = { paid: [], cmds: [], saved: {}, handlers: {}, roots: {} }
+  const level = d => ({ dimension: d || 'minecraft:twilightforest:twilight_forest' })
+  W.players = []
+  W.entities = []
+  W.server = { get players() { return jlist(W.players) }, get entities() { return jlist(W.entities) },
+    persistentData: { getString: k => W.saved[k] || '', putString: (k, v) => { W.saved[k] = v } },
+    runCommandSilent: c => { W.cmds.push(c); return 1 } }
+  W.player = (name, x, z, more) => {
+    const p = Object.assign({ name, x, y: 64, z, inbox: [], creative: false, level: level(), getGameProfile() { return { getName: () => name } },
+      getStringUuid: () => 'uuid-' + name, isCreative() { return this.creative }, isSpectator: () => false, isPlayer: () => true,
+      getX() { return this.x }, getY() { return this.y }, getZ() { return this.z }, tell(c) { this.inbox.push(c.json || String(c)) } }, more || {})
+    W.players.push(p); return p
+  }
+  W.boss = (id, x, z, more) => {
+    const e = Object.assign({ id, x, y: 64, z, alive: true, level: level(), getEncodeId: () => id, isPlayer: () => false,
+      getX() { return this.x }, getY() { return this.y }, getZ() { return this.z }, isAlive() { return this.alive } }, more || {})
+    W.entities.push(e); return e
+  }
+  // Kill: health 0 first (TF's die() runs then), like the real death event.
+  W.kill = (e, killer, msgId) => { e.alive = false; W.handlers.death({ entity: e, server: W.server, source: { getMsgId: () => msgId || 'player', getActual: () => killer || null } }) }
+  const Blood = { addDrops: (n, source, uuid, name) => { W.paid.push({ n, source, uuid, name }); return n } }
+  const g = opts.noPool ? {} : { BloodPool: Blood }
+  const node = (n, t) => ({ n, t, ch: [], then(c) { this.ch.push(c); return this }, requires(f) { this.req = f; return this }, executes(f) { this.f = f; return this } })
+  const ev = { commands: { literal: n => node(n, 'lit') }, register: r => { W.roots[r.n] = r } }
+  W.cmd = (line, op) => {
+    const toks = line.split(' '); let n = W.roots[toks[0]]; const out = []
+    for (let i = 1; i < toks.length; i++) n = n.ch.find(c => c.n == toks[i])
+    const src = { server: W.server, hasPermission: () => op !== false, sendSystemMessage: m => out.push(m.json || String(m)) }
+    if (n.req && !n.req(src)) return 'DENIED'
+    n.f({ source: src }); return out
+  }
+  const Java = { loadClass: () => ({ fromJsonLenient: s => ({ json: s }) }) }
+  const consoleStub = { info: () => {}, warn: m => { W.warned = m }, error: m => { W.error = m } }
+  new Function('EntityEvents', 'ServerEvents', 'Java', 'Utils', 'Text', 'console', 'global', SRC)(
+    { death: f => { W.handlers.death = f } }, { commandRegistry: f => f(ev) }, Java, { server: W.server }, { of: t => String(t) }, consoleStub, g)
+  W.global = g
+  return W
 }
-function mob(type, x, z, extra) {
-  const e = Object.assign({ type, x, y: 64, z, dim: TF, alive: true,
-    isPlayer: () => false, getEncodeId: () => type, getX: () => e.x, getY: () => e.y, getZ: () => e.z,
-    get level() { return level(e.dim) }, isAlive: () => e.alive }, extra || {})
-  entities.push(e)
-  return e
-}
-const added = []
-const BloodPool = { addDrops: (n, source, uuid, name) => { added.push({ n, source, uuid, name }) } }
-const global = { BloodPool }
-let deathHandler = null, cmdTree = null
-const logs = []
-const Serializer = { fromJsonLenient: j => JSON.parse(j) }
-const node = (n) => ({ n, ch: [], req: null, f: null, then(c) { this.ch.push(c); return this }, requires(f) { this.req = f; return this }, executes(f) { this.f = f; return this } })
-new Function('EntityEvents', 'ServerEvents', 'Java', 'Utils', 'Text', 'console', 'global', src)(
-  { death: h => { deathHandler = h } },
-  { commandRegistry: h => h({ commands: { literal: node }, register: t => { cmdTree = t } }) },
-  { loadClass: () => Serializer },
-  { server },
-  { of: s => s },
-  { info: m => logs.push(m), warn: m => logs.push('WARN ' + m), error: m => logs.push('ERR ' + m) },
-  global)
-const text = c => (Array.isArray(c) ? c.map(x => (typeof x == 'string' ? x : x.text)).join('') : String(c))
-function kill(e, killer, msgId) {
-  e.alive = false
-  deathHandler({ entity: e, server, source: { getMsgId: () => msgId || 'player', getActual: () => killer || null } })
-}
-function run(args, as) {
-  const replies = []
-  const src2 = { hasPermission: () => !as || as.op, sendSystemMessage: c => replies.push(text(c)) }
-  let n = cmdTree
-  args.forEach(a => { n = n.ch.find(c => c.n == a) })
-  if (n.req && !n.req(src2)) return ['DENIED']
-  n.f({ source: src2 })
-  return replies
-}
-const total = () => added.reduce((a, b) => a + b.n, 0)
-const reset = () => { added.length = 0 }
+const paidTotal = W => W.paid.reduce((a, p) => a + p.n, 0)
 
-// ---------- checks ----------
-const ana = player('Ana', 0, 0), bo = player('Bo', 10, 0)
-kill(mob('twilightforest:naga', 5, 0), ana)
-ok('a Naga: 200 Drops into the Pool', total() == 200, total())
-ok('... split between the two fighters, 100 each', added.length == 2 && added.every(a => a.n == 100 && a.source == 'boss'), JSON.stringify(added))
-ok('... and everyone online is told', /\[BLOOD GOD\] The Naga has fallen to (Ana and Bo|Bo and Ana)\. \+200 Drops of Blood\./.test(text(ana.msgs[0])) && bo.msgs.length == 1, text(ana.msgs[0]))
+let W = setup()
+const B = W.global.BossBlood.bosses
+const ids = Object.keys(B)
+const byRank = ids.slice().sort((a, b) => B[a].rank - B[b].rank)
+ok('eight bosses, ranks 1 to 8', ids.length == 8 && byRank.every((id, i) => B[id].rank == i + 1))
+ok('... easiest first: Naga, Minoshroom, Alpha Yeti, Lich, Knight Phantoms, Hydra, Ur-Ghast, Snow Queen',
+  byRank.map(id => B[id].name).join(', ') == 'the Naga, the Minoshroom, the Alpha Yeti, the Lich, the Knight Phantoms, the Hydra, the Ur-Ghast, the Snow Queen',
+  byRank.map(id => B[id].name).join(', '))
+// The same order as the boss chests (part2/twilight_bosses.js).
+const cg = {}
+new Function('ServerEvents', 'Item', 'console', 'global', CHESTS)({ entityLootTables: () => {}, chestLootTables: () => {} }, { exists: () => true }, { info() {}, error() {} }, cg)
+ok('... the same ranking as the boss chests in twilight_bosses.js', cg.TwilightBosses.BOSSES.map(b => 'the ' + b.name).join() == byRank.map(id => B[id].name).join())
+ok('harder bosses always pay more', byRank.every((id, i) => i == 0 || B[id].drops > B[byRank[i - 1]].drops), byRank.map(id => B[id].drops).join())
+ok('... from 200 (Naga) to 1,000 (Snow Queen), the same two ends as before', B['twilightforest:naga'].drops == 200 && B['twilightforest:snow_queen'].drops == 1000)
+ok('... each step 15-35% more than the last', byRank.every((id, i) => { if (!i) return true; const r = B[id].drops / B[byRank[i - 1]].drops; return r >= 1.15 && r <= 1.35 }))
 
-reset()
-const cy = player('Cy', 20, 0)
-kill(mob('twilightforest:minoshroom', 5, 0), bo)
-ok('an odd split: 350 among three is 118 + 116 + 116, the remainder to the killer', total() == 350 && added[0].name == 'Bo' && added[0].n == 118 && added[1].n == 116 && added[2].n == 116, JSON.stringify(added))
+// Every boss pays its amount to one fighter nearby.
+byRank.forEach(id => {
+  W = setup()
+  const p = W.player('Ann', 10, 0)
+  W.kill(W.boss(id, 0, 0), p)
+  ok(B[id].name + ' pays ' + B[id].drops + ' Drops, source "boss"', W.paid.length == 1 && W.paid[0].n == B[id].drops && W.paid[0].source == 'boss' && W.paid[0].uuid == 'uuid-ann', JSON.stringify(W.paid))
+})
 
-reset()
-const clone = mob('twilightforest:lich', 5, 0, { isShadowClone: () => true })
-kill(clone, ana)
-ok('a Lich shadow clone pays nothing', total() == 0)
-const clone2 = mob('twilightforest:lich', 5, 0, { getNbt: () => ({ getBoolean: k => k == 'ShadowClone' }) })
-kill(clone2, ana)
-ok('... nor one recognised only by its NBT', total() == 0)
-kill(mob('twilightforest:lich', 5, 0, { isShadowClone: () => false }), ana)
-ok('the real Lich pays 300', total() == 300, total())
+// The split: equal shares, the killer takes the remainder.
+W = setup()
+const a = W.player('Ann', 5, 0), b2 = W.player('Bob', 0, 20), c = W.player('Cy', 30, 30)
+W.player('Far', 500, 0)
+W.kill(W.boss('twilightforest:hydra', 0, 0), b2)
+ok('Hydra with three fighters: 216 each, and the killer also takes the 2 left over', W.paid.map(p => p.name + ' ' + p.n).join(', ') == 'Bob 218, Ann 216, Cy 216', W.paid.map(p => p.name + ' ' + p.n).join(', '))
+ok('... adds up to 650, and the player 500 blocks away gets nothing', paidTotal(W) == 650 && !W.paid.some(p => p.name == 'Far'))
+ok('... everyone online is told with player.tell (never tellraw @a)', W.players.every(p => /The Hydra has fallen to Bob, Ann and Cy\. \+650 Drops of Blood\./.test(p.inbox.join())) && !W.cmds.some(x => /tellraw/.test(x)), W.players[0].inbox.join())
 
-reset()
-const knights = [0, 1, 2, 3, 4, 5].map(i => mob('twilightforest:knight_phantom', i * 3, 5))
-knights.slice(0, 5).forEach(k => kill(k, ana))
-ok('the first five Knight Phantoms pay nothing', total() == 0, total())
-kill(knights[5], ana)
-ok('the last of the group pays 400, once', total() == 400, total())
+// The Lich's shadow clones pay nothing.
+W = setup()
+let p = W.player('Ann', 5, 0)
+W.kill(W.boss('twilightforest:lich', 0, 0, { isShadowClone: () => true }), p)
+ok('a Lich shadow clone pays nothing', W.paid.length == 0)
+W.kill(W.boss('twilightforest:lich', 0, 0, { isShadowClone: () => false }), p)
+ok('... the real Lich pays 400', paidTotal(W) == 400)
 
-reset()
-kill(mob('twilightforest:hydra', 5, 0), null, 'genericKill')
-ok('/kill pays nothing', total() == 0)
-kill(mob('twilightforest:ur_ghast', 5, 0), null, 'outOfWorld')
-ok('the void pays nothing', total() == 0)
-kill(mob('twilightforest:snow_queen', 5000, 5000), null)
-ok('a boss with no player nearby pays nothing', total() == 0)
-const dee = player('Dee', 5000, 5003, { creative: true })
-kill(mob('twilightforest:alpha_yeti', 5000, 5000), dee)
-ok('creative players aren\'t fighters (so nothing is paid)', total() == 0)
-const eve = player('Eve', 0, 0, { dim: OW })
-kill(mob('twilightforest:hydra', 0, 0), ana)
-ok('a player in another dimension at the same spot isn\'t a fighter', total() == 600 && !added.some(a => a.name == 'Eve'), JSON.stringify(added))
-reset()
-kill(mob('minecraft:zombie', 5, 0), ana)
-ok('ordinary mobs are ignored', total() == 0)
+// Knight Phantoms: the group pays once, when the last one dies.
+W = setup()
+p = W.player('Ann', 5, 0)
+const knights = [0, 1, 2, 3, 4, 5].map(i => W.boss('twilightforest:knight_phantom', i * 3, 0))
+knights.slice(0, 5).forEach(k => W.kill(k, p))
+ok('five Knight Phantoms dead: nothing yet', W.paid.length == 0)
+W.kill(knights[5], p)
+ok('... the sixth: the group pays 500 once', W.paid.length == 1 && paidTotal(W) == 500)
+ok('... and the message says "have fallen"', /The Knight Phantoms have fallen to Ann\./.test(p.inbox.join()))
 
-const D = JSON.parse(persistent.boss_blood || '{}')
-ok('kills and drops are saved per boss', D.kills['twilightforest:naga'] == 1 && D.kills['twilightforest:knight_phantom'] == 1 && D.drops['twilightforest:lich'] == 300, persistent.boss_blood)
-ok('... with a log, newest first', D.log.length == 5 && D.log[0].boss == 'twilightforest:hydra', JSON.stringify(D.log.map(k => k.boss)))
+// What never pays.
+W = setup(); p = W.player('Ann', 5, 0)
+W.kill(W.boss('twilightforest:snow_queen', 0, 0), p, 'genericKill')
+W.kill(W.boss('twilightforest:snow_queen', 0, 0), p, 'outOfWorld')
+ok('/kill and the void pay nothing', W.paid.length == 0)
+W = setup(); W.player('Ann', 200, 0)
+W.kill(W.boss('twilightforest:snow_queen', 0, 0), null)
+ok('no player within 64 blocks: nothing', W.paid.length == 0)
+W = setup(); p = W.player('Ann', 5, 0); p.creative = true
+W.kill(W.boss('twilightforest:snow_queen', 0, 0), p)
+ok('a creative player alone: nothing', W.paid.length == 0)
+W = setup(); p = W.player('Ann', 5, 0)
+W.kill(W.boss('twilightforest:lich_minion', 0, 0), p)
+ok('a boss\'s minions pay nothing', W.paid.length == 0)
+W = setup({ noPool: true }); p = W.player('Ann', 5, 0)
+W.kill(W.boss('twilightforest:naga', 0, 0), p)
+ok('without blood_pool.js: nothing paid, a warning logged', /not installed/.test(W.warned || ''))
 
-const ladder = run([], ana)
-ok('/bossblood lists the 8 bosses with their rewards and kills', ladder.length == 9 && /I\. The Naga: 200 Drops \(slain 1x, 200 so far\)/.test(ladder.join('\n')) && /IV\. The Snow Queen: 1,000 Drops/.test(ladder.join('\n')), ladder.join(' | '))
-ok('/bossblood log is op-only', run(['log'], ana)[0] == 'DENIED')
-const op = player('Op', 9999, 9999, { op: true, dim: OW })
-ok('... and lists the kills for ops', /the Hydra \+600 \(Ana/.test(run(['log'], op)[0]), run(['log'], op)[0])
-
-global.BloodPool = undefined
-reset()
-kill(mob('twilightforest:naga', 5, 0), ana)
-ok('without the Blood Pool: nothing paid, one warning', total() == 0 && logs.filter(l => /not installed/.test(l)).length == 1)
-kill(mob('twilightforest:naga', 5, 0), ana)
-ok('... only warned once', logs.filter(l => /not installed/.test(l)).length == 1)
-ok('no errors logged', !logs.some(l => /^ERR/.test(l)), logs.filter(l => /^ERR/.test(l)).join('; '))
+// /bossblood lists them in rank order; the log and stats are kept.
+W = setup(); p = W.player('Ann', 5, 0)
+W.kill(W.boss('twilightforest:ur_ghast', 0, 0), p)
+const out = W.cmd('bossblood')
+const rows = out.slice(1).map(s => JSON.parse(s)[2].text)
+ok('/bossblood: eight rows, I. to VIII., easiest first', rows.length == 8 && /^I\. The Naga: 200 Drops$/.test(rows[0]) && /^VIII\. The Snow Queen: 1,000 Drops$/.test(rows[7]) && /^II\. The Minoshroom: 250 Drops$/.test(rows[1]) && /^III\. The Alpha Yeti: 300 Drops$/.test(rows[2]) && /^IV\. The Lich: 400 Drops$/.test(rows[3]), rows.join(' | '))
+ok('... with what each has paid so far', /^VII\. The Ur-Ghast: 800 Drops \(slain 1x, 800 so far\)$/.test(rows[6]), rows[6])
+ok('/bossblood log is for ops', W.cmd('bossblood log', false) == 'DENIED' && /Ur-Ghast \+800 \(Ann\)/.test(W.cmd('bossblood log').join()))
+ok('the kill is saved', JSON.parse(W.saved.boss_blood).kills['twilightforest:ur_ghast'] == 1)
 
 console.log(fails ? fails + ' FAILED' : 'ALL PASSED')

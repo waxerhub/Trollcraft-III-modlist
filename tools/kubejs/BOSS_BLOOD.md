@@ -1,66 +1,80 @@
 # Boss Blood (Part II)
 
-`server_scripts/part2/boss_blood.js` turns Twilight Forest boss kills into Drops of Blood for the [Blood Pool](BLOOD_POOL.md). It needs `part2/blood_pool.js`.
+Killing a Twilight Forest boss pays Drops of Blood into the Blood Pool. The harder the boss, the more it pays. The
+ranking is the same one the boss chests use (`part2/twilight_bosses.js`, see `TWILIGHT_BOSSES.md`).
 
-## The reward ladder
-In Twilight Forest's progression order (owner decision):
+## Files
 
-| Rung | Boss | Drops |
-|---|---|---|
-| I | Naga | 200 |
-| I | Lich | 300 |
-| II | Minoshroom | 350 |
-| II | Knight Phantoms (the whole group of six) | 400 |
-| III | Hydra | 600 |
-| III | Ur-Ghast | 600 |
-| IV | Alpha Yeti | 800 |
-| IV | Snow Queen | 1,000 |
+- `tools/kubejs/server_scripts/part2/boss_blood.js` → `<server>/kubejs/server_scripts/part2/`, then `/reload`.
+  It needs `part2/blood_pool.js` (`global.BloodPool`). Without it, kills pay nothing and the log says so once.
+- Tests: `tools/tests/suites/boss_blood.test.js`.
 
-- **Every kill pays the full amount** (owner decision). Each boss guards its own structure, so exploring is the limit.
-- **For scale:** a full Twilight Forest run is worth 4,250 Drops, and Blood Pool Tier 1 needs 20,000. Boss blood is a bonus beside trolls, coins and the tithe.
+## What each boss pays
 
-## How a kill is counted
-- **Who gets credit.** The **Pool** gets the full amount. The **credit** on `/bloodpool top` is split equally among the **fighters**:
-  - fighters are the players in survival or adventure, in the same dimension, within 64 blocks when the boss dies;
-  - an uneven split's remainder goes to the killer (e.g. 350 between three: 118, 116, 116).
-- **No fighters, no blood.** A boss killed by other mobs, or cleared by an op in creative, pays nothing. So does a boss that dies to `/kill` or the void.
-- **The Lich:** its shadow clones are also `twilightforest:lich`, but only the real Lich pays. Shadow clones are recognised by Twilight Forest's `isShadowClone()`, or the `ShadowClone` NBT flag.
-- **Knight Phantoms:** the group pays once, when the last one dies (no other living Knight Phantom within 64 blocks). That's when Twilight Forest drops its treasure chest.
-- **The announcement:** every player online is told in the Blood God's voice, e.g. "**[BLOOD GOD]** The Naga has fallen to Ana and Bo. +200 Drops of Blood." It's sent to each player (`player.tell`), not with `tellraw @a`, so it doesn't go to Discord.
-- **The Blood Pool's usual "Tier N is ready" message** still fires when a kill takes the Pool over a threshold.
+Each rank pays about a quarter more than the one before. The two ends stayed where they were: 200 for the Naga and
+1,000 for the Snow Queen.
+
+| Rank | Boss | Drops | Before | Why it sits here |
+|---|---|---|---|---|
+| I | Naga | 200 | 200 | 120 health; it charges and bites, with no ranged attack |
+| II | Minoshroom | 250 | 350 | Axe charges at the end of the Labyrinth |
+| III | Alpha Yeti | 300 | 800 | 200 health; it throws you, but it's slow, and you reach it straight after the Lich |
+| IV | Lich | 400 | 300 | Shields, then shadow clones and minions, then melee: harder in play than II and III |
+| V | Knight Phantoms | 500 | 400 | Six armoured knights with knightmetal weapons, fighting in formations |
+| VI | Hydra | 650 | 600 | The most health (360); only its heads take damage, and they breathe fire |
+| VII | Ur-Ghast | 800 | 600 | It flies out of reach at the top of the Dark Tower, so you need the ghast traps |
+| VIII | Snow Queen | 1,000 | 1,000 | The hardest hits (7 damage), ice shields, and flying |
+
+All eight once each come to 4,100 Drops (4,250 before).
+
+**Why the order changed:** the old ladder tried to follow Twilight Forest's progression, but put the Alpha Yeti fourth.
+In fact it's reached straight after the Lich, so it paid more than the Hydra. TF's real order is the Naga, then the
+Lich, then three branches: the Minoshroom then the Hydra, the Knight Phantoms then the Ur-Ghast, and the Alpha Yeti
+then the Snow Queen. Since the branches can be done in any order, reward by difficulty, not by progression. Ranks II–IV
+come from play on the server: the Lich proved harder than the Minoshroom and the Alpha Yeti.
+
+**For scale:** Tier 1 opens at 20,000 Drops, and the Potato Tithe can add up to 30,000 a day. A boss is a bonus on
+top of the Pool's main sources. Its chest also holds potato crates, which can be tithed at 4 potatoes per Drop.
+
+## Who gets the credit
+
+- **The Pool** gets the full amount, recorded as source `boss`.
+- **The credit** on `/bloodpool top` is split equally among the fighters: survival players within `FIGHTER_RADIUS` (64)
+  blocks, in the same dimension, when the boss dies. The killer, if one of them, also takes what's left over from
+  the split.
+- **The announcement** goes to every player online with `player.tell`, never `tellraw @a`.
+
+## What doesn't pay
+
+- **Lich clones:** the Lich's shadow clones. Only the real Lich pays.
+- **Knight Phantoms before the last:** they come six to a group, and the group pays once, when the last one dies.
+  That's the same moment TF places their chest.
+- **`/kill` and the void.**
+- **A boss with no survival player nearby.**
+- **Minions:** they have their own entity ids.
 
 ## Commands
-| Command | Who | What it does |
-|---|---|---|
-| `/bossblood` | anyone | The ladder, with how often each boss has been slain and its Drops so far |
-| `/bossblood log` | op | The last 20 paid kills: time, boss, Drops, fighters |
 
-## Settings (top of boss_blood.js)
-| Setting | Default | Meaning |
-|---|---|---|
-| `BOSSES` | the ladder above | Entity id → name, Drops, rung |
-| `FIGHTER_RADIUS` | 64 | How close a player must be to share the credit |
-| `NO_PAY_DAMAGE` | `genericKill`, `outOfWorld` | Deaths that pay nothing (`/kill`, the void) |
-| `ANNOUNCE` | true | Tell every player online |
-| `LOG_SIZE` | 20 | Kills kept for `/bossblood log` |
+- `/bossblood` (anyone): the eight bosses in rank order, what each pays and what each has paid so far.
+- `/bossblood log` (op): the last 20 kills, with who shared each.
 
-**Saved data:** `server.persistentData["boss_blood"]` holds kills and Drops per boss, plus the log. Unreadable data is kept under `boss_blood_unreadable_<time>`.
+## Settings (top of `boss_blood.js`)
 
-**API:** `global.BossBlood = { bosses, stats() }`.
+- `BOSSES`: `drops` and `rank` per boss. Keep `rank` in the same order as `BOSSES` in `twilight_bosses.js`; a test checks
+  that.
+- `FIGHTER_RADIUS`, `NO_PAY_DAMAGE`, `ANNOUNCE`, `LOG_SIZE`.
+- `DATA_KEY` (`boss_blood`): where the kill counts and the log are saved. Don't change it on a live server.
 
-## Install
-Copy `boss_blood.js` to `kubejs/server_scripts/part2/` (next to `blood_pool.js`) and run `/reload`.
+## Test plan (an op and a player)
 
-## Test plan (two survival players and an op)
-1. **Naga:** A and B kill a Naga together. Both see the Blood God line, `/bloodpool` rises by 200, and `/bloodpool top` shows 100 each.
-2. **Lich:** kill a Lich. One payment of 300, none for its shadow clones.
-3. **Knight Phantoms:** clear a Knight Stronghold's six. Nothing until the last one dies, then 400 once.
-4. **`/kill`:** `/kill @e[type=twilightforest:naga]` near a Naga pays nothing.
-5. **Creative op alone:** an op in creative kills a boss alone. Nothing paid.
-6. **`/bossblood`** shows the counts, and `/bossblood log` (op) lists the kills.
+1. `/bossblood`: eight rows, I. Naga 200 to VIII. Snow Queen 1,000.
+2. As the player, in survival, stand near `/summon twilightforest:naga ~ ~ ~5` and kill it. The Pool rises by 200,
+   and everyone online sees the Blood God's line.
+3. Kill one with `/kill @e[type=twilightforest:naga]`: nothing is paid.
+4. `/bossblood log` shows the first kill.
 
 ## What couldn't be verified
-- **The shadow clone check:** that Rhino can call the Lich's `isShadowClone()`. If not, the NBT check is the fallback. Test 2 shows whether clones are skipped.
-- **Damage-type ids:** that `/kill` and the void report `genericKill` and `outOfWorld` through KubeJS on 1.20.1. These are the same ids `black_market.js` already uses.
-- **Spread-out Knight Phantoms:** a group more than 64 blocks apart could pay twice. Twilight Forest uses the same 64-block range for its own "last knight" check.
-- **Bosses from other mods** (e.g. Mowzie's Mobs, Ice and Fire, Alex's Caves) aren't on the ladder yet. Each one is a single line in `BOSSES`.
+
+- **In game with a player:** the rebalance wasn't run in game with a player, because the test server had no player
+  online. The tests cover the payments, the split, Lich clones, the Knight Phantom group, `/kill` and the listing.
+- **Balance:** whether the amounts feel right on the live server. Adjust `drops` in `BOSSES`.

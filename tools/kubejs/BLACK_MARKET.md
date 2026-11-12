@@ -57,7 +57,7 @@ In Part II, `part2/blood_pool.js` gives each player a **Potato Standing**: a ran
   - **Crafting:** coins work as gold nuggets in recipes (`BLOCK_COIN_CRAFTING = false`, the default). Crafting **can't duplicate** them: a recipe never copies their hidden tag, so 9 coins make a plain gold ingot, which breaks down into plain nuggets. Players can only spend their own coins as gold.
     - Turning the block on (`true`) rewrites every crafting-table recipe that takes gold nuggets to accept plain ones only. That includes mods' recipes, and it stopped Ender IO's capacitors from being crafted, so it's off.
 
-**The merchant buys nothing from players.** Magical Crops, ProjectE and similar mods make most items farmable, so anything he bought would be an endless coin source.
+**The merchant buys nothing from players.** Magical Crops and similar mods make most items farmable, so anything he bought would be an endless coin source.
 - `SELL_LIST` at the top of the script can still be filled in, but only with things nobody can farm.
 - With entries, a "He buys" section appears in the shop. Plain items only; anything renamed or enchanted is left alone.
 

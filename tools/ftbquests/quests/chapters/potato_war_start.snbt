@@ -43,7 +43,7 @@
 		}
 		{
 			dependencies: ["507A70000001012D"]
-			description: ["Offer potatoes with &6/potatowar offer&r (crates count as 9). Your rank is the lifetime total, with no cap.", "Rank n lets you craft Tier n's items at a crafting table (also mods' own crafting recipes). Machines work for everyone.", "See the chapter \"The Ranks\" and /potatowar."]
+			description: ["Offer potatoes with &6/potatowar offer&r (crates count as 9). Your rank comes from the lifetime total.", "It can be at most one rank above the tier the Blood Pool has opened. Potatoes past that still count, and the rank comes when the tier opens.", "Rank n lets you craft Tier n's items at a crafting table (also mods' own crafting recipes). Machines work for everyone.", "See the chapter \"The Ranks\" and /potatowar."]
 			icon: "minecraft:baked_potato"
 			id: "507A70000001012E"
 			tags: ["potato_start"]
@@ -94,7 +94,7 @@
 		}
 		{
 			dependencies: ["507A700000010130"]
-			description: ["When the Blood Pool is 2 tiers past something, it comes to everyone for free: crafting access and every tree node up to that tier.", "Your rank's name and black market perks still come only from potatoes."]
+			description: ["When the Blood Pool is 2 tiers past something, it comes to everyone for free: crafting access and every tree node up to that tier.", "Autocrafters only make what every player can already craft, so recipes from the newest 2 tiers have to be crafted by hand.", "Your rank's name and black market perks still come only from potatoes."]
 			icon: "minecraft:clock"
 			id: "507A700000010131"
 			tags: ["potato_start"]

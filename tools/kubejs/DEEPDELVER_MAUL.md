@@ -6,6 +6,15 @@
 
 It **levels I–X on Grit**: a **netherite pickaxe** whose Efficiency, Fortune and damage grow, until at **Level X it's reforged as a Tinkers' Vein Hammer**.
 
+## Finding it
+Until the first Maul exists, **each fresh loot container Goruk_Lohaus opens has a 10% chance of holding it** (`FINDER`, `FIND_CHANCE`).
+- **Which containers:** a chest, barrel or anything else with a loot table, on its first opening, when its loot is made. A chest someone placed has no loot table, and doesn't count.
+- **Where it goes:** the Maul is forged into the chest at Level I, after the chest's own loot. Only he gets a hint: "Under the loot lies something old and heavy, waiting for you." If the chest is full, it goes straight to him instead.
+- **When he takes it,** the server hears "Goruk_Lohaus has claimed The Deepdelver's Maul (Level I)!".
+- **It never spawns again.** Once a Maul has been forged (found in a chest or given by an op), no chest ever holds another, whether he has collected it, left it, or lost it. Each roll checks the saved serial number, which never goes back to 0. If it's lost for good, an op re-forges it with `/maul give <player> force`.
+- **Only Goruk_Lohaus.** `FINDER` is the account's username, not a nickname, which anyone could copy. Set it to `''` to switch finding off.
+- **Same method as the Dragon's Hoard:** the chest is noted on the right-click while it still has its loot table, then filled two ticks later, once it has opened.
+
 ## Levels
 | Level | Grit | Item | Damage | Mining | Prospector | White-hot | Grudge bonus | Earthshaker |
 |---|---|---|---|---|---|---|---|---|
@@ -80,12 +89,17 @@ It hands both to `global.DeepdelverMaul`, so the logic stays in the server scrip
 ## Install
 1. Copy `deepdelver_maul.js` to `kubejs/server_scripts/`, and `deepdelver_maul_hooks.js` to `kubejs/startup_scripts/`.
 2. Restart the server, for the hook.
-3. `/maul give Goruk`.
+3. Goruk_Lohaus finds it in a loot chest, or an op forges it with `/maul give Goruk_Lohaus`. Either way, no chest spawns one after that.
 
 It needs Tinkers' Construct for Level X.
 
-## Test plan (Goruk, a second account, an op)
-1. `/maul give Goruk`: a netherite pickaxe named The Deepdelver's Maul, Level I. The tooltip shows "6 damage" and its four abilities.
+## Test plan (Goruk_Lohaus, a second account, an op)
+0. **Finding it** (before anyone has it). To test quickly, set `FIND_CHANCE` to 1 and `/reload`; put it back afterwards.
+   - The second account opens a fresh loot chest: no Maul.
+   - Goruk_Lohaus opens one: the Maul is in it, after the loot, and only he gets the hint.
+   - He takes it: "Goruk_Lohaus has claimed…".
+   - More fresh chests, even after it's lost: never a second Maul.
+1. `/maul give Goruk_Lohaus` (or the one he found): a netherite pickaxe named The Deepdelver's Maul, Level I. The tooltip shows "6 damage" and its four abilities.
 2. **Grit:** mine coal ore (+1) and diamond ore (+8), and kill a zombie (+3). `/maul` shows the Grit.
 3. **Prospector:** mine an ore next to others. The others glow gold through the stone for 5 seconds.
 4. **The ledger:** let the second account hit Goruk. Goruk alone is told it's on the ledger, and `/maul grudges` lists it. Kill it with the Maul: everyone hears the grudge is settled.
@@ -104,6 +118,7 @@ Built in real KubeJS with `preview()` (no player online) and read back:
   - The game reads +13 attack damage: 14 damage.
 
 ## What couldn't be verified
+- **The chest timing:** that a loot chest's own loot is in two ticks after the right-click (the same method as the Dragon's Hoard and the Deep Records).
 - **In a fight and in a mine:** the mock tests pass, but nobody has used it yet. Things to watch:
   - how strong White-hot and the grudge bonus feel with the hook;
   - whether Tinkers' vein mining gives Grit (and Prospector) for every ore in a vein or only the first one broken (it depends on whether Tinkers fires a break event for each block);

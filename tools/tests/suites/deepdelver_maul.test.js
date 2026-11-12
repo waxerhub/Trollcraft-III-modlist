@@ -5,7 +5,11 @@
 const fs = require('fs')
 const paths = require('../lib/paths')
 const snbt = require('../lib/snbt.js')
-const src = fs.readFileSync(paths.server('deepdelver_maul.js'), 'utf8')
+const realSrc = fs.readFileSync(paths.server('deepdelver_maul.js'), 'utf8')
+// The real finder is Goruk_Lohaus; this suite's Goruk stands in for him.
+const FINDER_LINE = "const FINDER = 'Goruk_Lohaus'"
+if (realSrc.indexOf(FINDER_LINE) < 0) throw new Error('FINDER is not Goruk_Lohaus in deepdelver_maul.js')
+const src = realSrc.replace(FINDER_LINE, "const FINDER = 'Goruk'")
 const hookSrc = fs.readFileSync(paths.server('deepdelver_maul.js').replace(/server_scripts[\\/]deepdelver_maul\.js$/, 'startup_scripts/deepdelver_maul_hooks.js'), 'utf8')
 let fails = 0
 const ok = (l, c, e) => { console.log((c ? 'ok   ' : 'FAIL ') + l + (!c && e !== undefined ? '  ' + e : '')); if (!c) fails++ }
@@ -20,9 +24,19 @@ const persistent = {}, players = [], entities = [], cmds = [], logs = []
 const jlist = arr => ({ size: () => arr.length, get: i => arr[i] })
 const blocks = {}
 const ore = id => /_ore$|^minecraft:ancient_debris$/.test(id)
+// Loot containers: key -> { loot (its loot table until it's opened), slots }.
+const chests = {}
 const level = {
   dimension: { location: () => OW },
-  getBlock: (x, y, z) => { const id = blocks[x + ',' + y + ',' + z] || 'minecraft:air'; return { id, x, y, z, level, hasTag: t => t == 'forge:ores' && ore(id) } },
+  getBlock: (x, y, z) => {
+    const k = x + ',' + y + ',' + z, c = chests[k]
+    if (c) {
+      return { id: 'minecraft:chest', x, y, z, level, hasTag: () => false, entityData: tag(c.loot ? { LootTable: c.loot } : {}),
+        entity: { getContainerSize: () => 27, getItem: i => c.slots[i] || EMPTY, setItem: (i, s) => { c.slots[i] = s }, setChanged: () => { } } }
+    }
+    const id = blocks[k] || 'minecraft:air'
+    return { id, x, y, z, level, hasTag: t => t == 'forge:ores' && ore(id) }
+  },
 }
 const server = {
   get players() { return jlist(players.filter(p => p.online)) },
@@ -42,7 +56,7 @@ const server = {
 function advance(n) { for (let i = 0; i < n; i++) { tick++; T += 50; const due = queue.filter(q => q[0] <= tick); queue = queue.filter(q => q[0] > tick); due.forEach(q => q[1]()) } }
 function tag(o) {
   return { contains: k => o != null && Object.prototype.hasOwnProperty.call(o, k), getCompound: k => tag(o && o[k] || {}),
-    getInt: k => (o && o[k] != null ? parseInt(String(o[k]), 10) : 0), getBoolean: () => false }
+    getInt: k => (o && o[k] != null ? parseInt(String(o[k]), 10) : 0), getBoolean: () => false, getString: k => (o && o[k] != null ? String(o[k]) : '') }
 }
 function stack(id, count, nbtStr) {
   const parsed = nbtStr ? snbt(nbtStr) : null
@@ -83,7 +97,7 @@ const StringArg = { word: () => 'word', getString: (ctx, k) => ctx.args[k] }
 const Serializer = { fromJsonLenient: j => JSON.parse(j) }
 new Function('EntityEvents', 'BlockEvents', 'PlayerEvents', 'ServerEvents', 'Java', 'Utils', 'Item', 'Text', 'console', 'global', src)(
   { death: h => { handlers.death = h }, hurt: h => { handlers.hurt = h } },
-  { broken: h => { handlers.broken = h } },
+  { broken: h => { handlers.broken = h }, rightClicked: h => { handlers.rightClicked = h } },
   { tick: h => { handlers.tick = h } },
   { loaded: h => { handlers.loaded = h }, commandRegistry: h => h({ commands: { literal: node, argument: n => node(n) }, arguments: { INTEGER: { create: () => 'int', getResult: (ctx, k) => ctx.args[k] } }, register: t => { cmdTree = t } }) },
   { loadClass: n => (/StringArgumentType/.test(n) ? StringArg : Serializer) },
@@ -122,15 +136,63 @@ const M = () => global.DeepdelverMaul
 // ---------- forging ----------
 const admin = player('Admin', { op: true }), goruk = player('Goruk'), ana = player('Ana', { x: 2 }), bob = player('Bob', { x: 50 })
 ok('/maul before it exists', /has not been forged yet/.test(run([], goruk)[0]))
+
+// ---------- finding it in a loot chest (only Goruk, 10%, while none exists) ----------
+const realRandom = Math.random
+let roll = 0.5
+Math.random = () => roll
+// Right-click a container, and (unless `shut`) let it open: its loot table goes and its loot goes in.
+function openChest(p, x, z, opts) {
+  opts = opts || {}
+  const k = x + ',20,' + z
+  if (!chests[k]) chests[k] = { loot: opts.player ? '' : 'minecraft:chests/simple_dungeon', slots: [] }
+  handlers.rightClicked({ player: p, block: level.getBlock(x, 20, z), server })
+  if (!opts.shut && chests[k].loot) { chests[k].loot = ''; chests[k].slots[0] = stack('minecraft:bread', 3) }
+  advance(2)
+  return chests[k]
+}
+roll = 0.01
+let ch = openChest(ana, 0, 0)
+ok('Ana opens a fresh loot chest, even with all the luck in the world: no Maul (only Goruk can find it)', !ch.slots.some(s => s && s.parsed) && M().state().serial == 0)
+ch = openChest(goruk, 1, 0, { player: true })
+ok('Goruk opens a chest someone placed (no loot table): no Maul', !ch.slots.some(s => s && s.parsed) && M().state().serial == 0)
+ch = openChest(goruk, 2, 0, { shut: true })
+ok('... nor when a loot chest doesn\'t open', !ch.slots.some(s => s && s.parsed) && M().state().serial == 0)
+roll = 0.5
+ch = openChest(goruk, 3, 0)
+ok('Goruk opens a fresh loot chest and misses the 10%: no Maul', !ch.slots.some(s => s && s.parsed) && M().state().serial == 0)
+roll = 0.05
+ch = openChest(goruk, 4, 0)
+const found = ch.slots.find(s => s && s.parsed && s.parsed.trollcraft)
+ok('Goruk opens one and the 10% comes up: the Maul is in it at Level I, after the chest\'s own loot', !!found && ch.slots[0].id == 'minecraft:bread' && ch.slots[1] === found &&
+  found.id == 'minecraft:netherite_pickaxe' && M().isRealMaul(found) && M().state().serial == 1)
+ok('... only Goruk gets a hint, and nobody holds it yet', said(goruk, /something old and heavy, waiting for you/) && !said(ana, /old and heavy/) && M().state().holder == '')
+roll = 0.01
+ch = openChest(goruk, 5, 0)
+ok('once it exists, no other chest holds one', !ch.slots.some(s => s && s.parsed) && M().state().serial == 1)
+Math.random = realRandom
+goruk.slots[5] = found; chests['4,20,0'].slots[1] = EMPTY
+advance(100)
+ok('Goruk takes it: everyone hears he has claimed it', said(ana, /Goruk has claimed The Deepdelver's Maul \(Level I\)!/) && M().state().holderName == 'Goruk')
+Math.random = () => 0
+ch = openChest(goruk, 6, 0)
+ok('after he has collected it, no chest he opens ever spawns another', !ch.slots.some(s => s && s.parsed) && M().state().serial == 1)
+goruk.slots[5] = EMPTY                        // it falls in lava: lost
+advance(200)
+ch = openChest(goruk, 7, 0)
+ok('... not even once it\'s lost (it existed: that\'s enough)', !ch.slots.some(s => s && s.parsed) && M().state().serial == 1)
+Math.random = realRandom
+ok('the real script\'s finder is Goruk_Lohaus', realSrc.indexOf(FINDER_LINE) >= 0)
+
 ok('/maul give is op-only', run(['give', 'Goruk'], goruk)[0] == 'DENIED')
-ok('/maul give Goruk forges it at Level I', /Forged The Deepdelver's Maul for Goruk at Level I/.test(run(['give', 'Goruk'], admin)[0]) && !!maulOf(goruk))
+ok('/maul give Goruk force forges a new one at Level I', /Forged The Deepdelver's Maul for Goruk at Level I/.test(run(['give', 'Goruk', 'force'], admin)[0]) && !!maulOf(goruk))
 const m1 = maulOf(goruk)
 ok('... a netherite pickaxe with Efficiency I and Unbreaking I', m1.id == 'minecraft:netherite_pickaxe' && JSON.stringify(ench(m1)) == JSON.stringify({ efficiency: 1, unbreaking: 1 }))
 ok('... 6 damage (+5) at a pickaxe\'s 1.2 speed (-2.8)', attr(m1, 'attack_damage').Amount == '5d' && attr(m1, 'attack_speed').Amount == '-2.8d')
 ok('... the lore: level, Grit, damage, and its Level I abilities with their values', lore(m1).some(l => /^Level I · Grit 0 \/ 100$/.test(l)) && lore(m1).includes('6 damage') &&
   lore(m1).some(l => /Prospector: .*within 2 blocks/.test(l)) && lore(m1).some(l => /White-hot: hits ignore 10% of armour/.test(l)) &&
   lore(m1).some(l => /Grudge Ledger: .*\+10% damage/.test(l)) && lore(m1).some(l => /✧ Earthshaker at Level V/.test(l)), lore(m1).join(' | '))
-ok('... marked with its serial and Grit', m1.parsed.trollcraft.maul.serial == '1' && m1.parsed.trollcraft.maul.grit == '0' && M().isRealMaul(m1))
+ok('... marked with its serial and Grit', m1.parsed.trollcraft.maul.serial == '2' && m1.parsed.trollcraft.maul.grit == '0' && M().isRealMaul(m1))
 ok('a second /maul give is refused (only one exists)', /already exists \(held by Goruk\)/.test(run(['give', 'Ana'], admin)[0]) && !maulOf(ana))
 
 // ---------- mining: Grit and Prospector ----------
@@ -281,14 +343,14 @@ delete global.Purge
 ana.slots[0] = mx
 
 // ---------- reforging ----------
-ok('/maul give Bob force: a new one; the old one is an ordinary tool now', /Forged .* for Bob at Level I/.test(run(['give', 'Bob', 'force'], admin)[0]) && !M().isRealMaul(mx) && M().state().serial == 2)
+ok('/maul give Bob force: a new one; the old one is an ordinary tool now', /Forged .* for Bob at Level I/.test(run(['give', 'Bob', 'force'], admin)[0]) && !M().isRealMaul(mx) && M().state().serial == 3)
 ana.selected = 0
 blocks['0,10,0'] = 'minecraft:coal_ore'
 const before = M().state().grit
 mine(ana, 0, 10, 0)
 ok('... mining with the old one earns nothing', M().state().grit == before && ana.slots[0] === mx)
 ok('preview(6500) shows a Level X hammer that is never the real Maul', M().preview(6500).id == 'tconstruct:vein_hammer' && !M().isRealMaul(M().preview(6500)))
-ok('/maul stats (op)', /Serial 2, held by Bob\. Kills \d+ .*ore \d+, grudges settled 1/.test(run(['stats'], admin)[0]))
+ok('/maul stats (op)', /Serial 3, held by Bob\. Kills \d+ .*ore \d+, grudges settled 1/.test(run(['stats'], admin)[0]))
 ok('no errors logged', !logs.some(l => /^ERR/.test(l)), logs.filter(l => /^ERR/.test(l)).join(' | '))
 
 Date.now = realNow

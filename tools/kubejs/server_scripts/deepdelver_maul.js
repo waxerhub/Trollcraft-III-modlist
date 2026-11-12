@@ -9,7 +9,9 @@
 //     damaged and slowed. Better Combat's delayed hits count, as for the Anamian Axe's Judgement.
 // White-hot and the grudge bonus change a hit's damage, which needs startup_scripts/deepdelver_maul_hooks.js (a Forge
 // hook; one restart to install). Without it, everything else works. See tools/kubejs/DEEPDELVER_MAUL.md.
-// Copy to <server>/kubejs/server_scripts/ and run /reload. Forge it with /maul give <player>.
+// Finding it: until the first Maul exists, each fresh loot chest Goruk_Lohaus opens has a 10% chance of holding it
+// (FINDER, FIND_CHANCE). After that, no chest ever holds one again.
+// Copy to <server>/kubejs/server_scripts/ and run /reload. An op can also forge it with /maul give <player>.
 // KubeJS 6 (Rhino): no template strings; `let` inside nested blocks; event.cancel() last.
 
 (function () {
@@ -71,6 +73,11 @@ const BOSS_GRIT = {
   'minecraft:ender_dragon': 500, 'minecraft:wither': 300,
   'iceandfire:fire_dragon': 150, 'iceandfire:ice_dragon': 150, 'iceandfire:lightning_dragon': 150,
 }
+// Finding it: until the first Maul exists, each fresh loot container FINDER opens (a chest, barrel or the like with a
+// loot table, opened for the first time) has FIND_CHANCE of holding it. Once one has been forged (found or given), no
+// chest ever holds another: the saved serial never goes back to 0, even if the Maul is lost or re-forged.
+const FINDER = 'Goruk_Lohaus'         // the account's username (not a nickname, which anyone could copy); '' = off
+const FIND_CHANCE = 0.10
 const SCAN_TICKS = 100                // how often to look for who holds it
 const LOOSE_AFTER_SCANS = 2           // scans in a row without it (no window open) before it's announced loose
 const DATA_KEY = 'deepdelver_maul'
@@ -81,7 +88,7 @@ let Serializer = null, StringArg = null
 try { Serializer = Java.loadClass('net.minecraft.network.chat.Component$Serializer') } catch (e) { }
 try { StringArg = Java.loadClass('com.mojang.brigadier.arguments.StringArgumentType') } catch (e) { }
 // pending: victim uuid -> a hit from the Maul waiting for the damage hook. glows: prospector batches still lit.
-const S = { shaking: false, shakeCooldown: {}, prospectAt: {}, falling: {}, pending: {}, glows: 0, glowSeq: 0, loopToken: 0, misses: 0 }
+const S = { shaking: false, shakeCooldown: {}, prospectAt: {}, falling: {}, pending: {}, glows: 0, glowSeq: 0, loopToken: 0, misses: 0, chests: {} }
 let data = null
 function db() {
   if (data) return data
@@ -318,6 +325,67 @@ BlockEvents.broken(event => {
   if (has(level, 'prospector')) prospect(server, p, b, level)
   db().stats.ores++
   addGrit(p, GRIT_RARE_ORES[id] != null ? GRIT_RARE_ORES[id] : GRIT_ORE)
+})
+
+// ===================== FINDING IT =====================
+
+// A new Maul (serial + 1, Level I). holder: the player it's forged for, or null when it's waiting in a chest.
+function forge(holder) {
+  const D = db()
+  D.serial++
+  D.grit = 0
+  D.holder = holder ? uuidOf(holder) : ''
+  D.holderName = holder ? nameOf(holder) : ''
+  D.loose = false
+  save()
+  return makeMaul(D.serial, 0, 0)
+}
+function lootTableOf(block) {
+  try {
+    let nbt = block.entityData
+    if (nbt != null && nbt.contains('LootTable')) return String(nbt.getString('LootTable'))
+  } catch (e) { }
+  return ''
+}
+// Puts the stack in the first empty slot. Returns false if the container is full (or isn't one).
+function placeIn(container, stack) {
+  try {
+    let size = container.getContainerSize()
+    for (let i = 0; i < size; i++) {
+      if (container.getItem(i).isEmpty()) {
+        container.setItem(i, stack)
+        try { container.setChanged() } catch (e) { }
+        return true
+      }
+    }
+  } catch (e) { }
+  return false
+}
+// FINDER opens a fresh loot container: noted on the right-click while it still has its loot table, then rolled a
+// couple of ticks later, once it has opened and its own loot is in (the same method as part2/dragon_hoard.js).
+BlockEvents.rightClicked(event => {
+  const p = event.player, b = event.block
+  if (!FINDER || !isPlayer(p) || nameOf(p).toLowerCase() != FINDER.toLowerCase() || db().serial) return
+  if (!lootTableOf(b)) return
+  const x = Number(b.x), y = Number(b.y), z = Number(b.z), key = x + '|' + y + '|' + z
+  if (S.chests[key]) return
+  S.chests[key] = true
+  const level = b.level, server = event.server || Utils.server
+  server.scheduleInTicks(2, () => {
+    delete S.chests[key]
+    try {
+      let block = level.getBlock(x, y, z)
+      if (lootTableOf(block) || db().serial) return          // it didn't open, or the Maul exists by now
+      if (Math.random() >= FIND_CHANCE) return
+      let st = forge(null)
+      if (placeIn(block.entity, st)) tell(p, voice('Under the loot lies something old and heavy, waiting for you.', 'gold'))
+      else {
+        p.give(st)
+        tell(p, voice('Something old and heavy was wedged in the chest. It is yours now.', 'gold'))
+      }
+      console.info('[Maul] ' + nameOf(p) + ' found ' + NAME + ' (serial ' + db().serial + ') in a chest at ' + x + ' ' + y + ' ' + z)
+    } catch (e) { console.error('[Maul] Chest: ' + e) }
+  })
 })
 
 // ===================== THE GRUDGE LEDGER =====================
@@ -564,13 +632,7 @@ ServerEvents.commandRegistry(event => {
     const D = db(), p = playerByName(ctx.source.server, str(ctx, 'player'))
     if (!p) return reply(ctx, 'Nobody called ' + str(ctx, 'player') + ' is online.', true)
     if (D.serial && !force) return reply(ctx, NAME + ' already exists (held by ' + (D.holderName || 'nobody') + '). Use /maul give <player> force to forge a new one; the old one becomes an ordinary tool.', true)
-    D.serial++
-    D.grit = 0
-    D.holder = uuidOf(p)
-    D.holderName = nameOf(p)
-    D.loose = false
-    save()
-    p.give(makeMaul(D.serial, 0, 0))
+    p.give(forge(p))
     console.info('[Maul] Forged (serial ' + D.serial + ') for ' + nameOf(p))
     return reply(ctx, 'Forged ' + NAME + ' for ' + nameOf(p) + ' at Level I.')
   }

@@ -696,6 +696,7 @@ function busy() {
   const D = db()
   if (D.cur) return 'A Purge is already running (' + MODES[D.cur.mode].name + '). /purge stop ends it.'
   if (D.pending) return 'A Purge is already counting down (' + clock(D.pending.at - Date.now()) + ' left). /purge stop calls it off.'
+  try { if (global.Gladiator && global.Gladiator.busy()) return 'A gladiator match is on in the arena (gladiator_arena.js). /gladiator stop ends it.' } catch (e) { }
   return ''
 }
 // When the last Purge ended (0 if there hasn't been one).

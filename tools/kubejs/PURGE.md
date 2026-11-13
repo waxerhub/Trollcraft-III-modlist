@@ -48,6 +48,7 @@
   - **Ops are exempt** (`BLOCK_OPS_TOO`). So is anyone in the sanctuary who isn't fighting.
   - `back_toll.js` doesn't charge for a `/back` the Purge refuses.
 - **The Tithe:** a hidden count that any mode can add to (the Heist adds its 20% cut). Only ops can see it (`/purge tithe`). It's the Benefactor's Harvest count, for the reveal later.
+- **Never during a gladiator match:** a Purge won't start while a match or a challenge in [the Gladiator Arena](GLADIATOR_ARENA.md) is on, and the arena takes no challenges during a Purge.
 - **A restart or `/reload` mid-Purge:** it carries on. If its time ran out while the server was down, it ends with the summary and hands everything back.
 
 ## Kits and the vault

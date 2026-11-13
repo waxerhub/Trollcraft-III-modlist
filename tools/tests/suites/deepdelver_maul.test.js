@@ -1,5 +1,6 @@
 // deepdelver_maul.js (+ startup_scripts/deepdelver_maul_hooks.js): Goruk's levelling Maul. Grit from ore and kills,
-// levels (netherite pickaxe, then a Tinkers' Vein Hammer at X), Prospector, White-hot, the Grudge Ledger, Earthshaker,
+// levels (netherite pickaxe, then a Tinkers' Vein Hammer at X), Prospector (markers, on/off), Forge-touched, Deepborn,
+// Iron Blood, White-hot, the Grudge Ledger, Earthshaker,
 // open for grabs, commands.
 // Run with: node tools/tests/run_all.js deepdelver_maul   (or node tools/tests/suites/deepdelver_maul.test.js)
 const fs = require('fs')
@@ -26,8 +27,13 @@ const blocks = {}
 const ore = id => /_ore$|^minecraft:ancient_debris$/.test(id)
 // Loot containers: key -> { loot (its loot table until it's opened), slots }.
 const chests = {}
+let skyLight = 15                             // the sky light everywhere (Deepborn: 7 or less is away from daylight)
+// Smelting recipes: input -> [result, count, experience]. recipeLookups: how often the recipe manager was asked.
+const SMELT = { 'minecraft:raw_iron': ['minecraft:iron_ingot', 1, 0.7], 'minecraft:ancient_debris': ['minecraft:netherite_scrap', 1, 2] }
+let recipeLookups = 0
 const level = {
   dimension: { location: () => OW },
+  registryAccess: () => ({}),
   getBlock: (x, y, z) => {
     const k = x + ',' + y + ',' + z, c = chests[k]
     if (c) {
@@ -35,7 +41,7 @@ const level = {
         entity: { getContainerSize: () => 27, getItem: i => c.slots[i] || EMPTY, setItem: (i, s) => { c.slots[i] = s }, setChanged: () => { } } }
     }
     const id = blocks[k] || 'minecraft:air'
-    return { id, x, y, z, level, hasTag: t => t == 'forge:ores' && ore(id) }
+    return { id, x, y, z, level, skyLight, hasTag: t => t == 'forge:ores' && ore(id) }
   },
 }
 const server = {
@@ -43,6 +49,12 @@ const server = {
   get entities() { return jlist(entities.filter(e => e.alive).concat(players.filter(p => p.online))) },
   scheduleInTicks: (n, fn) => queue.push([tick + n, fn]),
   persistentData: { getString: k => persistent[k] || '', putString: (k, v) => { persistent[k] = v } },
+  overworld: () => level,
+  getRecipeManager: () => ({ getRecipeFor: (type, box) => {
+    recipeLookups++
+    const r = type == 'smelting' && SMELT[box.items[0].id]
+    return { isPresent: () => !!r, get: () => ({ getResultItem: () => stack(r[0], r[1]), getExperience: () => r[2] }) }
+  } }),
   runCommandSilent: c => {
     cmds.push(c)
     const m = c.match(/^damage (\S+) ([\d.]+) \S+ by (\S+)$/)
@@ -50,6 +62,10 @@ const server = {
       const e = entities.concat(players).find(x => x.uuid == m[1]), by = players.find(p => p.name == m[3])
       if (e) { e.damageTaken = (e.damageTaken || 0) + Number(m[2]); hit(e, by, Number(m[2])) }
     }
+    const give = c.match(/^effect give (\S+) minecraft:(\S+) (\d+) (\d+) true$/), clear = c.match(/^effect clear (\S+) minecraft:(\S+)$/)
+    const who = players.find(p => p.uuid == ((give || clear || [])[1]))
+    if (who && give) who.fx[give[2]] = { dur: Number(give[3]) * 20, amp: Number(give[4]) }
+    if (who && clear) delete who.fx[clear[2]]
     return 1
   },
 }
@@ -61,6 +77,7 @@ function tag(o) {
 function stack(id, count, nbtStr) {
   const parsed = nbtStr ? snbt(nbtStr) : null
   return { id, count: count == null ? 1 : count, nbtStr, parsed,
+    copy() { return stack(id, this.count, nbtStr) },
     get nbt() { return parsed ? tag(parsed) : null }, isEmpty() { return this.count <= 0 },
     getDamageValue() { return parsed && parsed.Damage != null ? parseInt(parsed.Damage, 10) : 0 } }
 }
@@ -76,6 +93,14 @@ function player(name, opts) {
     hasPermissions: () => p.op, tell: c => p.msgs.push(Array.isArray(c) ? c.map(x => (typeof x == 'string' ? x : x.text)).join('') : String(c)),
     onGround: () => p.onGround, isInWater: () => false, isPassenger: () => false, get fallDistance() { return p.fall },
     getDeltaMovement: () => ({ y: 0 }),
+    sneak: false, isShiftKeyDown: () => p.sneak,
+    absorption: 0, getAbsorptionAmount: () => p.absorption, setAbsorptionAmount: n => { p.absorption = n },
+    xp: 0, giveExperiencePoints: n => { p.xp += n },
+    // effects by id: { dur (ticks), amp }, as /effect gives them
+    fx: {}, getActiveEffects: () => {
+      const all = Object.keys(p.fx).map(k => ({ getEffect: () => ({ getDescriptionId: () => 'effect.minecraft.' + k }), getDuration: () => p.fx[k].dur }))
+      return { iterator: () => { let i = 0; return { hasNext: () => i < all.length, next: () => all[i++] } } }
+    },
     inventory: { getItem: i => slots[i] || EMPTY, setItem: (i, s) => { slots[i] = s } },
     get mainHandItem() { return slots[p.selected] || EMPTY },
     give: s => { for (let i = 0; i < 36; i++) if (!slots[i] || slots[i].isEmpty()) { slots[i] = s; return } }, slots }
@@ -89,22 +114,29 @@ function mob(type, x, z, hostile) {
   entities.push(e)
   return e
 }
+// Event handlers: several scripts' worth can listen to one event (the Maul has two for BlockEvents.rightClicked).
 const handlers = {}
+const on = name => h => { (handlers[name] = handlers[name] || []).push(h) }
+const fire = (name, ev) => (handlers[name] || []).forEach(h => h(ev))
 let cmdTree = null
 const global = {}
 const node = n => ({ n, ch: [], req: null, f: null, then(c) { this.ch.push(c); return this }, requires(f) { this.req = f; return this }, executes(f) { this.f = f; return this } })
 const StringArg = { word: () => 'word', getString: (ctx, k) => ctx.args[k] }
 const Serializer = { fromJsonLenient: j => JSON.parse(j) }
-new Function('EntityEvents', 'BlockEvents', 'PlayerEvents', 'ServerEvents', 'Java', 'Utils', 'Item', 'Text', 'console', 'global', src)(
-  { death: h => { handlers.death = h }, hurt: h => { handlers.hurt = h } },
-  { broken: h => { handlers.broken = h }, rightClicked: h => { handlers.rightClicked = h } },
-  { tick: h => { handlers.tick = h } },
-  { loaded: h => { handlers.loaded = h }, commandRegistry: h => h({ commands: { literal: node, argument: n => node(n) }, arguments: { INTEGER: { create: () => 'int', getResult: (ctx, k) => ctx.args[k] } }, register: t => { cmdTree = t } }) },
-  { loadClass: n => (/StringArgumentType/.test(n) ? StringArg : Serializer) },
+const RecipeTypeMock = { SMELTING: 'smelting' }
+function SimpleContainerMock() { this.items = [] }
+SimpleContainerMock.prototype.setItem = function (i, s) { this.items[i] = s }
+new Function('EntityEvents', 'BlockEvents', 'PlayerEvents', 'ServerEvents', 'ItemEvents', 'Java', 'Utils', 'Item', 'Text', 'console', 'global', src)(
+  { death: on('death'), hurt: on('hurt'), spawned: on('spawned') },
+  { broken: on('broken'), rightClicked: on('rightClicked') },
+  { tick: on('tick') },
+  { loaded: on('loaded'), commandRegistry: h => h({ commands: { literal: node, argument: n => node(n) }, arguments: { INTEGER: { create: () => 'int', getResult: (ctx, k) => ctx.args[k] } }, register: t => { cmdTree = t } }) },
+  { rightClicked: on('itemClicked') },
+  { loadClass: n => (/StringArgumentType/.test(n) ? StringArg : /RecipeType/.test(n) ? RecipeTypeMock : /SimpleContainer/.test(n) ? SimpleContainerMock : Serializer) },
   { server }, Item, { of: s => s },
   { info: m => logs.push(m), warn: m => logs.push('WARN ' + m), error: m => logs.push('ERR ' + m) },
   global)
-handlers.loaded({ server })
+fire('loaded', { server })
 // The startup hook, against the same `global`.
 const forge = {}
 new Function('ForgeEvents', 'global', 'console', hookSrc)({ onEvent: (name, h) => { forge[name.split('.').pop()] = h } }, global,
@@ -122,9 +154,28 @@ function run(args, as) {
   n.f(ctx)
   return replies
 }
-function kill(victim, killer) { victim.alive = false; handlers.death({ entity: victim, server, source: { getActual: () => killer, getMsgId: () => 'player' } }) }
-function hit(victim, p, dmg) { handlers.hurt({ entity: victim, server, source: { getActual: () => p, getImmediate: () => p, getMsgId: () => 'player' }, damage: dmg }) }
-function mine(p, x, y, z) { handlers.broken({ player: p, block: level.getBlock(x, y, z), server }) }
+function kill(victim, killer) { victim.alive = false; fire('death', { entity: victim, server, source: { getActual: () => killer, getMsgId: () => 'player' } }) }
+function hit(victim, p, dmg) { fire('hurt', { entity: victim, server, source: { getActual: () => p, getImmediate: () => p, getMsgId: () => 'player' }, damage: dmg }) }
+function mine(p, x, y, z) { fire('broken', { player: p, block: level.getBlock(x, y, z), server }) }
+// An item entity appearing (EntityEvents.spawned), as a block's drops do.
+function dropItem(x, y, z, id, n) {
+  let st = stack(id, n)
+  const e = { uuid: 'i-' + Math.random().toString(36).slice(2), level, getEncodeId: () => 'minecraft:item', isPlayer: () => false,
+    getX: () => x, getY: () => y, getZ: () => z, getStringUuid: () => e.uuid, getItem: () => st, setItem: s => { st = s } }
+  fire('spawned', { entity: e, server })
+  return e
+}
+// Mining a block that drops `drops` ([[id, count], ...]) in the same tick, as the game does (inside the block, or in
+// the block at `spawnAt`); then a tick passes.
+function mineDrops(p, x, y, z, drops, spawnAt) {
+  mine(p, x, y, z)
+  const s = spawnAt || [x, y, z]
+  const items = drops.map(d => dropItem(s[0] + 0.5, s[1] + 0.3, s[2] + 0.5, d[0], d[1]))
+  advance(1)
+  return items
+}
+const click = (p, hand, onBlock) => (onBlock ? fire('rightClicked', { player: p, hand, block: level.getBlock(9, 9, 9), server }) : fire('itemClicked', { player: p, hand, server }))
+const count = (p, re) => p.msgs.filter(m => re.test(m)).length
 const maulOf = p => p.slots.find(s => s && s.parsed && s.parsed.trollcraft && s.parsed.trollcraft.maul)
 const ench = s => Object.fromEntries((s.parsed.Enchantments || []).map(e => [e.id.replace('minecraft:', ''), parseInt(e.lvl, 10)]))
 const lore = s => s.parsed.display.Lore.map(l => JSON.parse(l).text)
@@ -146,7 +197,7 @@ function openChest(p, x, z, opts) {
   opts = opts || {}
   const k = x + ',20,' + z
   if (!chests[k]) chests[k] = { loot: opts.player ? '' : 'minecraft:chests/simple_dungeon', slots: [] }
-  handlers.rightClicked({ player: p, block: level.getBlock(x, 20, z), server })
+  fire('rightClicked', { player: p, block: level.getBlock(x, 20, z), server })
   if (!opts.shut && chests[k].loot) { chests[k].loot = ''; chests[k].slots[0] = stack('minecraft:bread', 3) }
   advance(2)
   return chests[k]
@@ -188,9 +239,11 @@ ok('/maul give is op-only', run(['give', 'Goruk'], goruk)[0] == 'DENIED')
 ok('/maul give Goruk force forges a new one at Level I', /Forged The Deepdelver's Maul for Goruk at Level I/.test(run(['give', 'Goruk', 'force'], admin)[0]) && !!maulOf(goruk))
 const m1 = maulOf(goruk)
 ok('... a netherite pickaxe with Efficiency I and Unbreaking I', m1.id == 'minecraft:netherite_pickaxe' && JSON.stringify(ench(m1)) == JSON.stringify({ efficiency: 1, unbreaking: 1 }))
-ok('... 6 damage (+5) at a pickaxe\'s 1.2 speed (-2.8)', attr(m1, 'attack_damage').Amount == '5d' && attr(m1, 'attack_speed').Amount == '-2.8d')
-ok('... the lore: level, Grit, damage, and its Level I abilities with their values', lore(m1).some(l => /^Level I · Grit 0 \/ 100$/.test(l)) && lore(m1).includes('6 damage') &&
-  lore(m1).some(l => /Prospector: .*within 2 blocks/.test(l)) && lore(m1).some(l => /White-hot: hits ignore 10% of armour/.test(l)) &&
+ok('... 8 damage (+7) at a pickaxe\'s 1.2 speed (-2.8)', attr(m1, 'attack_damage').Amount == '7d' && attr(m1, 'attack_speed').Amount == '-2.8d')
+ok('... the lore: level, Grit, damage, and its Level I abilities with their values', lore(m1).some(l => /^Level I · Grit 0 \/ 100$/.test(l)) && lore(m1).includes('8 damage') &&
+  lore(m1).some(l => /Prospector: .*within 2 blocks \(sneak \+ right-click: on\/off\)/.test(l)) && lore(m1).some(l => /Forge-touched: ore it mines comes out smelted/.test(l)) &&
+  lore(m1).some(l => /Deepborn: away from daylight, Night Vision and Haste I$/.test(l)) && lore(m1).some(l => /Iron Blood: kills give 2 absorption hearts \(up to 8\)/.test(l)) &&
+  lore(m1).some(l => /White-hot: hits ignore 10% of armour/.test(l)) &&
   lore(m1).some(l => /Grudge Ledger: .*\+10% damage/.test(l)) && lore(m1).some(l => /✧ Earthshaker at Level V/.test(l)), lore(m1).join(' | '))
 ok('... marked with its serial and Grit', m1.parsed.trollcraft.maul.serial == '2' && m1.parsed.trollcraft.maul.grit == '0' && M().isRealMaul(m1))
 ok('a second /maul give is refused (only one exists)', /already exists \(held by Goruk\)/.test(run(['give', 'Ana'], admin)[0]) && !maulOf(ana))
@@ -203,20 +256,113 @@ let c0 = cmds.length
 mine(goruk, 0, 10, 0)
 ok('mining coal ore: +1 Grit', gritOf(goruk) == 1)
 const glows = cmds.slice(c0).filter(c => /summon minecraft:block_display/.test(c))
-ok('Prospector: the iron and diamond ore within 2 blocks glow (not the gold 3 away, not the stone)', glows.length == 2 &&
-  glows.some(c => / 1 10 0 \{block_state:\{Name:"minecraft:iron_ore"\},Glowing:1b,glow_color_override:16766720,Tags:\["maul_glow","maul_glow_1"\]/.test(c)) &&
+ok('Prospector: the iron and diamond ore within 2 blocks are marked (not the gold 3 away, not the stone)', glows.length == 2 &&
+  glows.some(c => / 1 10 0 \{block_state:\{Name:"minecraft:iron_ore"\},Glowing:1b,glow_color_override:16766720,brightness:\{sky:15,block:15\},Tags:\["maul_glow","maul_m1"\],/.test(c)) &&
   glows.some(c => /diamond_ore/.test(c)) && !glows.some(c => /gold_ore|stone"/.test(c)), glows.join(' | '))
+ok('... by small markers in the middle of each ore (0.3 of a block), not a full-size copy over it', glows.every(c => /translation:\[0\.35f,0\.35f,0\.35f\],scale:\[0\.3f,0\.3f,0\.3f\]\}\}$/.test(c)), glows[0])
 c0 = cmds.length
 blocks['0,10,0'] = 'minecraft:coal_ore'
 mine(goruk, 0, 10, 0)
 ok('... not again within 2 seconds (but the Grit still counts)', !cmds.slice(c0).some(c => /block_display/.test(c)) && gritOf(goruk) == 2)
 advance(100)
-ok('... and the glow goes after 5 seconds', cmds.includes('kill @e[type=minecraft:block_display,tag=maul_glow_1]'))
+ok('... and the markers go after 5 seconds', cmds.includes('kill @e[type=minecraft:block_display,tag=maul_m1]') && cmds.includes('kill @e[type=minecraft:block_display,tag=maul_m2]') && M().markers() == 0)
 blocks['0,10,0'] = 'minecraft:diamond_ore'
 mine(goruk, 0, 10, 0)
 ok('a diamond is worth 8', gritOf(goruk) == 10)
 mine(goruk, 0, 9, 0)
 ok('stone is worth nothing', gritOf(goruk) == 10)
+// The diamond mined just now marked the iron (maul_m3) and the diamond ore (maul_m4) again.
+c0 = cmds.length
+mine(ana, 1, 10, 0)
+ok('a marker goes the moment its ore is mined, by anyone', cmds.slice(c0).includes('kill @e[type=minecraft:block_display,tag=maul_m3]') && M().markers() == 1)
+blocks['0,12,1'] = 'minecraft:air'
+c0 = cmds.length
+advance(4)
+ok('... or within a few ticks once its ore is gone some other way (a vein-mining hammer, an explosion)', cmds.slice(c0).includes('kill @e[type=minecraft:block_display,tag=maul_m4]') && M().markers() == 0)
+blocks['0,12,1'] = 'minecraft:diamond_ore'
+
+// ---------- Prospector off and on: sneak + right-click ----------
+T += 3000
+blocks['0,10,0'] = 'minecraft:coal_ore'
+mine(goruk, 0, 10, 0)
+const marked = M().markers()
+goruk.sneak = true
+c0 = cmds.length
+click(goruk, 'MAIN_HAND', true); click(goruk, 'MAIN_HAND')
+ok('Goruk sneaks and right-clicks with it: Prospector off, switched once (at a block, the block and the air both fire)', marked == 2 && !M().prospectorOn('u-goruk') &&
+  count(goruk, /Prospector off\. Sneak and right-click again to turn it on\./) == 1)
+ok('... its markers go at once, with a chime where he stands', cmds.slice(c0).filter(c => /^kill @e\[type=minecraft:block_display,tag=maul_m/.test(c)).length == 2 && M().markers() == 0 &&
+  cmds.slice(c0).some(c => /playsound minecraft:block\.note_block\.chime player @a 0\.00 64\.00 0\.00 0\.6 0\.7$/.test(c)))
+ok('... it\'s saved', M().state().prospectOff['u-goruk'] == 1)
+T += 3000
+c0 = cmds.length
+mine(goruk, 0, 10, 0)
+ok('... mining ore marks nothing now (the Grit still counts)', !cmds.slice(c0).some(c => /block_display/.test(c)) && gritOf(goruk) == 12)
+T += 1000
+click(goruk, 'MAIN_HAND'); T += 200; click(goruk, 'MAIN_HAND'); T += 200; click(goruk, 'MAIN_HAND')
+ok('again: back on, and holding the button down doesn\'t flip it back and forth', M().prospectorOn('u-goruk') && count(goruk, /Prospector on/) == 1 && count(goruk, /Prospector off/) == 1)
+T += 1000
+click(goruk, 'OFF_HAND')
+goruk.sneak = false; T += 1000; click(goruk, 'MAIN_HAND')
+ana.sneak = true; T += 1000; click(ana, 'MAIN_HAND'); ana.sneak = false
+ok('the off hand, not sneaking, or no Maul: nothing switches', M().prospectorOn('u-goruk') && count(goruk, /Prospector/) == 2 && count(ana, /Prospector/) == 0)
+
+// ---------- Forge-touched ----------
+blocks['4,10,4'] = 'minecraft:iron_ore'
+let xp0 = goruk.xp
+c0 = cmds.length
+let drops = mineDrops(goruk, 4, 10, 4, [['minecraft:raw_iron', 3]])
+ok('Forge-touched: iron ore mined with it drops iron ingots, all 3 that Fortune gave', drops[0].getItem().id == 'minecraft:iron_ingot' && drops[0].getItem().count == 3, drops[0].getItem().id)
+ok('... with sparks and a hiss, and the furnace\'s experience (3 x 0.7)', cmds.slice(c0).some(c => /particle minecraft:lava 4\.50 10\.50 4\.50 /.test(c)) &&
+  cmds.slice(c0).some(c => /playsound minecraft:block\.fire\.extinguish block @a 4\.50 10\.50 4\.50/.test(c)) && goruk.xp - xp0 >= 2 && goruk.xp - xp0 <= 3, goruk.xp - xp0)
+blocks['5,10,4'] = 'minecraft:coal_ore'
+c0 = cmds.length
+drops = mineDrops(goruk, 5, 10, 4, [['minecraft:coal', 1]])
+ok('... coal (no smelting recipe) drops as usual, with no sparks', drops[0].getItem().id == 'minecraft:coal' && !cmds.slice(c0).some(c => /particle minecraft:lava/.test(c)))
+blocks['6,10,4'] = 'minecraft:iron_ore'
+drops = mineDrops(goruk, 6, 10, 4, [['minecraft:raw_iron', 1]], [20, 10, 4])
+ok('... an item that appears elsewhere that tick is left alone', drops[0].getItem().id == 'minecraft:raw_iron')
+const lookups = recipeLookups
+blocks['7,10,4'] = 'minecraft:iron_ore'
+drops = mineDrops(goruk, 7, 10, 4, [['minecraft:raw_iron', 1]])
+ok('... each item\'s recipe is looked up once', drops[0].getItem().id == 'minecraft:iron_ingot' && recipeLookups == lookups)
+blocks['8,10,4'] = 'minecraft:iron_ore'
+ana.slots[0] = stack('minecraft:netherite_pickaxe', 1); ana.selected = 0
+drops = mineDrops(ana, 8, 10, 4, [['minecraft:raw_iron', 2]])
+ana.slots[0] = EMPTY
+ok('... with an ordinary pickaxe, raw iron stays raw', drops[0].getItem().id == 'minecraft:raw_iron')
+ok('ancient debris comes out as netherite scrap (the API\'s lookup)', M().smelting(stack('minecraft:ancient_debris', 1)).id == 'minecraft:netherite_scrap')
+drops = dropItem(4.5, 10.3, 4.5, 'minecraft:raw_iron', 1)
+ok('... and once the ore has broken, nothing more is smelted there', drops.getItem().id == 'minecraft:raw_iron')
+
+// ---------- Deepborn ----------
+skyLight = 0
+T += 1000
+fire('tick', { player: goruk, server })
+ok('Deepborn: holding it away from daylight, Night Vision and Haste I for 12 seconds, refreshed each second', !!goruk.fx.night_vision && goruk.fx.night_vision.dur == 240 &&
+  !!goruk.fx.haste && goruk.fx.haste.amp == 0)
+c0 = cmds.length
+T += 500
+fire('tick', { player: goruk, server })
+ok('... not more than once a second', !cmds.slice(c0).some(c => /^effect/.test(c)))
+goruk.selected = 30                           // an empty slot: he's placing a torch
+T += 1000; fire('tick', { player: goruk, server }); T += 1000; fire('tick', { player: goruk, server })
+ok('... switching away for a moment (a torch) keeps the effects', !!goruk.fx.night_vision && !!goruk.fx.haste)
+goruk.selected = goruk.slots.indexOf(maulOf(goruk))
+T += 1000; fire('tick', { player: goruk, server })
+goruk.fx.night_vision = { dur: 3600, amp: 0 }  // he drinks a potion of Night Vision
+skyLight = 15
+c0 = cmds.length
+T += 1000; fire('tick', { player: goruk, server }); T += 1000; fire('tick', { player: goruk, server })
+ok('under the sky: nothing for 2 seconds', !cmds.slice(c0).some(c => /^effect clear/.test(c)) && !!goruk.fx.haste)
+T += 1000; fire('tick', { player: goruk, server })
+ok('... then the Haste it gave is taken away, but not his 3-minute potion', !goruk.fx.haste && !!goruk.fx.night_vision && goruk.fx.night_vision.dur == 3600)
+skyLight = 7
+T += 1000; fire('tick', { player: goruk, server })
+ok('sky light 7 (deep in a mine entrance) counts as away from daylight', !!goruk.fx.haste)
+skyLight = 15
+delete goruk.fx.haste; delete goruk.fx.night_vision
+T += 5000; fire('tick', { player: goruk, server })
 
 // ---------- levelling ----------
 ok('/maul setgrit is op-only', run(['setgrit', '99'], goruk)[0] == 'DENIED')
@@ -225,7 +371,7 @@ maulOf(goruk).parsed.Damage = '50'
 blocks['0,10,0'] = 'minecraft:coal_ore'
 mine(goruk, 0, 10, 0)
 const m2 = maulOf(goruk)
-ok('100 Grit: Level II, Unbreaking II, 7 damage, its wear kept', gritOf(goruk) == 100 && ench(m2).unbreaking == 2 && attr(m2, 'attack_damage').Amount == '6d' && m2.parsed.Damage == '50')
+ok('100 Grit: Level II, Unbreaking II, 9 damage, its wear kept', gritOf(goruk) == 100 && ench(m2).unbreaking == 2 && attr(m2, 'attack_damage').Amount == '8d' && m2.parsed.Damage == '50')
 ok('... announced to everyone', said(ana, /The Deepdelver's Maul has reached Level II in the hands of Goruk/))
 ok('... and White-hot and the ledger grow (14%, +12%)', lore(m2).some(l => /ignore 14% of armour/.test(l)) && lore(m2).some(l => /\+12% damage/.test(l)), lore(m2).join(' | '))
 
@@ -237,6 +383,22 @@ kill(mob('minecraft:cow', 5, 5, false), goruk)
 ok('a cow: +1', gritOf(goruk) == g + 4)
 kill(mob('twilightforest:naga', 5, 5, true), goruk)
 ok('the Naga: +100', gritOf(goruk) == g + 104)
+
+// ---------- Iron Blood ----------
+ok('Iron Blood: the zombie and the Naga gave 2 absorption hearts each, the cow nothing', goruk.absorption == 8, goruk.absorption)
+ok('... with the clank of iron where he stands', cmds.some(c => /playsound minecraft:item\.armor\.equip_iron player @a /.test(c)))
+kill(mob('minecraft:zombie', 5, 5, true), goruk); kill(mob('minecraft:zombie', 5, 5, true), goruk); kill(mob('minecraft:zombie', 5, 5, true), goruk)
+ok('... up to 8 hearts, no more', goruk.absorption == 16)
+goruk.absorption = 10                         // a skeleton's arrows took some
+advance(60 * 20 + 2)
+ok('... a minute after the last kill, what it gave fades', goruk.absorption == 0)
+goruk.absorption = 14                         // a golden apple and more
+kill(mob('minecraft:zombie', 5, 5, true), goruk)
+ok('... absorption from anything else counts towards the 8 hearts', goruk.absorption == 16)
+advance(60 * 20 + 2)
+ok('... and only what it gave fades', goruk.absorption == 14)
+goruk.absorption = 0
+g = gritOf(goruk)
 
 // ---------- the Grudge Ledger ----------
 hit(goruk, ana, 4)
@@ -294,8 +456,8 @@ goruk.onGround = false; goruk.fall = 1.5
 c0 = cmds.length
 hit(target, goruk, 9)
 const sh = cmds.slice(c0)
-ok('a falling hit: everything within 3 blocks is hit for 40% (3.6) and slowed; the target only slowed', sh.includes('damage ' + near.uuid + ' 3.60 minecraft:player_attack by Goruk') &&
-  sh.includes('damage u-bob 3.60 minecraft:player_attack by Goruk') && !sh.some(c => c.indexOf('damage ' + target.uuid) == 0) && !sh.some(c => c.indexOf(far.uuid) >= 0) &&
+ok('a falling hit: everything within 3 blocks is hit for 40% (4.8 of Level V\'s 12) and slowed; the target only slowed', sh.includes('damage ' + near.uuid + ' 4.80 minecraft:player_attack by Goruk') &&
+  sh.includes('damage u-bob 4.80 minecraft:player_attack by Goruk') && !sh.some(c => c.indexOf('damage ' + target.uuid) == 0) && !sh.some(c => c.indexOf(far.uuid) >= 0) &&
   sh.includes('effect give ' + target.uuid + ' minecraft:slowness 2 1 true') && sh.includes('effect give ' + near.uuid + ' minecraft:slowness 2 1 true'), sh.join(' | '))
 ok('... with stone bursting out and a boom', sh.some(c => /particle minecraft:block minecraft:stone .* 3 0.2 3 /.test(c)) && sh.some(c => /entity\.generic\.explode/.test(c)))
 ok('... and its own damage doesn\'t set off another (one slam)', sh.filter(c => /^damage /.test(c)).length == 2)
@@ -304,14 +466,14 @@ hit(target, goruk, 9)
 ok('... not again within 6 seconds', !cmds.slice(c0).some(c => /slowness/.test(c)))
 goruk.onGround = true; goruk.fall = 0
 T += 7000
-handlers.tick({ player: goruk })
-goruk.onGround = false; goruk.fall = 1; handlers.tick({ player: goruk }); goruk.onGround = true; goruk.fall = 0
+fire('tick', { player: goruk })
+goruk.onGround = false; goruk.fall = 1; fire('tick', { player: goruk }); goruk.onGround = true; goruk.fall = 0
 T += 300
 c0 = cmds.length
 hit(target, goruk, 9)
 ok('Better Combat: a hit 300 ms after the fall still slams', cmds.slice(c0).some(c => /slowness/.test(c)))
 c0 = cmds.length
-ok('an arrow from Goruk doesn\'t slam', (() => { T += 7000; goruk.onGround = false; goruk.fall = 1; handlers.hurt({ entity: target, server, source: { getActual: () => goruk, getImmediate: () => ({ getStringUuid: () => 'arrow' }) } }); goruk.onGround = true; goruk.fall = 0; return !cmds.slice(c0).some(c => /slowness/.test(c)) })())
+ok('an arrow from Goruk doesn\'t slam', (() => { T += 7000; goruk.onGround = false; goruk.fall = 1; fire('hurt', { entity: target, server, source: { getActual: () => goruk, getImmediate: () => ({ getStringUuid: () => 'arrow' }) } }); goruk.onGround = true; goruk.fall = 0; return !cmds.slice(c0).some(c => /slowness/.test(c)) })())
 
 // ---------- Level X: the Vein Hammer ----------
 goruk.op = true; run(['setgrit', '6500'], goruk); goruk.op = false
@@ -319,9 +481,11 @@ const mx = maulOf(goruk)
 ok('Level X: it becomes a Tinkers\' Vein Hammer (Manyullyn, Hepatizon, Cobalt, Manyullyn)', mx.id == 'tconstruct:vein_hammer' &&
   JSON.stringify(mx.parsed.tic_materials) == JSON.stringify(['tconstruct:manyullyn', 'tconstruct:hepatizon', 'tconstruct:cobalt', 'tconstruct:manyullyn']))
 ok('... with Haste V and Luck III (its Efficiency and Fortune), and no vanilla enchantments', JSON.stringify(mx.parsed.tic_upgrades) == JSON.stringify([{ name: 'tconstruct:haste', level: '5' }, { name: 'tconstruct:luck', level: '3' }]) && !mx.parsed.Enchantments)
-ok('... 14 damage (+13) at the hammer\'s 0.92 (-3.08: what Tinkers works out for its materials)', attr(mx, 'attack_damage').Amount == '13d' && attr(mx, 'attack_speed').Amount == '-3.08d')
+ok('... 18 damage (+17) at the hammer\'s 0.92 (-3.08: what Tinkers works out for its materials)', attr(mx, 'attack_damage').Amount == '17d' && attr(mx, 'attack_speed').Amount == '-3.08d')
 ok('... announced as reforged, with Prospector at 5 blocks and Earthshaker at 4', said(ana, /Level X .* The pick is reforged: it is a Vein Hammer now/) &&
   lore(mx).some(l => /within 5 blocks/.test(l)) && lore(mx).some(l => /\(4 blocks\)/.test(l)) && lore(mx).some(l => /ignore 50%/.test(l)))
+ok('... and Deepborn gives Haste II (from Level VI)', lore(mx).some(l => /Night Vision and Haste II$/.test(l)) &&
+  (() => { skyLight = 0; T += 2000; fire('tick', { player: goruk, server }); skyLight = 15; return goruk.fx.haste && goruk.fx.haste.amp == 1 })())
 blocks['0,10,0'] = 'minecraft:coal_ore'
 T += 3000
 mine(goruk, 0, 10, 0)

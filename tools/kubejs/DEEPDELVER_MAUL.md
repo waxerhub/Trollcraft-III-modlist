@@ -4,7 +4,9 @@
 - **One exists.** It carries a serial number, and a copy (or the old one after a re-forge) is an ordinary tool.
 - **It's open for grabs.** Whoever holds it keeps its level, and the server is told when it changes hands or goes loose.
 
-It **levels I–X on Grit**: a **netherite pickaxe** whose Efficiency, Fortune and damage grow, until at **Level X it's reforged as a Tinkers' Vein Hammer**.
+It **levels I–X on Grit**: a **netherite pickaxe** whose Efficiency, Fortune and damage (8 to 18) grow, until at **Level X it's reforged as a Tinkers' Vein Hammer**.
+
+From Level I it has seven abilities: **Prospector** (marks nearby ore, switched off and on with sneak + right-click), **Forge-touched** (ore comes out smelted), **Deepborn** (Night Vision and Haste away from daylight), **Iron Blood** (kills give absorption hearts), **White-hot**, **the Grudge Ledger**, then **Earthshaker** from Level V.
 
 ## Finding it
 Until the first Maul exists, **each fresh loot container Goruk_Lohaus opens has a 10% chance of holding it** (`FINDER`, `FIND_CHANCE`).
@@ -16,18 +18,20 @@ Until the first Maul exists, **each fresh loot container Goruk_Lohaus opens has 
 - **Same method as the Dragon's Hoard:** the chest is noted on the right-click while it still has its loot table, then filled two ticks later, once it has opened.
 
 ## Levels
-| Level | Grit | Item | Damage | Mining | Prospector | White-hot | Grudge bonus | Earthshaker |
-|---|---|---|---|---|---|---|---|---|
-| I | 0 | netherite pickaxe | 6 | Efficiency I, Unbreaking I | 2 blocks | 10% | +10% | |
-| II | 100 | | 7 | Eff I, Unb II | 2 | 14% | +12% | |
-| III | 300 | | 8 | Eff II, Unb II, Fortune I | 2 | 19% | +14% | |
-| IV | 600 | | 8 | Eff II, Unb III, Fortune I | 3 | 23% | +17% | |
-| V | 1,000 | | 9 | Eff III, Fortune I | 3 | 28% | +19% | ✦ 3 blocks |
-| VI | 1,600 | | 10 | Eff III, Fortune II | 3 | 32% | +21% | 3 |
-| VII | 2,400 | | 11 | Eff IV, Fortune II | 4 | 37% | +23% | 3 |
-| VIII | 3,400 | | 12 | Eff IV, Fortune II, Mending | 4 | 41% | +26% | 4 |
-| IX | 4,700 | | 13 | **Eff V, Fortune III**, Mending | 4 | 46% | +28% | 4 |
-| **X** | 6,500 | **Tinkers' Vein Hammer** | **14** | Haste V, Luck III | **5** | **50%** | **+30%** | 4 |
+| Level | Grit | Item | Damage | Mining | Prospector | Deepborn | White-hot | Grudge bonus | Earthshaker |
+|---|---|---|---|---|---|---|---|---|---|
+| I | 0 | netherite pickaxe | 8 | Efficiency I, Unbreaking I | 2 blocks | Haste I | 10% | +10% | |
+| II | 100 | | 9 | Eff I, Unb II | 2 | I | 14% | +12% | |
+| III | 300 | | 10 | Eff II, Unb II, Fortune I | 2 | I | 19% | +14% | |
+| IV | 600 | | 11 | Eff II, Unb III, Fortune I | 3 | I | 23% | +17% | |
+| V | 1,000 | | 12 | Eff III, Fortune I | 3 | I | 28% | +19% | ✦ 3 blocks |
+| VI | 1,600 | | 14 | Eff III, Fortune II | 3 | **Haste II** | 32% | +21% | 3 |
+| VII | 2,400 | | 15 | Eff IV, Fortune II | 4 | II | 37% | +23% | 3 |
+| VIII | 3,400 | | 16 | Eff IV, Fortune II, Mending | 4 | II | 41% | +26% | 4 |
+| IX | 4,700 | | 17 | **Eff V, Fortune III**, Mending | 4 | II | 46% | +28% | 4 |
+| **X** | 6,500 | **Tinkers' Vein Hammer** | **18** | Haste V, Luck III | **5** | II | **50%** | **+30%** | 4 |
+
+Forge-touched and Iron Blood are the same at every level.
 
 - **Damage** is the item's own `AttributeModifiers`, a player's own 1 included, as for the Anamian Axe and the Syndicate Slayer. The attack speed is set too: a pickaxe's 1.2, then 0.92 for the hammer (what Tinkers works out for its materials, Lightweight included).
 - **Level X is a Tinkers' Vein Hammer:** Manyullyn hammer head, Hepatizon handle, Cobalt pick head and Manyullyn plate (Tinkers has no netherite material).
@@ -48,9 +52,25 @@ Until the first Maul exists, **each fresh loot container Goruk_Lohaus opens has 
 | Bosses | Naga 100 … Snow Queen 500, the Ender Dragon 500, the Wither 300, Ice and Fire dragons 150 |
 
 ## Abilities
-- **Prospector:** mining an ore with it makes the ore within the level's radius **glow through walls** for 5 seconds.
-  - The glow is a gold outline: a glowing block display of each ore. Anyone near can see it.
-  - Up to 40 ores at a time, at most once every 2 seconds. Leftover displays from a restart are cleared within 5 seconds.
+- **Prospector:** mining an ore with it **marks the ore within the level's radius** for 5 seconds, seen through walls.
+  - **A marker is small:** a glowing copy of the ore at 0.3 of a block, in the middle of the ore's block (`MARKER_SIZE`). Inside the ore it's hidden; only its gold outline shows through walls. It never covers anything around it, so it doesn't get in the way of seeing or mining.
+  - **A marker goes the moment its ore is mined,** by anyone. If the ore goes some other way (vein mining, an explosion), its marker goes within 4 ticks.
+  - **Off and on:** sneak and right-click with the Maul (at a block or the air). One press switches it once, even held down. It's saved per player, and switching it off clears the markers.
+  - Up to 40 markers at a time, at most once every 2 seconds. Anyone near can see the outlines. Leftover markers from a restart or `/reload` are cleared within 5 seconds.
+- **Forge-touched:** ore it mines **drops smelted**, as a furnace would make it: raw iron comes out as iron ingots, ancient debris as netherite scrap.
+  - **Fortune still counts:** 3 raw iron becomes 3 ingots.
+  - **The furnace's experience** comes too, with sparks and a hiss.
+  - **Unchanged:** anything with no smelting recipe drops as usual (coal, diamonds, redstone, lapis).
+  - **The Blood Pool's locks hold:** a recipe it has sealed isn't there to use, so the raw ore stays raw.
+  - **How:** the drops are changed as they appear, so nothing raw is ever on the ground.
+- **Deepborn:** in the main hand **where daylight doesn't reach**, **Night Vision and Haste I**, **Haste II from Level VI**.
+  - **Where:** the sky light at its holder's head is 7 or less (`DEEP_MAX_SKYLIGHT`). That covers caves, mines and the Nether, but not under a tree or a roof with daylight around.
+  - **No particles,** refreshed every second, so Night Vision never flickers while it applies.
+  - **After 3 seconds without it** (put away, or out in daylight), the effects it gave are taken away. A quick switch to place a torch keeps them. A potion of the same effect with more than 13 seconds left is left alone.
+- **Iron Blood:** a kill with it of a **hostile mob, a boss or a player** gives **2 absorption hearts, up to 8**.
+  - Animals don't count.
+  - Absorption from anything else (a golden apple) counts towards the 8.
+  - **What it gave fades a minute after the last kill** (`IRON_SECONDS`).
 - **White-hot:** part of what armour, Protection, Resistance and absorption would stop **gets through anyway**: 10% at Level I, 50% at Level X.
 - **The Grudge Ledger:** a player who hurts the Maul's holder **goes on the Maul's ledger**, and only the holder is told.
   - The holder deals **+10% (Level I) to +30% (Level X)** damage to anyone on it.
@@ -80,11 +100,15 @@ It hands both to `global.DeepdelverMaul`, so the logic stays in the server scrip
 | `/maul stats` | op | Serial, holder, kills, ore mined, grudges settled |
 
 ## Settings (top of deepdelver_maul.js)
-`LEVELS` (Grit, damage and enchantments per level), the pickaxe's and hammer's ids, speeds and durability, `HAMMER_MATERIALS`, `HAMMER_UPGRADES`, `PROSPECT_RADIUS` and the glow's time, cooldown, cap and colour, `WHITE_HOT_FROM/TO`, `GRUDGE_FROM/TO/DAYS`, Earthshaker's radius, share, slowness, cooldown and `SHAKE_HITS_PLAYERS`, `CRIT_GRACE_MS`, the Grit values, `BOSS_GRIT`, and how often it looks for its holder.
+- **Levels and the tool:** `LEVELS` (Grit, damage and enchantments per level), `ABILITIES` (the level each is learned at), the pickaxe's and hammer's ids, speeds and durability, `HAMMER_MATERIALS`, `HAMMER_UPGRADES`.
+- **Prospector:** `PROSPECT_RADIUS`, the markers' time, cooldown, cap, colour and size (`MARKER_SIZE`), how often they're checked, and `TOGGLE_GAP_MS`.
+- **Deepborn and Iron Blood:** `DEEP_MAX_SKYLIGHT`, `DEEP_HASTE2_LEVEL`, `DEEP_SECONDS`, `DEEP_GRACE_SECONDS`; `IRON_HEARTS`, `IRON_MAX_HEARTS`, `IRON_SECONDS`.
+- **Combat:** `WHITE_HOT_FROM/TO`, `GRUDGE_FROM/TO/DAYS`, Earthshaker's radius, share, slowness, cooldown and `SHAKE_HITS_PLAYERS`, `CRIT_GRACE_MS`.
+- **Grit and the rest:** the Grit values, `BOSS_GRIT`, the finder, and how often it looks for its holder.
 
-**Saved data:** `persistentData["deepdelver_maul"]`: its serial, holder, whether it's loose, its Grit, the ledger and the stats.
+**Saved data:** `persistentData["deepdelver_maul"]`: its serial, holder, whether it's loose, its Grit, the ledger, the stats, and who has Prospector off.
 
-**API:** `global.DeepdelverMaul = { levels, abilities, levelFor(grit), whiteHot(level), grudgeBonus(level), isRealMaul(stack), onLedger(uuid), state(), preview(grit), noteHit(...), finalDamage(...) }`. `preview` builds a void copy (serial 0) to check what a level looks like.
+**API:** `global.DeepdelverMaul = { levels, abilities, levelFor(grit), whiteHot(level), grudgeBonus(level), isRealMaul(stack), onLedger(uuid), state(), preview(grit), smelting(stack), prospectorOn(uuid), markers(), noteHit(...), finalDamage(...) }`. `preview` builds a void copy (serial 0) to check what a level looks like. `smelting` is Forge-touched's lookup: `{ id, count, xp }`, or null.
 
 ## Install
 1. Copy `deepdelver_maul.js` to `kubejs/server_scripts/`, and `deepdelver_maul_hooks.js` to `kubejs/startup_scripts/`.
@@ -99,17 +123,23 @@ It needs Tinkers' Construct for Level X.
    - Goruk_Lohaus opens one: the Maul is in it, after the loot, and only he gets the hint.
    - He takes it: "Goruk_Lohaus has claimed…".
    - More fresh chests, even after it's lost: never a second Maul.
-1. `/maul give Goruk_Lohaus` (or the one he found): a netherite pickaxe named The Deepdelver's Maul, Level I. The tooltip shows "6 damage" and its four abilities.
+1. `/maul give Goruk_Lohaus` (or the one he found): a netherite pickaxe named The Deepdelver's Maul, Level I. The tooltip shows "8 damage" and its seven Level I abilities.
 2. **Grit:** mine coal ore (+1) and diamond ore (+8), and kill a zombie (+3). `/maul` shows the Grit.
-3. **Prospector:** mine an ore next to others. The others glow gold through the stone for 5 seconds.
-4. **The ledger:** let the second account hit Goruk. Goruk alone is told it's on the ledger, and `/maul grudges` lists it. Kill it with the Maul: everyone hears the grudge is settled.
-5. **White-hot:** hit an armoured zombie with and without the hook installed. It takes more with the hook.
-6. **Earthshaker:** `/maul setgrit 1000`, jump and hit a mob in a crowd. Everything within 3 blocks is hit and slowed, with a stone burst.
-7. **Level X:** `/maul setgrit 6500`. It becomes a Vein Hammer with Haste V and Luck III, and mines whole veins.
-8. **Open for grabs:** Goruk drops it: "loose" within about 10 seconds. The second account picks it up: "claimed".
+3. **Prospector:** mine an ore next to others.
+   - Small gold outlines mark the others through the stone for 5 seconds, and nothing blocks the view.
+   - Mine a marked ore: its marker goes at once.
+   - Sneak and right-click: "Prospector off", and the markers go. Mining marks nothing now. Again: "Prospector on".
+4. **Forge-touched:** mine iron or copper ore. Ingots drop, with sparks, a hiss and a little experience. Coal and diamonds drop as usual.
+5. **Deepborn:** in a cave, hold the Maul: Night Vision and Haste I, with no particles. Walk out into daylight: about 3 seconds later they're gone.
+6. **Iron Blood:** kill a few zombies: 2 absorption hearts each, up to 8. They fade a minute after the last kill. A cow gives none.
+7. **The ledger:** let the second account hit Goruk. Goruk alone is told it's on the ledger, and `/maul grudges` lists it. Kill it with the Maul: everyone hears the grudge is settled.
+8. **White-hot:** hit an armoured zombie with and without the hook installed. It takes more with the hook.
+9. **Earthshaker:** `/maul setgrit 1000`, jump and hit a mob in a crowd. Everything within 3 blocks is hit and slowed, with a stone burst.
+10. **Level X:** `/maul setgrit 6500`. It becomes a Vein Hammer with Haste V and Luck III, does 18 damage, and mines whole veins. Deepborn gives Haste II.
+11. **Open for grabs:** Goruk drops it: "loose" within about 10 seconds. The second account picks it up: "claimed".
 
 ## Checked on the local test server (11 Nov 2026)
-Built in real KubeJS with `preview()` (no player online) and read back:
+This was checked with the first damage numbers (6 to 14). The way the item is built hasn't changed since, only the numbers. Built in real KubeJS with `preview()` (no player online) and read back:
 - **The hook loads:** 2 of 2 startup scripts, 0 errors.
 - **Level I:** a netherite pickaxe with Efficiency I and Unbreaking I. The game reads +5 attack damage and −2.8 speed (6 damage, 1.2 speed). The lore is right.
 - **Level X:** Tinkers built the Vein Hammer from the four materials.
@@ -118,6 +148,12 @@ Built in real KubeJS with `preview()` (no player online) and read back:
   - The game reads +13 attack damage: 14 damage.
 
 ## What couldn't be verified
+- **The 12 Nov changes haven't been run on a server yet** (smaller markers and the on/off switch, Forge-touched, Deepborn, Iron Blood, damage 8 to 18). The mock tests pass. What the real game has to confirm:
+  - **Forge-touched:** that `EntityEvents.spawned` sees a block's drops and `setItem` changes them, and that the recipe lookup finds the furnace recipes.
+  - **Deepborn:** that the sky light reads as expected (`skyLight` on a block).
+  - **Iron Blood:** that the absorption shows on the client.
+  - **The switch:** that sneak + right-click fires for a pickaxe at both the air and a block.
+  - **The markers:** how they look.
 - **The chest timing:** that a loot chest's own loot is in two ticks after the right-click (the same method as the Dragon's Hoard and the Deep Records).
 - **In a fight and in a mine:** the mock tests pass, but nobody has used it yet. Things to watch:
   - how strong White-hot and the grudge bonus feel with the hook;

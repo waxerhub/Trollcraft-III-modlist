@@ -1,7 +1,12 @@
 // The Deepdelver's Maul: Goruk the dwarf's super weapon, for fighting and mining. One Maul exists, open for grabs
 // like the Anamian Axe. It gains Grit from ore mined with it and from kills, and levels I-X: a netherite pickaxe
-// whose Efficiency (to V), Fortune (to III) and damage grow, until at Level X it becomes a Tinkers' Vein Hammer.
-//   - Prospector: mining an ore lights up the ore around it, through walls, for a few seconds (2 blocks to 5).
+// whose Efficiency (to V), Fortune (to III) and damage (8 to 18) grow, until at Level X it becomes a Tinkers' Vein
+// Hammer.
+//   - Prospector: mining an ore marks the ore around it (2 blocks to 5) with small glowing markers, seen through walls
+//     for a few seconds. A marker goes as soon as its ore is mined. Sneak + right-click with the Maul turns it off/on.
+//   - Forge-touched: ore it mines drops smelted (raw iron comes out as iron ingots; Fortune still counts).
+//   - Deepborn: in the main hand where daylight doesn't reach, Night Vision and Haste (Haste II from Level VI).
+//   - Iron Blood: kills (hostile mobs, bosses, players) give 2 absorption hearts, up to 8, fading a minute later.
 //   - White-hot: hits ignore part of what armour (and protection) would stop (10% at Level I to 50% at Level X).
 //   - The Grudge Ledger: a player who hurts the Maul's holder goes on its ledger. The holder hits them harder
 //     (+10% to +30%), and killing them with the Maul settles the grudge (and pays Grit).
@@ -23,16 +28,16 @@ const FLAVOUR = 'Forged in the deep for Goruk the dwarf. It remembers every vein
 // Level n needs LEVELS[n-1].grit (cumulative). damage: its base attack damage (a player's own 1 included).
 // ench: the pickaxe's enchantments. hammer: from here it's a Tinkers' Vein Hammer.
 const LEVELS = [
-  { grit: 0,    damage: 6,  ench: { efficiency: 1, unbreaking: 1 } },
-  { grit: 100,  damage: 7,  ench: { efficiency: 1, unbreaking: 2 } },
-  { grit: 300,  damage: 8,  ench: { efficiency: 2, unbreaking: 2, fortune: 1 } },
-  { grit: 600,  damage: 8,  ench: { efficiency: 2, unbreaking: 3, fortune: 1 } },
-  { grit: 1000, damage: 9,  ench: { efficiency: 3, unbreaking: 3, fortune: 1 } },
-  { grit: 1600, damage: 10, ench: { efficiency: 3, unbreaking: 3, fortune: 2 } },
-  { grit: 2400, damage: 11, ench: { efficiency: 4, unbreaking: 3, fortune: 2 } },
-  { grit: 3400, damage: 12, ench: { efficiency: 4, unbreaking: 3, fortune: 2, mending: 1 } },
-  { grit: 4700, damage: 13, ench: { efficiency: 5, unbreaking: 3, fortune: 3, mending: 1 } },
-  { grit: 6500, damage: 14, hammer: true },
+  { grit: 0,    damage: 8,  ench: { efficiency: 1, unbreaking: 1 } },
+  { grit: 100,  damage: 9,  ench: { efficiency: 1, unbreaking: 2 } },
+  { grit: 300,  damage: 10, ench: { efficiency: 2, unbreaking: 2, fortune: 1 } },
+  { grit: 600,  damage: 11, ench: { efficiency: 2, unbreaking: 3, fortune: 1 } },
+  { grit: 1000, damage: 12, ench: { efficiency: 3, unbreaking: 3, fortune: 1 } },
+  { grit: 1600, damage: 14, ench: { efficiency: 3, unbreaking: 3, fortune: 2 } },
+  { grit: 2400, damage: 15, ench: { efficiency: 4, unbreaking: 3, fortune: 2 } },
+  { grit: 3400, damage: 16, ench: { efficiency: 4, unbreaking: 3, fortune: 2, mending: 1 } },
+  { grit: 4700, damage: 17, ench: { efficiency: 5, unbreaking: 3, fortune: 3, mending: 1 } },
+  { grit: 6500, damage: 18, hammer: true },
 ]
 const PICKAXE = 'minecraft:netherite_pickaxe', PICKAXE_SPEED = 1.2, PICKAXE_DURABILITY = 2031
 // HAMMER_SPEED: what Tinkers works out for these materials (0.85 base; Hepatizon's Lightweight makes it 0.92).
@@ -43,14 +48,31 @@ const HAMMER_MATERIALS = ['tconstruct:manyullyn', 'tconstruct:hepatizon', 'tcons
 const HAMMER_UPGRADES = [{ name: 'tconstruct:haste', level: 5 }, { name: 'tconstruct:luck', level: 3 }]
 const ABILITIES = [
   { id: 'prospector', level: 1, name: 'Prospector' },
+  { id: 'forge', level: 1, name: 'Forge-touched' },
+  { id: 'deepborn', level: 1, name: 'Deepborn' },
+  { id: 'ironblood', level: 1, name: 'Iron Blood' },
   { id: 'whitehot', level: 1, name: 'White-hot' },
   { id: 'grudge', level: 1, name: 'The Grudge Ledger' },
   { id: 'earthshaker', level: 5, name: 'Earthshaker' },
   { id: 'veins', level: 10, name: 'Vein Hammer' },
 ]
-// Prospector: the radius by level (I..X), how long the ore glows, how often, how many at once, and its colour.
+// Prospector: the radius by level (I..X); how long a marker stays (it goes at once when its ore is mined), how often
+// it can fire, how many markers at once, and their colour. MARKER_SIZE: a marker is a small copy of the ore in the
+// middle of the block (this share of a block), so it hides nothing; only its outline shows through walls.
+// MARKER_CHECK_TICKS: how often markers are checked for ore that's gone. Sneak + right-click with the Maul turns
+// Prospector off or on for that player; TOGGLE_GAP_MS keeps one press (or a held button) to one switch.
 const PROSPECT_RADIUS = [2, 2, 2, 3, 3, 3, 4, 4, 4, 5]
 const PROSPECT_SECONDS = 5, PROSPECT_COOLDOWN_MS = 2000, PROSPECT_MAX = 40, PROSPECT_COLOR = 16766720
+const MARKER_SIZE = 0.3, MARKER_CHECK_TICKS = 4, TOGGLE_GAP_MS = 600
+// Forge-touched: ore it mines drops what a furnace would make of it (and the furnace's experience). Anything with
+// no smelting recipe (coal, diamonds, redstone) drops as usual. Recipes the Blood Pool has sealed aren't there to use.
+// Deepborn: in the main hand where daylight doesn't reach (sky light DEEP_MAX_SKYLIGHT or less: caves, mines, the
+// Nether), Night Vision and Haste, Haste II from DEEP_HASTE2_LEVEL. Refreshed every second for DEEP_SECONDS; after
+// DEEP_GRACE_SECONDS without it (time to place a torch), the effects it gave are taken away.
+const DEEP_MAX_SKYLIGHT = 7, DEEP_HASTE2_LEVEL = 6, DEEP_SECONDS = 12, DEEP_GRACE_SECONDS = 3
+// Iron Blood: a kill (a hostile mob, a boss or a player) gives IRON_HEARTS absorption hearts, up to IRON_MAX_HEARTS.
+// What it gave fades IRON_SECONDS after the last kill.
+const IRON_HEARTS = 2, IRON_MAX_HEARTS = 8, IRON_SECONDS = 60
 // White-hot: the share of what armour, protection and resistance stop that gets through anyway (% at Level I .. X).
 const WHITE_HOT_FROM = 10, WHITE_HOT_TO = 50
 // The Grudge Ledger: % more damage against a player on it (Level I .. X), and how long a grudge lasts.
@@ -87,8 +109,14 @@ const DATA_KEY = 'deepdelver_maul'
 let Serializer = null, StringArg = null
 try { Serializer = Java.loadClass('net.minecraft.network.chat.Component$Serializer') } catch (e) { }
 try { StringArg = Java.loadClass('com.mojang.brigadier.arguments.StringArgumentType') } catch (e) { }
-// pending: victim uuid -> a hit from the Maul waiting for the damage hook. glows: prospector batches still lit.
-const S = { shaking: false, shakeCooldown: {}, prospectAt: {}, falling: {}, pending: {}, glows: 0, glowSeq: 0, loopToken: 0, misses: 0, chests: {} }
+let RecipeType = null, SimpleContainer = null
+try { RecipeType = Java.loadClass('net.minecraft.world.item.crafting.RecipeType') } catch (e) { }
+try { SimpleContainer = Java.loadClass('net.minecraft.world.SimpleContainer') } catch (e) { }
+// pending: victim uuid -> a hit from the Maul waiting for the damage hook. markers: Prospector's, by "dim|x|y|z".
+// smeltZones: ore Forge-touched is breaking this tick. smeltCache: item id -> what it smelts into (or null).
+// deep: Deepborn's effects given, by player. iron: Iron Blood's absorption given, by player.
+const S = { shaking: false, shakeCooldown: {}, prospectAt: {}, falling: {}, pending: {}, markers: {}, markerSeq: 0, markerLoop: false,
+  toggledAt: {}, smeltZones: [], smeltCache: {}, deep: {}, deepAt: {}, iron: {}, loopToken: 0, misses: 0, chests: {} }
 let data = null
 function db() {
   if (data) return data
@@ -106,6 +134,7 @@ function db() {
     }
   }
   if (!data.grudges) data.grudges = {}
+  if (!data.prospectOff) data.prospectOff = {}       // players who turned Prospector off
   return data
 }
 function save() {
@@ -151,6 +180,11 @@ function tellAll(server, parts) {
   list(server.players).forEach(p => { try { p.tell(c) } catch (e) { } })
 }
 function voice(text, color) { return [{ text: '[THE MAUL] ', color: 'dark_aqua', bold: true }, { text: text, color: color || 'aqua' }] }
+// A sound where the player stands (a bare ~ ~ ~ would be the server's own position, out of earshot).
+function soundAt(server, p, sound, volume, pitch) {
+  const q = pos(p)
+  run(server, 'execute in ' + dimOf(p) + ' run playsound ' + sound + ' player @a ' + num(q.x) + ' ' + num(q.y) + ' ' + num(q.z) + ' ' + volume + ' ' + pitch)
+}
 function attackerOf(source) {
   try { return typeof source.getActual == 'function' ? source.getActual() : source.getEntity() } catch (e) { return null }
 }
@@ -205,7 +239,10 @@ function bar(grit, level) {
 }
 function nameColor(level) { return level >= 10 ? 'dark_aqua' : level >= 7 ? 'aqua' : level >= 4 ? 'gold' : 'gray' }
 function abilityText(id, level) {
-  if (id == 'prospector') return 'mining ore lights up the ore within ' + prospectRadius(level) + ' blocks'
+  if (id == 'prospector') return 'mining ore marks the ore within ' + prospectRadius(level) + ' blocks (sneak + right-click: on/off)'
+  if (id == 'forge') return 'ore it mines comes out smelted'
+  if (id == 'deepborn') return 'away from daylight, Night Vision and Haste ' + (level >= DEEP_HASTE2_LEVEL ? 'II' : 'I')
+  if (id == 'ironblood') return 'kills give ' + IRON_HEARTS + ' absorption hearts (up to ' + IRON_MAX_HEARTS + ')'
   if (id == 'whitehot') return 'hits ignore ' + whiteHot(level) + '% of armour'
   if (id == 'grudge') return 'whoever hurts you goes on the ledger; +' + grudgeBonus(level) + '% damage to them'
   if (id == 'earthshaker') return 'falling hits slam the ground (' + shakeRadius(level) + ' blocks)'
@@ -280,21 +317,61 @@ function levelUp(p, level) {
   if (unlocked.length) text += ' It has learned ' + unlocked.map(a => a.name).join(' and ') + '.'
   if (LEVELS[level - 1].hammer) text += ' The pick is reforged: it is a Vein Hammer now.'
   tellAll(server, voice(text, level >= 10 ? 'dark_aqua' : 'aqua'))
-  run(server, 'playsound minecraft:block.anvil.use master ' + nameOf(p) + ' ~ ~ ~ 1 0.6')
+  soundAt(server, p, 'minecraft:block.anvil.use', 1, 0.6)
   const q = pos(p)
   run(server, 'execute in ' + dimOf(p) + ' run particle minecraft:lava ' + num(q.x) + ' ' + num(q.y + 1) + ' ' + num(q.z) + ' 0.5 0.8 0.5 0.1 30')
   console.info('[Maul] ' + nameOf(p) + ': Level ' + level)
 }
 
-// ===================== MINING: GRIT AND PROSPECTOR =====================
+// ===================== MINING: GRIT, PROSPECTOR, FORGE-TOUCHED =====================
 
 function isOre(block) { try { return !!block.hasTag('forge:ores') } catch (e) { return false } }
-// Lights up the ore within the level's radius of (x, y, z): glowing block displays, gone after PROSPECT_SECONDS.
+function markerKey(d, x, y, z) { return d + '|' + x + '|' + y + '|' + z }
+// A marker: a small glowing copy of the ore in the middle of its block. Inside the ore it can't be seen; its outline
+// shows through walls. It never covers anything around it.
+function markerSnbt(id, tagName) {
+  const s = r3(MARKER_SIZE), t = r3((1 - MARKER_SIZE) / 2)
+  return '{block_state:{Name:"' + id + '"},Glowing:1b,glow_color_override:' + PROSPECT_COLOR + ',brightness:{sky:15,block:15},' +
+    'Tags:["maul_glow","' + tagName + '"],transformation:{left_rotation:[0f,0f,0f,1f],right_rotation:[0f,0f,0f,1f],' +
+    'translation:[' + t + 'f,' + t + 'f,' + t + 'f],scale:[' + s + 'f,' + s + 'f,' + s + 'f]}}'
+}
+function dropMarker(server, key) {
+  const m = S.markers[key]
+  if (!m) return
+  delete S.markers[key]
+  run(server, 'kill @e[type=minecraft:block_display,tag=' + m.tag + ']')
+}
+function clearMarkers(server) { Object.keys(S.markers).forEach(k => dropMarker(server, k)) }
+// Every few ticks while there are markers: drop those whose time is up or whose ore is gone (mined by anyone, by
+// a vein-mining hammer, blown up).
+function tendMarkers(server) {
+  const now = Date.now()
+  Object.keys(S.markers).forEach(k => {
+    const m = S.markers[k]
+    let gone = now >= m.until
+    if (!gone) { try { gone = String(m.lv.getBlock(m.x, m.y, m.z).id) != m.id } catch (e) { gone = true } }
+    if (gone) dropMarker(server, k)
+  })
+}
+function tendLoop(server) {
+  if (S.markerLoop) return
+  S.markerLoop = true
+  const step = () => {
+    try { tendMarkers(server) } catch (e) { console.error('[Maul] Markers: ' + e) }
+    if (Object.keys(S.markers).length) server.scheduleInTicks(MARKER_CHECK_TICKS, step)
+    else S.markerLoop = false
+  }
+  server.scheduleInTicks(MARKER_CHECK_TICKS, step)
+}
+function prospectorOn(p) { return !db().prospectOff[uuidOf(p)] }
+// Marks the ore within the level's radius of the mined block, nearest first, for PROSPECT_SECONDS. Ore that's
+// already marked keeps its marker (and its time is renewed).
 function prospect(server, p, block, level) {
   const u = uuidOf(p), now = Date.now()
+  if (!prospectorOn(p)) return 0
   if (S.prospectAt[u] && now - S.prospectAt[u] < PROSPECT_COOLDOWN_MS) return 0
   S.prospectAt[u] = now
-  const lv = block.level, d = dimOf(p), r = prospectRadius(level)
+  const lv = block.level, d = dimOf(p), r = prospectRadius(level), until = now + PROSPECT_SECONDS * 1000
   const x0 = Number(block.x), y0 = Number(block.y), z0 = Number(block.z)
   const found = []
   for (let dx = -r; dx <= r; dx++) for (let dy = -r; dy <= r; dy++) for (let dz = -r; dz <= r; dz++) {
@@ -304,28 +381,109 @@ function prospect(server, p, block, level) {
   }
   if (!found.length) return 0
   found.sort((a, b) => a.d - b.d)
-  const batch = 'maul_glow_' + (++S.glowSeq)
-  found.slice(0, PROSPECT_MAX).forEach(o => {
-    run(server, 'execute in ' + d + ' run summon minecraft:block_display ' + o.x + ' ' + o.y + ' ' + o.z +
-      ' {block_state:{Name:"' + o.id + '"},Glowing:1b,glow_color_override:' + PROSPECT_COLOR + ',Tags:["maul_glow","' + batch + '"],' +
-      'transformation:{left_rotation:[0f,0f,0f,1f],right_rotation:[0f,0f,0f,1f],translation:[0.002f,0.002f,0.002f],scale:[0.996f,0.996f,0.996f]}}')
+  let n = 0
+  found.forEach(o => {
+    const key = markerKey(d, o.x, o.y, o.z), m = S.markers[key]
+    if (m) { m.until = until; n++; return }
+    if (Object.keys(S.markers).length >= PROSPECT_MAX) return
+    const tagName = 'maul_m' + (++S.markerSeq)
+    run(server, 'execute in ' + d + ' run summon minecraft:block_display ' + o.x + ' ' + o.y + ' ' + o.z + ' ' + markerSnbt(o.id, tagName))
+    S.markers[key] = { tag: tagName, until: until, lv: lv, id: o.id, x: o.x, y: o.y, z: o.z }
+    n++
   })
-  S.glows++
-  server.scheduleInTicks(PROSPECT_SECONDS * 20, () => {
-    run(server, 'kill @e[type=minecraft:block_display,tag=' + batch + ']')
-    S.glows = Math.max(0, S.glows - 1)
-  })
-  return Math.min(found.length, PROSPECT_MAX)
+  if (n) tendLoop(server)
+  return n
 }
+
+// Forge-touched: what a furnace makes of an item, by id: { id, count, xp }, or null. Looked up once per item.
+function smeltingOf(server, lv, stack) {
+  const id = String(stack.id)
+  if (Object.prototype.hasOwnProperty.call(S.smeltCache, id)) return S.smeltCache[id]
+  let out = null
+  try {
+    let box = new SimpleContainer(1)
+    box.setItem(0, stack.copy())
+    let found = server.getRecipeManager().getRecipeFor(RecipeType.SMELTING, box, lv)
+    if (found.isPresent()) {
+      let r = found.get(), res = r.getResultItem(lv.registryAccess())
+      if (res && !res.isEmpty()) out = { id: String(res.id), count: Number(res.count) || 1, xp: Number(r.getExperience()) || 0 }
+    }
+  } catch (e) {
+    console.warn('[Maul] Forge-touched: ' + e)
+    return null
+  }
+  S.smeltCache[id] = out
+  return out
+}
+// The ore is about to break: its drops (spawned this tick, inside it) are smelted as they appear (EntityEvents.spawned
+// below). A tick later: sparks, a hiss and the furnace's experience, if anything was smelted.
+function smeltZone(server, p, b) {
+  const zone = { dim: dimOf(p), x: Number(b.x), y: Number(b.y), z: Number(b.z), xp: 0, n: 0 }
+  S.smeltZones.push(zone)
+  server.scheduleInTicks(1, () => {
+    S.smeltZones = S.smeltZones.filter(z => z !== zone)
+    if (!zone.n) return
+    const xyz = num(zone.x + 0.5) + ' ' + num(zone.y + 0.5) + ' ' + num(zone.z + 0.5)
+    run(server, 'execute in ' + zone.dim + ' run particle minecraft:lava ' + xyz + ' 0.2 0.2 0.2 0 3')
+    run(server, 'execute in ' + zone.dim + ' run playsound minecraft:block.fire.extinguish block @a ' + xyz + ' 0.3 1.6')
+    let xp = Math.floor(zone.xp)
+    if (Math.random() < zone.xp - xp) xp++
+    if (xp > 0) { try { p.giveExperiencePoints(xp) } catch (e) { } }
+  })
+}
+function inZone(z, d, at) {
+  return z.dim == d && at.x >= z.x - 0.5 && at.x <= z.x + 1.5 && at.y >= z.y - 0.5 && at.y <= z.y + 1.5 && at.z >= z.z - 0.5 && at.z <= z.z + 1.5
+}
+EntityEvents.spawned(event => {
+  if (!S.smeltZones.length) return
+  const e = event.entity
+  if (typeOf(e) != 'minecraft:item') return
+  const at = pos(e), d = dimOf(e)
+  const zone = S.smeltZones.filter(z => inZone(z, d, at))[0]
+  if (!zone) return
+  const st = e.getItem(), out = smeltingOf(event.server || Utils.server, levelOf(e), st)
+  if (!out) return
+  const n = Number(st.count) || 1
+  e.setItem(Item.of(out.id, out.count * n))
+  zone.xp += out.xp * n
+  zone.n += n
+})
+
 BlockEvents.broken(event => {
   const p = event.player, b = event.block
-  if (!isPlayer(p) || !inMainHand(p) || !isOre(b)) return
+  if (!isPlayer(p)) return
   const server = event.server || Utils.server
+  if (Object.keys(S.markers).length) {
+    let key = markerKey(dimOf(p), Number(b.x), Number(b.y), Number(b.z))
+    if (S.markers[key]) dropMarker(server, key)     // a marked ore is mined (by anyone): its marker goes at once
+  }
+  if (!inMainHand(p) || !isOre(b)) return
   const level = heldLevel(p), id = String(b.id)
+  if (has(level, 'forge')) smeltZone(server, p, b)
   if (has(level, 'prospector')) prospect(server, p, b, level)
   db().stats.ores++
   addGrit(p, GRIT_RARE_ORES[id] != null ? GRIT_RARE_ORES[id] : GRIT_ORE)
 })
+
+// Sneak + right-click with the Maul (at a block or the air): Prospector off, or back on, for this player.
+function sneaking(p) { return bool(() => p.isShiftKeyDown()) }
+function offHand(event) { try { return String(event.hand) == 'OFF_HAND' } catch (e) { return false } }
+function toggleProspector(event) {
+  const p = event.player
+  if (!isPlayer(p) || offHand(event) || !sneaking(p) || !inMainHand(p)) return
+  const u = uuidOf(p), now = Date.now(), last = S.toggledAt[u]
+  S.toggledAt[u] = now
+  if (last && now - last < TOGGLE_GAP_MS) return     // the same press: a block and the air, or a held button
+  const server = event.server || Utils.server, D = db(), off = !D.prospectOff[u]
+  if (off) D.prospectOff[u] = 1
+  else delete D.prospectOff[u]
+  save()
+  if (off) clearMarkers(server)
+  tell(p, voice(off ? 'Prospector off. Sneak and right-click again to turn it on.' : 'Prospector on: mining ore marks the ore around it.', off ? 'gray' : 'aqua'))
+  soundAt(server, p, 'minecraft:block.note_block.chime', 0.6, off ? 0.7 : 1.4)
+}
+ItemEvents.rightClicked(event => toggleProspector(event))
+BlockEvents.rightClicked(event => toggleProspector(event))
 
 // ===================== FINDING IT =====================
 
@@ -419,6 +577,31 @@ function isHostile(e) {
   try { return String(e.getType().getCategory()).toLowerCase().indexOf('monster') >= 0 } catch (err) { }
   try { return !!e.isMonster() } catch (err) { return false }
 }
+// Iron Blood: absorption for a kill, up to the cap (absorption from anything else counts towards it). What it gave
+// fades IRON_SECONDS after the last kill.
+function ironBlood(server, p) {
+  const u = uuidOf(p), cap = IRON_MAX_HEARTS * 2
+  let cur = 0
+  try { cur = Number(p.getAbsorptionAmount()) || 0 } catch (e) { return 0 }
+  const s = S.iron[u] || { given: 0, until: 0 }
+  S.iron[u] = s
+  s.until = Date.now() + IRON_SECONDS * 1000
+  const add = Math.min(IRON_HEARTS * 2, cap - cur)
+  if (add > 0) {
+    p.setAbsorptionAmount(cur + add)
+    s.given += add
+    soundAt(server, p, 'minecraft:item.armor.equip_iron', 0.8, 0.8)
+  }
+  if (s.given > 0) server.scheduleInTicks(IRON_SECONDS * 20 + 2, () => ironFade(p, u))
+  else delete S.iron[u]
+  return add > 0 ? add : 0
+}
+function ironFade(p, u) {
+  const s = S.iron[u]
+  if (!s || Date.now() < s.until) return
+  delete S.iron[u]
+  try { p.setAbsorptionAmount(Math.max(0, (Number(p.getAbsorptionAmount()) || 0) - s.given)) } catch (e) { }
+}
 EntityEvents.death(event => {
   const e = event.entity, killer = attackerOf(event.source)
   if (!isPlayer(killer) || sameEntity(killer, e) || !inMainHand(killer)) return
@@ -439,7 +622,9 @@ EntityEvents.death(event => {
     D.stats.bosses++
   } else grit = isHostile(e) ? GRIT_HOSTILE : GRIT_OTHER
   D.stats.kills++
+  const level = heldLevel(killer)
   addGrit(killer, grit)
+  if (has(level, 'ironblood') && (isPlayer(e) || BOSS_GRIT[id] != null || isHostile(e))) ironBlood(server, killer)
 })
 
 // ===================== HITS: EARTHSHAKER =====================
@@ -462,7 +647,48 @@ function isCrit(p) {
   const t = S.falling[uuidOf(p)]
   return !!t && Date.now() - t <= CRIT_GRACE_MS
 }
-// Each tick, note when the Maul's holder is falling (only the holder is checked).
+// Deepborn: where daylight doesn't reach. Sky light at the head; where there's no sky light at all (the Nether), 0.
+function underground(p) {
+  const q = pos(p)
+  try {
+    let b = levelOf(p).getBlock(Math.floor(q.x), Math.floor(q.y + 1.5), Math.floor(q.z))
+    let sky = Number(b.skyLight)
+    if (!isNaN(sky)) return sky <= DEEP_MAX_SKYLIGHT
+    return !b.canSeeSky
+  } catch (e) { return false }
+}
+// Whether this player's effect (night_vision, haste) is one Deepborn gave: no longer than Deepborn gives it for. A
+// potion with a minute left is left alone.
+function deepbornEffect(p, id) {
+  try {
+    let it = p.getActiveEffects().iterator()
+    while (it.hasNext()) {
+      let fx = it.next()
+      if (String(fx.getEffect().getDescriptionId()) == 'effect.minecraft.' + id) return Number(fx.getDuration()) <= (DEEP_SECONDS + 1) * 20
+    }
+  } catch (e) { }
+  return false
+}
+// Once a second for the holder: Night Vision and Haste while it applies; once it hasn't for DEEP_GRACE_SECONDS, the
+// effects it gave are taken away.
+function deepborn(server, p) {
+  const u = uuidOf(p), level = inMainHand(p) ? heldLevel(p) : 0
+  if (level && has(level, 'deepborn') && underground(p)) {
+    run(server, 'effect give ' + u + ' minecraft:night_vision ' + DEEP_SECONDS + ' 0 true')
+    run(server, 'effect give ' + u + ' minecraft:haste ' + DEEP_SECONDS + ' ' + (level >= DEEP_HASTE2_LEVEL ? 1 : 0) + ' true')
+    S.deep[u] = { misses: 0 }
+    return true
+  }
+  const s = S.deep[u]
+  if (!s) return false
+  s.misses++
+  if (s.misses < DEEP_GRACE_SECONDS) return false
+  delete S.deep[u]
+  const effects = ['night_vision', 'haste']
+  effects.forEach(id => { if (deepbornEffect(p, id)) run(server, 'effect clear ' + u + ' minecraft:' + id) })
+  return false
+}
+// Each tick, note when the Maul's holder is falling (only the holder is checked); once a second, Deepborn.
 PlayerEvents.tick(event => {
   const p = event.player, D = db()
   if (!D.serial || !D.holder) return
@@ -470,6 +696,10 @@ PlayerEvents.tick(event => {
   try { u = uuidOf(p) } catch (e) { return }
   if (u != D.holder) return
   if (fallingNow(critInfo(p)) && inMainHand(p)) S.falling[u] = Date.now()
+  const now = Date.now()
+  if (S.deepAt[u] && now - S.deepAt[u] < 1000) return
+  S.deepAt[u] = now
+  deepborn(event.server || Utils.server, p)
 })
 function earthshaker(server, p, victim, level) {
   const u = uuidOf(p), now = Date.now()
@@ -534,7 +764,7 @@ function finalDamage(victim, source, after) {
 
 function scan(server) {
   const D = db()
-  if (!S.glows) run(server, 'kill @e[type=minecraft:block_display,tag=maul_glow]')   // leftovers from before a restart
+  if (!Object.keys(S.markers).length) run(server, 'kill @e[type=minecraft:block_display,tag=maul_glow]')   // leftovers from before a restart or /reload
   if (!D.serial) return
   if (purgeKitActive()) { S.misses = 0; return }     // a kit Purge locks it in its holder's vault: it isn't loose
   const players = list(server.players)
@@ -676,6 +906,10 @@ global.DeepdelverMaul = {
   state: () => JSON.parse(JSON.stringify(db())),
   // What the Maul looks like at a Grit total, as a void copy (serial 0: never the real one). For checking builds.
   preview: g => makeMaul(0, Number(g) || 0, 0),
+  // Forge-touched's lookup: what a furnace makes of this stack, { id, count, xp } or null.
+  smelting: stack => smeltingOf(Utils.server, Utils.server.overworld(), stack),
+  prospectorOn: u => !db().prospectOff[String(u).toLowerCase()],
+  markers: () => Object.keys(S.markers).length,
   // For startup_scripts/deepdelver_maul_hooks.js:
   noteHit: (victim, source, amount) => noteHit(victim, source, amount),
   finalDamage: (victim, source, after) => finalDamage(victim, source, after),

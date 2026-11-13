@@ -109,9 +109,11 @@ const DATA_KEY = 'deepdelver_maul'
 let Serializer = null, StringArg = null
 try { Serializer = Java.loadClass('net.minecraft.network.chat.Component$Serializer') } catch (e) { }
 try { StringArg = Java.loadClass('com.mojang.brigadier.arguments.StringArgumentType') } catch (e) { }
-let RecipeType = null, SimpleContainer = null
+let RecipeType = null, SimpleContainer = null, LightLayer = null, BlockPos = null
 try { RecipeType = Java.loadClass('net.minecraft.world.item.crafting.RecipeType') } catch (e) { }
 try { SimpleContainer = Java.loadClass('net.minecraft.world.SimpleContainer') } catch (e) { }
+try { LightLayer = Java.loadClass('net.minecraft.world.level.LightLayer') } catch (e) { }
+try { BlockPos = Java.loadClass('net.minecraft.core.BlockPos') } catch (e) { }
 // pending: victim uuid -> a hit from the Maul waiting for the damage hook. markers: Prospector's, by "dim|x|y|z".
 // smeltZones: ore Forge-touched is breaking this tick. smeltCache: item id -> what it smelts into (or null).
 // deep: Deepborn's effects given, by player. iron: Iron Blood's absorption given, by player.
@@ -387,7 +389,9 @@ function prospect(server, p, block, level) {
     if (m) { m.until = until; n++; return }
     if (Object.keys(S.markers).length >= PROSPECT_MAX) return
     const tagName = 'maul_m' + (++S.markerSeq)
-    run(server, 'execute in ' + d + ' run summon minecraft:block_display ' + o.x + ' ' + o.y + ' ' + o.z + ' ' + markerSnbt(o.id, tagName))
+    // Decimal coordinates: /summon centres whole ones on the block (x + 0.5, z + 0.5), which would put the marker
+    // half a block off, across four blocks.
+    run(server, 'execute in ' + d + ' run summon minecraft:block_display ' + num(o.x) + ' ' + num(o.y) + ' ' + num(o.z) + ' ' + markerSnbt(o.id, tagName))
     S.markers[key] = { tag: tagName, until: until, lv: lv, id: o.id, x: o.x, y: o.y, z: o.z }
     n++
   })
@@ -458,11 +462,18 @@ BlockEvents.broken(event => {
     if (S.markers[key]) dropMarker(server, key)     // a marked ore is mined (by anyone): its marker goes at once
   }
   if (!inMainHand(p) || !isOre(b)) return
-  const level = heldLevel(p), id = String(b.id)
+  const level = heldLevel(p), id = String(b.id), lv = b.level, x = Number(b.x), y = Number(b.y), z = Number(b.z)
   if (has(level, 'forge')) smeltZone(server, p, b)
-  if (has(level, 'prospector')) prospect(server, p, b, level)
-  db().stats.ores++
-  addGrit(p, GRIT_RARE_ORES[id] != null ? GRIT_RARE_ORES[id] : GRIT_ORE)
+  // Grit and Prospector a tick later, once the ore has really gone. A break that something cancelled after this
+  // (a protected area, a claim) earns nothing, so nobody can farm Grit off an ore they can't break.
+  server.scheduleInTicks(1, () => {
+    try {
+      if (String(lv.getBlock(x, y, z).id) == id) return
+      if (has(level, 'prospector')) prospect(server, p, b, level)
+      db().stats.ores++
+      addGrit(p, GRIT_RARE_ORES[id] != null ? GRIT_RARE_ORES[id] : GRIT_ORE)
+    } catch (e) { console.error('[Maul] Mining: ' + e) }
+  })
 })
 
 // Sneak + right-click with the Maul (at a block or the air): Prospector off, or back on, for this player.
@@ -647,15 +658,20 @@ function isCrit(p) {
   const t = S.falling[uuidOf(p)]
   return !!t && Date.now() - t <= CRIT_GRACE_MS
 }
-// Deepborn: where daylight doesn't reach. Sky light at the head; where there's no sky light at all (the Nether), 0.
+// The sky light stored at a block (0-15), the same by day and night; 0 where there's no sky (the Nether). KubeJS's
+// block.skyLight takes the night's darkening off (open ground reads 4 at night), so it's read from the level, or
+// the darkening is added back.
+function skyLightAt(lv, x, y, z) {
+  try { if (LightLayer && BlockPos) return Number(lv.getBrightness(LightLayer.SKY, new BlockPos(x, y, z))) } catch (e) { }
+  try { return Number(lv.getBlock(x, y, z).skyLight) + Number(lv.getSkyDarken()) } catch (e) { }
+  return NaN
+}
+// Deepborn: where daylight doesn't reach (the sky light at the head).
 function underground(p) {
-  const q = pos(p)
-  try {
-    let b = levelOf(p).getBlock(Math.floor(q.x), Math.floor(q.y + 1.5), Math.floor(q.z))
-    let sky = Number(b.skyLight)
-    if (!isNaN(sky)) return sky <= DEEP_MAX_SKYLIGHT
-    return !b.canSeeSky
-  } catch (e) { return false }
+  const q = pos(p), lv = levelOf(p), x = Math.floor(q.x), y = Math.floor(q.y + 1.5), z = Math.floor(q.z)
+  const sky = skyLightAt(lv, x, y, z)
+  if (!isNaN(sky)) return sky <= DEEP_MAX_SKYLIGHT
+  try { return !lv.getBlock(x, y, z).canSeeSky } catch (e) { return false }
 }
 // Whether this player's effect (night_vision, haste) is one Deepborn gave: no longer than Deepborn gives it for. A
 // potion with a minute left is left alone.

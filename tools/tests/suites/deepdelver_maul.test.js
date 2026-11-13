@@ -28,12 +28,15 @@ const ore = id => /_ore$|^minecraft:ancient_debris$/.test(id)
 // Loot containers: key -> { loot (its loot table until it's opened), slots }.
 const chests = {}
 let skyLight = 15                             // the sky light everywhere (Deepborn: 7 or less is away from daylight)
+let darken = 0                                // the night's darkening, which KubeJS's block.skyLight takes off (11 at night)
 // Smelting recipes: input -> [result, count, experience]. recipeLookups: how often the recipe manager was asked.
 const SMELT = { 'minecraft:raw_iron': ['minecraft:iron_ingot', 1, 0.7], 'minecraft:ancient_debris': ['minecraft:netherite_scrap', 1, 2] }
 let recipeLookups = 0
 const level = {
   dimension: { location: () => OW },
   registryAccess: () => ({}),
+  getBrightness: (layer, p) => (layer == 'sky' && p instanceof BlockPosMock ? skyLight : NaN),
+  getSkyDarken: () => darken,
   getBlock: (x, y, z) => {
     const k = x + ',' + y + ',' + z, c = chests[k]
     if (c) {
@@ -41,7 +44,7 @@ const level = {
         entity: { getContainerSize: () => 27, getItem: i => c.slots[i] || EMPTY, setItem: (i, s) => { c.slots[i] = s }, setChanged: () => { } } }
     }
     const id = blocks[k] || 'minecraft:air'
-    return { id, x, y, z, level, skyLight, hasTag: t => t == 'forge:ores' && ore(id) }
+    return { id, x, y, z, level, skyLight: skyLight - darken, hasTag: t => t == 'forge:ores' && ore(id) }
   },
 }
 const server = {
@@ -124,6 +127,7 @@ const node = n => ({ n, ch: [], req: null, f: null, then(c) { this.ch.push(c); r
 const StringArg = { word: () => 'word', getString: (ctx, k) => ctx.args[k] }
 const Serializer = { fromJsonLenient: j => JSON.parse(j) }
 const RecipeTypeMock = { SMELTING: 'smelting' }
+function BlockPosMock(x, y, z) { this.x = x; this.y = y; this.z = z }
 function SimpleContainerMock() { this.items = [] }
 SimpleContainerMock.prototype.setItem = function (i, s) { this.items[i] = s }
 new Function('EntityEvents', 'BlockEvents', 'PlayerEvents', 'ServerEvents', 'ItemEvents', 'Java', 'Utils', 'Item', 'Text', 'console', 'global', src)(
@@ -132,7 +136,8 @@ new Function('EntityEvents', 'BlockEvents', 'PlayerEvents', 'ServerEvents', 'Ite
   { tick: on('tick') },
   { loaded: on('loaded'), commandRegistry: h => h({ commands: { literal: node, argument: n => node(n) }, arguments: { INTEGER: { create: () => 'int', getResult: (ctx, k) => ctx.args[k] } }, register: t => { cmdTree = t } }) },
   { rightClicked: on('itemClicked') },
-  { loadClass: n => (/StringArgumentType/.test(n) ? StringArg : /RecipeType/.test(n) ? RecipeTypeMock : /SimpleContainer/.test(n) ? SimpleContainerMock : Serializer) },
+  { loadClass: n => (/StringArgumentType/.test(n) ? StringArg : /RecipeType/.test(n) ? RecipeTypeMock : /SimpleContainer/.test(n) ? SimpleContainerMock :
+    /LightLayer/.test(n) ? { SKY: 'sky' } : /BlockPos/.test(n) ? BlockPosMock : Serializer) },
   { server }, Item, { of: s => s },
   { info: m => logs.push(m), warn: m => logs.push('WARN ' + m), error: m => logs.push('ERR ' + m) },
   global)
@@ -156,7 +161,20 @@ function run(args, as) {
 }
 function kill(victim, killer) { victim.alive = false; fire('death', { entity: victim, server, source: { getActual: () => killer, getMsgId: () => 'player' } }) }
 function hit(victim, p, dmg) { fire('hurt', { entity: victim, server, source: { getActual: () => p, getImmediate: () => p, getMsgId: () => 'player' }, damage: dmg }) }
-function mine(p, x, y, z) { fire('broken', { player: p, block: level.getBlock(x, y, z), server }) }
+// Mining a block, as the game does: the break event; then (unless something cancels it, like a protected area) the
+// block goes and its drops ([[id, count], ...]) appear inside it, or in the block at `spawnAt`, in the same tick; then
+// a tick passes. The block is put back afterwards, so a test can mine the same ore again.
+function mine(p, x, y, z, opts) {
+  opts = opts || {}
+  const k = x + ',' + y + ',' + z, was = blocks[k], s = opts.spawnAt || [x, y, z]
+  fire('broken', { player: p, block: level.getBlock(x, y, z), server })
+  if (!opts.cancelled) blocks[k] = 'minecraft:air'
+  const items = opts.cancelled ? [] : (opts.drops || []).map(d => dropItem(s[0] + 0.5, s[1] + 0.3, s[2] + 0.5, d[0], d[1]))
+  advance(1)
+  if (was) blocks[k] = was
+  else delete blocks[k]
+  return items
+}
 // An item entity appearing (EntityEvents.spawned), as a block's drops do.
 function dropItem(x, y, z, id, n) {
   let st = stack(id, n)
@@ -165,15 +183,7 @@ function dropItem(x, y, z, id, n) {
   fire('spawned', { entity: e, server })
   return e
 }
-// Mining a block that drops `drops` ([[id, count], ...]) in the same tick, as the game does (inside the block, or in
-// the block at `spawnAt`); then a tick passes.
-function mineDrops(p, x, y, z, drops, spawnAt) {
-  mine(p, x, y, z)
-  const s = spawnAt || [x, y, z]
-  const items = drops.map(d => dropItem(s[0] + 0.5, s[1] + 0.3, s[2] + 0.5, d[0], d[1]))
-  advance(1)
-  return items
-}
+function mineDrops(p, x, y, z, drops, spawnAt) { return mine(p, x, y, z, { drops, spawnAt }) }
 const click = (p, hand, onBlock) => (onBlock ? fire('rightClicked', { player: p, hand, block: level.getBlock(9, 9, 9), server }) : fire('itemClicked', { player: p, hand, server }))
 const count = (p, re) => p.msgs.filter(m => re.test(m)).length
 const maulOf = p => p.slots.find(s => s && s.parsed && s.parsed.trollcraft && s.parsed.trollcraft.maul)
@@ -257,9 +267,10 @@ mine(goruk, 0, 10, 0)
 ok('mining coal ore: +1 Grit', gritOf(goruk) == 1)
 const glows = cmds.slice(c0).filter(c => /summon minecraft:block_display/.test(c))
 ok('Prospector: the iron and diamond ore within 2 blocks are marked (not the gold 3 away, not the stone)', glows.length == 2 &&
-  glows.some(c => / 1 10 0 \{block_state:\{Name:"minecraft:iron_ore"\},Glowing:1b,glow_color_override:16766720,brightness:\{sky:15,block:15\},Tags:\["maul_glow","maul_m1"\],/.test(c)) &&
+  glows.some(c => / 1\.00 10\.00 0\.00 \{block_state:\{Name:"minecraft:iron_ore"\},Glowing:1b,glow_color_override:16766720,brightness:\{sky:15,block:15\},Tags:\["maul_glow","maul_m1"\],/.test(c)) &&
   glows.some(c => /diamond_ore/.test(c)) && !glows.some(c => /gold_ore|stone"/.test(c)), glows.join(' | '))
 ok('... by small markers in the middle of each ore (0.3 of a block), not a full-size copy over it', glows.every(c => /translation:\[0\.35f,0\.35f,0\.35f\],scale:\[0\.3f,0\.3f,0\.3f\]\}\}$/.test(c)), glows[0])
+ok('... summoned at the block\'s corner in decimals (/summon centres whole numbers, which put markers half a block off)', glows.every(c => /summon minecraft:block_display -?\d+\.00 -?\d+\.00 -?\d+\.00 \{/.test(c)))
 c0 = cmds.length
 blocks['0,10,0'] = 'minecraft:coal_ore'
 mine(goruk, 0, 10, 0)
@@ -306,6 +317,15 @@ click(goruk, 'OFF_HAND')
 goruk.sneak = false; T += 1000; click(goruk, 'MAIN_HAND')
 ana.sneak = true; T += 1000; click(ana, 'MAIN_HAND'); ana.sneak = false
 ok('the off hand, not sneaking, or no Maul: nothing switches', M().prospectorOn('u-goruk') && count(goruk, /Prospector/) == 2 && count(ana, /Prospector/) == 0)
+T += 3000
+blocks['0,10,0'] = 'minecraft:diamond_ore'
+let gc = gritOf(goruk)
+const ores0 = M().state().stats.ores
+c0 = cmds.length
+mine(goruk, 0, 10, 0, { cancelled: true }); mine(goruk, 0, 10, 0, { cancelled: true })
+ok('a break something cancels (a protected area) earns no Grit and marks nothing: no farming an ore he can\'t break', gritOf(goruk) == gc && !cmds.slice(c0).some(c => /block_display/.test(c)) && M().state().stats.ores == ores0)
+mine(goruk, 0, 10, 0)
+ok('... when it does break, it counts', gritOf(goruk) == gc + 8)
 
 // ---------- Forge-touched ----------
 blocks['4,10,4'] = 'minecraft:iron_ore'
@@ -360,7 +380,11 @@ ok('... then the Haste it gave is taken away, but not his 3-minute potion', !gor
 skyLight = 7
 T += 1000; fire('tick', { player: goruk, server })
 ok('sky light 7 (deep in a mine entrance) counts as away from daylight', !!goruk.fx.haste)
-skyLight = 15
+skyLight = 15; darken = 11                    // open ground at night: KubeJS's block.skyLight reads 4 here
+c0 = cmds.length
+T += 1000; fire('tick', { player: goruk, server })
+ok('open ground at night is not away from daylight (the sky light is read whole, not darkened)', !cmds.slice(c0).some(c => /^effect give/.test(c)))
+darken = 0
 delete goruk.fx.haste; delete goruk.fx.night_vision
 T += 5000; fire('tick', { player: goruk, server })
 

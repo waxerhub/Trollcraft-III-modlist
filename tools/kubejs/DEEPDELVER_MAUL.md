@@ -51,6 +51,8 @@ Forge-touched and Iron Blood are the same at every level.
 | Settling a grudge (killing a player on the ledger) | +40 |
 | Bosses | Naga 100 … Snow Queen 500, the Ender Dragon 500, the Wither 300, Ice and Fire dragons 150 |
 
+Ore only counts once it has really broken (checked a tick later). A break that a protected area or a claim cancels earns nothing and marks nothing, so nobody can farm Grit off an ore they can't break.
+
 ## Abilities
 - **Prospector:** mining an ore with it **marks the ore within the level's radius** for 5 seconds, seen through walls.
   - **A marker is small:** a glowing copy of the ore at 0.3 of a block, in the middle of the ore's block (`MARKER_SIZE`). Inside the ore it's hidden; only its gold outline shows through walls. It never covers anything around it, so it doesn't get in the way of seeing or mining.
@@ -138,8 +140,25 @@ It needs Tinkers' Construct for Level X.
 10. **Level X:** `/maul setgrit 6500`. It becomes a Vein Hammer with Haste V and Luck III, does 18 damage, and mines whole veins. Deepborn gives Haste II.
 11. **Open for grabs:** Goruk drops it: "loose" within about 10 seconds. The second account picks it up: "claimed".
 
-## Checked on the local test server (11 Nov 2026)
-This was checked with the first damage numbers (6 to 14). The way the item is built hasn't changed since, only the numbers. Built in real KubeJS with `preview()` (no player online) and read back:
+## Checked on the local test server (12 Nov 2026)
+**The rework, with a Forge fake player** holding the real Maul (a probe script, since removed). It mined ore 40 blocks from spawn, sneak + right-clicked, and killed a zombie. Results:
+- **Damage:** the game reads +7 and +17 attack damage: 8 at Level I and 18 at Level X.
+- **Forge-touched:** iron ore dropped an iron ingot in the same tick, so nothing raw ever lay on the ground. Copper ore dropped 5 copper ingots, and experience was given.
+  - The lookup finds the furnace recipes (raw iron and raw copper: ingots, 0.7 experience). Coal has none.
+  - Ancient debris has none on the test server because the Blood Pool seals netherite scrap, as intended.
+- **Prospector:** mining an ore marked the 2 ores within 2 blocks, at their own block corners, 0.3 of a block in size.
+  - Mining a marked ore removed its marker at once. A marked ore set to air lost its marker within 6 ticks. All markers were gone after 5 seconds.
+- **The switch:** sneak + right-click switched it off and cleared the markers, a second click at once was ignored, mining then marked nothing, and another click a second later switched it back on.
+- **Iron Blood:** the zombie kill gave 4 absorption (2 hearts).
+- **Protected areas:** a diamond ore inside the protected spawn didn't break and gave no Grit.
+- **Deepborn's sky light:** at night, open sky reads 4 through KubeJS's `block.skyLight` (it takes off the night's darkening, 11), but 15 raw. Deepborn reads the raw value.
+
+**Three bugs this found, all fixed:**
+- **Markers half a block off:** `/summon` centres whole-number coordinates, so every marker sat across four blocks. The first, full-size markers did the same, which put a ghost block in the tunnel. They're summoned with decimal coordinates now.
+- **Night counted as away from daylight:** the darkened reading would have switched Deepborn on outdoors at night.
+- **Grit from a cancelled break:** a protected area cancels the break after the Maul has seen it, so an ore that can't be broken could be farmed for Grit. Grit and Prospector now wait a tick and count only if the ore has gone.
+
+**The first build (11 Nov 2026),** with the first damage numbers (6 to 14). The way the item is built hasn't changed since, only the numbers. Built in real KubeJS with `preview()` (no player online) and read back:
 - **The hook loads:** 2 of 2 startup scripts, 0 errors.
 - **Level I:** a netherite pickaxe with Efficiency I and Unbreaking I. The game reads +5 attack damage and −2.8 speed (6 damage, 1.2 speed). The lore is right.
 - **Level X:** Tinkers built the Vein Hammer from the four materials.
@@ -148,12 +167,11 @@ This was checked with the first damage numbers (6 to 14). The way the item is bu
   - The game reads +13 attack damage: 14 damage.
 
 ## What couldn't be verified
-- **The 12 Nov changes haven't been run on a server yet** (smaller markers and the on/off switch, Forge-touched, Deepborn, Iron Blood, damage 8 to 18). The mock tests pass. What the real game has to confirm:
-  - **Forge-touched:** that `EntityEvents.spawned` sees a block's drops and `setItem` changes them, and that the recipe lookup finds the furnace recipes.
-  - **Deepborn:** that the sky light reads as expected (`skyLight` on a block).
-  - **Iron Blood:** that the absorption shows on the client.
-  - **The switch:** that sneak + right-click fires for a pickaxe at both the air and a block.
-  - **The markers:** how they look.
+- **What needs a real player** (a fake player isn't ticked, has no client and isn't in the level):
+  - **Deepborn's effects:** they come from the player tick. The sky light and the effect calls it uses were checked.
+  - **The absorption hearts and the markers on screen:** how they show, and how the markers look.
+  - **The switch at a block:** it was checked at the air. At a block, the block and the air both fire, and the 600 ms gap keeps that to one switch.
+  - **Vein mining at Level X:** whether Tinkers' Vein Hammer smelts (and gives Grit for) the whole vein or only the first block.
 - **The chest timing:** that a loot chest's own loot is in two ticks after the right-click (the same method as the Dragon's Hoard and the Deep Records).
 - **In a fight and in a mine:** the mock tests pass, but nobody has used it yet. Things to watch:
   - how strong White-hot and the grudge bonus feel with the hook;

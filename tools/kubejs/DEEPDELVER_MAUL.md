@@ -51,6 +51,8 @@ Forge-touched and Iron Blood are the same at every level.
 | Settling a grudge (killing a player on the ledger) | +40 |
 | Bosses | Naga 100 … Snow Queen 500, the Ender Dragon 500, the Wither 300, Ice and Fire dragons 150 |
 
+**The Knight Phantoms are one boss:** they come six to a group, and the group pays its 200 once, with the last knight (another knight alive within 64 blocks means the group isn't beaten). The first five count as hostile mobs (+3 each, and for Iron Blood), so a fight is worth about 215, not 1,200. The Lich's shadow clones pay nothing. The Anamian Axe and Boss Blood count them the same way.
+
 Ore only counts once it has really broken (checked a tick later). A break that a protected area or a claim cancels earns nothing and marks nothing, so nobody can farm Grit off an ore they can't break.
 
 ## Abilities

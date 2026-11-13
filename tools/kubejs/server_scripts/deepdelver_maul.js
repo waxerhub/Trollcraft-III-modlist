@@ -584,6 +584,16 @@ function isShadowClone(e) {
   try { return !!e.getNbt().getBoolean('ShadowClone') } catch (err) { }
   return false
 }
+// The Knight Phantoms come six to a group: another of them still alive near this one (Twilight Forest uses 64 blocks
+// too) means the group isn't beaten yet. As in anamian_axe.js and part2/boss_blood.js.
+function otherKnightsAlive(server, e) {
+  const d = dimOf(e), here = pos(e)
+  return list(server.entities).some(o => {
+    if (sameEntity(o, e) || typeOf(o) != 'twilightforest:knight_phantom') return false
+    try { if (!o.isAlive()) return false } catch (err) { }
+    return dimOf(o) == d && dist(pos(o), here) <= 64
+  })
+}
 function isHostile(e) {
   try { return String(e.getType().getCategory()).toLowerCase().indexOf('monster') >= 0 } catch (err) { }
   try { return !!e.isMonster() } catch (err) { return false }
@@ -629,8 +639,11 @@ EntityEvents.death(event => {
     }
   } else if (BOSS_GRIT[id] != null) {
     if (id == 'twilightforest:lich' && isShadowClone(e)) return
-    grit = BOSS_GRIT[id]
-    D.stats.bosses++
+    if (id == 'twilightforest:knight_phantom' && otherKnightsAlive(server, e)) grit = GRIT_HOSTILE   // the group pays once, with its last knight
+    else {
+      grit = BOSS_GRIT[id]
+      D.stats.bosses++
+    }
   } else grit = isHostile(e) ? GRIT_HOSTILE : GRIT_OTHER
   D.stats.kills++
   const level = heldLevel(killer)

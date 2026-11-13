@@ -499,6 +499,17 @@ ok('Better Combat: a hit 300 ms after the fall still slams', cmds.slice(c0).some
 c0 = cmds.length
 ok('an arrow from Goruk doesn\'t slam', (() => { T += 7000; goruk.onGround = false; goruk.fall = 1; fire('hurt', { entity: target, server, source: { getActual: () => goruk, getImmediate: () => ({ getStringUuid: () => 'arrow' }) } }); goruk.onGround = true; goruk.fall = 0; return !cmds.slice(c0).some(c => /slowness/.test(c)) })())
 
+// ---------- the Knight Phantoms: six to a group, one boss ----------
+const knights = [0, 1, 2, 3, 4, 5].map(i => mob('twilightforest:knight_phantom', 20 + i, 20, true))
+const farKnight = mob('twilightforest:knight_phantom', 200, 20, true)     // another group, 180 blocks off
+g = gritOf(goruk)
+let bosses0 = M().state().stats.bosses
+knights.slice(0, 5).forEach(k => kill(k, goruk))
+ok('Knight Phantoms: the first five of a group count as hostile mobs (+3 each), not as five bosses', gritOf(goruk) == g + 15 && M().state().stats.bosses == bosses0, gritOf(goruk) - g)
+kill(knights[5], goruk)
+ok('... the last one pays the boss\'s 200, once for the group (another group far off doesn\'t count)', gritOf(goruk) == g + 215 && M().state().stats.bosses == bosses0 + 1, gritOf(goruk) - g)
+farKnight.alive = false
+
 // ---------- Level X: the Vein Hammer ----------
 goruk.op = true; run(['setgrit', '6500'], goruk); goruk.op = false
 const mx = maulOf(goruk)

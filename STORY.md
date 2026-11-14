@@ -256,6 +256,7 @@ Technoblade's Potato War, revived. **The Pool decides what the server can make; 
     6. **The Awakening** (about 5 minutes, respectful, no jokes).
        - **The tribute:** the Techno Tribute and a server-wide `/superaura`.
        - **The Regalia:** the Blood God names the **Regalia of the Blade**, and `/regalia` opens on the eight relics.
+       - **The book:** the book *The Regalia of the Blade* appears on the altar's lectern, under Technoblade's head (owner decision 2026-11-13). It has one page per relic: what each honours and what it asks. Anyone can read it there.
        - **The Pool:** the rite tops it up to **Tier 3's threshold** (120,000; about 54,000 Drops), credited to each player by the potatoes they offered. Everyone present then breaks the third seal together with `/bloodpool vote`, and **the Nether opens** that night.
     - **The reward is the Drops** (owner decision): no title or keepsake.
     - **Still needed:**

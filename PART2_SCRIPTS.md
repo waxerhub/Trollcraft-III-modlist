@@ -14,7 +14,7 @@ Part II's premise ([STORY.md](STORY.md)) is that everyone stands under Techno's 
 | `factions/factions_config.js`, `factions/factions_core.js` | ✅ keep | ❌ remove | "There are no Loyalists." Part I membership becomes legacy titles (`part2/arrival.js`) |
 | `factions/portal_ambush.js` | ✅ keep | 🔧 rework | Becomes `part2/ministry.js`: **Inspectors raid everyone**, plus Shrine raids. The "no getting away" mechanics carry over; Crownsworn and Syndicate targeting goes |
 | `factions/trials.js` | ✅ keep | ❌ remove | Part I records become evidence books in `part2/arrival.js`. The Homing Pig's automatic charge goes with it |
-| `story.js` | ✅ keep | 🔧 adapt | Part II acts (Awakening → Regalia → Seizure → Project Chaos → Siege). The `finale` act and its Clean Slate link go |
+| `story.js` | ✅ keep | 🔧 adapt | Part II acts (Awakening → Regalia → Seizure → Project Chaos → the Drain). The `finale` act and its Clean Slate link go |
 | `clean_slate.js` | ✅ keep | ❌ remove | Part I's finale |
 | `events/blood_portal.js` | ✅ keep | ❌ remove | Part I's escape. `part2/arrival.js` reads its exodus files |
 | `end_lockdown.js` | ✅ keep | ❌ remove | Replaced by `part2/dimension_gates.js` (the End opens at Tier 9) |

@@ -1,6 +1,6 @@
 // Part II: the Deep Records. Written books in structure chests that, read in order, reveal the Ministry's real
-// objective in the new world: the Harvest. (The seals are a pump, not a prison. Everything poured into the Blood
-// Pool to break them is meant to be drained at the twelfth seal to power the Citadel's Bureaucratic Barrier.)
+// objective in the new world: the Harvest. (The seals are a pump, not a prison. The blood poured into the Pool to
+// break them is drained at the twelfth seal and sealed in a Chaos Guardian: a puppet god that never dies.)
 // The Ministry is still unrevealed in Part II: the books are signed [REDACTED] and never name it.
 //
 // - Each book waits for a Blood Pool tier, so the reveal follows the season.
@@ -40,28 +40,28 @@ const RECORDS = [
   ] },
   { id: 'blood_god_memo', minTier: 3, title: 'Memo: Re: The Blood God', pages: [
     'MEMORANDUM\nTo: the Office of Morale\nRe: the so-called Blood God\n\nQuestion raised: should the cult be suppressed?',
-    'Answer: absolutely not. Let them believe it is listening. A god makes them generous. Faith fills faster than force.',
-    'Whether anything is actually listening is not the Office\'s concern.\n\nThe Office is concerned only with where the blood goes.',
+    'Answer: absolutely not. Let them believe it is listening.\n\nIt is.\n\nFaith feeds it, and what is fed can be harvested. Faith fills faster than force.',
+    'Remember whose name this Office governed under. That name is ours.\n\nIn time, so is whatever answers to it.\n\nThe Office is concerned only with where the blood goes.',
   ] },
   { id: 'yield', minTier: 5, title: 'Yield Projections, Q3', pages: [
     'YIELD PROJECTIONS (Q3)\n\nTrolls: steady. They cannot stop themselves.\nCoins: modest. They hoard.\nPotatoes: EXCELLENT.',
     'Recommendation: encourage the potatoes. Praise the potato. Hold a festival for the potato if necessary.\n\nThey think the tithe is worship. It is a quota.',
-    'Projected date of full yield: the breaking of the twelfth seal.\n\nThe Office reminds all staff that "full" is the important word.',
+    'Every Drop they pour makes the thing in the Pool stronger. Good. We want it strong.\n\nProjected date of full strength: the breaking of the twelfth seal.',
   ] },
   { id: 'pump', minTier: 9, title: 'Requisition: Pumping Station', pages: [
     'REQUISITION FORM 12-B\n\nItem: one (1) pump, industrial, blood-rated.\nQuantity: one. It only needs to work once.\nLocation: beneath the basin.',
     'Installation notes: run the pipes deep, under the bedrock if you must.\n\nDo not let them see the pipes.',
-    'Do not let them see the meter.\n\nDo NOT let them ask why a pool needs a drain.',
+    'Do not let them see the meter.\n\nDo NOT let them ask why a pool needs a drain, or where a god goes when you drain him.',
   ] },
-  { id: 'power_budget', minTier: 10, title: 'Citadel Power Budget', pages: [
-    'CITADEL POWER BUDGET\n\nThe Bureaucratic Barrier draws more than any reactor in either world.\nGenerators: insufficient.\nReactors: insufficient.\nVolunteers: insufficient.',
-    'Approved source: one (1) full Blood Pool.\n\nEstimated runtime: one century of uninterrupted governance.',
-    'Cost to the Office: nothing. They are filling it for free.\n\nThey are filling it for us.',
+  { id: 'power_budget', minTier: 10, title: 'Binding Order: Subject B.G.', pages: [
+    'BINDING ORDER\nSubject: "B.G." (see Memo, Office of Morale)\n\nA god cannot be kept in a pool. It needs a body, and the body must not die.',
+    'Vessel: one (1) Chaos Guardian, held under Project Chaos.\n\nChosen for durability, and for the irony. He killed so many of them. Let him wear one.',
+    'Requirement: the Crown. Without the Crown, the binding will not hold for ever. Secure the Regalia.\n\nThe subject will answer to the Office. So will its name.\n\nThey are filling it for us.',
   ] },
   { id: 'full_measure', minTier: 11, title: 'Protocol Full Measure', pages: [
-    'PROTOCOL FULL MEASURE\nStandard Operating Procedure\n\nPurpose: collection of the yield.',
-    'Step 1: wait for the twelfth seal to break.\nStep 2: open the drain.\nStep 3: thank them for their cooperation.',
-    'Step 4: raise the Barrier. The Citadel will be untouchable. Forever, give or take a century.\n\nIn the margin, in red: They will think they won.',
+    'PROTOCOL FULL MEASURE\nStandard Operating Procedure\n\nPurpose: collection of the subject.',
+    'Step 1: wait for the twelfth seal to break.\nStep 2: open the drain.\nStep 3: seal what comes through in the vessel.\nStep 4: crown the vessel. It will kneel.',
+    'Step 5: speak in its name, as before. A god that never dies, and an Office that never dies with it.\n\nIn the margin, in red: They will think they won.',
   ] },
   // Never drops: the admins give it (/deeprecords give <player> 9) and place it, e.g. in a dragon lair.
   // It points players to the plot and to where the other books are found.

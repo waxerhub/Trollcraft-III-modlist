@@ -173,13 +173,22 @@ Everyone stands together under Techno's banner. There are no Loyalists. The Mini
 ### The two threads (owner decisions 2026-11-13; still being built)
 Part II runs on two goals that want the same thing, the seals broken, for opposite reasons. Players see the first, and only slowly glimpse the second.
 - **The Blood God is real.** He is the spirit of Technoblade. This is only ever implied, never stated.
-- **His purpose** is one the players can agree with. *Still to define* (see the brainstorm options below).
-- **The Ministry's purpose** is to take the Blood God's power, and with it control Technoblade's legacy. It ruled in his name in Part I; now it wants his power itself.
-  - **The means:** the Harvest. The seals are a pump, and at the twelfth seal the Ministry drains the full Pool into the Citadel (the Deep Records).
+- **His purpose: to take back his name.** The Ministry ruled in Techno's name in Part I, and the Blood God wants it back. The players can agree with that.
+- **The Ministry's purpose** is to take the Blood God's power, and with it control Technoblade's legacy. It ruled in his name in Part I; now it wants his power itself. What that gets it:
+  - **a puppet god:** his voice and name become the Ministry's, so it can speak as the Blood God, and rule as Techno, without anyone questioning it;
+  - **a god that never dies:** Techno's undying quality, and with it a Ministry that never dies.
+- **Why the players fill the Pool, not the Ministry:** only freely given blood feeds the Blood God: trolls, tithes, offerings and fights. So the Ministry sealed the world and made every step of progress cost blood. "Faith fills faster than force."
+  - **The means:** the Harvest. The seals are a pump. At the twelfth seal the Ministry drains the Pool's essence and seals it in a Chaos Guardian (the Deep Records).
   - **The Purges' Tithe** is a second pump.
+- **Why a Chaos Guardian:** in the last series, Technoblade made himself infamous by killing several Chaos Guardians. The Ministry binds his power into the creature he was famous for killing.
+- **The Crown is the key for both sides:** the Ministry needs it to make the binding hold for good, and the restored Crown is how the Blood God takes back his name.
 - **The Blood God knows,** and hints at it ("They want the Pool full. So do I.").
-- **The ending:** when the Ministry opens the drain at the twelfth seal, the restored Crown lets the Blood God seize it. The Ministry's own pump powers his return (Act V).
-- **Hints only, for now:** both goals are hinted at, never spelled out, and built up across Part II. The Shrine Awakens (#36) is the first night both are glimpsed.
+- **The twelfth seal isn't the end:** it begins the final act (Act V): the drain, the vessel and the race for the Crown.
+- **The players can't lose:** the good ending is always reachable. Whatever they fail to win back makes the final fight harder.
+- **The Citadel doesn't exist yet:** its reveal can come later in the story. Nothing is planned around it for now.
+- **Hints only, until the final act:** both goals are hinted at, never spelled out, and built up across Part II. The Shrine Awakens (#36) is the first night both are glimpsed.
+
+Owner decisions 2026-11-13: his purpose, the puppet god, the freely given blood, the Chaos Guardian vessel, the Crown, the final act, the players can't lose, and the Citadel left for later.
 
 ### Blood for the Blood God: the Blood Pool ✅ (`part2/blood_pool.js`, `part2/dimension_gates.js`, see [BLOOD_POOL.md](tools/kubejs/BLOOD_POOL.md))
 **All progression in Part II is locked.** The Ministry, exposed at the end of Part I, sealed the new world's progression to keep everyone weak. Each tier is one of **the Ministry's seals**, and only blood breaks them. Tiers open only through the server-wide **Blood Pool**. It starts at 0: Part I troll points don't count (owner decision); they only become legacy titles.
@@ -192,7 +201,7 @@ Part II runs on two goals that want the same thing, the seals broken, for opposi
 - **A locked tier blocks crafting only** (owner decision): its recipes are removed in every recipe type. Sealed items that players find, loot or trade for work normally. The exception is what players may have brought from Part I, since they kept their inventories (owner decisions, 2026-11-09). 39 items that work by being used (guns, bows, staffs, teleporters, the Raygun) can't be used until their tier opens (`USE_LOCKS` in `blood_pool.js`). The Nuclear Bomb, Tremorzilla Egg and Ender Quarry can't be placed until Tier 11 (`PLACE_LOCKS`), and a dispensed Nuclear Bomb doesn't spawn (`SPAWN_LOCKS`). Gear that's worn or wielded isn't locked yet.
 
   The tiers are lists of mods, items, tags and recipe ids in `blood_pool.js`, filled from the progression research ([research/TIER_PROPOSAL.md](research/TIER_PROPOSAL.md)). Twilight Forest and Tinkers are open from day 0 (gear tiered by item); ironwood is open.
-- **The tank** (`part2/blood_tank.js`): a tower of chiseled nether bricks, glass and nether gold ore whose 3×3×6 chamber fills one layer of blood for every 2 tiers, full at the Siege.
+- **The tank** (`part2/blood_tank.js`): a tower of chiseled nether bricks, glass and nether gold ore whose 3×3×6 chamber fills one layer of blood for every 2 tiers. It's full at the twelfth seal, and the drain empties it (Act V).
 - **Dimensions:** the **Nether opens at Tier 3** and the **End at Tier 9** (owner decision). Until then Nether portals don't light, Eyes of Ender can't be crafted, and anyone who gets in is sent back by the Ministry. When the tier opens, the Blood God announces that the Ministry's seal has shattered.
 - **Voices:** the Blood God speaks for the Pool (ready, unlocked, the tithe). The Ministry speaks only as the enemy holding the seals (sending players back). Nothing in Part II has the Ministry granting, permitting or weighing anything.
 - **The pace:** about 9 contributors, **12 tiers, 3 million Drops in total** (thresholds doubled, owner decision).
@@ -212,11 +221,11 @@ Part II runs on two goals that want the same thing, the seals broken, for opposi
     | 9 | 1,400,000 | about week 4: the End |
     | 10 | 1,900,000 | |
     | 11 | 2,400,000 | |
-    | 12 | 3,000,000 | about week 8: the Siege |
+    | 12 | 3,000,000 | about week 8: the twelfth seal and the final act |
 
     (Expected times assume the tithe quota is filled daily; trolls and coins alone take about twice as long.)
 
-  - **What each tier unlocks** is decided (BLOOD_POOL.md, from the research). **Tier 12 is the Siege**, when the Citadel's Bureaucratic Barrier falls; it unlocks no recipes.
+  - **What each tier unlocks** is decided (BLOOD_POOL.md, from the research). **Tier 12 is the twelfth seal**, which begins the final act (Act V); it unlocks no recipes. Its name in `blood_pool.js` is still "The Siege".
 
 ### Techno's Potato War: each player's Potato Standing ✅ (`part2/blood_pool.js`, `economy/black_market.js`, see [BLOOD_POOL.md](tools/kubejs/BLOOD_POOL.md#the-potato-war-each-players-potato-standing))
 Technoblade's Potato War, revived. **The Pool decides what the server can make; your rank decides what you can make** (owner decisions).
@@ -278,10 +287,10 @@ Technoblade's Potato War, revived. **The Pool decides what the server can make; 
     🔨
 
 **The Deep Records** ✅ (`part2/deep_records.js`, see [DEEP_RECORDS.md](tools/kubejs/DEEP_RECORDS.md)). The old world wasn't burned, it was **buried**: an ancient city turned out to be part of it, and the Warden replaced the dead dragon as Records Security. Eight `[REDACTED]` books in structure chests reveal the Ministry's real objective, without naming it.
-- **The Harvest (owner decision):** the seals are a pump, not a prison. The Ministry sealed the new world so the server would fill the Blood Pool, and at the twelfth seal it drains the full Pool to power the Citadel's Bureaucratic Barrier for a century. "They will think they won."
-- **Paced by the Pool:** each book waits for a Blood Pool tier. Books 1–5 turn up in overworld chests (ancient cities, strongholds, buried and ruined sites, mineshafts and dungeons) in Twilight Forest chests (the Lich Tower library and boss treasure most often) and in Ice and Fire dragon lairs. The lairs also hold a real hoard (`part2/dragon_hoard.js`, see [DRAGON_HOARD.md](tools/kubejs/DRAGON_HOARD.md)). The biggest reveals, books 6–8 (the pump, the power budget, Protocol Full Measure), are in End City chests only (owner decision).
+- **The Harvest (owner decision):** the seals are a pump, not a prison. The Ministry sealed the new world so the server would fill the Blood Pool. At the twelfth seal it drains the Pool's essence and seals it in a Chaos Guardian: a puppet god that never dies, speaking in Techno's name (see [The two threads](#the-two-threads-owner-decisions-2026-11-13-still-being-built)). "They will think they won."
+- **Paced by the Pool:** each book waits for a Blood Pool tier. Books 1–5 turn up in overworld chests (ancient cities, strongholds, buried and ruined sites, mineshafts and dungeons) in Twilight Forest chests (the Lich Tower library and boss treasure most often) and in Ice and Fire dragon lairs. The lairs also hold a real hoard (`part2/dragon_hoard.js`, see [DRAGON_HOARD.md](tools/kubejs/DRAGON_HOARD.md)). The biggest reveals, books 6–8 (the pump, the Binding Order, Protocol Full Measure), are in End City chests only (owner decision).
 - **The Surveyor's notes** (Deep Record #9, given by command only): the admins placed them in a dragon lair. A dead Office surveyor read the orders they carried; the notes hint at the drain and point to where the other books are kept.
-- **What it sets up:** the Siege (Act V) becomes a race. Break the twelfth seal and take the Citadel before the drain runs.
+- **What it sets up:** the final act (Act V). Book 7 names the vessel, a Chaos Guardian, and books 7 and 8 say the binding needs the Crown.
 
 **The Castellan** (a player role; owner decision). A Part I **Enforcer** keeps the spawn castle.
 - **The story:** the castle was the Ministry's **Induction Castle**, where recruits were processed and Enforcers stationed. When Clean Slate fired, the Ministry evacuated "officials first" (its own SOP), and its Enforcer at the castle was left to burn with everyone else.
@@ -338,19 +347,48 @@ Technoblade's Potato War, revived. **The Pool decides what the server can make; 
       - **Leelinda's Stake:** the Minotaur Axe from the Minoshroom's labyrinth. Announced by hand.
       - **The Anamian Axe** ✅ (`anamian_axe.js`, see [ANAMIAN_AXE.md](tools/kubejs/ANAMIAN_AXE.md)): a living weapon forged for Lord Anamy. It gains Souls from kills, bosses, felled trees and offerings, and levels I–X. It learns Timber, Cleave, Bloodthirst and Blood Harvest, turns netherite at VIII, and calls lightning on crits at X (Judgement). Only one exists; whoever holds it keeps its level, and the server is told when it changes hands or goes loose (owner decisions).
 42. **Ministry Bounties:** the Ministry posts bounties on the strongest players. ✅ (`economy/bounties.js`) + 🔨 (Ministry-issued)
-43. **Project Chaos Revealed:** the Ministry has kept the Chaos Guardian contained on a Chaos Island. Its shards complete the Crown. ✅ (Draconic Evolution)
+43. **Project Chaos Revealed:** the Ministry keeps a Chaos Guardian contained somewhere in the End: the vessel the drain will fill (Act V). Deep Record #7 names it (Tier 10). Chaos Guardians' shards complete the Crown. ✅ (Draconic Evolution) + 🔨 (the reveal)
 
-### Act V: The Siege
-Needs Blood Pool Tier 12 and the full Regalia.
-44. **The Citadel:** the old Ministry HQ, floating in the void behind the Bureaucratic Barrier. Players bridge or fly to it. 🔨 (WorldEdit schematic)
-45. **The Minister:** a troll war with phases.
-    - **The Minister's tricks:** fake deaths ("he's dead!" … "Phase 2"), hotbar swaps, a Cursed Food buffet, a decoy Minister, and a paperwork phase.
-    - **The players' weapon:** trolls landed on him do real damage.
-    - **Last phase:** cornered, he releases the Chaos Guardian.
+### Act V: The Drain (the final act)
+Starts at Blood Pool Tier 12. **The twelfth seal isn't the end of Part II; it begins the final act** (owner decisions 2026-11-13). 🔨 (all of it, except where marked)
+44. **The Twelfth Seal:** the server breaks the last seal by vote and celebrates. Then the drain opens.
+    - The Blood Pool's essence is drained and sealed in a Chaos Guardian, Project Chaos's vessel, and the tank empties. "They will think they won."
+    - **The tiers stay open:** the drain is story only, and every unlocked recipe stays unlocked.
+45. **The Puppet Speaks:** the Ministry speaks as the Blood God.
+    - Decrees come "by order of the Blood God", with Techno's lines said wrong.
+    - His real voice is faint, and players learn to tell it from the fake.
+    - The Ministry still doesn't sign its own name.
+46. **The Hunt for the Vessel:** the Guardian is hidden on a far Chaos Island. Clues lead players to it: the Deep Records, the Surveyor's notes and the Blood God's whispers.
+47. **The Dragonslayer** (the god that never dies): the vessel is reborn after every kill, each time as a "revised edition".
+    - **Each kill frees part of the essence** back to the Shrine, and the Blood God's voice comes back a little.
+    - The server kills it again and again, as Techno did.
+    - **Only the restored Crown** lets it die for good.
+48. **His Return:** with no seals left, freely given blood goes straight to the Blood God.
+    - The Pool refills as his strength, which powers the players against the vessel (buffs, smites).
+    - So trolling still matters after the last tier.
+49. **The Race for the Crown:** the Ministry needs the Crown to make the binding hold, so after the drain Inspectors come for the Regalia at the Shrine. Whoever holds the Crown decides whether the vessel can fall.
+50. **The Crown Restored:** the full Regalia set in place takes back his name, and the vessel dies for good.
+    - **The tribute:** the Techno Tribute and a server-wide `/superaura`, with a single `/fakejoin Technoblade`.
+    - **Nothing in his mouth:** there's no `/fakesay`, so no words are put in his mouth.
+    - **Posted to Discord.**
 
-    🔨
-46. **The Crown Restored:** the full Regalia set in place, with the Techno Tribute and a server-wide `/superaura`. A single `/fakejoin Technoblade` as the tribute. There's no `/fakesay`, so no words are put in his mouth, and it's posted to Discord. ✅ (`techno_tribute.js`, `smite.js`, `fake_players.js`)
-47. **The Final Broadcast:** *"Technoblade never dies. This is not The End."*
+    ✅ (`techno_tribute.js`, `smite.js`, `fake_players.js`)
+51. **The Final Broadcast:** *"Technoblade never dies. This is not The End."*
+
+- **The players can't lose:** every share of the essence left in the vessel makes its last fight harder, and the ending reflects how much was won back. The good ending is always reachable.
+- **Still to decide:**
+  - how many kills the vessel takes;
+  - what each "revised edition" changes;
+  - how the Pool's strength helps in the fight;
+  - where the vessel is kept;
+  - whether the puppet's decrees are op-run or scripted.
+
+**Parked for a later reveal: the Citadel and the Minister.** The Citadel doesn't exist yet (owner decision 2026-11-13), and nothing in the final act depends on it. The ideas so far:
+- **The Citadel:** the old Ministry HQ, floating in the void behind the Bureaucratic Barrier. Players bridge or fly to it (a WorldEdit schematic).
+- **The Minister:** a troll war with phases.
+  - **The Minister's tricks:** fake deaths ("he's dead!" … "Phase 2"), hotbar swaps, a Cursed Food buffet, a decoy Minister, and a paperwork phase.
+  - **The players' weapon:** trolls landed on him do real damage.
+  - **Last phase:** cornered, he releases the Chaos Guardian.
 
 ---
 
@@ -390,7 +428,15 @@ Needs Blood Pool Tier 12 and the full Regalia.
    5. 🔨 **The Ministry as the enemy** (`part2/ministry.js`): Inspectors raid everyone, Ministry bounties, and trolls on Ministry NPCs.
    6. 🔨 **The Shrine and the Regalia** (`part2/shrine.js`): first **the Shrine Awakens** event (Act I, #36: next up), then `/regalia`, the deliveries, Shrine raids, the Seizure and the Outpost raid.
    7. ✅ + 🔨 **Events:** the Purge engine and the Potato Heist (`part2/purge.js`); more Purge modes to come.
-   8. 🔨 **The Citadel and the Minister** (`part2/citadel.js`): the Bureaucratic Barrier, the phased fight, and the Crown Restored.
+   8. 🔨 **The final act** (Act V, a new `part2/` script):
+      - the drain at the twelfth seal;
+      - the puppet's decrees;
+      - the reborn vessel;
+      - the Pool as his strength;
+      - the race for the Crown;
+      - the Crown Restored.
+
+      The Citadel and the Minister wait for a later reveal.
    9. 🔨 **The ruins:** lore books.
 
 ## Open decisions
@@ -399,6 +445,12 @@ Needs Blood Pool Tier 12 and the full Regalia.
 - **Crownsworn players:** whether active Crownsworn players will role-play the defection, or the loyalists are mostly NPCs.
 - **Clean Slate:** tune the Blood Portal event (40 kill points to fill, the Relic chance) once it's been tried.
 - **Part II world:** a new seed, or the same seed regenerated.
+- **The final act (Act V):**
+  - how many kills the vessel takes, and what each "revised edition" changes;
+  - how the Pool's strength helps in the fight;
+  - where the vessel is kept;
+  - whether the puppet's decrees are op-run or scripted.
+- **Tier 12's name:** it's still "The Siege" in `blood_pool.js`, and the quest book's Blood Pool chapter lists "The Siege of the Citadel" for it, though the Citadel isn't in the story yet.
 - **The Castellan:** her loyalty stays unconfirmed, unless she wants a story arc later (e.g. a double-agent turn in Act III, the Seizure).
 - **Part II tiers:** decided (see BLOOD_POOL.md). Still to check on the server: Thermal's machine-frame recipes in JEI, the AlmostUnified config, and a Dragon Heart drop before Tier 10.
 - **The Potato War:**

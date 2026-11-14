@@ -5,14 +5,15 @@
 ## The secret (admins only: spoiler)
 **The Harvest.**
 - The seals on the new world's progression aren't a prison. They're a **pump**.
-- The Ministry sealed everything so the server would pour blood into the Blood Pool to break them.
-- At the twelfth seal it plans to **drain the full Pool** to power its Citadel's **Bureaucratic Barrier** for a century.
+- Only freely given blood feeds the Blood God, so the Ministry sealed everything to make the server pour blood into the Blood Pool to break them.
+- At the twelfth seal it plans to **drain the Pool's essence and seal it in a Chaos Guardian**, the creature Technoblade was infamous for killing: a **puppet god that never dies**, speaking in his name.
+- It needs **the Crown** to make the binding hold.
 - The Blood God's cult is tolerated because "faith fills faster than force". The tithe is "a quota".
 
 This ties together:
 - the Valuable Resource Acquisition Initiative broadcast;
-- the Seizure (Act III);
-- the Siege of the Citadel (Act V).
+- Project Chaos (Act IV);
+- the drain, the vessel and the race for the Crown (Act V, the final act).
 
 **The Ministry is still unrevealed.** The books are signed `[REDACTED]`, speak of "the Office", and never say "Ministry". Readers of Part I's Archives will recognise the voice.
 
@@ -22,12 +23,19 @@ This ties together:
 | 1 | Site Survey: New Holding | 0 | overworld | The new world is "suitable for cultivation"; the crop is left blank. "The subjects arrived on schedule, through the red door." |
 | 2 | Records Security Transfer | 0 | overworld | The Warden replaced the dead dragon as Head of Records Security; the old records are kept in the deep cities |
 | 3 | Seal Maintenance Log | 1 | overworld | "Do NOT reinforce the seals. They are there to be broken, slowly, at the right price." |
-| 4 | Memo: Re: The Blood God | 3 | overworld | "Let them believe it is listening… Faith fills faster than force." |
-| 5 | Yield Projections, Q3 | 5 | overworld | Trolls, coins and potatoes as yield; "full yield by the twelfth seal" |
-| 6 | Requisition: Pumping Station | 9 | **End Cities only** | A blood pump beneath the basin. "Do NOT let them ask why a pool needs a drain." |
-| 7 | Citadel Power Budget | 10 | **End Cities only** | One full Blood Pool runs the Bureaucratic Barrier for a century. "They are filling it for us." |
-| 8 | Protocol Full Measure | 11 | **End Cities only** | Open the drain at the twelfth seal. In the margin: "They will think they won." |
+| 4 | Memo: Re: The Blood God | 3 | overworld | The Blood God is real: "Let them believe it is listening. It is." Faith feeds it, and what is fed can be harvested. The Office governed in its name, and wants "whatever answers to it" |
+| 5 | Yield Projections, Q3 | 5 | overworld | Trolls, coins and potatoes as yield; every Drop makes "the thing in the Pool" stronger, at full strength by the twelfth seal |
+| 6 | Requisition: Pumping Station | 9 | **End Cities only** | A blood pump beneath the basin. "Do NOT let them ask why a pool needs a drain, or where a god goes when you drain him." |
+| 7 | Binding Order: Subject B.G. | 10 | **End Cities only** | A god needs a body that won't die. The vessel is a Chaos Guardian from Project Chaos: "He killed so many of them. Let him wear one." The binding needs the Crown: "Secure the Regalia." "The subject will answer to the Office. So will its name." |
+| 8 | Protocol Full Measure | 11 | **End Cities only** | Open the drain at the twelfth seal, seal what comes through in the vessel, crown it ("It will kneel"), and speak in its name: "A god that never dies, and an Office that never dies with it." In the margin: "They will think they won." |
 | 9 | Surveyor's Last Field Notes | — | **given by command only** (`/deeprecords give <player> 9`): the admins placed it in a dragon lair | A dead Office surveyor's notes: "Ask why a pool would need a drain", and where the other books are kept (the deep cities, old strongholds, buried chests, mines and dungeons, the Twilight's library and vaults, and the floating cities beyond the End's gate) |
+
+**Books 4–8 reworded (13 Nov 2026, owner decision):** they were reworded before anyone could find them, since they open from Tier 3 and the server was at Tier 2. They now point at Part II's two threads (see [STORY.md](../../STORY.md)):
+- **The Blood God is real.**
+- **The Ministry wants his power and his name:** a puppet god that never dies, bound into a Chaos Guardian. It needs the Crown to make the binding hold.
+- **Its means:** the Pool's essence, drained at the twelfth seal.
+
+Book 7 was the "Citadel Power Budget"; its id is still `power_budget`.
 
 - **A book can only turn up once the Blood Pool has reached its tier**, so the reveal follows the season.
 - **The biggest plot points (6–8) are only in End City chests** (owner decision). The End opens at Tier 9.

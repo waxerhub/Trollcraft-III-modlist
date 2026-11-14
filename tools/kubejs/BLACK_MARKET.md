@@ -95,7 +95,7 @@ In Part II, `part2/blood_pool.js` gives each player a **Potato Standing**: a ran
 | Writ of Protection | 15 | Turns away the next contract called on you (see below) |
 | Certified Alibi | 50 | Dismisses one open charge at a trial (see [Tracking and alibis](#tracking-and-alibis)) |
 | Unsigned Declaration | 60 | Declares a Purge: the buyer picks the kit and the length, and nobody is told who (see [The Unsigned Declaration](#the-unsigned-declaration); only sold while [part2/purge.js](PURGE.md) is installed) |
-| Super Weapon Repair Kit | 40 | **On rotation:** only on the 30% of visits that bring one. Fully repairs one super weapon (see [The Super Weapon Repair Kit](#the-super-weapon-repair-kit)) |
+| Super Weapon Repair Kit | 25 | **On rotation:** only on the 30% of visits that bring one. Fully repairs one super weapon (see [The Super Weapon Repair Kit](#the-super-weapon-repair-kit)) |
 | Tracker Compass | 25 | Points to one online player for 5 minutes once switched on |
 | Homing Pig | 20 | Walks toward a player's bed for 3 minutes. Hurting it breaks the Sanctity of Swine Act |
 | Unsanctioned Eye of Ender | 20 each | The only Eye the End Portal frames take during the End Lockdown Initiative (only sold while [end_lockdown.js](END_LOCKDOWN.md) is installed) |
@@ -268,7 +268,7 @@ Right-clicking the merchant opens a chest-style window. It's a vanilla chest scr
 - **Op starts count too:** a Purge started with `/purge start` holds off the next declaration until 12 hours after it ends.
 
 ## The Super Weapon Repair Kit
-**40 coins** (`REPAIR_KIT`), for anyone: there's no Potato Standing lock. It's **on rotation**:
+**25 coins** (`REPAIR_KIT`), for anyone: there's no Potato Standing lock. It's **on rotation**:
 - **The roll:** each time the Hooded Merchant turns up at a spot, he has a **30% chance** (`chance`) to carry **one** kit (`stock`) for that visit.
 - **Sold out:** once it's sold, there are none until a later visit rolls one again. When he leaves, any unsold kits go with him.
 - **Where it shows:**
@@ -409,7 +409,7 @@ Logging out, `/reload` and restarts never reset a cooldown or reuse a contract i
 | `ALLOW_SAME_FACTION` | true | Contracts on your own faction |
 | `MAX_CALL_RANGE` | 0 | 0 = any distance; otherwise the caller must be this close to the target, in the same dimension |
 | `DECLARATION` | price 60, mode heist, lengths 5/10/15/30, cooldownHours 12, minPlayers 3 | The Unsigned Declaration |
-| `REPAIR_KIT` | price 40, chance 0.3, stock 1, item flint, rumor on | The Super Weapon Repair Kit: its price, the chance a visit brings it, how many, the item it's made from, and the rumor line |
+| `REPAIR_KIT` | price 25, chance 0.3, stock 1, item flint, rumor on | The Super Weapon Repair Kit: its price, the chance a visit brings it, how many, the item it's made from, and the rumor line |
 | `SUPER_WEAPONS` | the Anamian Axe, the Syndicate Slayer, the Frying Pan, the Deepdelver's Maul | What the kit repairs: each one's global API and check. Add new super weapons here. |
 | `BLOCK_COIN_CRAFTING` | false | true = crafting-table recipes refuse coins as gold nuggets (it also broke Ender IO's capacitors, so it's off) |
 | `COIN_NAME` / `COIN_PLURAL` | Hush Coin / Hush Coins | The currency's name, used everywhere (bounties.js too). Coins already in players' inventories are renamed automatically. |
@@ -535,7 +535,7 @@ Logging out, `/reload` and restarts never reset a cooldown or reuse a contract i
     - `/bm declarations` shows A as the buyer and poster.
 24. **Super Weapon Repair Kit** (needs a damaged super weapon):
     - `/bm vendor spawn` until `/bm vendor where` says the visit brought a kit, or `/bm repairkit stock 1`;
-    - the window's bottom row shows the kit at 40 coins with "(1 left)". Buy it: "That was his last one", and it's gone from the window;
+    - the window's bottom row shows the kit at 25 coins with "(1 left)". Buy it: "That was his last one", and it's gone from the window;
     - hold the kit, with the damaged weapon in your off hand, and right-click: full durability, an anvil sound, and the kit is used up;
     - with a Tinkers super weapon (the Slayer or the Pan), wear it down until it breaks, then repair it: it works again;
     - right-click a kit with nothing worn: refused, and the kit is kept.

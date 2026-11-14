@@ -210,7 +210,7 @@ const DECLARATION = { price: 60, mode: 'heist', lengths: [5, 10, 15, 30], cooldo
 // it mends the super weapon in your other hand, or else the most worn one you carry. One that isn't worn keeps the kit.
 // item: the vanilla item it's made from (flint: no use of its own on a right-click). rumor: the rumor of his arrival
 // says he has one.
-const REPAIR_KIT = { price: 40, chance: 0.3, stock: 1, item: 'minecraft:flint', rumor: true }
+const REPAIR_KIT = { price: 25, chance: 0.3, stock: 1, item: 'minecraft:flint', rumor: true }
 // The server's super weapons: each one's script's global API and the check that recognises it (looked up when used,
 // so a weapon whose script isn't installed is simply skipped). The Anamian Axe and the Maul only count their real,
 // serial-numbered copy. Add new super weapons here.

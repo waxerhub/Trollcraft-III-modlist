@@ -1203,7 +1203,7 @@ ok('/bm vendor where counts the kits this visit', /Super Weapon Repair Kits this
 // the shop: window and chat
 cmd('coins give Alice 100', admin)
 openWin(alice)
-ok('the window shows the kit at the bottom, with its price and stock', slotName(alice, 2, 5) == 'Super Weapon Repair Kit' && /40 Hush Coins \(1 left\)/.test(slotLore(alice, 2, 5)) &&
+ok('the window shows the kit at the bottom, with its price and stock', slotName(alice, 2, 5) == 'Super Weapon Repair Kit' && /25 Hush Coins \(1 left\)/.test(slotLore(alice, 2, 5)) &&
   /the Anamian Axe, the Syndicate Slayer, the Frying Pan and the Deepdelver's Maul/.test(slotLore(alice, 2, 5)), slotLore(alice, 2, 5))
 alice.closeMenu(); advance(1)
 alice.inbox = []
@@ -1213,7 +1213,7 @@ ok('the chat shop lists it with a [BUY] for /blackmarket buy repairkit', /Super 
 openWin(alice)
 cw = coinsOf(alice); alice.inbox = []
 guiClick(alice, 2, 5)
-ok('clicking it buys the kit: 40 coins, a glinting flint named Super Weapon Repair Kit, his last one', coinsOf(alice) == cw - 40 && kitCount(alice) == 1 && DB().vendor.repairKits === 0 &&
+ok('clicking it buys the kit: 25 coins, a glinting flint named Super Weapon Repair Kit, his last one', coinsOf(alice) == cw - 25 && kitCount(alice) == 1 && DB().vendor.repairKits === 0 &&
   realSlots(alice)[kitSlot(alice)].id == 'minecraft:flint' && /That was his last one/.test(text(alice)), text(alice))
 ok('... and the window comes back without it', alice.gui && slotName(alice, 2, 5) != 'Super Weapon Repair Kit')
 alice.closeMenu(); advance(1)

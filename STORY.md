@@ -248,9 +248,9 @@ Technoblade's Potato War, revived. **The Pool decides what the server can make; 
        - **Lighting them:** the server splits up, and the braziers must all be lit within 60 seconds of each other. Otherwise the lit ones gutter out, and the teams try again.
        - **The beam:** once all three burn, a beacon beam rises at the Shrine site, visible from far off.
        - **Ambushes:** unsigned Inspector patrols ambush "unregistered pilgrims" on the way.
-    4. **The Hidden Shrine** (about 15 minutes): the site looks like ordinary ground. When the first pilgrim reaches it, the earth splits open into a stair. Below is the Shrine, placed beforehand from the owner's schematic with its entrance sealed.
-    5. **The Ignition Rite** (about 20 minutes, underground).
-       - **The waves:** Inspectors pour down the stair, escalating from iron-tier to diamond-tier. The last wave brings a **Senior Inspector** mini-boss, who drops the most.
+    4. **The Shrine Rises** (about 15 minutes; changed 2026-11-13 from a Shrine hidden underground): the beam stands over empty ground. Once the pilgrims have gathered there, an op starts the rise, and the Shrine **builds itself layer by layer from the ground up** out of the owner's schematic, with rumbling and particles. It stays afterwards as the Shrine for the relic hunt.
+    5. **The Ignition Rite** (about 20 minutes, at the Shrine).
+       - **The waves:** Inspectors close in on the Shrine from the land around it, escalating from iron-tier to diamond-tier. The last wave brings a **Senior Inspector** mini-boss, who drops the most.
        - **The potatoes:** every Inspector carries **Potato King's Potatoes**, Techno's own potatoes, which the Inspectors had been hoarding.
        - **The offering:** offered at the altar, each potato fills the rite's bar and lights the Shrine stage by stage. It needs **8 potatoes per player present**.
     6. **The Awakening** (about 5 minutes, respectful, no jokes).
@@ -259,9 +259,9 @@ Technoblade's Potato War, revived. **The Pool decides what the server can make; 
        - **The Pool:** the rite tops it up to **Tier 3's threshold** (120,000; about 54,000 Drops), credited to each player by the potatoes they offered. Everyone present then breaks the third seal together with `/bloodpool vote`, and **the Nether opens** that night.
     - **The reward is the Drops** (owner decision): no title or keepsake.
     - **Still needed:**
-      - **From the owner:** the Shrine's schematic (with an altar and a stair entrance), the three brazier sites and the Shrine site, and the date;
+      - **From the owner:** the Shrine's schematic (with an altar), the three brazier sites and the Shrine site, and the date;
       - **To write:** the testimony text and the Signal;
-      - **To build:** `part2/shrine.js`: the op-run stages, the braziers and the beam, the opening stair, the Inspector waves and the Senior Inspector, the Potato King's Potato and the altar bar, the Drops top-up, the Awakening, and the start of `/regalia`.
+      - **To build:** `part2/shrine.js`: the op-run stages, the braziers and the beam, the layer-by-layer rise (the schematic converted into one structure piece per layer, by `tools/schematic/schem_to_structures.js`), the Inspector waves and the Senior Inspector, the Potato King's Potato and the altar bar, the Drops top-up, the Awakening, and the start of `/regalia`.
 
     🔨
 

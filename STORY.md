@@ -204,8 +204,9 @@ Owner decisions 2026-11-13: his purpose, the puppet god, the freely given blood,
 - **The tank** (`part2/blood_tank.js`): a tower of chiseled nether bricks, glass and nether gold ore whose 3×3×6 chamber fills one layer of blood for every 2 tiers. It's full at the twelfth seal, and the drain empties it (Act V).
 - **Dimensions:** the **Nether opens at Tier 3** and the **End at Tier 9** (owner decision). Until then Nether portals don't light, Eyes of Ender can't be crafted, and anyone who gets in is sent back by the Ministry. When the tier opens, the Blood God announces that the Ministry's seal has shattered.
 - **Voices:** the Blood God speaks for the Pool (ready, unlocked, the tithe). The Ministry speaks only as the enemy holding the seals (sending players back). Nothing in Part II has the Ministry granting, permitting or weighing anything.
-- **The pace:** about 9 contributors, **12 tiers, 3 million Drops in total** (thresholds doubled, owner decision).
-  - **Estimate:** about 25,000 Drops a day from trolls and coins, plus up to 30,000 a day from the Potato Tithe: **about 8 weeks if the server farms, about 17 if it only trolls**.
+- **The pace:** about 9 contributors, **12 tiers, 4.4 million Drops in total** (thresholds doubled, owner decision; Tier 12 raised from 3,000,000 to 4,400,000, owner decision 2026-11-13).
+  - **Estimate:** about 25,000 Drops a day from trolls and coins, plus up to 30,000 a day from the Potato Tithe: **about 11½ weeks if the server farms, about 25 if it only trolls**.
+  - Tier 11 comes at about week 6 (week 14 if the server only trolls), and the last seal then takes 2,000,000 Drops more.
   - **Cumulative thresholds** (settings):
 
     | Tier | Drops | Expected |
@@ -221,11 +222,13 @@ Owner decisions 2026-11-13: his purpose, the puppet god, the freely given blood,
     | 9 | 1,400,000 | about week 4: the End |
     | 10 | 1,900,000 | |
     | 11 | 2,400,000 | |
-    | 12 | 3,000,000 | about week 8: the twelfth seal and the final act |
+    | 12 | 4,400,000 | about week 11: the last seal and the final act |
 
     (Expected times assume the tithe quota is filled daily; trolls and coins alone take about twice as long.)
 
-  - **What each tier unlocks** is decided (BLOOD_POOL.md, from the research). **Tier 12 is the twelfth seal**, which begins the final act (Act V); it unlocks no recipes. Its name in `blood_pool.js` is still "The Siege".
+  - **What each tier unlocks** is decided (BLOOD_POOL.md, from the research). **Tier 12, Full Measure, is the last seal.** It begins the final act (Act V) and unlocks no recipes.
+    - **The name** (owner decision 2026-11-13): it was "The Siege". Like the other tiers, it's a measure of water, and it quietly echoes the Ministry's Protocol Full Measure (Deep Record #8).
+    - **The quest book** lists it as "The last seal", with no Citadel.
 
 ### Techno's Potato War: each player's Potato Standing ✅ (`part2/blood_pool.js`, `economy/black_market.js`, see [BLOOD_POOL.md](tools/kubejs/BLOOD_POOL.md#the-potato-war-each-players-potato-standing))
 Technoblade's Potato War, revived. **The Pool decides what the server can make; your rank decides what you can make** (owner decisions).
@@ -450,7 +453,6 @@ Starts at Blood Pool Tier 12. **The twelfth seal isn't the end of Part II; it be
   - how the Pool's strength helps in the fight;
   - where the vessel is kept;
   - whether the puppet's decrees are op-run or scripted.
-- **Tier 12's name:** it's still "The Siege" in `blood_pool.js`, and the quest book's Blood Pool chapter lists "The Siege of the Citadel" for it, though the Citadel isn't in the story yet.
 - **The Castellan:** her loyalty stays unconfirmed, unless she wants a story arc later (e.g. a double-agent turn in Act III, the Seizure).
 - **Part II tiers:** decided (see BLOOD_POOL.md). Still to check on the server: Thermal's machine-frame recipes in JEI, the AlmostUnified config, and a Dragon Heart drop before Tier 10.
 - **The Potato War:**

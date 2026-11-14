@@ -385,8 +385,8 @@ const TIERS = [
       tags: [],
       recipes: [/^mekanism:nucleosynthesizing\//, COMPAT(11)] } },
 
-  // Tier 12 unlocks no recipes. It opens the Siege: part2/citadel.js checks global.BloodPool.tier() >= 12.
-  { tier: 12, name: 'The Siege', drops: 3000000, unlocks: { mods: [], items: [], tags: [], recipes: [] } },
+  // Tier 12 unlocks no recipes. It's the last seal, and it begins the final act (STORY.md, Act V).
+  { tier: 12, name: 'Full Measure', drops: 4400000, unlocks: { mods: [], items: [], tags: [], recipes: [] } },
 ]
 // Dimensions (part2/dimension_gates.js): the Nether opens at this tier, the End at this one.
 const NETHER_TIER = 3
@@ -1083,7 +1083,7 @@ function contents(T) {
   if ((u.recipes || []).length) parts.push(u.recipes.length + ' recipe rule' + (u.recipes.length == 1 ? '' : 's'))
   if (T.tier == NETHER_TIER) parts.push('the Nether')
   if (T.tier == END_TIER) parts.push('the End')
-  return parts.length ? parts.join('; ') : (T.tier == 12 ? 'the Siege' : 'nothing listed yet')
+  return parts.length ? parts.join('; ') : (T.tier == 12 ? 'the last seal' : 'nothing listed yet')
 }
 
 // Opens tier n (and everything below): saved, written to TIER_FILE, announced, then /reload brings the recipes back.

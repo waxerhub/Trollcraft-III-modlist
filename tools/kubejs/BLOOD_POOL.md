@@ -31,7 +31,7 @@ Copy them, restart once (for the startup script), then `/reload` after any later
   - **What counts:** raw potatoes, plus potato crates from Quark, Farmer's Delight and Thermal at 9 each. Breaking a crate to make up an amount gives the change back as potatoes. Baked and poisonous potatoes and potato dishes don't count.
   - **Daily quota:** **30,000 Drops a day, server-wide** (about 120,000 potatoes). A tithe that would go over takes only what fits and says the quota is full; after that the command refuses until the quota reopens.
   - **Reset:** the quota reopens at **4 am Central** (`America/Chicago`, daylight saving included).
-  - **Why the cap:** without it, a bank of Thermal Insolators could reach Tier 12 in about three weeks. With it the arc is about **8 weeks if the server farms, about 17 if it doesn't** (the research's §7).
+  - **Why the cap:** without it, a bank of Thermal Insolators could reach Tier 12 in about a month. With it the arc is about **11½ weeks if the server farms, about 25 if it doesn't** (the research's §7, rescaled for Tier 12 at 4,400,000).
 - **Tithed potatoes never raise anyone's rank** in the Potato War, and offered potatoes never fill the Pool. The two are separate on purpose.
 - **Ops** can `/bloodpool add <drops>` or `/bloodpool set <drops>`.
 - **Credit:** every Drop is credited to whoever gave it (`/bloodpool top`), for Part II titles.
@@ -53,7 +53,7 @@ Copy them, restart once (for the startup script), then `/reload` after any later
 | 9 | A Tide | 1,400,000 | Wither and Star | Draconic Evolution, Gaia, the End tier of Ender IO, dragonsteel; **the End** |
 | 10 | A Sea | 1,900,000 | Fission and Wyvern | RFTools Dimensions, fission, the MekaSuit, Draconic Wyvern, AE2 quantum and spatial |
 | 11 | An Ocean | 2,400,000 | Awakened | Mekanism SPS and antimatter, Draconic Awakened and Chaotic, Advanced AE quantum, Awakened Supremium, the Ender Quarry, the nuke |
-| 12 | The Siege | 3,000,000 | | No recipes: the Citadel's Bureaucratic Barrier (`part2/citadel.js`, later) |
+| 12 | Full Measure | 4,400,000 | | No recipes: the last seal, which begins the final act (STORY.md, Act V). Renamed from "The Siege" and raised from 3,000,000 (owner decisions, 13 November 2026) |
 
 **Unlocking a tier:** the players break the seal by vote (owner decision, 10 November 2026).
 1. **When the Pool reaches a tier,** everyone sees "[BLOOD GOD] The Blood Pool overflows. Tier 3 (A Basin) waits for the Ministry's seal to break." (it goes to Discord too). Nothing opens yet.
@@ -403,7 +403,7 @@ floor        5x5 chiseled nether bricks
 - **`persistentData["blood_tank"]`:** the registered tanks (dimension, floor centre, layers filled).
 
 ## Test plan (an op and a player)
-1. **`/bloodpool tiers`:** 12 tiers from 20,000 to 3,000,000, with the Nether at 3 and the End at 9.
+1. **`/bloodpool tiers`:** 12 tiers from 20,000 to 4,400,000, with the Nether at 3 and the End at 9.
    - In JEI, Create and the Twilight Forest steeleaf chestplate have no recipes.
    - Ironwood tools and the Tinkers smeltery do.
 2. **Try to light a Nether portal:** it doesn't light.

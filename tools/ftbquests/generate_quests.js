@@ -121,7 +121,7 @@ function tierQuest(T) {
   if ((u.tags || []).length) lines.push('- Tags: ' + u.tags.join(', '))
   if (T.tier === BP.netherTier) lines.push('- &cThe Nether&r')
   if (T.tier === BP.endTier) lines.push('- &5The End&r')
-  if (T.tier > BP.rankCount) lines.push('- The Siege of the Citadel')
+  if (T.tier > BP.rankCount) lines.push('- The last seal')
   if (T.tier <= BP.rankCount) lines.push('', '&7Crafting its items at a table also needs ' + BP.rankName(T.tier) + ' (or catch-up at Tier ' + (T.tier + BP.catchUpGap) + '). Machines work for everyone.')
   const q = {
     id: questId(n), title: 'Tier ' + T.tier + ': ' + T.name, icon: T.tier === BP.netherTier ? 'minecraft:netherrack' : T.tier === BP.endTier ? 'minecraft:ender_eye' : 'minecraft:redstone',

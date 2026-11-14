@@ -218,10 +218,10 @@
 		}
 		{
 			dependencies: ["507A7000000100D3"]
-			description: ["The whole server fills the Blood Pool: trolls in the Troll Log, Hush Coins (/bloodpool donate) and the Potato Tithe (/bloodpool tithe).", "", "&6Opens at 3,000,000 Drops&r", "- The Siege of the Citadel"]
+			description: ["The whole server fills the Blood Pool: trolls in the Troll Log, Hush Coins (/bloodpool donate) and the Potato Tithe (/bloodpool tithe).", "", "&6Opens at 4,400,000 Drops&r", "- The last seal"]
 			icon: "minecraft:redstone"
 			id: "507A7000000100D4"
-			subtitle: "3,000,000 Drops"
+			subtitle: "4,400,000 Drops"
 			tags: ["blood_pool_tier"]
 			tasks: [
 				{
@@ -231,7 +231,7 @@
 					type: "gamestage"
 				}
 			]
-			title: "Tier 12: The Siege"
+			title: "Tier 12: Full Measure"
 			x: 0.0d
 			y: -16.5d
 		}

@@ -170,6 +170,17 @@ Starts with `/story act next`.
 ## PART II: Technoblade Never Dies
 Everyone stands together under Techno's banner. There are no Loyalists. The Ministry becomes a non-player enemy: its Inspectors and the Minister.
 
+### The two threads (owner decisions 2026-11-13; still being built)
+Part II runs on two goals that want the same thing, the seals broken, for opposite reasons. Players see the first, and only slowly glimpse the second.
+- **The Blood God is real.** He is the spirit of Technoblade. This is only ever implied, never stated.
+- **His purpose** is one the players can agree with. *Still to define* (see the brainstorm options below).
+- **The Ministry's purpose** is to take the Blood God's power, and with it control Technoblade's legacy. It ruled in his name in Part I; now it wants his power itself.
+  - **The means:** the Harvest. The seals are a pump, and at the twelfth seal the Ministry drains the full Pool into the Citadel (the Deep Records).
+  - **The Purges' Tithe** is a second pump.
+- **The Blood God knows,** and hints at it ("They want the Pool full. So do I.").
+- **The ending:** when the Ministry opens the drain at the twelfth seal, the restored Crown lets the Blood God seize it. The Ministry's own pump powers his return (Act V).
+- **Hints only, for now:** both goals are hinted at, never spelled out, and built up across Part II. The Shrine Awakens (#36) is the first night both are glimpsed.
+
 ### Blood for the Blood God: the Blood Pool ✅ (`part2/blood_pool.js`, `part2/dimension_gates.js`, see [BLOOD_POOL.md](tools/kubejs/BLOOD_POOL.md))
 **All progression in Part II is locked.** The Ministry, exposed at the end of Part I, sealed the new world's progression to keep everyone weak. Each tier is one of **the Ministry's seals**, and only blood breaks them. Tiers open only through the server-wide **Blood Pool**. It starts at 0: Part I troll points don't count (owner decision); they only become legacy titles.
 - **It's filled by:**

@@ -32,7 +32,7 @@ In Part II, `part2/blood_pool.js` gives each player a **Potato Standing**: a ran
 | 4 Potato Private | Disguised TNT (`tnt`), Tracker Compass (`tracker`), Squad contract (`squad`) |
 | 6 Potato Sergeant | Teleport Trap (`tpblock`), Homing Pig (`pig`) |
 | 8 Potato Captain | War Party contract (`warparty`) |
-| anyone | Certified Alibi (`alibi`), Unsigned Declaration (`declaration`), Unsanctioned Eye (`eye`), under-the-counter stock (`custom`), bounties |
+| anyone | Certified Alibi (`alibi`), Unsigned Declaration (`declaration`), Super Weapon Repair Kit (`repairkit`), Unsanctioned Eye (`eye`), under-the-counter stock (`custom`), bounties |
 
 - **Refused before paying:** a locked purchase is refused with "The merchant only sells that to a Potato Recruit or higher in Techno's Potato War", and no coins are taken. That holds for the command, the chat menu and the window.
 - **In the shop:**
@@ -73,6 +73,7 @@ In Part II, `part2/blood_pool.js` gives each player a **Potato Standing**: a ran
   - He turns up at a random spot for **90 minutes** (`VENDOR_STAY_MINUTES`), vanishes in a puff of smoke, and appears at a different spot **30 minutes** later (`VENDOR_GONE_MINUTES`).
   - With `NIGHT_ONLY = true`, he only appears during Overworld night.
   - He never appears within 64 blocks of an active Pig Escort portal.
+  - **Each visit has a 30% chance of bringing a Super Weapon Repair Kit** (see [The Super Weapon Repair Kit](#the-super-weapon-repair-kit)).
 - **Chunk loading:** the chunk he stands in is **forceloaded** while he's there, and the forceload is removed when he leaves.
 - **Only one merchant exists at a time:**
   - every copy is removed on start-up and `/reload`;
@@ -94,6 +95,7 @@ In Part II, `part2/blood_pool.js` gives each player a **Potato Standing**: a ran
 | Writ of Protection | 15 | Turns away the next contract called on you (see below) |
 | Certified Alibi | 50 | Dismisses one open charge at a trial (see [Tracking and alibis](#tracking-and-alibis)) |
 | Unsigned Declaration | 60 | Declares a Purge: the buyer picks the kit and the length, and nobody is told who (see [The Unsigned Declaration](#the-unsigned-declaration); only sold while [part2/purge.js](PURGE.md) is installed) |
+| Super Weapon Repair Kit | 40 | **On rotation:** only on the 30% of visits that bring one. Fully repairs one super weapon (see [The Super Weapon Repair Kit](#the-super-weapon-repair-kit)) |
 | Tracker Compass | 25 | Points to one online player for 5 minutes once switched on |
 | Homing Pig | 20 | Walks toward a player's bed for 3 minutes. Hurting it breaks the Sanctity of Swine Act |
 | Unsanctioned Eye of Ender | 20 each | The only Eye the End Portal frames take during the End Lockdown Initiative (only sold while [end_lockdown.js](END_LOCKDOWN.md) is installed) |
@@ -123,7 +125,7 @@ Right-clicking the merchant opens a chest-style window. It's a vanilla chest scr
 | Traps | Disguised TNT, Mimic Chest, Teleport Trap (clicking it closes the window and puts `/bmbuy tpblock ` in your chat box, since the window can't take coordinates) |
 | Pranks | Itching Powder, Cursed Food (opens its own page of six foods), Anonymous Summons (clicking it opens the player heads), Butterfingers |
 | Under the counter | Custom stock: the real item with its own tooltip and the price added at the end. More than six entries: an arrow opens the full list. |
-| Bottom | Your Hush Coins, and Close. "Sell to him" appears only if `SELL_LIST` has entries. |
+| Bottom | Your Hush Coins, the **Super Weapon Repair Kit** when this visit brought one (a click buys it), and Close. "Sell to him" appears only if `SELL_LIST` has entries. |
 
 - **Range:** every click is checked like the commands. Away from the merchant you get "The merchant is not here." and the window closes.
 - **Fallback:** `SHOP_MENU = 'chat'` makes right-click open the chat menu instead. If the window can't be opened, the chat menu is used automatically and the log says why.
@@ -265,6 +267,32 @@ Right-clicking the merchant opens a chest-style window. It's a vanilla chest scr
 - **On record:** a copy of a posted declaration ("already been posted") or a made-up one ("isn't on file") does nothing. Only the player carrying it can post it. `/bm hand add` refuses it.
 - **Op starts count too:** a Purge started with `/purge start` holds off the next declaration until 12 hours after it ends.
 
+## The Super Weapon Repair Kit
+**40 coins** (`REPAIR_KIT`), for anyone: there's no Potato Standing lock. It's **on rotation**:
+- **The roll:** each time the Hooded Merchant turns up at a spot, he has a **30% chance** (`chance`) to carry **one** kit (`stock`) for that visit.
+- **Sold out:** once it's sold, there are none until a later visit rolls one again. When he leaves, any unsold kits go with him.
+- **Where it shows:**
+  - the shop window's bottom row, with the price and how many are left;
+  - the chat menu, under Unsigned Declaration;
+  - the rumor of his arrival adds *"Word is he has a smith's kit for the great weapons this time."* (`rumor`).
+
+  On visits without one, it doesn't appear at all, and `/bmbuy repairkit` says he has none this time.
+
+**What it repairs:** the server's super weapons (`SUPER_WEAPONS`):
+- the Anamian Axe;
+- the Syndicate Slayer;
+- the Frying Pan;
+- the Deepdelver's Maul, at every level, its Level X Vein Hammer included.
+
+Each one is recognised by its own script's check, so the Axe and the Maul only count their real, serial-numbered copy. A weapon whose script isn't installed is skipped. Leelinda's Stake isn't scripted, so it isn't covered.
+
+**Using it:** right-click the kit.
+- **Which weapon:** the super weapon in your other hand, if it's worn. Otherwise the most worn one you carry (hotbar, inventory, armour slots or off hand).
+- **The repair:** it's mended to full durability with an anvil sound, and the kit is used up. A broken Tinkers tool (the Slayer, the Pan, the Maul at X) works again, because the repair also clears Tinkers' broken state.
+- **The kit is kept** when nothing you carry is worn ("not a scratch on it"), or when you carry no super weapon.
+
+**The item:** a glinting flint named *Super Weapon Repair Kit*, so players don't need a modpack update. Right-clicking flint does nothing on its own. `/bm hand add` refuses a kit, so it can't skip the rotation by going under the counter.
+
 ## The Troll Log
 If `economy/trolls.js` is installed, the black market logs its trolls there, and the troller is paid in Hush Coins (see [TROLLS.md](TROLLS.md)):
 - **Anonymous Summons:** when it's delivered (buyer → target).
@@ -343,13 +371,16 @@ Ops can sell **any item exactly as it is**, NBT included, for example an item th
 | `/blackmarket buy eye [count]` | anyone at the merchant | Unsanctioned Eyes of Ender (1–12), while the End Lockdown Initiative is on |
 | `/blackmarket buy contract <tier> [player]`, `buy writ`, `buy custom <id>`, `sell <item>` | anyone at the merchant | What the menu buttons run. Tiers: `tipoff`, `squad`, `warparty`. `sell` only works if `SELL_LIST` has entries. |
 | `/blackmarket buy declaration` | anyone at the merchant | Buy an Unsigned Declaration (with part2/purge.js) |
+| `/blackmarket buy repairkit` | anyone at the merchant | Buy a Super Weapon Repair Kit, on a visit that brought one |
+| `/blackmarket repairkit give <player> [count]` | op | Kits straight into a player's inventory (1–64) |
+| `/blackmarket repairkit stock <count>` | op | How many kits the merchant has for the rest of this visit (0 takes them off the shelf). He must be out. |
 | `/blackmarket declare <serial> <kit> <minutes>` | the declaration's holder, anywhere | Post it (what its menu buttons run) |
 | `/blackmarket declarations` | op | The last 10 Unsigned Declarations: who bought each, who posted it, the kit and the length |
 | `/blackmarket inspect` | op | While holding a contract: target, **buyer's name** (even if they're offline), tier, issue date, status. For Ministry trials: a confiscated contract proves who ordered the hit. Also for a Tracker Compass, Homing Pig or Certified Alibi (who bought it and who used it) and an Unsanctioned Eye (who bought it, when, how many). |
 | `/blackmarket contracts` | op | The 20 most recent contracts: id, tier, target, buyer, status |
 | `/blackmarket heat <player> [reset]` | op | Their heat and contract cooldown, or reset the heat |
 | `/blackmarket test contract <tier> <player>` | op | A free contract, no merchant needed |
-| `/blackmarket vendor spawn [location]`, `move`, `remove`, `where` | op | Put him out now (at a spot, or a random one), move him, send him away, see where he is |
+| `/blackmarket vendor spawn [location]`, `move`, `remove`, `where` | op | Put him out now (at a spot, or a random one), move him, send him away, see where he is and how many repair kits he has |
 | `/blackmarket vendor addspot <name>`, `delspot <name>`, `spots` | op | Add a spot where you stand, remove a saved spot, list all spots |
 | `/blackmarket toggle` | op | Open or close the black market (data is kept; the merchant leaves) |
 | `/bm hand add <price> [stock]`, `list`, `remove <id>`, `price <id> <price>` | op | Custom stock |
@@ -361,7 +392,7 @@ Everything is in `persistentData["economy"]` as one JSON string:
 - contracts (with buyer, buyer name, target and status);
 - heat;
 - contract cooldowns;
-- the merchant's state and saved spots;
+- the merchant's state (with this visit's repair kits) and saved spots;
 - notices waiting for the next login;
 - custom stock;
 - Tracker Compasses and Homing Pigs (buyer, target, used or not), the pigs that are out, and each player's last known spawn point;
@@ -378,6 +409,8 @@ Logging out, `/reload` and restarts never reset a cooldown or reuse a contract i
 | `ALLOW_SAME_FACTION` | true | Contracts on your own faction |
 | `MAX_CALL_RANGE` | 0 | 0 = any distance; otherwise the caller must be this close to the target, in the same dimension |
 | `DECLARATION` | price 60, mode heist, lengths 5/10/15/30, cooldownHours 12, minPlayers 3 | The Unsigned Declaration |
+| `REPAIR_KIT` | price 40, chance 0.3, stock 1, item flint, rumor on | The Super Weapon Repair Kit: its price, the chance a visit brings it, how many, the item it's made from, and the rumor line |
+| `SUPER_WEAPONS` | the Anamian Axe, the Syndicate Slayer, the Frying Pan, the Deepdelver's Maul | What the kit repairs: each one's global API and check. Add new super weapons here. |
 | `BLOCK_COIN_CRAFTING` | false | true = crafting-table recipes refuse coins as gold nuggets (it also broke Ender IO's capacitors, so it's off) |
 | `COIN_NAME` / `COIN_PLURAL` | Hush Coin / Hush Coins | The currency's name, used everywhere (bounties.js too). Coins already in players' inventories are renamed automatically. |
 | `AMBUSH_COIN_DROPS` | on, 25%, 1 coin | The chance an ambush mob killed by a player drops a coin, and how many |
@@ -500,10 +533,16 @@ Logging out, `/reload` and restarts never reset a cooldown or reuse a contract i
     - click [Peasant] [5 min]: everyone sees the unsigned announcement and the 30-second countdown, the paper is gone, and only A is told it was posted;
     - after the Purge, a second declaration is refused ("try again in 11 h …");
     - `/bm declarations` shows A as the buyer and poster.
+24. **Super Weapon Repair Kit** (needs a damaged super weapon):
+    - `/bm vendor spawn` until `/bm vendor where` says the visit brought a kit, or `/bm repairkit stock 1`;
+    - the window's bottom row shows the kit at 40 coins with "(1 left)". Buy it: "That was his last one", and it's gone from the window;
+    - hold the kit, with the damaged weapon in your off hand, and right-click: full durability, an anvil sound, and the kit is used up;
+    - with a Tinkers super weapon (the Slayer or the Pan), wear it down until it breaks, then repair it: it works again;
+    - right-click a kit with nothing worn: refused, and the kit is kept.
 
 ## What couldn't be verified for KubeJS 6 on 1.20.1
 
-A mock-server test passed all 248 checks (with bounties.js loaded), and a second one passed all 84 tracking and trial checks: coins, the merchant, the shop window and the chat menu, range, contracts and every refusal, the writ, dupes and forgeries, heat, outcomes, `/reload`, custom stock, selling (refused by default; working when SELL_LIST has entries), the rotation, Disguised TNT (sprinting across, jumping over, owner, protected areas, replaced blocks, breaking, the limit), the Teleport Trap (every refusal, the Nether lock, landing, owner, Pig Escort, reload, replaced blocks, the limit), the Mimic Chest, the four pranks (Cursed Food included), bounties, the coin rename (old coins swapped) and the ambush coin drops. These parts depend on the real game:
+A mock-server test passed all 270 checks (with bounties.js loaded), and a second one passed all 84 tracking and trial checks: coins, the merchant, the shop window and the chat menu, range, contracts and every refusal, the writ, dupes and forgeries, heat, outcomes, `/reload`, custom stock, selling (refused by default; working when SELL_LIST has entries), the rotation, Disguised TNT (sprinting across, jumping over, owner, protected areas, replaced blocks, breaking, the limit), the Teleport Trap (every refusal, the Nether lock, landing, owner, Pig Escort, reload, replaced blocks, the limit), the Mimic Chest, the four pranks (Cursed Food included), bounties, the coin rename (old coins swapped) and the ambush coin drops. These parts depend on the real game:
 
 **The Unsigned Declaration** passes 20 mock checks in the tracking suite, against a stand-in for `global.Purge`, and black_market.js loads on the test server. No player has bought or posted one yet; it's left for the live server (test plan step 23). Things to watch there:
 - the top-right slot of the shop window, and the purchase;
@@ -511,6 +550,20 @@ A mock-server test passed all 248 checks (with bounties.js loaded), and a second
 - the refusals (12 hours, 3 players) and the item being kept;
 - the unsigned countdown after a post, with the paper used up;
 - `/bm declarations`.
+
+**The Super Weapon Repair Kit** passes 21 mock checks against stand-ins for the super weapons' scripts:
+- the 30% roll;
+- the rumor;
+- the window, the chat menu and selling out;
+- the repair (other hand first, else the most worn);
+- the refusals that keep the kit;
+- copies, and weapons whose script isn't installed;
+- the op commands, and the kit leaving with him.
+
+Its repair uses `stack.setDamageValue(0)`. Tinkers' class files show that this goes through `ModifiableItem.setDamage` to `ToolStack.setDamage`, which also clears the tool's broken state. It's left for the server (test plan step 24):
+- the repair on each real weapon;
+- the bottom-row slot;
+- the right-click on the flint.
 
 **Potato Standing locks** were checked in the Blood Pool's mock test (refusals with no coins taken, the chat menu, the window, buying at the rank). The black market test above passes unchanged without the Blood Pool (Part I).
 

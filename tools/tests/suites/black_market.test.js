@@ -1168,5 +1168,108 @@ advance(6)
 ok('/bm debug window reports each step', ['before', 'window opened', 'tick 1', 'window closed', 'tick 2', 'tick 2, reopened', 'tick 4, closed again'].every(k => text(admin).indexOf(k) >= 0) && admin.gui == null, text(admin))
 console.log(text(admin).split('\n').filter(l => /BM debug/.test(l)).join('\n'))
 
+// ======================= The Super Weapon Repair Kit (on rotation) =======================
+// The super weapon scripts' checks, as their global APIs give them. The Maul's script isn't "installed" here.
+const swTag = (s, k) => !!(s && s.parsed && s.parsed.trollcraft && s.parsed.trollcraft[k])
+glob.AnamianAxe = { isRealAxe: s => swTag(s, 'anamian') && s.real !== false }
+glob.SyndicateSlayer = { isSlayer: s => swTag(s, 'slayer') }
+glob.FryingPan = { isPan: s => swTag(s, 'pan') }
+delete glob.DeepdelverMaul
+function weapon(kind, dmg, id) {
+  const s = stack(id || 'minecraft:netherite_axe', 1, '{trollcraft:{' + kind + ':{serial:1}},Damage:' + dmg + '}')
+  s.dmg = dmg
+  s.getDamageValue = function () { return this.dmg }
+  s.setDamageValue = function (n) { this.dmg = n }
+  return s
+}
+const kitSlot = p => realSlots(p).findIndex(s => s.count > 0 && s.parsed && s.parsed.trollcraft && s.parsed.trollcraft.repairkit)
+const kitCount = p => realSlots(p).filter(s => s.count > 0 && s.parsed && s.parsed.trollcraft && s.parsed.trollcraft.repairkit).reduce((a, s) => a + s.count, 0)
+const holdKit = p => { p.selected = kitSlot(p) }
+if (alice.gui) { alice.closeMenu(); advance(1) }
+alice.dim = OW; alice.x = 1003.5; alice.y = 65; alice.z = 1000.5
+const realRandom3 = Math.random
+// the roll: under 30% brings a kit this visit, otherwise none
+Math.random = () => 0.5
+cmd('blackmarket vendor spawn old_crossroads', admin); advance(45)
+ok('repair kit: a visit that rolls 0.5 (30% chance) brings none', vendor() && DB().vendor.repairKits === 0 && !/Repair Kit/.test(flat(lastReply())), JSON.stringify(DB().vendor))
+bob.inbox = []
+Math.random = () => 0.1
+cmd('blackmarket vendor spawn old_crossroads', admin); advance(45)
+Math.random = realRandom3
+ok('repair kit: a visit that rolls 0.1 brings 1, and the op is told', DB().vendor.repairKits === 1 && /with 1 Super Weapon Repair Kit\./.test(flat(lastReply())), lastReply())
+ok('... the rumor of his arrival says so', /smith's kit for the great weapons/.test(text(bob)), text(bob))
+cmd('blackmarket vendor where', admin)
+ok('/bm vendor where counts the kits this visit', /Super Weapon Repair Kits this visit: 1\./.test(flat(lastReply())), lastReply())
+// the shop: window and chat
+cmd('coins give Alice 100', admin)
+openWin(alice)
+ok('the window shows the kit at the bottom, with its price and stock', slotName(alice, 2, 5) == 'Super Weapon Repair Kit' && /40 Hush Coins \(1 left\)/.test(slotLore(alice, 2, 5)) &&
+  /the Anamian Axe, the Syndicate Slayer, the Frying Pan and the Deepdelver's Maul/.test(slotLore(alice, 2, 5)), slotLore(alice, 2, 5))
+alice.closeMenu(); advance(1)
+alice.inbox = []
+cmd('blackmarket chatshop', alice)
+ok('the chat shop lists it with a [BUY] for /blackmarket buy repairkit', /Super Weapon Repair Kit/.test(text(alice)) && /\/blackmarket buy repairkit/.test(text(alice)))
+// buying the last one
+openWin(alice)
+cw = coinsOf(alice); alice.inbox = []
+guiClick(alice, 2, 5)
+ok('clicking it buys the kit: 40 coins, a glinting flint named Super Weapon Repair Kit, his last one', coinsOf(alice) == cw - 40 && kitCount(alice) == 1 && DB().vendor.repairKits === 0 &&
+  realSlots(alice)[kitSlot(alice)].id == 'minecraft:flint' && /That was his last one/.test(text(alice)), text(alice))
+ok('... and the window comes back without it', alice.gui && slotName(alice, 2, 5) != 'Super Weapon Repair Kit')
+alice.closeMenu(); advance(1)
+alice.inbox = []
+cmd('blackmarket buy repairkit', alice)
+ok('sold out: /blackmarket buy repairkit refuses until a later visit', kitCount(alice) == 1 && /No repair kits this time/.test(text(alice) + flat(lastReply())), flat(lastReply()))
+alice.inbox = []
+cmd('blackmarket chatshop', alice)
+ok('... and the chat shop no longer lists it', !/Super Weapon Repair Kit/.test(text(alice)))
+// using it: the weapon in the other hand
+const slayer = weapon('slayer', 300, 'tconstruct:mattock')
+setReal(alice, 40, slayer)
+holdKit(alice); alice.inbox = []
+let kr = click(alice); advance(5)
+ok('right-click with the Slayer in the off hand: repaired fully, the kit used up', slayer.dmg == 0 && kitCount(alice) == 0 && /The Syndicate Slayer is good as new/.test(text(alice)) && kr.item, text(alice))
+ok('... with the anvil sound', W.cmds.some(x => /playsound minecraft:block.anvil.use master @s/.test(x.c)))
+// the most worn one carried
+cmd('bm repairkit give Alice 2', admin)
+ok('/bm repairkit give <player> <count>', kitCount(alice) == 2 && /Gave Alice 2 Super Weapon Repair Kits/.test(flat(lastReply())), lastReply())
+const axe = weapon('anamian', 50), pan = weapon('pan', 200, 'tconstruct:melting_pan')
+setReal(alice, 20, axe); setReal(alice, 21, pan)
+holdKit(alice); alice.inbox = []
+click(alice); advance(5)
+ok('nothing in the other hand: the most worn one carried is mended (the Pan), the Axe waits', pan.dmg == 0 && axe.dmg == 50 && kitCount(alice) == 1 && /The Frying Pan is good as new/.test(text(alice)), text(alice))
+// a pristine weapon in the other hand: the worn one elsewhere comes first
+setReal(alice, 40, slayer)
+holdKit(alice); alice.inbox = []
+click(alice); advance(5)
+ok('an unworn weapon in the other hand: the worn Axe in the pack is mended instead', axe.dmg == 0 && kitCount(alice) == 0 && /The Anamian Axe is good as new/.test(text(alice)), text(alice))
+// nothing worn: the kit is kept
+cmd('bm repairkit give Alice', admin)
+holdKit(alice); alice.inbox = []
+click(alice); advance(5)
+ok('nothing worn: refused, and the kit is kept', kitCount(alice) == 1 && /doesn't need it/.test(text(alice)), text(alice))
+// a copy of the Axe, and a weapon whose script isn't installed, don't count
+setReal(alice, 40, EMPTY()); setReal(alice, 20, EMPTY()); setReal(alice, 21, EMPTY())
+const fakeAxe = weapon('anamian', 100); fakeAxe.real = false
+const maul = weapon('maul', 100, 'minecraft:netherite_pickaxe')
+setReal(alice, 22, fakeAxe); setReal(alice, 23, maul)
+holdKit(alice); alice.inbox = []
+click(alice); advance(5)
+ok('a copy of the Axe and a Maul without its script: not super weapons, the kit is kept', fakeAxe.dmg == 100 && maul.dmg == 100 && kitCount(alice) == 1 && /only works on a super weapon/.test(text(alice)), text(alice))
+ok('... and nothing went wrong', !W.logs.some(l => /^E .*Repair kit/.test(l)))
+// ops: stock, and the kit can't go under the counter
+cmd('bm repairkit stock 3', admin)
+ok('/bm repairkit stock 3 restocks this visit', DB().vendor.repairKits === 3 && /3 Super Weapon Repair Kits for the rest of this visit/.test(flat(lastReply())), lastReply())
+ok('/bm repairkit is op only', cmd('bm repairkit stock 5', alice) == 0 && lastReply() == 'DENIED')
+const kitForHand = realSlots(alice)[kitSlot(alice)]
+putInHand(admin, stack(kitForHand.id, 1, kitForHand.snbtStr))
+cmd('bm hand add 10', admin)
+ok('/bm hand add refuses a repair kit (it would skip the rotation)', /repair kits and declarations can't be sold this way/.test(flat(lastReply())), lastReply())
+putInHand(admin, EMPTY())
+cmd('blackmarket vendor remove', admin)
+ok('when he leaves, the visit\'s kits go with him', DB().vendor.repairKits === 0 && !DB().vendor.present)
+cmd('bm repairkit stock 1', admin)
+ok('... and he can\'t be stocked while he\'s away', /isn't out/.test(flat(lastReply())), lastReply())
+
 console.log(W.logs.filter(l => /^E /.test(l)).join('\n') || '(no errors logged)')
 console.log(fails ? fails + ' FAILED' : 'ALL PASSED')

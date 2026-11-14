@@ -14,6 +14,8 @@
 //    trial (factions/trials.js).
 //  - Unsanctioned Eyes of Ender while the End Lockdown Initiative (end_lockdown.js) is on.
 //  - Part II: the Unsigned Declaration declares a Purge (part2/purge.js): the buyer picks the kit and length, unnamed.
+//  - On rotation: a visit has a 30% chance of bringing a Super Weapon Repair Kit, which fully repairs one of the
+//    server's super weapons (the Anamian Axe, the Syndicate Slayer, the Frying Pan, the Deepdelver's Maul).
 //  - Part II: some items are only sold to players of a high enough Potato Standing (STANDING_LOCKS; the Potato
 //    War in part2/blood_pool.js). Without that script (Part I) everything is sold to everyone.
 //
@@ -202,11 +204,29 @@ const UNSANCTIONED_EYE = { price: 20, maxPerPurchase: 12, maxPerPlayer: 0 }
 // while fewer than minPlayers are online in survival or adventure. Only sold while part2/purge.js is installed.
 const DECLARATION = { price: 60, mode: 'heist', lengths: [5, 10, 15, 30], cooldownHours: 12, minPlayers: 3 }
 
+// --- The Super Weapon Repair Kit (on rotation) ---
+// Each time the Hooded Merchant turns up somewhere, he has `chance` to carry `stock` kits for that visit; once they're
+// sold, there are none until a later visit rolls them again. A kit fully repairs one super weapon: right-click it, and
+// it mends the super weapon in your other hand, or else the most worn one you carry. One that isn't worn keeps the kit.
+// item: the vanilla item it's made from (flint: no use of its own on a right-click). rumor: the rumor of his arrival
+// says he has one.
+const REPAIR_KIT = { price: 40, chance: 0.3, stock: 1, item: 'minecraft:flint', rumor: true }
+// The server's super weapons: each one's script's global API and the check that recognises it (looked up when used,
+// so a weapon whose script isn't installed is simply skipped). The Anamian Axe and the Maul only count their real,
+// serial-numbered copy. Add new super weapons here.
+const SUPER_WEAPONS = [
+  { name: 'The Anamian Axe', api: 'AnamianAxe', check: 'isRealAxe' },
+  { name: 'The Syndicate Slayer', api: 'SyndicateSlayer', check: 'isSlayer' },
+  { name: 'The Frying Pan', api: 'FryingPan', check: 'isPan' },
+  { name: 'The Deepdelver\'s Maul', api: 'DeepdelverMaul', check: 'isRealMaul' },
+]
+
 // --- Part II: the Potato War ---
 // The Potato Standing (rank) a player needs to buy each item: 1 = the first rank (Potato Farmer) ... 11 (the ranks
 // and their names are in part2/blood_pool.js, /potatowar). An item left out is sold to everyone. Keys: the contract
 // ids (tipoff, squad, warparty), writ, alibi, eye, tracker, pig, tnt, tpblock, mimic, itching, butterfingers, food,
-// summons, declaration, custom (everything under the counter). Only applies while part2/blood_pool.js is installed.
+// summons, declaration, repairkit, custom (everything under the counter). Only applies while part2/blood_pool.js is
+// installed.
 const STANDING_LOCKS = {
   itching: 1, butterfingers: 1, summons: 1,
   mimic: 2, food: 2, tipoff: 2,
@@ -821,6 +841,8 @@ function vendorAppear(server, spotName, quiet) {
   v.spot = { dim: spot.dim, x: spot.x, y: spot.y, z: spot.z, name: spot.name }
   v.id = shortId()
   v.until = Date.now() + VENDOR_STAY_MINUTES * 60000
+  // The rotation: this visit may bring Super Weapon Repair Kits.
+  v.repairKits = Math.random() < REPAIR_KIT.chance ? REPAIR_KIT.stock : 0
   save()
   forceload(server, spot, true)
   // The chunk loads over the next ticks; summon once it's there.
@@ -831,8 +853,10 @@ function vendorAppear(server, spotName, quiet) {
     startFastLoop(server)
   })
   if (!quiet) rumor(server, spot)
-  console.info('[BlackMarket] The vendor appears at ' + spot.name + ' (' + spot.dim + ' ' + spot.x + ' ' + spot.y + ' ' + spot.z + ')')
-  return 'The Hooded Merchant appears near ' + spot.name + ' (' + spot.dim + ' ' + spot.x + ' ' + spot.y + ' ' + spot.z + ') for ' + VENDOR_STAY_MINUTES + ' minutes.'
+  console.info('[BlackMarket] The vendor appears at ' + spot.name + ' (' + spot.dim + ' ' + spot.x + ' ' + spot.y + ' ' + spot.z + ')' +
+    (v.repairKits > 0 ? ', with ' + v.repairKits + ' Super Weapon Repair Kit' + (v.repairKits == 1 ? '' : 's') : ''))
+  return 'The Hooded Merchant appears near ' + spot.name + ' (' + spot.dim + ' ' + spot.x + ' ' + spot.y + ' ' + spot.z + ') for ' + VENDOR_STAY_MINUTES + ' minutes' +
+    (v.repairKits > 0 ? ', with ' + v.repairKits + ' Super Weapon Repair Kit' + (v.repairKits == 1 ? '' : 's') : '') + '.'
 }
 function vendorLeave(server, moving) {
   const D = db(), v = D.vendor
@@ -846,11 +870,13 @@ function vendorLeave(server, moving) {
   v.lastSpot = v.spot ? v.spot.name : null
   v.present = false
   v.spot = null
+  v.repairKits = 0
   v.nextAt = Date.now() + (moving ? 0 : VENDOR_GONE_MINUTES * 60000)
   save()
 }
 function rumor(server, spot) {
-  const text = 'A hooded merchant has been seen near ' + spot.name + '.'
+  const text = 'A hooded merchant has been seen near ' + spot.name + '.' +
+    (REPAIR_KIT.rumor && repairKitsInStock() > 0 ? ' Word is he has a smith\'s kit for the great weapons this time.' : '')
   if (RUMORS_TO_DISCORD) {
     try { server.runCommandSilent('tellraw @a ' + JSON.stringify([''].concat(voiceParts(VOICE_RUMOR, text)))) } catch (e) { }
   } else {
@@ -938,6 +964,8 @@ function openShop(p) {
     { text: ' - ' + ALIBI.price + ' coins ', color: 'gray' }, buyButton(p, 'alibi', '[BUY]', '/blackmarket buy alibi', 'Buy a Certified Alibi')])
   if (PURGE()) menuLine(p, [{ text: '  Unsigned Declaration', color: 'dark_red', hoverEvent: { action: 'show_text', contents: 'Declares a Purge: you choose the kit and how long. Nobody will know it was you.' } },
     { text: ' - ' + DECLARATION.price + ' coins ', color: 'gray' }, buyButton(p, 'declaration', '[BUY]', '/blackmarket buy declaration', 'Buy an Unsigned Declaration')])
+  if (repairKitsInStock() > 0) menuLine(p, [{ text: '  Super Weapon Repair Kit', color: 'gold', hoverEvent: { action: 'show_text', contents: 'Fully repairs one super weapon (' + superWeaponNames() + '). He only carries them now and then.' } },
+    { text: ' - ' + REPAIR_KIT.price + ' coins (' + repairKitsInStock() + ' left) ', color: 'gray' }, buyButton(p, 'repairkit', '[BUY]', '/blackmarket buy repairkit', 'Buy a Super Weapon Repair Kit')])
   menuLine(p, [{ text: ' Tracking', color: 'dark_aqua', bold: true }])
   menuLine(p, [{ text: '  Tracker Compass', color: 'dark_aqua', hoverEvent: { action: 'show_text', contents: 'Points to one player for ' + TRACKER.minutes + ' minutes once you switch it on. They only feel watched.' } },
     { text: ' - ' + TRACKER.price + ' coins ', color: 'gray' }, buyButton(p, 'tracker', '[BUY]', '/blackmarket buy tracker', 'Choose who')])
@@ -1390,6 +1418,106 @@ function alibiStack(serial) {
   ]) + ',Enchantments:[{id:"minecraft:unbreaking",lvl:1s}],HideFlags:1}')
 }
 function isTrackingItem(stack) { return trackerOf(stack) != null || pigItemOf(stack) != null || alibiSerialOf(stack) != null || declarationSerialOf(stack) != null }
+
+// --- The Super Weapon Repair Kit ---
+function repairKitStack() {
+  return Item.of(REPAIR_KIT.item, 1, '{trollcraft:{repairkit:1b},' + displayNbt('Super Weapon Repair Kit', 'gold', [
+    { text: 'Whetstone, oil and a very fine hammer.', color: 'gray', italic: true },
+    { text: 'Fully repairs one super weapon.', color: 'gray' },
+    { text: 'Right-click: mends the one in your other hand,', color: 'gray' },
+    { text: 'or else the most worn one you carry.', color: 'gray' },
+  ]) + ',Enchantments:[{id:"minecraft:unbreaking",lvl:1s}],HideFlags:1}')
+}
+function isRepairKit(stack) {
+  const t = trollcraftTag(stack)
+  return t != null && t.contains('repairkit')
+}
+// The SUPER_WEAPONS entry this stack is, or null.
+function superWeaponOf(stack) {
+  if (!stack || stack.isEmpty()) return null
+  let found = null
+  SUPER_WEAPONS.forEach(w => {
+    if (found) return
+    let api = global[w.api]
+    try { if (api && typeof api[w.check] == 'function' && api[w.check](stack)) found = w } catch (e) { }
+  })
+  return found
+}
+function wearOf(stack) {
+  try { return Number(stack.getDamageValue()) || 0 } catch (e) { }
+  try { return stack.nbt == null ? 0 : stack.nbt.getInt('Damage') } catch (e) { return 0 }
+}
+function superWeaponNames() {
+  const names = SUPER_WEAPONS.map(w => w.name.replace(/^The /, 'the '))
+  return names.length > 1 ? names.slice(0, -1).join(', ') + ' and ' + names[names.length - 1] : names.join('')
+}
+// Repairs one super weapon with the kit in the given hand. Returns what to tell the player.
+function useRepairKit(p, kit, main) {
+  // The one in the other hand if it's worn, else the most worn one carried (hotbar, inventory, armour, off hand).
+  const other = main ? p.offHandItem : p.mainHandItem
+  let target = null, weapon = null, carried = null
+  const ow = superWeaponOf(other)
+  if (ow) {
+    carried = ow
+    if (wearOf(other) > 0) { target = other; weapon = ow }
+  }
+  if (!target) {
+    let best = 0
+    for (let i = 0; i < 41; i++) {
+      let s = p.inventory.getItem(i)
+      let w = superWeaponOf(s)
+      if (!w) continue
+      if (!carried) carried = w
+      let wear = wearOf(s)
+      if (wear > best) { best = wear; target = s; weapon = w }
+    }
+  }
+  if (!target) {
+    if (carried) return carried.name + ' doesn\'t need it: not a scratch on it. Keep the kit for when it does.'
+    return 'The kit only works on a super weapon (' + superWeaponNames() + '), and you carry none.'
+  }
+  const before = wearOf(target)
+  target.setDamageValue(0)   // Tinkers' tools (the Slayer, the Pan, the Maul at X) clear their broken state with it
+  kit.shrink(1)
+  sound(p.server || Utils.server, p, 'minecraft:block.anvil.use', 1.2)
+  console.info('[BlackMarket] ' + nameOf(p) + ' used a Super Weapon Repair Kit on ' + weapon.name + ' (' + before + ' damage repaired)')
+  return weapon.name + ' is good as new.'
+}
+// Right-clicking a Super Weapon Repair Kit. Always cancelled (flint has no use of its own anyway).
+function repairKitClick(event) {
+  const p = event.player
+  if (!p) return
+  let hand = ''
+  try { hand = String(event.hand) } catch (e) { }
+  const main = !hand || hand.indexOf('MAIN') >= 0
+  const stack = main ? p.mainHandItem : p.offHandItem
+  if (!isRepairKit(stack)) return
+  const server = p.server || Utils.server
+  const tick = server.tickCount, u = uuidOf(p)
+  if (!(S.lastItemUse[u] != null && tick - S.lastItemUse[u] <= 4)) {
+    S.lastItemUse[u] = tick
+    let r = null
+    try { r = useRepairKit(p, stack, main) } catch (e) { console.error('[BlackMarket] Repair kit: ' + e) }
+    if (r) say(p, VOICE_MARKET, r)
+  }
+  event.cancel()   // last
+}
+function repairKitsInStock() {
+  const v = db().vendor
+  return v.present ? Math.max(0, Number(v.repairKits) || 0) : 0
+}
+function buyRepairKit(p) {
+  const locked = standingBlock(p, 'repairkit')
+  if (locked) return locked
+  if (repairKitsInStock() <= 0) return 'No repair kits this time. He carries one now and then; try him at his next stop.'
+  if (countCoins(p) < REPAIR_KIT.price) return 'A Super Weapon Repair Kit costs ' + coinText(REPAIR_KIT.price) + '. You have ' + countCoins(p) + '.'
+  takeCoins(p, REPAIR_KIT.price)
+  p.give(repairKitStack())
+  db().vendor.repairKits = repairKitsInStock() - 1
+  save()
+  console.info('[BlackMarket] ' + nameOf(p) + ' bought a Super Weapon Repair Kit (' + db().vendor.repairKits + ' left this visit)')
+  return 'A Super Weapon Repair Kit. Right-click it to mend your super weapon.' + (db().vendor.repairKits > 0 ? '' : ' That was his last one.')
+}
 
 // --- spawn points (for the Homing Pig) ---
 // A player's spawn point (bed, respawn anchor or /spawnpoint) as { dim, x, y, z }, or null.
@@ -2249,6 +2377,10 @@ function fillMain(gui, p) {
   ids.slice(0, 6).forEach((id, i) => guiButton(gui, 2 + i, 4, customDisplay(custom[id]), () => guiAct(p, () => buyCustom(p, id))))
   if (ids.length > 6) guiButton(gui, 8, 4, guiItem('minecraft:arrow', 'More…', 'white', [(ids.length - 6) + ' more']), () => nav(p, { kind: 'custom', page: 0 }))
   guiButton(gui, 0, 5, guiItem(COIN_ITEM, 'You carry ' + coinText(coins), 'dark_red', ['Main inventory and hotbar.'], { glint: true, count: Math.max(1, Math.min(64, coins)) }), () => { })
+  const kits = repairKitsInStock()
+  if (kits > 0) guiButton(gui, 2, 5, guiItem(REPAIR_KIT.item, 'Super Weapon Repair Kit', 'gold', ['Fully repairs one super weapon:', superWeaponNames() + '.',
+    'He only carries them now and then.', { text: coinText(REPAIR_KIT.price) + ' (' + kits + ' left)', color: 'gold' }].concat(standingLore(p, 'repairkit')), { glint: true }),
+    () => guiAct(p, () => buyRepairKit(p)))
   if (SELL_LIST.length) guiButton(gui, 4, 5, guiItem('minecraft:hopper', 'Sell to him', 'green', ['Opens his buying list in chat.']), () => withWindowClosed(p, () => openShop(p)))
   guiButton(gui, 8, 5, guiItem('minecraft:barrier', 'Close', 'red', []), () => closeGui(p))
 }
@@ -2415,6 +2547,7 @@ function contractClick(event) {
 ItemEvents.rightClicked(event => contractClick(event))
 BlockEvents.rightClicked(event => contractClick(event))
 ItemEvents.rightClicked(event => trackingClick(event))
+ItemEvents.rightClicked(event => repairKitClick(event))
 BlockEvents.rightClicked(event => trackingClick(event))
 
 // Homing Pigs: no leads, saddles, breeding or name tags.
@@ -2737,6 +2870,7 @@ ServerEvents.commandRegistry(event => {
       .then(Commands.literal('writ').executes(atVendor((ctx, p) => buyWrit(p))))
       .then(Commands.literal('alibi').executes(atVendor((ctx, p) => buyAlibi(p))))
       .then(Commands.literal('declaration').executes(atVendor((ctx, p) => buyDeclaration(p))))
+      .then(Commands.literal('repairkit').executes(atVendor((ctx, p) => buyRepairKit(p))))
       .then(Commands.literal('eye').executes(atVendor((ctx, p) => buyEye(p, 1)))
         .then(int('count').executes(atVendor((ctx, p) => buyEye(p, num(ctx, 'count'))))))
       .then(Commands.literal('tracker').executes(atVendor((ctx, p) => { openTrackMenu(p, 'tracker'); return null }))
@@ -2818,7 +2952,8 @@ ServerEvents.commandRegistry(event => {
       .then(Commands.literal('where').executes(safe(ctx => {
         const v = db().vendor
         if (!v.present) return reply(ctx, 'Gone. Next appearance in about ' + Math.max(0, Math.round(((v.nextAt || 0) - Date.now()) / 60000)) + ' min' + (NIGHT_ONLY ? ' (at night)' : '') + '.')
-        return reply(ctx, 'At ' + v.spot.name + ': ' + v.spot.dim + ' ' + v.spot.x + ' ' + v.spot.y + ' ' + v.spot.z + ', for ' + Math.round((v.until - Date.now()) / 60000) + ' more min. Entity ' + (vendorAlive() ? 'loaded' : 'not loaded') + '.')
+        return reply(ctx, 'At ' + v.spot.name + ': ' + v.spot.dim + ' ' + v.spot.x + ' ' + v.spot.y + ' ' + v.spot.z + ', for ' + Math.round((v.until - Date.now()) / 60000) + ' more min. Entity ' + (vendorAlive() ? 'loaded' : 'not loaded') + '. ' +
+          'Super Weapon Repair Kits this visit: ' + repairKitsInStock() + '.')
       })))
       .then(Commands.literal('addspot').then(word('name').executes(safe(ctx => {
         const p = me(ctx)
@@ -2916,6 +3051,31 @@ ServerEvents.commandRegistry(event => {
       if (!db().enabled) vendorLeave(ctx.source.server, false)
       return reply(ctx, 'The black market is now ' + (db().enabled ? 'OPEN' : 'CLOSED (data kept)') + '.')
     })))
+    // /bm repairkit give <player> [count]: kits straight into someone's hands. /bm repairkit stock <n>: how many the
+    // merchant has left this visit (0 takes them off the shelf; the next visit rolls again).
+    .then(Commands.literal('repairkit').requires(op)
+      .then(Commands.literal('give').then(Commands.argument('player', Arguments.PLAYER.create(event))
+        .executes(safe(ctx => {
+          const p = Arguments.PLAYER.getResult(ctx, 'player')
+          p.give(repairKitStack())
+          console.info('[BlackMarket] /bm repairkit give ' + nameOf(p) + ' 1')
+          return reply(ctx, 'Gave ' + nameOf(p) + ' a Super Weapon Repair Kit.')
+        }))
+        .then(int('count').executes(safe(ctx => {
+          const p = Arguments.PLAYER.getResult(ctx, 'player'), n = num(ctx, 'count')
+          if (n < 1 || n > 64) return reply(ctx, 'Give 1 to 64 at a time.', true)
+          for (let i = 0; i < n; i++) p.give(repairKitStack())
+          console.info('[BlackMarket] /bm repairkit give ' + nameOf(p) + ' ' + n)
+          return reply(ctx, 'Gave ' + nameOf(p) + ' ' + n + ' Super Weapon Repair Kit' + (n == 1 ? '' : 's') + '.')
+        })))))
+      .then(Commands.literal('stock').then(int('count').executes(safe(ctx => {
+        const v = db().vendor, n = num(ctx, 'count')
+        if (!v.present) return reply(ctx, 'The merchant isn\'t out. Bring him out first (/bm vendor spawn), then stock him.', true)
+        if (n < 0 || n > 64) return reply(ctx, 'Stock 0 to 64.', true)
+        v.repairKits = n
+        save()
+        return reply(ctx, 'The merchant has ' + n + ' Super Weapon Repair Kit' + (n == 1 ? '' : 's') + ' for the rest of this visit.')
+      })))))
     .then(Commands.literal('hand').requires(op)
       .then(Commands.literal('add').then(int('price').executes(safe(ctx => handAdd(ctx, num(ctx, 'price'), 0)))
         .then(int('stock').executes(safe(ctx => handAdd(ctx, num(ctx, 'price'), num(ctx, 'stock')))))))
@@ -2954,7 +3114,7 @@ ServerEvents.commandRegistry(event => {
     if (!stack || stack.isEmpty()) return reply(ctx, 'Hold the item to sell in your main hand.', true)
     if (price < 1) return reply(ctx, 'The price must be at least 1.', true)
     if (stock < 0) return reply(ctx, 'The stock can\'t be negative (0 = unlimited).', true)
-    if (isCoin(stack) || contractIdOf(stack) != null || isWrit(stack) || isTrackingItem(stack)) return reply(ctx, COIN_PLURAL + ', contracts, writs, compasses, pigs, alibis and declarations can\'t be sold this way (copies would be fake or void).', true)
+    if (isCoin(stack) || contractIdOf(stack) != null || isWrit(stack) || isTrackingItem(stack) || isRepairKit(stack)) return reply(ctx, COIN_PLURAL + ', contracts, writs, compasses, pigs, alibis, repair kits and declarations can\'t be sold this way (copies would be fake or void, or skip the rotation).', true)
     if (eyeBatchOf(stack) != null) return reply(ctx, 'Unsanctioned Eyes are already for sale (UNSANCTIONED_EYE, ' + UNSANCTIONED_EYE.price + ' each), with every sale logged.', true)
     const id = String(stack.id), nbt = stack.nbt
     let name = id

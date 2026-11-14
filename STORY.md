@@ -286,7 +286,7 @@ Technoblade's Potato War, revived. **The Pool decides what the server can make; 
 
 | Relic | Techno reference | The grind | Pulls players through |
 |---|---|---|---|
-| The War Chest | The Potato War | 10,000 potatoes | Farming automation (Create, Mystical Agriculture, AgriCraft) |
+| The War Chest | The Potato War | 10,000 potatoes, counted for the relic only (no Potato Standing, no Drops) | Farming automation (Create, Mystical Agriculture, AgriCraft) |
 | The Axe of Peace | His Dream SMP axe | A Tinkers broad axe meeting set conditions (Manyullyn or Hepatizon head, Netherite upgrade, set modifiers) | Tinkers' end game |
 | The Totem Hoard | Never dying | 64 Totems of Undying | Raids, woodland mansions |
 | The Wither's Due | He set Withers on L'Manberg | 8 Nether Stars | Wither kills (and Draconic's Wyvern tier) |
@@ -395,7 +395,7 @@ Needs Blood Pool Tier 12 and the full Regalia.
   - **autocrafting** (decided, changed 2026-11-03): an autocrafter can't make what a player hasn't unlocked. A script can't tell whose machine is crafting, so machines only make what everyone can already craft (Tiers up to T−2), and the newest two tiers are crafted by hand. Fancy Crafters and the Wixie are banned because no check reaches them. Placing and using an autocrafter needs its node in the upgrade tree. The remaining gaps: machines fed by their owner's hoppers or belts, and AE2 crafts ordered on someone else's network. Watch whether that matters in play;
   - **netherite** (decided 2026-11-05): crafting it opens at Blood Pool Tier 5, and its crops at Tier 8. Debris can still be mined, and looted netherite keeps working. The Foundry's molten debris byproduct from melting diamond ore is off at every tier, so netherite needs a Nether trip until the crops open; diamond ore still melts;
   - **the upgrade tree's costs** are placeholders: tune them after a week of Part II;
-  - the first relic, renamed **"The War Chest"** (owner decision 2026-11-13; it was "The Potato Tithe", the Blood Pool tithe's name): decide whether its 10,000 potatoes are a third count, separate from the tithe and from Potato Standing.
+  - the first relic, renamed **"The War Chest"** (owner decisions 2026-11-13; it was "The Potato Tithe", the Blood Pool tithe's name): its 10,000 potatoes count **for the relic only**. Handing them in gives no Potato Standing and fills no Pool, so potatoes don't pay three times.
 - **Regalia:**
   - relic amounts;
   - whether relics need a Blood offering;

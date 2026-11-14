@@ -1,10 +1,10 @@
-// gladiator_arena.js: the tile and its window, the challenge (accept, decline, time out), building and taking down the
+// gladiator_arena.js: the statue and its window, the challenge (accept, decline, time out), building and taking down the
 // arena, rounds with lives, knockouts and ring-outs, deciding rounds, the time limit, kits and the vault, leaving,
 // restarts, and the arena's protection.
 // Run with: node tools/tests/run_all.js gladiator   (or node tools/tests/suites/gladiator_arena.test.js)
 const fs = require('fs')
 const paths = require('../lib/paths')
-const src = fs.readFileSync(paths.server('gladiator_arena.js'), 'utf8')
+const src = fs.readFileSync(paths.server('part2/gladiator_arena.js'), 'utf8')
 let fails = 0
 const ok = (l, c, e) => { console.log((c ? 'ok   ' : 'FAIL ') + l + (!c && e !== undefined ? '  ' + e : '')); if (!c) fails++ }
 
@@ -36,11 +36,19 @@ function stack(id, count, nbt, opts) {
 const EMPTY = stack('minecraft:air', 0)
 const Item = { of: (id, n, nbt) => stack(id, n == null ? 1 : n, nbt || null), empty: EMPTY }
 const players = []
+// Other entities in the world (a thrown spear, a wolf): what the take-down sweeps away.
+const loose = []
+function thing(type, x, y, z, living) {
+  const e = { type, x, y, z, level, discarded: false, getEncodeId: () => type, isPlayer: () => false, isLiving: () => !!living,
+    getX: () => e.x, getY: () => e.y, getZ: () => e.z, discard: () => { e.discarded = true } }
+  loose.push(e)
+  return e
+}
 function player(name, opts) {
   opts = opts || {}
   const slots = []
   const p = { name, uuid: 'u-' + name.toLowerCase(), online: true, op: !!opts.op, x: opts.x || 0, y: 64, z: opts.z || 0, msgs: [], raw: [], health: 20,
-    creative: false, fallDistance: 0, menu: 'InventoryMenu', gui: null, tags: [], fx: {}, level,
+    creative: false, fallDistance: 0, menu: 'InventoryMenu', gui: null, tags: [], fx: {}, level, yaw: 0, getYRot: () => p.yaw,
     isPlayer: () => true, getGameProfile: () => ({ getName: () => name }), getStringUuid: () => p.uuid,
     getX: () => p.x, getY: () => p.y, getZ: () => p.z, hasPermissions: () => p.op, isCreative: () => p.creative,
     tell: c => { p.msgs.push(textOf(c)); p.raw.push(c) },
@@ -56,6 +64,9 @@ function player(name, opts) {
       p.menu = 'CustomChestMenu'
     },
     rayTrace: () => ({ block: blockObj(3, 64, 3) }),
+    // worn curios (4 slots) and the ender chest (27)
+    curios: [EMPTY, EMPTY, EMPTY, EMPTY], ender: [],
+    getEnderChestInventory: () => ({ getContainerSize: () => 27, getItem: i => p.ender[i] || EMPTY, setItem: (i, s) => { p.ender[i] = s } }),
   }
   players.push(p)
   return p
@@ -68,6 +79,7 @@ const server = {
   getAllLevels: () => jlist([level]),
   overworld: () => level,
   getStructureManager: () => ({ get: () => ({ isPresent: () => piecesThere }) }),
+  get entities() { return jlist(players.filter(p => p.online).concat(loose)) },
   runCommandSilent: c => {
     cmds.push(c)
     let m
@@ -102,17 +114,21 @@ const Utils = { get server() { return started ? server : null } }
 const NBT = { toTagCompound: s => s }
 const ItemStackClass = { of: s => { const o = JSON.parse(s); return stack(o.id, o.Count, o.tag) } }
 function RL(s) { this.s = s }
-new Function('EntityEvents', 'BlockEvents', 'PlayerEvents', 'ServerEvents', 'LevelEvents', 'Java', 'Utils', 'Item', 'Text', 'JsonIO', 'NBT', 'console', 'global', src)(
+new Function('EntityEvents', 'BlockEvents', 'PlayerEvents', 'ServerEvents', 'LevelEvents', 'ItemEvents', 'Java', 'Utils', 'Item', 'Text', 'JsonIO', 'NBT', 'console', 'global', src)(
   { hurt: on('hurt'), death: on('death'), spawned: on('spawned') },
   { broken: on('broken'), placed: on('placed'), rightClicked: on('rightClicked') },
-  { loggedIn: on('loggedIn'), loggedOut: on('loggedOut'), respawned: on('respawned') },
+  { loggedIn: on('loggedIn'), loggedOut: on('loggedOut'), respawned: on('respawned'), advancement: on('advancement') },
   { loaded: on('loaded'), commandRegistry: h => h({ commands: { literal: node, argument: n => node(n) }, arguments: { INTEGER: { create: () => 'int', getResult: (ctx, k) => ctx.args[k] } }, register: t => { cmdTree = t } }) },
   { afterExplosion: on('afterExplosion') },
+  { entityInteracted: on('entityInteracted') },
   { loadClass: n => {
     if (/Component\$Serializer/.test(n)) return { fromJsonLenient: j => JSON.parse(j) }
     if (/ItemStack$/.test(n)) return ItemStackClass
     if (/ResourceLocation/.test(n)) return RL
     if (/StringArgumentType/.test(n)) return { word: () => 'word', getString: (ctx, k) => ctx.args[k] }
+    if (/BeltExtensionSlot/.test(n)) return { get: p => ({ resolve: () => ({ isPresent: () => true, get: () => ({ getBelt: () => ({ getContents: () => p.belt || EMPTY, setContents: st => { p.belt = st } }) }) }) }) }
+    if (/CuriosApi/.test(n)) return { getCuriosInventory: p => ({ resolve: () => ({ isPresent: () => true, get: () => ({ getEquippedCurios: () => ({
+      getSlots: () => p.curios.length, getStackInSlot: i => p.curios[i] || EMPTY, setStackInSlot: (i, s) => { p.curios[i] = s } }) }) }) }) }
     throw new Error('no class ' + n)
   } },
   Utils, Item, { of: s => s }, { write: (p, o) => { files[p] = JSON.parse(JSON.stringify(o)) } }, NBT,
@@ -138,7 +154,9 @@ const G = () => global.Gladiator
 const state = () => G().state()
 const said = (p, re) => p.msgs.some(m => re.test(m))
 const since = c0 => cmds.slice(c0)
-function clickTile(p, hand) { const ev = fire('rightClicked', { player: p, block: blockObj(3, 64, 3), hand: hand || 'MAIN_HAND', server }); advance(1); return ev }
+// The statue's click box (an interaction entity tagged gladiator_tile), and something else to click.
+const statue = { getTags: () => ({ contains: t => t == 'gladiator_tile' }) }, sheep = { getTags: () => ({ contains: () => false }) }
+function clickTile(p, hand, target) { const ev = fire('entityInteracted', { player: p, target: target || statue, hand: hand || 'MAIN_HAND', server }); advance(1); return ev }
 function click(p, x, y) { const s = p.gui.slots[x + ',' + y]; s.leftClicked({}); advance(3) }
 const slotName = (p, x, y) => { const it = p.gui.slots[x + ',' + y].item; const m = (it.nbt || '').match(/Name:'([^']*)'/); return m ? JSON.parse(m[1].replace(/\\'/g, "'")).text : '' }
 function hit(victim, attacker, type) { return fire('hurt', { entity: victim, server, source: { getActual: () => attacker, getMsgId: () => type || 'player' } }).cancelled }
@@ -154,29 +172,47 @@ function acceptAll(except) {
 // From all accepted to the first round being fought: the arena builds (25 pieces), everyone's taken there, countdown.
 function toFight() { advance(80); seconds(7) }
 
-// ---------- the tile and the window ----------
+// ---------- the statue and the window ----------
 const admin = player('Admin', { op: true }), ana = player('Ana'), bob = player('Bob', { x: 30 }), cara = player('Cara', { x: -40 })
 ok('/gladiator tile set is op-only', cmd(['tile', 'set'], ana)[0] == 'DENIED')
-ok('/gladiator tile set marks the block the op looks at', /The arena tile is the minecraft:air at 3 64 3/.test(cmd(['tile', 'set'], admin)[0]) && state().tile.x == 3)
+admin.x = 4.3; admin.z = 7.8; admin.yaw = 93
+let c0 = cmds.length
+ok('/gladiator tile set puts up the statue where the op stands (the middle of the block), facing their way (to 45 degrees)', /The arena statue stands at 4 64 7/.test(cmd(['tile', 'set'], admin)[0]) &&
+  state().tile.x == 4.5 && state().tile.z == 7.5 && state().tile.yaw == 90)
+const made = since(c0)
+ok('... an old statue goes first', made[0] == 'kill @e[tag=gladiator_tile]')
+ok('... an armour stand: arms, no base plate, invulnerable, its gear locked, in the heroic pose, facing 90', made.some(c => /summon minecraft:armor_stand 4\.50 64\.00 7\.50 \{Tags:\["gladiator_tile"\],ShowArms:1b,NoBasePlate:1b,Invulnerable:1b,NoGravity:1b,PersistenceRequired:1b,DisabledSlots:4144959,Rotation:\[90\.00f,0f\],Pose:\{Head/.test(c)), made[1])
+ok('... in gold-trimmed netherite with a raised sword and a shield', made.some(c => /ArmorItems:\[\{id:"minecraft:netherite_boots",Count:1b,tag:\{Trim:\{material:"minecraft:gold",pattern:"minecraft:rib"\}\}\},.*netherite_helmet.*HandItems:\[\{id:"minecraft:netherite_sword".*minecraft:shield/.test(c)))
+ok('... the title floating over it', made.some(c => /summon minecraft:text_display 4\.50 66\.50 7\.50 \{Tags:\["gladiator_tile"\],billboard:"center",shadow:1b,text:'\[\{"text":"⚔ THE GLADIATOR ARENA ⚔".*Right-click to fight/.test(c)), made[2])
+ok('... and the click box around it', made.some(c => /summon minecraft:interaction 4\.50 64\.00 7\.50 \{Tags:\["gladiator_tile"\],width:1\.2f,height:2\.3f,response:1b\}/.test(c)))
+ok('/gladiator tile says where it is', /The arena statue is at 4 64 7 in minecraft:overworld/.test(cmd(['tile'], admin)[0]))
+c0 = cmds.length
+cmd(['tile', 'fix'], admin)
+ok('/gladiator tile fix rebuilds it in the same place', since(c0)[0] == 'kill @e[tag=gladiator_tile]' && since(c0).some(c => /summon minecraft:armor_stand 4\.50 64\.00 7\.50/.test(c)))
+ok('right-clicking something else does nothing', !clickTile(ana, 'MAIN_HAND', sheep).cancelled && !ana.gui)
 clickTile(ana)
-ok('right-clicking the tile opens the arena window', !!ana.gui && ana.menu == 'CustomChestMenu')
+ok('right-clicking the statue opens the arena window', !!ana.gui && ana.menu == 'CustomChestMenu')
 ok('... with a head for each online player (sorted), Ana picked to start with', slotName(ana, 0, 0) == 'Admin' && slotName(ana, 1, 0) == 'Ana' && slotName(ana, 2, 0) == 'Bob' && slotName(ana, 3, 0) == 'Cara' &&
   /In the fight/.test(ana.gui.slots['1,0'].item.nbt) && !/In the fight/.test(ana.gui.slots['2,0'].item.nbt))
-ok('... rounds 3 and lives 3, and own gear chosen', slotName(ana, 2, 4) == 'Rounds: 3' && slotName(ana, 6, 4) == 'Lives: 3' && /Chosen/.test(ana.gui.slots['0,5'].item.nbt))
+ok('... rounds 3 and lives 3, and own gear chosen', slotName(ana, 1, 5) == 'Rounds: 3' && slotName(ana, 4, 5) == 'Lives: 3' && /Chosen/.test(ana.gui.slots['0,3'].item.nbt))
+ok('... and the 14 kits after own gear, along rows 3 and 4', slotName(ana, 1, 3) == 'Soldier kit' && slotName(ana, 4, 3) == 'Gladiator kit' && slotName(ana, 5, 3) == 'Troll Smasher kit' &&
+  slotName(ana, 6, 3) == 'Fire Dragonslayer kit' && slotName(ana, 8, 3) == 'Lightning Dragonslayer kit' && slotName(ana, 0, 4) == 'Twilight Knight kit' &&
+  slotName(ana, 1, 4) == 'Twilight Ranger kit' && slotName(ana, 2, 4) == 'Myrmex Venom kit' && slotName(ana, 3, 4) == 'Caveman kit' && slotName(ana, 4, 4) == 'Terra Knight kit' &&
+  slotName(ana, 5, 4) == 'Saber Duel kit' && ana.gui.slots['5,4'].item.id == 'create_sabers:double_brass_saber', slotName(ana, 5, 4))
 let ev = clickTile(ana, 'OFF_HAND')
-ok('the click on the tile is cancelled (whatever block it is), and the off hand doesn\'t open a second window', ev.cancelled)
+ok('the click on the statue is cancelled (nothing else happens to it), and the off hand doesn\'t open a second window', ev.cancelled)
 click(ana, 2, 0)
 ok('clicking Bob\'s head adds him (the window closes, then reopens)', /In the fight/.test(ana.gui.slots['2,0'].item.nbt) && ana.menu == 'CustomChestMenu')
-click(ana, 3, 4); click(ana, 3, 4)
-ok('more rounds: 5', slotName(ana, 2, 4) == 'Rounds: 5')
-for (let i = 0; i < 12; i++) click(ana, 7, 4)
-ok('more lives stops at 10', slotName(ana, 6, 4) == 'Lives: 10')
-for (let i = 0; i < 12; i++) click(ana, 5, 4)
-ok('fewer lives stops at 1', slotName(ana, 6, 4) == 'Lives: 1')
-click(ana, 7, 4)
-click(ana, 1, 5)
-ok('choosing the Soldier kit', /Chosen/.test(ana.gui.slots['1,5'].item.nbt) && !/Chosen/.test(ana.gui.slots['0,5'].item.nbt))
-click(ana, 0, 5)
+click(ana, 2, 5); click(ana, 2, 5)
+ok('more rounds: 5', slotName(ana, 1, 5) == 'Rounds: 5')
+for (let i = 0; i < 12; i++) click(ana, 5, 5)
+ok('more lives stops at 10', slotName(ana, 4, 5) == 'Lives: 10')
+for (let i = 0; i < 12; i++) click(ana, 3, 5)
+ok('fewer lives stops at 1', slotName(ana, 4, 5) == 'Lives: 1')
+click(ana, 5, 5)
+click(ana, 1, 3)
+ok('choosing the Soldier kit', /Chosen/.test(ana.gui.slots['1,3'].item.nbt) && !/Chosen/.test(ana.gui.slots['0,3'].item.nbt))
+click(ana, 0, 3)
 click(ana, 2, 0)
 click(ana, 8, 5)
 ok('sending with only herself picked: refused', said(ana, /Pick at least two fighters/) && !state().pending)
@@ -191,7 +227,7 @@ ok('everyone online hears it (player.tell, never tellraw)', said(cara, /Ana call
 const inv = bob.raw[bob.raw.length - 1]
 ok('Bob gets [Accept] and [Decline] that run /gladiator accept|decline <id>', JSON.stringify(inv).indexOf('/gladiator accept ' + P1.id) >= 0 && JSON.stringify(inv).indexOf('/gladiator decline ' + P1.id) >= 0)
 clickTile(cara)
-ok('while it waits, the tile only says what\'s going on', said(cara, /A challenge is already waiting for answers\. Waiting for Bob to accept/) && cara.menu != 'CustomChestMenu')
+ok('while it waits, the statue only says what\'s going on', said(cara, /A challenge is already waiting for answers\. Waiting for Bob to accept/) && cara.menu != 'CustomChestMenu')
 ok('Cara can\'t accept a challenge she wasn\'t in', /You weren't challenged/.test(cmd(['accept', String(P1.id)], cara)[0]))
 cmd(['decline', String(P1.id)], bob)
 ok('Bob declines: the challenge is off, and both are told', !state().pending && said(ana, /The challenge is off: Bob declined/) && said(bob, /The challenge is off: Bob declined/))
@@ -201,14 +237,14 @@ seconds(61)
 ok('nobody answers for 60 s: called off, naming who didn\'t answer', !state().pending && said(ana, /Bob didn't answer in time/))
 global.Purge = { busy: () => 'A Purge is already running.' }
 clickTile(ana)
-ok('during a Purge the tile refuses', said(ana, /A Purge is on/) && ana.menu != 'CustomChestMenu')
+ok('during a Purge the statue refuses', said(ana, /A Purge is on/) && ana.menu != 'CustomChestMenu')
 delete global.Purge
 
 // ---------- building the arena ----------
 clickTile(ana); click(ana, 8, 5)
 const P2 = state().pending
 chunksAt = tick + 20                          // the site's chunks take a second to load
-let c0 = cmds.length
+c0 = cmds.length
 acceptAll()
 ok('Bob accepts: everyone has, so the match begins', !state().pending && state().cur && state().cur.phase == 'building' && said(ana, /Bob accepts \(2 of 2\)/))
 ok('... and the site is force-loaded (the whole 165 x 165)', cmds.includes('execute in minecraft:overworld run forceload add 7918 7918 8082 8082'))
@@ -274,8 +310,8 @@ ok('/gladiator history', /#\d+: Ana won \(Ana 3, Bob 0\)/.test(cmd(['history'], 
 // ---------- a tie and a deciding round; the time limit ----------
 G().state()
 clickTile(ana); click(ana, 3, 0)               // Cara in too: Ana, Bob, Cara
-for (let i = 0; i < 4; i++) click(ana, 1, 4)   // 1 round
-click(ana, 5, 4)                               // 1 life
+for (let i = 0; i < 4; i++) click(ana, 0, 5)   // 1 round
+click(ana, 3, 5)                               // 1 life
 click(ana, 8, 5)
 acceptAll(); toFight()
 ok('a three-way match, 1 round, 1 life', Object.keys(state().cur.fighters).length == 3 && state().cur.rounds == 1 && state().cur.lives == 1 && state().cur.phase == 'fight')
@@ -299,14 +335,25 @@ seconds(5)
 ana.slots[0] = stack('minecraft:netherite_sword', 1, '{Enchantments:[{id:"minecraft:sharpness",lvl:5s}]}')
 ana.slots[39] = stack('minecraft:netherite_helmet', 1)
 bob.slots[3] = stack('minecraft:cookie', 7)
+ana.curios[1] = stack('toolbelt:belt', 1, '{Items:[]}')   // a tool belt worn in a curio slot
+bob.belt = stack('toolbelt:belt', 1, '{Items:[{Slot:0b,id:"minecraft:torch",Count:8b}]}')   // and one in Tool Belt's own slot
+const advanced = (p, id) => fire('advancement', { player: p, advancement: { id: () => id } })
+advanced(cara, 'minecraft:story/mine_stone')    // no match on: nothing recorded
 clickTile(ana); click(ana, 3, 0)               // Cara out again
-click(ana, 4, 5)                               // the Gladiator kit
-click(ana, 7, 4)                               // 2 lives
+click(ana, 4, 3)                               // the Gladiator kit
+click(ana, 5, 5)                               // 2 lives
 click(ana, 8, 5)
 acceptAll(); toFight()
 ok('a Gladiator-kit match: Ana\'s belongings are held (saved whole), her inventory is the kit', !!state().vaults['u-ana'] && state().vaults['u-ana'].slots.length == 2 &&
   ana.slots[0].id == 'minecraft:diamond_sword' && /GladiatorKit:1b/.test(ana.slots[0].nbt) && ana.slots[39].id == 'minecraft:diamond_helmet')
+ok('... the Gladiator kit\'s sword has Sharpness I (and the axe nothing)', /\{GladiatorKit:1b,Enchantments:\[\{id:"minecraft:sharpness",lvl:1s\}\],display/.test(ana.slots[0].nbt) && !/Enchantments/.test(ana.slots[1].nbt), ana.slots[0].nbt)
 ok('... with a backup file', !!files['kubejs/gladiator_vaults/Ana_u-ana.json'])
+ok("... Bob's belt in Tool Belt's own slot is held too", bob.belt.isEmpty() && state().vaults['u-bob'].belt.id == 'toolbelt:belt')
+advanced(ana, 'alexscaves:encino_man'); advanced(ana, 'minecraft:recipes/combat/diamond_sword'); advanced(ana, 'alexscaves:encino_man')
+ok("advancements earned in the match are noted (once each; recipe-book ones aren't), nobody else's", JSON.stringify(state().earned) == JSON.stringify({ 'u-ana': ['alexscaves:encino_man'] }), JSON.stringify(state().earned))
+ok('... her worn tool belt is held too (nothing worn to hide kit gear in)', ana.curios[1].isEmpty() && state().vaults['u-ana'].curios.length == 1 && state().vaults['u-ana'].curios[0].id == 'toolbelt:belt')
+seconds(12)
+ok('the kit check leaves fighters in a kit match alone', ana.slots[0].id == 'minecraft:diamond_sword' && /GladiatorKit/.test(ana.slots[0].nbt))
 ana.slots[0] = EMPTY
 die(ana, bob)
 ok('a knockout gives a fresh kit', ana.slots[0].id == 'minecraft:diamond_sword' && fighter('Ana').left == 1)
@@ -315,7 +362,31 @@ cmd(['stop'], admin)
 ok('/gladiator stop: no winner, and everyone goes home', !state().cur && said(cara, /The gladiator match is over with no winner: an op stopped it/))
 ok('... with their own things back where they were, the kit gone', ana.slots[0].id == 'minecraft:netherite_sword' && /sharpness/.test(ana.slots[0].nbt) && ana.slots[39].id == 'minecraft:netherite_helmet' &&
   !ana.slots.some(s => s && /GladiatorKit/.test(s.nbt || '')) && bob.slots[3].id == 'minecraft:cookie' && !state().vaults['u-ana'])
+ok("... and the tool belt back in its curio slot, Bob's back in the belt slot with its torches", ana.curios[1].id == 'toolbelt:belt' && bob.belt.id == 'toolbelt:belt' && /torch/.test(bob.belt.nbt))
+ok("... and the advancement she earned in the arena is revoked, and she's told", since(c0).includes('advancement revoke Ana only alexscaves:encino_man') && said(ana, /1 advancement earned in the arena taken back/) && !state().earned['u-ana'])
 seconds(5)
+// kit gear that got out somehow: taken from anyone not in a kit match, wherever they carry it
+const kitSword = () => stack('iceandfire:dragonsteel_fire_sword', 1, '{GladiatorKit:1b,display:{Lore:[]}}')
+cara.slots[5] = kitSword(); cara.curios[2] = kitSword(); cara.ender[4] = kitSword(); cara.slots[6] = stack('minecraft:bread', 3)
+seconds(11)
+ok('kit gear on someone not in a kit match is taken back: inventory, curios, ender chest; nothing else', cara.slots[5].isEmpty() && cara.curios[2].isEmpty() && cara.ender[4].isEmpty() &&
+  cara.slots[6].id == 'minecraft:bread' && said(cara, /Arena kit can't leave the arena: 3 items taken back/))
+// a modded kit: the Twilight Knight
+clickTile(ana); click(ana, 0, 4); click(ana, 8, 5)
+acceptAll(); toFight()
+ok('a Twilight Knight match: knightmetal sword, the block and chain, the shield in the off hand, knightmetal armour', ana.slots[0].id == 'twilightforest:knightmetal_sword' &&
+  ana.slots[1].id == 'twilightforest:block_and_chain' && ana.slots[40].id == 'twilightforest:knightmetal_shield' && ana.slots[39].id == 'twilightforest:knightmetal_helmet' &&
+  ana.slots[36].id == 'twilightforest:knightmetal_boots' && /GladiatorKit:1b/.test(ana.slots[40].nbt), ana.slots.map(s => s && s.id).join(' '))
+const spear = thing('alexscaves:limestone_spear', 8010, 236, 8010), wolf = thing('minecraft:wolf', 8012, 236, 8012, true), faraway = thing('minecraft:trident', 100, 64, 100)
+const corpse = thing('corpse:corpse', 8011, 236, 8011)
+c0 = cmds.length
+cmd(['stop'], admin)
+seconds(5)
+ok('when the arena comes down, a spear thrown in it goes too (anything not alive), but not a wolf, nor a trident far away', spear.discarded && !wolf.discarded && !faraway.discarded &&
+  since(c0).some(c => /kill @e\[type=minecraft:trident,x=7918/.test(c)))
+ok("... a corpse (Corpse mod: someone /kill'ed in an own-gear match) isn't swept away: it's sent to world spawn", !corpse.discarded &&
+  since(c0).includes('execute in minecraft:overworld run tp @e[type=corpse:corpse,x=7918,y=228,z=7918,dx=164,dy=70,dz=164] 0 65 0'))
+ok('... and everyone has their own things back', ana.slots[0].id == 'minecraft:netherite_sword' && !ana.slots.some(s => s && /GladiatorKit/.test(s.nbt || '')))
 // an item that can't be stored safely: nobody fights, nothing is lost
 bob.slots[5] = stack('weird:bag', 1, null, { unsavable: true })
 ana.slots[0] = stack('minecraft:netherite_sword', 1)
@@ -329,12 +400,12 @@ seconds(5)
 bob.slots[5] = EMPTY
 
 // ---------- leaving, /kill, restarts ----------
-clickTile(ana); click(ana, 0, 5)                // own gear
+clickTile(ana); click(ana, 0, 3)                // own gear
 click(ana, 8, 5)
 acceptAll(); toFight()
 bob.online = false
 fire('loggedOut', { player: bob, server })
-ok('Bob logs out mid-match: he\'s out of it, and with one fighter left, Ana wins', !state().cur && said(cara, /Ana wins the gladiator match against Bob \(the others left\)/))
+ok('Bob logs out mid-match: he\'s out of it, and with one fighter left, Ana wins', !state().cur && said(cara, /Ana wins the gladiator match against Bob \(a walkover: Bob logged out\)/))
 ok('... Bob is owed a trip home', state().owed['u-bob'] === true)
 seconds(5)
 bob.online = true

@@ -1,7 +1,11 @@
+// priority: 100
+// (Loads before the other scripts, so its death handler cancels a knockout before any of theirs sees it: an arena
+// knockout is no kill for Blood Harvest, bounties, Grit, Souls and the rest.)
 // The Gladiator Arena: PvP matches in an arena that's built in the sky, far from spawn, for the match, and taken down
 // after it.
 //
-// Starting one: right-click the arena tile at spawn (a block an op marks with /gladiator tile set). A window asks who
+// Starting one: right-click the arena statue at spawn (an armour stand in a heroic pose under a floating title, put up
+// by an op with /gladiator tile set where they stand). A window asks who
 // fights (any online players, two or more), how many rounds (1-9), how many lives each fighter has per round (1-10),
 // and the gear: everyone's own, or one of the preset kits (each fighter's belongings are then held safely and handed
 // back at the end). Everyone chosen gets the challenge in chat with [Accept] and [Decline]. The match starts only
@@ -19,7 +23,7 @@
 //   - At the end everyone is taken back to spawn and the arena is taken down.
 // Nobody dies, so nothing drops. Hits from or to anyone not fighting in the current round are cancelled, and the
 // arena's blocks can't be broken, built on or blown up. A Purge and a match can't run at the same time.
-// Copy to <server>/kubejs/server_scripts/ and the structure pieces to <server>/kubejs/data/trollcraft/structures/
+// Part II only. Copy to <server>/kubejs/server_scripts/part2/ and the structure pieces to <server>/kubejs/data/trollcraft/structures/
 // gladiator_arena/, then /reload. See tools/kubejs/GLADIATOR_ARENA.md.
 // KubeJS 6 (Rhino): no template strings; `let` inside nested blocks; event.cancel() last.
 
@@ -55,13 +59,15 @@ const ROUND_MINUTES = 10                 // then the most lives left wins the ro
 const MAX_DECIDERS = 3                   // deciding rounds before a tie is called a draw
 const RESPAWN_RESISTANCE_SECONDS = 3
 const LAST_HIT_SECONDS = 10              // a ring-out or a fall this soon after a hit counts as that fighter's knockout
+const STRIP_SECONDS = 10                 // how often everyone not in a kit match is checked for arena kit items
 const TAG = 'gladiator'                  // a vanilla tag on the fighters while the match is on
 const BOSSBAR = 'trollcraft:gladiator'
 const HISTORY = 20
 const DATA_KEY = 'gladiator_arena'
 const VAULT_DIR = 'kubejs/gladiator_vaults/'
 
-// The kits: plain, unenchanted, the same for everyone. armor: [head, chest, legs, feet]; offhand: one item.
+// The kits, the same for everyone. items: [id, count, extra NBT (optional)]; armor: [head, chest, legs, feet];
+// offhand: one item.
 const KITS = {
   soldier: { name: 'Soldier', icon: 'minecraft:iron_sword', blurb: 'iron sword, shield, bow and 32 arrows, iron armour, 16 steak',
     items: [['minecraft:iron_sword', 1], ['minecraft:bow', 1], ['minecraft:arrow', 32], ['minecraft:cooked_beef', 16]],
@@ -73,12 +79,54 @@ const KITS = {
   archer: { name: 'Archer', icon: 'minecraft:bow', blurb: 'bow and 64 arrows, stone sword, chainmail, 16 steak',
     items: [['minecraft:bow', 1], ['minecraft:stone_sword', 1], ['minecraft:arrow', 64], ['minecraft:cooked_beef', 16]],
     armor: ['minecraft:chainmail_helmet', 'minecraft:chainmail_chestplate', 'minecraft:chainmail_leggings', 'minecraft:chainmail_boots'] },
-  gladiator: { name: 'Gladiator', icon: 'minecraft:diamond_sword', blurb: 'diamond sword and axe, diamond armour, 4 golden apples, 16 steak',
-    items: [['minecraft:diamond_sword', 1], ['minecraft:diamond_axe', 1], ['minecraft:golden_apple', 4], ['minecraft:cooked_beef', 16]],
+  gladiator: { name: 'Gladiator', icon: 'minecraft:diamond_sword', blurb: 'diamond sword (Sharpness I) and axe, diamond armour, 4 golden apples, 16 steak',
+    items: [['minecraft:diamond_sword', 1, 'Enchantments:[{id:"minecraft:sharpness",lvl:1s}]'], ['minecraft:diamond_axe', 1], ['minecraft:golden_apple', 4], ['minecraft:cooked_beef', 16]],
     armor: ['minecraft:diamond_helmet', 'minecraft:diamond_chestplate', 'minecraft:diamond_leggings', 'minecraft:diamond_boots'] },
 }
-const KIT_ORDER = ['soldier', 'peasant', 'archer', 'gladiator']
+// The modded kits (Part II's pack: Ice and Fire, Twilight Forest, Alex's Caves, Botania, Create Sabers).
+const STEAK = ['minecraft:cooked_beef', 16]
+function dragonslayer(kind, name) {
+  return { name: name + ' Dragonslayer', icon: 'iceandfire:dragonsteel_' + kind + '_sword',
+    blurb: kind + ' dragonsteel sword and armour, a dragonbone bow and 32 dragonbone arrows, 16 steak',
+    items: [['iceandfire:dragonsteel_' + kind + '_sword', 1], ['iceandfire:dragonbone_bow', 1], ['iceandfire:dragonbone_arrow', 32], STEAK],
+    armor: ['helmet', 'chestplate', 'leggings', 'boots'].map(s => 'iceandfire:dragonsteel_' + kind + '_' + s) }
+}
+KITS.troll = { name: 'Troll Smasher', icon: 'iceandfire:troll_weapon_hammer', blurb: 'a troll\'s war hammer (slow, huge knockback), mountain troll leather armour, 4 golden apples, 16 steak',
+  items: [['iceandfire:troll_weapon_hammer', 1], ['minecraft:golden_apple', 4], STEAK],
+  armor: ['helmet', 'chestplate', 'leggings', 'boots'].map(s => 'iceandfire:mountain_troll_leather_' + s) }
+KITS.dragon_fire = dragonslayer('fire', 'Fire')
+KITS.dragon_ice = dragonslayer('ice', 'Ice')
+KITS.dragon_lightning = dragonslayer('lightning', 'Lightning')
+KITS.twilight_knight = { name: 'Twilight Knight', icon: 'twilightforest:knightmetal_sword', blurb: 'knightmetal sword, armour and shield, the block and chain (a flail you throw), 16 steak',
+  items: [['twilightforest:knightmetal_sword', 1], ['twilightforest:block_and_chain', 1], STEAK],
+  armor: ['helmet', 'chestplate', 'leggings', 'boots'].map(s => 'twilightforest:knightmetal_' + s), offhand: 'twilightforest:knightmetal_shield' }
+KITS.twilight_ranger = { name: 'Twilight Ranger', icon: 'twilightforest:triple_bow', blurb: 'triple, seeker (homing) and ice (slowing) bows, 64 arrows, an ironwood sword, steeleaf armour, 16 steak',
+  items: [['twilightforest:triple_bow', 1], ['twilightforest:seeker_bow', 1], ['twilightforest:ice_bow', 1], ['twilightforest:ironwood_sword', 1], ['minecraft:arrow', 64], STEAK],
+  armor: ['helmet', 'chestplate', 'leggings', 'boots'].map(s => 'twilightforest:steeleaf_' + s) }
+KITS.myrmex = { name: 'Myrmex Venom', icon: 'iceandfire:myrmex_desert_sword_venom', blurb: 'a venom sword (poisons), a death worm gauntlet (pulls people in), desert myrmex armour, 16 steak',
+  items: [['iceandfire:myrmex_desert_sword_venom', 1], ['iceandfire:deathworm_gauntlet_red', 1], STEAK],
+  armor: ['helmet', 'chestplate', 'leggings', 'boots'].map(s => 'iceandfire:myrmex_desert_' + s) }
+KITS.caveman = { name: 'Caveman', icon: 'alexscaves:primitive_club', blurb: 'a primitive club (stuns), two limestone spears to throw, primordial hides, 16 steak',
+  items: [['alexscaves:primitive_club', 1], ['alexscaves:limestone_spear', 1], ['alexscaves:limestone_spear', 1], STEAK],
+  armor: ['alexscaves:primordial_helmet', 'alexscaves:primordial_tunic', 'alexscaves:primordial_pants', 'minecraft:leather_boots'] }
+KITS.terra = { name: 'Terra Knight', icon: 'botania:terra_sword', blurb: 'the Terra Blade (swings fire a beam), terrasteel armour, 16 steak',
+  items: [['botania:terra_sword', 1], STEAK],
+  armor: ['helmet', 'chestplate', 'leggings', 'boots'].map(s => 'botania:terrasteel_' + s) }
+KITS.saber = { name: 'Saber Duel', icon: 'create_sabers:double_brass_saber', blurb: 'a brass saber and a double-bladed one (right-click to light them), no armour, 16 steak',
+  items: [['create_sabers:brass_saber', 1], ['create_sabers:double_brass_saber', 1], STEAK], armor: [] }
+const KIT_ORDER = ['soldier', 'peasant', 'archer', 'gladiator', 'troll', 'dragon_fire', 'dragon_ice', 'dragon_lightning',
+  'twilight_knight', 'twilight_ranger', 'myrmex', 'caveman', 'terra', 'saber']
 const KIT_LORE = 'Arena issue. Taken back at the end.'
+// The statue at spawn that opens the window. /gladiator tile set puts it where the op stands, facing their way: an
+// armour stand in a heroic pose under a floating title, inside an invisible click box (an interaction entity).
+const TILE_TAG = 'gladiator_tile'
+const TITLE = [{ text: '⚔ THE GLADIATOR ARENA ⚔', color: 'gold', bold: true }, { text: '\nRight-click to fight', color: 'gray', bold: false }]
+const TITLE_HEIGHT = 2.5                 // the title's height above the statue's feet
+const STATUE_POSE = '{Head:[-12f,0f,0f],Body:[0f,8f,0f],RightArm:[-165f,10f,10f],LeftArm:[-35f,-25f,-12f],RightLeg:[-8f,0f,4f],LeftLeg:[12f,0f,-4f]}'
+const TRIM = 'Trim:{material:"minecraft:gold",pattern:"minecraft:rib"}'
+const STATUE_ARMOR = ['minecraft:netherite_boots', 'minecraft:netherite_leggings', 'minecraft:netherite_chestplate', 'minecraft:netherite_helmet']
+const STATUE_HANDS = ['{id:"minecraft:netherite_sword",Count:1b,tag:{Enchantments:[{id:"minecraft:sharpness",lvl:5s}]}}',
+  '{id:"minecraft:shield",Count:1b,tag:{BlockEntityTag:{Base:14,Patterns:[{Pattern:"cr",Color:4}]}}}']
 
 // ===================== STATE =====================
 
@@ -87,9 +135,12 @@ try { Serializer = Java.loadClass('net.minecraft.network.chat.Component$Serializ
 try { StringArg = Java.loadClass('com.mojang.brigadier.arguments.StringArgumentType') } catch (e) { }
 try { ItemStackClass = Java.loadClass('net.minecraft.world.item.ItemStack') } catch (e) { }
 try { ResourceLocation = Java.loadClass('net.minecraft.resources.ResourceLocation') } catch (e) { }
-// drafts: uuid -> the window's choices. clickAt: the tile's last right-click per player. lastHit: victim -> the last
-// fighter who hit them. tokens: a newer loop, build or clear makes an older one stop.
-const S = { drafts: {}, clickAt: {}, lastHit: {}, loopToken: 0, buildToken: 0, clearToken: 0, said: {} }
+let CuriosApi = null, BeltSlot = null
+try { CuriosApi = Java.loadClass('top.theillusivec4.curios.api.CuriosApi') } catch (e) { }
+try { BeltSlot = Java.loadClass('dev.gigaherz.toolbelt.slot.BeltExtensionSlot') } catch (e) { }
+// drafts: uuid -> the window's choices. clickAt: the statue's last right-click per player. lastHit: victim -> the last
+// fighter who hit them. The loop, build and take-down tokens are on global, so a /reload stops the old ones.
+const S = { drafts: {}, clickAt: {}, lastHit: {}, said: {} }
 let data = null
 // D.tile: the block that opens the window. D.site: where the arena goes (null: DEFAULT_SITE). D.arena: { state:
 // 'none' | 'building' | 'built' | 'clearing', site }. D.pending: a challenge waiting for answers. D.cur: the match.
@@ -110,6 +161,7 @@ function db() {
     }
   }
   if (!data.owed) data.owed = {}
+  if (!data.earned) data.earned = {}                 // uuid -> advancements earned in a match, revoked at home
   return data
 }
 function save() {
@@ -241,7 +293,7 @@ function buildArena(server, done) {
   forceload(server, st, true)
   const c = corner(st), pieces = []
   for (let i = 0; i < Math.ceil(SIZE[0] / PIECE); i++) for (let k = 0; k < Math.ceil(SIZE[2] / PIECE); k++) pieces.push([i, k])
-  const token = ++S.buildToken
+  const token = (global.__gladiatorBuild = (global.__gladiatorBuild || 0) + 1)   // one build, even across /reload
   let idx = 0, waited = 0, checked = ours
   const fail = why => {
     console.error('[Gladiator] The arena could not be built: ' + why)
@@ -250,7 +302,7 @@ function buildArena(server, done) {
     done(false, why)
   }
   const step = () => {
-    if (token != S.buildToken || db().arena.state != 'building') return
+    if (token != global.__gladiatorBuild || db().arena.state != 'building') return
     if (!chunksReady(lv, c)) {
       waited += STEP_TICKS
       if (waited > LOAD_WAIT_SECONDS * 20) { fail('its chunks did not load within ' + LOAD_WAIT_SECONDS + ' seconds'); return }
@@ -284,7 +336,7 @@ function clearArena(server, done) {
   if (A.state == 'none' || !A.site) { if (done) done(); return }
   A.state = 'clearing'
   save()
-  S.buildToken++                                      // a build still running stops
+  global.__gladiatorBuild = (global.__gladiatorBuild || 0) + 1   // a build still running stops
   const st = A.site, c = corner(st), lv = levelByDim(server, st.dim)
   forceload(server, st, true)
   const fills = []
@@ -294,10 +346,10 @@ function clearArena(server, done) {
         Math.min(c.y + SIZE[1], c.y + y0 + CLEAR_SLAB) - 1, Math.min(c.z + SIZE[2], c.z + (k + 1) * PIECE) - 1])
     }
   }
-  const token = ++S.clearToken
+  const token = (global.__gladiatorClear = (global.__gladiatorClear || 0) + 1)
   let idx = 0, waited = 0, swept = false
   const step = () => {
-    if (token != S.clearToken || db().arena.state != 'clearing') return
+    if (token != global.__gladiatorClear || db().arena.state != 'clearing') return
     if (lv && !chunksReady(lv, c)) {
       waited += STEP_TICKS
       if (waited > LOAD_WAIT_SECONDS * 20) { console.error('[Gladiator] The arena\'s chunks did not load; it is taken down at the next start'); return }
@@ -325,12 +377,27 @@ function clearArena(server, done) {
   }
   server.scheduleInTicks(1, step)
 }
-// Loose items, experience and arrows in the arena's space.
+// Whatever's left lying in the arena's space: items, experience, arrows, and anything else that isn't a creature or a
+// player (thrown spears and tridents, the block and chain, mods' projectiles), which would hang in the sky otherwise.
 function sweep(server, st) {
   const c = corner(st)
   const box = 'x=' + c.x + ',y=' + (c.y - 2) + ',z=' + c.z + ',dx=' + (SIZE[0] - 1) + ',dy=' + (SIZE[1] + 3) + ',dz=' + (SIZE[2] - 1)
-  const types = ['minecraft:item', 'minecraft:experience_orb', '#minecraft:arrows']
+  // A corpse (Corpse mod: a fighter /kill'ed in an own-gear match) holds their real things: it goes to spawn, not away.
+  let sx = 0, sy = 64, sz = 0
+  try { let sp = server.overworld().getSharedSpawnPos(); sx = Number(sp.getX()); sy = Number(sp.getY()); sz = Number(sp.getZ()) } catch (e) { }
+  run(server, 'execute in ' + st.dim + ' run tp @e[type=corpse:corpse,' + box + '] ' + sx + ' ' + (sy + 1) + ' ' + sz)
+  const types = ['minecraft:item', 'minecraft:experience_orb', '#minecraft:arrows', 'minecraft:trident']
   types.forEach(t => run(server, 'execute in ' + st.dim + ' run kill @e[type=' + t + ',' + box + ']'))
+  let all = []
+  try { all = list(server.entities) } catch (e) { return }
+  all.forEach(e => {
+    if (isPlayer(e) || bool(() => e.isLiving())) return
+    let type = ''
+    try { type = String(e.getEncodeId()) } catch (err) { }
+    if (type == 'corpse:corpse') return
+    if (!insideBox(st, dimOf(e), pos(e))) return
+    try { e.discard() } catch (err) { try { e.kill() } catch (err2) { } }
+  })
 }
 
 // ===================== MOVING PEOPLE =====================
@@ -416,12 +483,67 @@ function clearInventory(p) {
   const n = invSize(p)
   for (let i = 0; i < n; i++) { try { p.inventory.setItem(i, emptyStack()) } catch (e) { } }
 }
-function isKitItem(s) { return /GladiatorKit:1b/.test(stackNbt(s)) }
-function kitSnbt() { return '{GladiatorKit:1b,display:{Lore:[' + snbtString(JSON.stringify({ text: KIT_LORE, color: 'dark_gray', italic: false })) + ']}}' }
+function isKitItem(s) {
+  try { let t = s.nbt; return t != null && !!t.contains('GladiatorKit') } catch (e) { }   // cheap: no NBT to string
+  return /GladiatorKit:1b/.test(stackNbt(s))
+}
+// The player's worn curios (Curios API) as an item handler: getSlots, getStackInSlot, setStackInSlot. null without.
+function curiosOf(p) {
+  if (!CuriosApi) return null
+  try {
+    let opt = CuriosApi.getCuriosInventory(p).resolve()
+    if (opt.isPresent()) return opt.get().getEquippedCurios()
+  } catch (e) { }
+  try {
+    let opt2 = CuriosApi.getCuriosHelper().getEquippedCurios(p).resolve()
+    if (opt2.isPresent()) return opt2.get()
+  } catch (e) { }
+  return null
+}
+// Tool Belt's own belt slot (separate from Curios): getContents / setContents, or null without the mod.
+function beltSlotOf(p) {
+  if (!BeltSlot) return null
+  try {
+    let opt = BeltSlot.get(p).resolve()
+    if (opt.isPresent()) return opt.get().getBelt()
+  } catch (e) { }
+  return null
+}
+// Kit items can't leave the arena. Anyone not in a kit match loses any they carry: inventory, curios, ender chest.
+// (A kit item only gets out by a route nothing else closes; this catches it as soon as it shows up.) Returns how many.
+function stripKit(p) {
+  let n = 0
+  const take = (get, set, size) => {
+    for (let i = 0; i < size; i++) {
+      let s = get(i)
+      if (s && !s.isEmpty() && isKitItem(s)) { set(i, emptyStack()); n++ }
+    }
+  }
+  try { take(i => p.inventory.getItem(i), (i, s) => p.inventory.setItem(i, s), invSize(p)) } catch (e) { }
+  const cur = curiosOf(p)
+  if (cur) { try { take(i => cur.getStackInSlot(i), (i, s) => cur.setStackInSlot(i, s), Number(cur.getSlots())) } catch (e) { } }
+  try {
+    let ec = p.getEnderChestInventory()
+    take(i => ec.getItem(i), (i, s) => ec.setItem(i, s), Number(ec.getContainerSize()))
+  } catch (e) { }
+  return n
+}
+function inKitMatch(u) { const C = db().cur; return inMatch(u) && C.gear != 'own' }
+function stripAll(server) {
+  players(server).forEach(p => {
+    const u = uuidOf(p)
+    if (inKitMatch(u)) return
+    const n = stripKit(p)
+    if (!n) return
+    tell(p, 'Arena kit can\'t leave the arena: ' + plural(n, 'item') + ' taken back.', 'gray')
+    console.warn('[Gladiator] Took ' + n + ' arena kit items from ' + nameOf(p))
+  })
+}
+function kitSnbt(extra) { return '{GladiatorKit:1b,' + (extra ? extra + ',' : '') + 'display:{Lore:[' + snbtString(JSON.stringify({ text: KIT_LORE, color: 'dark_gray', italic: false })) + ']}}' }
 function giveKit(p, kitId) {
-  const K = KITS[kitId], nbt = kitSnbt()
+  const K = KITS[kitId], nbt = kitSnbt('')
   clearInventory(p)
-  K.items.forEach((it, i) => { p.inventory.setItem(i, Item.of(it[0], it[1], nbt)) })
+  K.items.forEach((it, i) => { p.inventory.setItem(i, Item.of(it[0], it[1], it[2] ? kitSnbt(it[2]) : nbt)) })
   K.armor.forEach((id, i) => { p.inventory.setItem(39 - i, Item.of(id, 1, nbt)) })   // 39 head .. 36 feet
   if (K.offhand) p.inventory.setItem(40, Item.of(K.offhand, 1, nbt))
 }
@@ -431,22 +553,36 @@ function backup(rec) {
     try { JsonIO.write('kubejs/gladiator_vault_' + file, rec) } catch (e2) { console.warn('[Gladiator] Backup file for ' + rec.name + ': ' + e2) }
   }
 }
-// Holds a fighter's belongings. Returns '' or why it couldn't (then nothing was touched).
+// Holds a fighter's belongings: the inventory, the worn curios and Tool Belt's belt slot (a belt, a backpack or a
+// wireless terminal worn there could otherwise hide kit gear). Returns '' or why it couldn't (then nothing was touched).
 function vault(p) {
   const D = db(), u = uuidOf(p)
   if (D.vaults[u]) return 'they still have belongings held from an earlier match'
-  const slots = [], n = invSize(p)
+  const slots = [], worn = [], n = invSize(p), cur = curiosOf(p), beltSlot = beltSlotOf(p)
+  let belt = null
+  if (beltSlot) {
+    let b = beltSlot.getContents()
+    if (b && !b.isEmpty() && !isKitItem(b)) belt = savedStack(b, 0)
+  }
   for (let i = 0; i < n; i++) {
     let s = p.inventory.getItem(i)
     if (s && !s.isEmpty() && !isKitItem(s)) slots.push(savedStack(s, i))
   }
-  const bad = slots.filter(s => !rebuilds(s))
+  if (cur) {
+    for (let i = 0; i < Number(cur.getSlots()); i++) {
+      let s = cur.getStackInSlot(i)
+      if (s && !s.isEmpty() && !isKitItem(s)) worn.push(savedStack(s, i))
+    }
+  }
+  const bad = slots.concat(worn).concat(belt ? [belt] : []).filter(s => !rebuilds(s))
   if (bad.length) return bad.length + ' of their items (' + bad[0].id + ') could not be stored safely'
-  const rec = { name: nameOf(p), uuid: u, t: Date.now(), match: D.cur ? D.cur.id : 0, slots: slots }
+  const rec = { name: nameOf(p), uuid: u, t: Date.now(), match: D.cur ? D.cur.id : 0, slots: slots, curios: worn, belt: belt }
   D.vaults[u] = rec
   if (!save()) { delete D.vaults[u]; return 'their belongings could not be saved' }
   backup(rec)
   clearInventory(p)
+  worn.forEach(r => { try { cur.setStackInSlot(r.slot, emptyStack()) } catch (e) { } })
+  if (belt) { try { beltSlot.setContents(emptyStack()) } catch (e) { } }
   return ''
 }
 // Hands belongings back: clears the inventory (kit), then every slot. What can't be rebuilt stays in the vault.
@@ -454,19 +590,35 @@ function unvault(server, p) {
   const D = db(), u = uuidOf(p), V = D.vaults[u]
   if (!V) return true
   if (!V.partial) clearInventory(p)
-  const bad = []
+  const bad = [], badWorn = [], cur = curiosOf(p)
   V.slots.forEach(s => {
     try {
       if (V.partial) p.give(rebuild(s))
       else p.inventory.setItem(s.slot, rebuild(s))
     } catch (e) { bad.push(s); console.error('[Gladiator] ' + V.name + ' slot ' + s.slot + ' (' + s.id + '): ' + e) }
   })
-  if (bad.length) {
+  ;(V.curios || []).forEach(s => {
+    try {
+      let st = rebuild(s)
+      if (cur && !V.partial && cur.getStackInSlot(s.slot).isEmpty()) cur.setStackInSlot(s.slot, st)
+      else p.give(st)                                 // no curio slot free (or no Curios): into the inventory
+    } catch (e) { badWorn.push(s); console.error('[Gladiator] ' + V.name + ' curio ' + s.slot + ' (' + s.id + '): ' + e) }
+  })
+  if (V.belt) {
+    try {
+      let st = rebuild(V.belt), bs = beltSlotOf(p)
+      if (bs && !V.partial && bs.getContents().isEmpty()) bs.setContents(st)
+      else p.give(st)
+    } catch (e) { badWorn.push(V.belt); console.error('[Gladiator] ' + V.name + ' belt slot (' + V.belt.id + '): ' + e) }
+    V.belt = null
+  }
+  if (bad.length || badWorn.length) {
+    V.curios = badWorn
     V.slots = bad
     V.partial = true
     save()
     backup(V)
-    players(server).forEach(o => { if (bool(() => o.hasPermissions(2))) tell(o, bad.length + ' of ' + V.name + '\'s items could not be handed back. They are kept in ' + VAULT_DIR + '.', 'red') })
+    players(server).forEach(o => { if (bool(() => o.hasPermissions(2))) tell(o, (bad.length + badWorn.length) + ' of ' + V.name + '\'s items could not be handed back. They are kept in ' + VAULT_DIR + '.', 'red') })
     return false
   }
   V.restored = Date.now()
@@ -751,7 +903,7 @@ function endMatch(server, winner, why) {
   if (winner) {
     let others = all.filter(u => u != winner).map(u => C.fighters[u].name)
     text = C.fighters[winner].name + ' wins the gladiator match against ' + names(others) + (why ? ' (' + why + ')' : '') + '. Rounds won: ' + score + '.'
-  } else text = 'The gladiator match is over with no winner' + (why ? ': ' + why : '.') + (C.round ? ' Rounds won: ' + score + '.' : '')
+  } else text = 'The gladiator match is over with no winner' + (why ? ': ' + why + '.' : '.') + (C.round ? ' Rounds won: ' + score + '.' : '')
   tellAll(server, text, winner ? 'gold' : 'gray')
   if (winner) {
     let w = playerByUuid(server, winner)
@@ -775,14 +927,49 @@ function sendHome(server, p) {
   freshen(server, p)
   goHome(server, p)
   unvault(server, p)
+  revokeEarned(server, p)
   delete D.owed[u]
   save()
 }
+// Advancements are progress (Twilight Forest opens its areas by them), and arena kit gear earns some the moment it's
+// handed out. So every advancement a fighter earned in a match is taken back when they go home (recipe-book unlocks
+// aside: they're no progress). Recorded by PlayerEvents.advancement below; kept until they're home.
+function revokeEarned(server, p) {
+  const D = db(), u = uuidOf(p), E = D.earned[u] || []
+  E.forEach(id => run(server, 'advancement revoke ' + nameOf(p) + ' only ' + id))
+  if (E.length) {
+    tell(p, plural(E.length, 'advancement') + ' earned in the arena taken back: the arena doesn\'t count towards progress.', 'gray')
+    console.info('[Gladiator] Revoked ' + nameOf(p) + '\'s arena advancements: ' + E.join(', '))
+  }
+  delete D.earned[u]
+}
+function advId(event) {
+  const a = event.advancement
+  try { return String(a.id()) } catch (e) { }
+  try { return String(a.getId()) } catch (e) { }
+  try { return String(event.getAdvancement().getId()) } catch (e) { }
+  return ''
+}
+PlayerEvents.advancement(event => {
+  const p = event.player, C = db().cur
+  if (!C || !C.gathered || !isPlayer(p)) return
+  const u = uuidOf(p)
+  if (!inMatch(u)) return
+  const id = advId(event)
+  if (!id || /(^|:)recipes\//.test(id)) return
+  const D = db()
+  if (!D.earned[u]) D.earned[u] = []
+  if (D.earned[u].indexOf(id) < 0) { D.earned[u].push(id); save() }
+})
 
 // ===================== THE CLOCK =====================
 
 function tick(server) {
   const D = db(), now = Date.now()
+  if (!S.stripAt || now - S.stripAt >= STRIP_SECONDS * 1000) {
+    S.stripAt = now
+    try { stripAll(server) } catch (e) { console.error('[Gladiator] Kit check: ' + e) }
+  }
   const P = D.pending
   if (P && now >= P.expires) {
     let late = Object.keys(P.fighters).filter(u => !P.fighters[u].ok).map(u => P.fighters[u].name)
@@ -845,9 +1032,9 @@ function recentHit(u) {
   return h && Date.now() - h.t <= LAST_HIT_SECONDS * 1000 ? { uuid: h.uuid, name: h.name } : null
 }
 function startLoop(server) {
-  const token = ++S.loopToken
+  const token = (global.__gladiatorLoop = (global.__gladiatorLoop || 0) + 1)   // one loop, even across /reload
   const step = () => {
-    if (token != S.loopToken) return
+    if (token != global.__gladiatorLoop) return
     try { tick(server) } catch (e) { console.error('[Gladiator] Tick: ' + e) }
     server.scheduleInTicks(20, step)
   }
@@ -901,7 +1088,7 @@ function leave(server, p, u, how) {
   save()
   tellFighters(server, f.name + ' ' + how + ' and is out of the match.', 'gray')
   const here = Object.keys(C.fighters).filter(w => !C.fighters[w].gone)
-  if (here.length < 2) { endMatch(server, here[0] || null, here.length ? 'the others left' : 'everyone left'); return }
+  if (here.length < 2) { endMatch(server, here[0] || null, here.length ? 'a walkover: ' + f.name + ' ' + how : 'everyone left'); return }
   checkRound(server)
 }
 PlayerEvents.loggedOut(event => {
@@ -954,7 +1141,7 @@ EntityEvents.spawned(event => {
   event.cancel()
 })
 
-// ===================== THE TILE AND THE WINDOW =====================
+// ===================== THE STATUE AND THE WINDOW =====================
 // KubeJS's chest window (player.openChestGUI) holds the player's inventory away while it's open and hands it back
 // the tick after it closes. So, as in the black market's shop, every click closes the window first, waits for the
 // inventory to come back, then acts and reopens it.
@@ -982,6 +1169,8 @@ function guiItem(id, name, color, lore, opts) {
   if (opts.extra) parts.push(opts.extra)
   return Item.of(id, opts.count || 1, '{' + parts.join(',') + '}')
 }
+// The window's gear area: own gear, then the kits, along rows 3 and 4. [x, y] of the n-th (0 = own gear).
+function gearSlot(n) { return [n % 9, 3 + Math.floor(n / 9)] }
 function guiButton(gui, x, y, item, onClick) {
   gui.slot(x, y, s => {
     s.item = item
@@ -1001,8 +1190,8 @@ function showMenu(p) {
     const cells = []
     for (let i = 0; i < 54; i++) cells.push(i)
     cells.forEach(i => gui.slot(i % 9, Math.floor(i / 9), s => { s.item = guiItem('minecraft:gray_stained_glass_pane', ' ', 'gray', []) }))
-    // Rows 0-3: who fights.
-    const online = players(server).sort((a, b) => (nameOf(a).toLowerCase() < nameOf(b).toLowerCase() ? -1 : 1)).slice(0, 36)
+    // Rows 0-2: who fights.
+    const online = players(server).sort((a, b) => (nameOf(a).toLowerCase() < nameOf(b).toLowerCase() ? -1 : 1)).slice(0, 27)
     online.forEach((q, i) => {
       const u = uuidOf(q), n = nameOf(q), on = !!d.picked[u]
       guiButton(gui, i % 9, Math.floor(i / 9), guiItem('minecraft:player_head', n, on ? 'green' : 'white',
@@ -1013,24 +1202,24 @@ function showMenu(p) {
         refresh(p)
       })
     })
-    // Row 4: rounds and lives.
-    const stepper = (x, label, value, lim, icon, set) => {
-      guiButton(gui, x, 4, guiItem('minecraft:red_stained_glass_pane', 'Fewer ' + label, 'red', []), () => { set(Math.max(lim.min, value - 1)); refresh(p) })
-      guiButton(gui, x + 1, 4, guiItem(icon, label.charAt(0).toUpperCase() + label.slice(1) + ': ' + value, 'gold', [], { count: value }), () => { })
-      guiButton(gui, x + 2, 4, guiItem('minecraft:lime_stained_glass_pane', 'More ' + label, 'green', []), () => { set(Math.min(lim.max, value + 1)); refresh(p) })
-    }
-    stepper(1, 'rounds', d.rounds, ROUNDS, 'minecraft:clock', v => { d.rounds = v })
-    stepper(5, 'lives', d.lives, LIVES, 'minecraft:totem_of_undying', v => { d.lives = v })
-    // Row 5: the gear, cancel, send.
-    guiButton(gui, 0, 5, guiItem('minecraft:chest', 'Own gear', d.gear == 'own' ? 'green' : 'white',
+    // Rows 3-4: the gear (own gear, then the kits in KIT_ORDER).
+    guiButton(gui, 0, 3, guiItem('minecraft:chest', 'Own gear', d.gear == 'own' ? 'green' : 'white',
       ['Everyone fights with what they carry.', 'Nothing is lost: nobody dies.'].concat(d.gear == 'own' ? [{ text: '✔ Chosen', color: 'green' }] : []), { glint: d.gear == 'own' }),
       () => { d.gear = 'own'; refresh(p) })
-    KIT_ORDER.forEach((k, i) => {
-      const K = KITS[k], on = d.gear == k
-      guiButton(gui, 1 + i, 5, guiItem(K.icon, K.name + ' kit', on ? 'green' : 'white',
+    KIT_ORDER.slice(0, 17).forEach((k, i) => {
+      const K = KITS[k], on = d.gear == k, at = gearSlot(i + 1)
+      guiButton(gui, at[0], at[1], guiItem(K.icon, K.name + ' kit', on ? 'green' : 'white',
         [K.blurb, 'Belongings are held and handed back.'].concat(on ? [{ text: '✔ Chosen', color: 'green' }] : []), { glint: on }),
         () => { d.gear = k; refresh(p) })
     })
+    // Row 5: rounds and lives, cancel, send.
+    const stepper = (x, label, value, lim, icon, set) => {
+      guiButton(gui, x, 5, guiItem('minecraft:red_stained_glass_pane', 'Fewer ' + label, 'red', []), () => { set(Math.max(lim.min, value - 1)); refresh(p) })
+      guiButton(gui, x + 1, 5, guiItem(icon, label.charAt(0).toUpperCase() + label.slice(1) + ': ' + value, 'gold', [], { count: value }), () => { })
+      guiButton(gui, x + 2, 5, guiItem('minecraft:lime_stained_glass_pane', 'More ' + label, 'green', []), () => { set(Math.min(lim.max, value + 1)); refresh(p) })
+    }
+    stepper(0, 'rounds', d.rounds, ROUNDS, 'minecraft:clock', v => { d.rounds = v })
+    stepper(3, 'lives', d.lives, LIVES, 'minecraft:totem_of_undying', v => { d.lives = v })
     guiButton(gui, 7, 5, guiItem('minecraft:barrier', 'Cancel', 'red', []), () => { Utils.server.scheduleInTicks(1, () => closeWindow(p)) })
     const who = Object.keys(d.picked).map(u => d.picked[u])
     guiButton(gui, 8, 5, guiItem('minecraft:bell', 'Send the challenge', 'gold',
@@ -1043,19 +1232,28 @@ function showMenu(p) {
       }))
   })
 }
-function onTile(event) {
-  const T = db().tile, p = event.player, b = event.block
-  if (!T || !isPlayer(p) || !b) return false
-  let d = ''
-  try { d = String(b.getDimension()) } catch (e) { try { d = dimKey(b.level) } catch (e2) { return false } }
-  return d == T.dim && Number(b.x) == T.x && Number(b.y) == T.y && Number(b.z) == T.z
+// The statue: the armour stand (its gear can't be taken: DisabledSlots), the title over it, and the click box. Any
+// statue already up goes first.
+function itemSnbt(id, extra) { return '{id:"' + id + '",Count:1b' + (extra ? ',tag:{' + extra + '}' : '') + '}' }
+function buildStatue(server, T) {
+  removeStatue(server)
+  const at = num(T.x) + ' ' + num(T.y) + ' ' + num(T.z), inDim = 'execute in ' + T.dim + ' run '
+  run(server, inDim + 'summon minecraft:armor_stand ' + at + ' {Tags:["' + TILE_TAG + '"],ShowArms:1b,NoBasePlate:1b,Invulnerable:1b,' +
+    'NoGravity:1b,PersistenceRequired:1b,DisabledSlots:4144959,Rotation:[' + num(T.yaw) + 'f,0f],Pose:' + STATUE_POSE + ',' +
+    'ArmorItems:[' + STATUE_ARMOR.map(id => itemSnbt(id, TRIM)).join(',') + '],HandItems:[' + STATUE_HANDS.join(',') + ']}')
+  run(server, inDim + 'summon minecraft:text_display ' + num(T.x) + ' ' + num(T.y + TITLE_HEIGHT) + ' ' + num(T.z) +
+    ' {Tags:["' + TILE_TAG + '"],billboard:"center",shadow:1b,text:' + snbtString(JSON.stringify(TITLE)) + '}')
+  run(server, inDim + 'summon minecraft:interaction ' + at + ' {Tags:["' + TILE_TAG + '"],width:1.2f,height:2.3f,response:1b}')
 }
-BlockEvents.rightClicked(event => {
-  if (!onTile(event)) return
+function removeStatue(server) { run(server, 'kill @e[tag=' + TILE_TAG + ']') }
+function isTile(e) { try { return !!e && !!e.getTags().contains(TILE_TAG) } catch (err) { return false } }
+// Right-clicking the statue (its click box) opens the window. Nothing else happens to it.
+ItemEvents.entityInteracted(event => {
+  if (!isTile(event.target)) return
   const p = event.player, u = uuidOf(p), now = Date.now()
-  let off = false
-  try { off = String(event.hand) == 'OFF_HAND' } catch (e) { }
-  if (!off && (!S.clickAt[u] || now - S.clickAt[u] > 500)) {
+  let hand = ''
+  try { hand = String(event.hand) } catch (e) { }
+  if ((!hand || hand.indexOf('MAIN') >= 0) && (!S.clickAt[u] || now - S.clickAt[u] > 500)) {
     S.clickAt[u] = now
     Utils.server.scheduleInTicks(1, () => { try { openMenu(p) } catch (e) { console.error('[Gladiator] Menu: ' + e) } })
   }
@@ -1087,15 +1285,18 @@ ServerEvents.commandRegistry(event => {
     const r = answer(ctx.source.server, p, numArg(ctx, 'id'), yes)
     return r ? reply(ctx, r, true) : 1
   }
+  // The statue goes where the op stands (the middle of that block), facing the way they face.
   const setTile = ctx => {
     const p = self(ctx)
-    if (!p) return reply(ctx, 'Run this as a player, looking at the block.', true)
-    let b = null
-    try { let hit = p.rayTrace(6); b = hit ? hit.block : null } catch (e) { }
-    if (!b) { let q = pos(p); b = levelOfEntity(p).getBlock(Math.floor(q.x), Math.floor(q.y) - 1, Math.floor(q.z)) }
-    db().tile = { dim: dimOf(p), x: Number(b.x), y: Number(b.y), z: Number(b.z) }
+    if (!p) return reply(ctx, 'Run this as a player, standing where the statue should go.', true)
+    const q = pos(p)
+    let yaw = 0
+    try { yaw = Number(p.getYRot()) } catch (e) { try { yaw = Number(p.yaw) } catch (e2) { } }
+    const T = { dim: dimOf(p), x: Math.floor(q.x) + 0.5, y: Math.floor(q.y + 0.01), z: Math.floor(q.z) + 0.5, yaw: Math.round(yaw / 45) * 45 }
+    db().tile = T
     save()
-    return reply(ctx, 'The arena tile is the ' + String(b.id) + ' at ' + b.x + ' ' + b.y + ' ' + b.z + '. Right-clicking it opens the arena window.')
+    buildStatue(ctx.source.server, T)
+    return reply(ctx, 'The arena statue stands at ' + Math.floor(T.x) + ' ' + T.y + ' ' + Math.floor(T.z) + '. Right-clicking it opens the arena window. Step off its spot.')
   }
   const siteHere = ctx => {
     const p = self(ctx)
@@ -1115,8 +1316,18 @@ ServerEvents.commandRegistry(event => {
     .then(Commands.literal('decline').then(int('id').executes(safe(ctx => respond(ctx, false)))))
     .then(Commands.literal('menu').requires(op).executes(safe(ctx => { const p = self(ctx); if (p) openMenu(p); return 1 })))
     .then(Commands.literal('tile').requires(op)
+      .executes(safe(ctx => {
+        const T = db().tile
+        return reply(ctx, T && T.yaw != null ? 'The arena statue is at ' + Math.floor(T.x) + ' ' + T.y + ' ' + Math.floor(T.z) + ' in ' + T.dim + '. /gladiator tile fix puts it back if it\'s gone.' : 'There is no arena statue. Stand where it should go and run /gladiator tile set.')
+      }))
       .then(Commands.literal('set').executes(safe(setTile)))
-      .then(Commands.literal('clear').executes(safe(ctx => { db().tile = null; save(); return reply(ctx, 'The arena tile is cleared.') }))))
+      .then(Commands.literal('fix').executes(safe(ctx => {
+        const T = db().tile
+        if (!T || T.yaw == null) return reply(ctx, 'There is no arena statue yet: /gladiator tile set.', true)
+        buildStatue(ctx.source.server, T)
+        return reply(ctx, 'The arena statue is rebuilt where it was.')
+      })))
+      .then(Commands.literal('clear').executes(safe(ctx => { removeStatue(ctx.source.server); db().tile = null; save(); return reply(ctx, 'The arena statue is gone.') }))))
     .then(Commands.literal('site').requires(op)
       .executes(safe(ctx => { const st = siteNow(); return reply(ctx, 'The arena is built centred on ' + st.x + ' ' + st.z + ' in ' + st.dim + ', from y ' + st.y + '.' + (db().site ? '' : ' (the default)')) }))
       .then(Commands.literal('here').executes(safe(siteHere)))

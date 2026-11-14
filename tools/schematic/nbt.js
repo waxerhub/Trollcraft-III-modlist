@@ -1,6 +1,7 @@
 // Minimal NBT reader and writer for Node (no dependencies). Big-endian, gzip or raw.
 //   read(buffer) -> { name, value }: compounds as objects, lists as arrays, numbers as numbers (longs as BigInt),
 //     byte/int/long arrays as typed arrays.
+//   readTyped(buffer) -> { name, value } with every value tagged as write takes it (an exact copy).
 //   write(name, tagged) -> gzipped Buffer, where tagged values say their type: T.int(5), T.string('x'),
 //     T.list('int', [T.int(1), ...]), T.compound({ k: tagged, ... }), and so on.
 const zlib = require('zlib')
@@ -38,6 +39,36 @@ function read(buf) {
   return { name: str(), value: payload(t) }
 }
 
+// Like read, but every value keeps its tag type, in the form write takes (T.int(5), T.list('string', [...]) ...), so
+// NBT can be copied from one file to another exactly (a player head's skin, a lectern's book).
+function readTyped(buf) {
+  if (buf[0] === 0x1f && buf[1] === 0x8b) buf = zlib.gunzipSync(buf)
+  let p = 0
+  const NAMES = ['end', 'byte', 'short', 'int', 'long', 'float', 'double', 'byteArray', 'string', 'list', 'compound', 'intArray', 'longArray']
+  const u8 = () => buf.readUInt8(p++)
+  const i32 = () => { const v = buf.readInt32BE(p); p += 4; return v }
+  const str = () => { const n = buf.readUInt16BE(p); p += 2; const s = buf.toString('utf8', p, p + n); p += n; return s }
+  function payload(t) {
+    switch (t) {
+      case 1: return T.byte(buf.readInt8(p++))
+      case 2: { const v = buf.readInt16BE(p); p += 2; return T.short(v) }
+      case 3: return T.int(i32())
+      case 4: { const v = buf.readBigInt64BE(p); p += 8; return T.long(v) }
+      case 5: { const v = buf.readFloatBE(p); p += 4; return T.float(v) }
+      case 6: { const v = buf.readDoubleBE(p); p += 8; return T.double(v) }
+      case 7: { const n = i32(), a = []; for (let i = 0; i < n; i++) a.push(buf.readInt8(p++)); return T.byteArray(a) }
+      case 8: return T.string(str())
+      case 9: { const et = u8(), n = i32(), a = []; for (let i = 0; i < n; i++) a.push(payload(et)); return T.list(NAMES[et] === 'end' ? 'compound' : NAMES[et], a) }
+      case 10: { const o = {}; for (;;) { const tt = u8(); if (tt === 0) return T.compound(o); const k = str(); o[k] = payload(tt) } }
+      case 11: { const n = i32(), a = []; for (let i = 0; i < n; i++) a.push(i32()); return T.intArray(a) }
+      case 12: { const n = i32(), a = []; for (let i = 0; i < n; i++) { a.push(buf.readBigInt64BE(p)); p += 8 } return T.longArray(a) }
+      default: throw new Error('bad NBT tag type ' + t + ' at byte ' + p)
+    }
+  }
+  const t = u8()
+  return { name: str(), value: payload(t) }
+}
+
 // Sponge schematics keep block indexes as varints.
 function varints(bytes) {
   const out = []
@@ -55,6 +86,7 @@ const T = {
   byte: v => ({ t: 'byte', v }), short: v => ({ t: 'short', v }), int: v => ({ t: 'int', v }), long: v => ({ t: 'long', v }),
   float: v => ({ t: 'float', v }), double: v => ({ t: 'double', v }), string: v => ({ t: 'string', v }),
   list: (et, v) => ({ t: 'list', et, v }), compound: v => ({ t: 'compound', v }), intArray: v => ({ t: 'intArray', v }),
+  byteArray: v => ({ t: 'byteArray', v }), longArray: v => ({ t: 'longArray', v }),
 }
 
 function write(name, root) {
@@ -81,6 +113,12 @@ function write(name, root) {
       case 'intArray':
         num(x.v.length, 4, 'writeInt32BE')
         return x.v.forEach(n => num(n, 4, 'writeInt32BE'))
+      case 'byteArray':
+        num(x.v.length, 4, 'writeInt32BE')
+        return x.v.forEach(n => num(n, 1, 'writeInt8'))
+      case 'longArray':
+        num(x.v.length, 4, 'writeInt32BE')
+        return x.v.forEach(n => num(BigInt(n), 8, 'writeBigInt64BE'))
       default: throw new Error('unknown tag type ' + x.t)
     }
   }
@@ -88,4 +126,4 @@ function write(name, root) {
   return zlib.gzipSync(Buffer.concat(parts))
 }
 
-module.exports = { read, write, varints, T }
+module.exports = { read, readTyped, write, varints, T }

@@ -241,9 +241,9 @@ Technoblade's Potato War, revived. **The Pool decides what the server can make; 
 35. **The Ruins:** the remains of Part I bases are lore sites, with books telling Part I's story. 🔨
 36. **The Shrine Awakens** (the next major event; owner decisions 2026-11-13): one big evening, about 90 minutes, run live by ops.
     - **Where the server is:** Part II, early, at Blood Pool Tier 2 with about 66,000 Drops.
-    - **What it does:** the scout's last testimony reveals Technoblade's Shrine, the relic hunt (Act II) begins, and the Pool reaches its third seal, which opens the Nether.
+    - **What it does:** the Blood God reveals Technoblade's Shrine, the relic hunt (Act II) begins, and the Pool reaches its third seal, which opens the Nether.
     1. **The Signal** (the day before): a scrambled, unsigned broadcast, plus a Discord post with the time. Gather at the castle.
-    2. **The Testimony** (about 10 minutes, at the castle): the Castellan reads the scout's last testimony, and everyone gets the book. It names **three braziers**, far apart.
+    2. **The Summons** (about 10 minutes, at the castle): the testimony is the **Blood God's** (owner decision 2026-11-13; it was the scout's). His words come as a book that everyone gets, and the Castellan reads them out. They name **three braziers**, far apart.
     3. **The Pilgrimage: three braziers, three teams** (about 30 minutes).
        - **Lighting them:** the server splits up, and the braziers must all be lit within 60 seconds of each other. Otherwise the lit ones gutter out, and the teams try again.
        - **The beam:** once all three burn, a beacon beam rises at the Shrine site, visible from far off.
@@ -261,7 +261,7 @@ Technoblade's Potato War, revived. **The Pool decides what the server can make; 
     - **The reward is the Drops** (owner decision): no title or keepsake.
     - **Still needed:**
       - **From the owner:** the Shrine's schematic (with an altar), the three brazier sites and the Shrine site, and the date;
-      - **To write:** the testimony text and the Signal;
+      - **To write:** the Blood God's summons (the book) and the Signal;
       - **To build:** `part2/shrine.js`: the op-run stages, the braziers and the beam, the layer-by-layer rise (the schematic converted into one structure piece per layer, by `tools/schematic/schem_to_structures.js`), the Inspector waves and the Senior Inspector, the Potato King's Potato and the altar bar, the Drops top-up, the Awakening, and the start of `/regalia`.
 
     🔨

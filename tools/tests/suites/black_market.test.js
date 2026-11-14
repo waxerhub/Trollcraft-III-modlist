@@ -1258,8 +1258,17 @@ click(alice); advance(5)
 ok('a copy of the Axe and a Maul without its script: not super weapons, the kit is kept', fakeAxe.dmg == 100 && maul.dmg == 100 && kitCount(alice) == 1 && /only works on a super weapon/.test(text(alice)), text(alice))
 ok('... and nothing went wrong', !W.logs.some(l => /^E .*Repair kit/.test(l)))
 // ops: stock, and the kit can't go under the counter
+bob.inbox = []
 cmd('bm repairkit stock 3', admin)
-ok('/bm repairkit stock 3 restocks this visit', DB().vendor.repairKits === 3 && /3 Super Weapon Repair Kits for the rest of this visit/.test(flat(lastReply())), lastReply())
+ok('/bm repairkit stock 3 restocks this visit', DB().vendor.repairKits === 3 && /3 Super Weapon Repair Kits for the rest of this visit\. Everyone has heard the rumor\./.test(flat(lastReply())), lastReply())
+ok('... and, since he had none, everyone hears the rumor\'s kit line', /\[RUMOR\]/.test(flat(lastLine(bob))) &&
+  /Word is the hooded merchant near old crossroads has a smith's kit for the great weapons this time\./.test(flat(lastLine(bob))) && bob.inbox.length == 1, text(bob))
+bob.inbox = []
+cmd('bm repairkit stock 4', admin)
+ok('restocking while he still has kits: no second rumor', DB().vendor.repairKits === 4 && bob.inbox.length == 0 && !/heard the rumor/.test(flat(lastReply())), text(bob))
+cmd('bm repairkit stock 0', admin)
+ok('stock 0: off the shelf, no rumor', DB().vendor.repairKits === 0 && bob.inbox.length == 0)
+cmd('bm repairkit stock 3', admin)
 ok('/bm repairkit is op only', cmd('bm repairkit stock 5', alice) == 0 && lastReply() == 'DENIED')
 const kitForHand = realSlots(alice)[kitSlot(alice)]
 putInHand(admin, stack(kitForHand.id, 1, kitForHand.snbtStr))

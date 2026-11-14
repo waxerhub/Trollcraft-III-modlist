@@ -877,16 +877,27 @@ function vendorLeave(server, moving) {
 function rumor(server, spot) {
   const text = 'A hooded merchant has been seen near ' + spot.name + '.' +
     (REPAIR_KIT.rumor && repairKitsInStock() > 0 ? ' Word is he has a smith\'s kit for the great weapons this time.' : '')
-  if (RUMORS_TO_DISCORD) {
-    try { server.runCommandSilent('tellraw @a ' + JSON.stringify([''].concat(voiceParts(VOICE_RUMOR, text)))) } catch (e) { }
-  } else {
-    onlinePlayers(server).forEach(p => say(p, VOICE_RUMOR, text))
-  }
+  rumorToAll(server, text)
   if (WHISPER_COORDS_TO.length) {
     onlinePlayers(server).forEach(p => {
       if (WHISPER_COORDS_TO.indexOf(factionOf(p)) >= 0) say(p, VOICE_RUMOR, 'Exact location: ' + spot.dim.replace('minecraft:', '') + ' ' + Math.floor(spot.x) + ' ' + Math.floor(spot.y) + ' ' + Math.floor(spot.z) + '.')
     })
   }
+}
+// A [RUMOR] line for everyone online: to each player, or with tellraw @a (so Discord gets it) if RUMORS_TO_DISCORD.
+function rumorToAll(server, text) {
+  if (RUMORS_TO_DISCORD) {
+    try { server.runCommandSilent('tellraw @a ' + JSON.stringify([''].concat(voiceParts(VOICE_RUMOR, text)))) } catch (e) { }
+  } else {
+    onlinePlayers(server).forEach(p => say(p, VOICE_RUMOR, text))
+  }
+}
+// Kits stocked after his arrival rumor went out (/bm repairkit stock): the rumor's kit line, on its own.
+function kitRumor(server) {
+  const v = db().vendor
+  if (!REPAIR_KIT.rumor || !v.present || !v.spot) return false
+  rumorToAll(server, 'Word is the hooded merchant near ' + v.spot.name + ' has a smith\'s kit for the great weapons this time.')
+  return true
 }
 // Within VENDOR_RANGE of the live vendor, in the same dimension?
 function nearVendor(p) {
@@ -3072,9 +3083,13 @@ ServerEvents.commandRegistry(event => {
         const v = db().vendor, n = num(ctx, 'count')
         if (!v.present) return reply(ctx, 'The merchant isn\'t out. Bring him out first (/bm vendor spawn), then stock him.', true)
         if (n < 0 || n > 64) return reply(ctx, 'Stock 0 to 64.', true)
+        const had = repairKitsInStock()
         v.repairKits = n
         save()
-        return reply(ctx, 'The merchant has ' + n + ' Super Weapon Repair Kit' + (n == 1 ? '' : 's') + ' for the rest of this visit.')
+        // Announced only when kits newly turn up: from none to some.
+        const told = had <= 0 && n > 0 && kitRumor(ctx.source.server)
+        return reply(ctx, 'The merchant has ' + n + ' Super Weapon Repair Kit' + (n == 1 ? '' : 's') + ' for the rest of this visit.' +
+          (told ? ' Everyone has heard the rumor.' : ''))
       })))))
     .then(Commands.literal('hand').requires(op)
       .then(Commands.literal('add').then(int('price').executes(safe(ctx => handAdd(ctx, num(ctx, 'price'), 0)))

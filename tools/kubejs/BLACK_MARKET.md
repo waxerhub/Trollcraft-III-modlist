@@ -274,7 +274,8 @@ Right-clicking the merchant opens a chest-style window. It's a vanilla chest scr
 - **Where it shows:**
   - the shop window's bottom row, with the price and how many are left;
   - the chat menu, under Unsigned Declaration;
-  - the rumor of his arrival adds *"Word is he has a smith's kit for the great weapons this time."* (`rumor`).
+  - the rumor of his arrival adds *"Word is he has a smith's kit for the great weapons this time."* (`rumor`);
+  - **kits an op stocks later:** `/bm repairkit stock` sends the line on its own to everyone online when he had none: *"Word is the hooded merchant near old crossroads has a smith's kit for the great weapons this time."* Restocking while he still has kits, or stocking 0, says nothing. Like the arrival rumor, it goes to each player, and to Discord only with `RUMORS_TO_DISCORD`.
 
   On visits without one, it doesn't appear at all, and `/bmbuy repairkit` says he has none this time.
 
@@ -373,7 +374,7 @@ Ops can sell **any item exactly as it is**, NBT included, for example an item th
 | `/blackmarket buy declaration` | anyone at the merchant | Buy an Unsigned Declaration (with part2/purge.js) |
 | `/blackmarket buy repairkit` | anyone at the merchant | Buy a Super Weapon Repair Kit, on a visit that brought one |
 | `/blackmarket repairkit give <player> [count]` | op | Kits straight into a player's inventory (1–64) |
-| `/blackmarket repairkit stock <count>` | op | How many kits the merchant has for the rest of this visit (0 takes them off the shelf). He must be out. |
+| `/blackmarket repairkit stock <count>` | op | How many kits the merchant has for the rest of this visit (0 takes them off the shelf). He must be out. Going from none to some sends the kit rumor to everyone. |
 | `/blackmarket declare <serial> <kit> <minutes>` | the declaration's holder, anywhere | Post it (what its menu buttons run) |
 | `/blackmarket declarations` | op | The last 10 Unsigned Declarations: who bought each, who posted it, the kit and the length |
 | `/blackmarket inspect` | op | While holding a contract: target, **buyer's name** (even if they're offline), tier, issue date, status. For Ministry trials: a confiscated contract proves who ordered the hit. Also for a Tracker Compass, Homing Pig or Certified Alibi (who bought it and who used it) and an Unsanctioned Eye (who bought it, when, how many). |
@@ -542,7 +543,7 @@ Logging out, `/reload` and restarts never reset a cooldown or reuse a contract i
 
 ## What couldn't be verified for KubeJS 6 on 1.20.1
 
-A mock-server test passed all 270 checks (with bounties.js loaded), and a second one passed all 84 tracking and trial checks: coins, the merchant, the shop window and the chat menu, range, contracts and every refusal, the writ, dupes and forgeries, heat, outcomes, `/reload`, custom stock, selling (refused by default; working when SELL_LIST has entries), the rotation, Disguised TNT (sprinting across, jumping over, owner, protected areas, replaced blocks, breaking, the limit), the Teleport Trap (every refusal, the Nether lock, landing, owner, Pig Escort, reload, replaced blocks, the limit), the Mimic Chest, the four pranks (Cursed Food included), bounties, the coin rename (old coins swapped) and the ambush coin drops. These parts depend on the real game:
+A mock-server test passed all 273 checks (with bounties.js loaded), and a second one passed all 84 tracking and trial checks: coins, the merchant, the shop window and the chat menu, range, contracts and every refusal, the writ, dupes and forgeries, heat, outcomes, `/reload`, custom stock, selling (refused by default; working when SELL_LIST has entries), the rotation, Disguised TNT (sprinting across, jumping over, owner, protected areas, replaced blocks, breaking, the limit), the Teleport Trap (every refusal, the Nether lock, landing, owner, Pig Escort, reload, replaced blocks, the limit), the Mimic Chest, the four pranks (Cursed Food included), bounties, the coin rename (old coins swapped) and the ambush coin drops. These parts depend on the real game:
 
 **The Unsigned Declaration** passes 20 mock checks in the tracking suite, against a stand-in for `global.Purge`, and black_market.js loads on the test server. No player has bought or posted one yet; it's left for the live server (test plan step 23). Things to watch there:
 - the top-right slot of the shop window, and the purchase;
@@ -551,14 +552,14 @@ A mock-server test passed all 270 checks (with bounties.js loaded), and a second
 - the unsigned countdown after a post, with the paper used up;
 - `/bm declarations`.
 
-**The Super Weapon Repair Kit** passes 21 mock checks against stand-ins for the super weapons' scripts:
+**The Super Weapon Repair Kit** passes 24 mock checks against stand-ins for the super weapons' scripts:
 - the 30% roll;
 - the rumor;
 - the window, the chat menu and selling out;
 - the repair (other hand first, else the most worn);
 - the refusals that keep the kit;
 - copies, and weapons whose script isn't installed;
-- the op commands, and the kit leaving with him.
+- the op commands, the rumor when an op stocks kits, and the kit leaving with him.
 
 Its repair uses `stack.setDamageValue(0)`. Tinkers' class files show that this goes through `ModifiableItem.setDamage` to `ToolStack.setDamage`, which also clears the tool's broken state. It's left for the server (test plan step 24):
 - the repair on each real weapon;

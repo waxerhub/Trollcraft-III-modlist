@@ -13,6 +13,8 @@
 //     every layer, and thunder when the pedestal is done and when the head is placed. A /reload or restart carries on
 //     from the last layer. /shrine stop pauses it (/shrine rise carries on).
 //   - /shrine reset confirm (the test server): takes the Shrine down and forgets the night. The sites are kept.
+//   - No monsters spawn in or right around the Shrine once any of it stands (event mobs and named ones are let be);
+//     those already there are taken away as it starts and finishes rising, or with /shrine clearmobs.
 // Still to come: the Signal and the Summons, the braziers and the beam, the Ignition Rite and the Awakening.
 //
 // Part II only. Copy to <server>/kubejs/server_scripts/part2/ and the layers to
@@ -32,6 +34,10 @@ const LOAD_WAIT_SECONDS = 90              // how long to wait for the site's chu
 const CLEAR_SLAB = 18                     // taking it down: fills of 42 x 18 x 43 blocks (fill's limit is 32,768)
 const EDGE_GAP = 3                        // players moved out of the footprint land this far outside its edge
 const NEAR = 128                          // players this close to the Shrine hear about the rise
+// No monsters spawn in the Shrine's box (from its base to above the head) or this many blocks around it, once any of it
+// stands. Event mobs (tagged by this script, the ambushes, the Purge or the arena) and named ones an op summons can.
+const SPAWN_MARGIN = 2
+const KEEP_TAGS = /shrine|portal_ambush|gladiator|purge/
 const BRAZIERS = 3
 const DATA_KEY = 'shrine'
 
@@ -185,6 +191,53 @@ function clearFootprint(server, lv, st) {
   return n
 }
 
+// ===================== NO MONSTERS IN THE SHRINE =====================
+
+// Where the Shrine's blocks are (rising, paused or risen), or null.
+function shrineStanding() { const R = db().rise; return R.state != 'none' && R.site ? R.site : null }
+// The box and SPAWN_MARGIN around it, from the base to just above the head.
+function inShrineSpace(st, d, q) {
+  if (!st || d != st.dim) return false
+  const c = corner(st)
+  return q.x >= c.x - SPAWN_MARGIN && q.x < c.x + SIZE[0] + SPAWN_MARGIN && q.z >= c.z - SPAWN_MARGIN && q.z < c.z + SIZE[2] + SPAWN_MARGIN &&
+    q.y >= c.y - 1 && q.y < c.y + SIZE[1] + 2
+}
+// In KubeJS 6, entity.getType() is the id as text ("minecraft:zombie"), so the category comes from entityType; checked
+// on the test server, where isMonster() also works.
+function isMonster(e) {
+  try { return String(e.entityType.getCategory()).toLowerCase().indexOf('monster') >= 0 } catch (err) { }
+  try { return !!e.isMonster() } catch (err) { return false }
+}
+// Event mobs and an op's named ones stay.
+function keepMob(e) {
+  try { if (e.hasCustomName()) return true } catch (err) { }
+  let tags = ''
+  try { tags = String(e.getTags()) } catch (err) { }
+  return KEEP_TAGS.test(tags)
+}
+function unwanted(st, e) {
+  try { if (e.isPlayer()) return false } catch (err) { }
+  return isMonster(e) && !keepMob(e) && inShrineSpace(st, dimOf(e), pos(e))
+}
+// Takes away the monsters already in the Shrine's space (walled in by the rise, or there before the spawn ban).
+function sweepMonsters(server, st) {
+  let all = []
+  try { all = list(server.entities) } catch (e) { return 0 }
+  let n = 0
+  all.forEach(e => {
+    let gone = false
+    try { if (unwanted(st, e)) { e.discard(); gone = true } } catch (err) { }
+    if (gone) n++
+  })
+  if (n) console.info('[Shrine] Took away ' + n + ' monster' + (n == 1 ? '' : 's') + ' from the Shrine')
+  return n
+}
+EntityEvents.spawned(event => {
+  const st = shrineStanding(), e = event.entity
+  if (!st || !e || !unwanted(st, e)) return
+  event.cancel()
+})
+
 // ===================== THE RISE =====================
 
 function riseState() { return db().rise.state }
@@ -246,6 +299,7 @@ function startRise(server, resumed) {
       return
     }
     clearFootprint(server, lv, st)
+    if (R.next == 0) sweepMonsters(server, st)
     if (!placeLayer(server, st, R.next)) {
       R.state = 'stopped'
       save()
@@ -256,6 +310,7 @@ function startRise(server, resumed) {
     if (R.next >= SIZE[1]) {
       R.state = 'risen'
       save()
+      sweepMonsters(server, st)
       forceload(server, st, false)
       nearby(server, st).forEach(p => narrate(p, 'The last stone settles. Technoblade\'s Shrine stands.', 'gold'))
       console.info('[Shrine] The Shrine has risen at ' + siteText(st))
@@ -406,6 +461,12 @@ ServerEvents.commandRegistry(event => {
       if (why) return reply(ctx, why, true)
       return reply(ctx, resuming ? 'The rise carries on from layer ' + R.next + '.' :
         'The Shrine rises: ' + SIZE[1] + ' layers in about ' + Math.round(SIZE[1] * LAYER_TICKS / 20) + ' seconds.')
+    })))
+    .then(Commands.literal('clearmobs').executes(safe(ctx => {
+      const st = shrineStanding()
+      if (!st) return reply(ctx, 'There is no Shrine standing.', true)
+      const n = sweepMonsters(ctx.source.server, st)
+      return reply(ctx, n ? 'Took away ' + n + ' monster' + (n == 1 ? '' : 's') + ' from the Shrine. (Event mobs and named ones stay.)' : 'No monsters in the Shrine.')
     })))
     .then(Commands.literal('stop').executes(safe(ctx => {
       if (!stopRise()) return reply(ctx, 'Nothing is running.', true)

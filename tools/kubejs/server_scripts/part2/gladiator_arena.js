@@ -209,6 +209,12 @@ function players(server) { return list(server.players) }
 function playerByUuid(server, u) { return players(server).filter(p => uuidOf(p) == u)[0] || null }
 function playerByName(server, n) { return players(server).filter(p => nameOf(p).toLowerCase() == String(n).toLowerCase())[0] || null }
 function bool(fn) { try { return !!fn() } catch (e) { return false } }
+// In KubeJS 6, entity.getType() is the id as text ("minecraft:zombie"), so the category comes from entityType. The old
+// check (getType().getCategory()) threw on the server, so monsters were never kept out (seen on the test server).
+function isMonster(e) {
+  try { return String(e.entityType.getCategory()).toLowerCase().indexOf('monster') >= 0 } catch (err) { }
+  try { return !!e.isMonster() } catch (err) { return false }
+}
 function sameEntity(a, b) { if (!a || !b) return false; try { return uuidOf(a) == uuidOf(b) } catch (e) { return a === b } }
 function attackerOf(source) {
   try { return typeof source.getActual == 'function' ? source.getActual() : source.getEntity() } catch (e) { return null }
@@ -325,6 +331,7 @@ function buildArena(server, done) {
     if (idx < pieces.length) { server.scheduleInTicks(STEP_TICKS, step); return }
     db().arena.state = 'built'
     save()
+    sweepMonsters(server, st)
     console.info('[Gladiator] Arena built at ' + st.dim + ' ' + st.x + ' ' + st.y + ' ' + st.z)
     done(true, '')
   }
@@ -969,6 +976,8 @@ function tick(server) {
   if (!S.stripAt || now - S.stripAt >= STRIP_SECONDS * 1000) {
     S.stripAt = now
     try { stripAll(server) } catch (e) { console.error('[Gladiator] Kit check: ' + e) }
+    let up = arenaUp()
+    if (up) { try { sweepMonsters(server, up) } catch (e) { console.error('[Gladiator] Monster sweep: ' + e) } }
   }
   const P = D.pending
   if (P && now >= P.expires) {
@@ -1055,7 +1064,8 @@ EntityEvents.hurt(event => {
   let ok = C.phase == 'fight'
   if (vf && !active(vu)) ok = false
   if (af && !active(au)) ok = false
-  if (au && au != vu && (!vf || !af)) ok = false     // a fighter and someone outside the match
+  if (au && au != vu && isPlayer(v) && (!vf || !af)) ok = false     // a fighter and a player outside the match
+  // (A fighter's hit on a mob goes through: a stray mob mustn't be untouchable.)
   if (ok) {
     if (vf && af) S.lastHit[vu] = { uuid: au, name: nameOf(a), t: Date.now() }
     return
@@ -1134,12 +1144,22 @@ LevelEvents.afterExplosion(event => {
 // No monsters spawn in the arena's space.
 EntityEvents.spawned(event => {
   const st = arenaUp(), e = event.entity
-  if (!st || isPlayer(e)) return
-  let monster = false
-  try { monster = String(e.getType().getCategory()).toLowerCase().indexOf('monster') >= 0 } catch (err) { return }
-  if (!monster || !insideBox(st, dimOf(e), pos(e))) return
+  if (!st || !e || isPlayer(e) || !isMonster(e) || !insideBox(st, dimOf(e), pos(e))) return
   event.cancel()
 })
+// Monsters already in the arena (there before it was built, or walked in) are taken away when it's built and every
+// STRIP_SECONDS during a match.
+function sweepMonsters(server, st) {
+  let all = []
+  try { all = list(server.entities) } catch (e) { return 0 }
+  let n = 0
+  all.forEach(e => {
+    let gone = false
+    try { if (!isPlayer(e) && isMonster(e) && insideBox(st, dimOf(e), pos(e))) { e.discard(); gone = true } } catch (err) { }
+    if (gone) n++
+  })
+  return n
+}
 
 // ===================== THE STATUE AND THE WINDOW =====================
 // KubeJS's chest window (player.openChestGUI) holds the player's inventory away while it's open and hands it back

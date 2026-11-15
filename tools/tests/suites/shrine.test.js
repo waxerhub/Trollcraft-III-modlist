@@ -34,8 +34,29 @@ function player(name, x, y, z, op) {
   return p
 }
 const byName = n => players.find(p => p.name == n)
+// Mobs: what spawns (EntityEvents.spawned) and what's already about (server.entities).
+const nether = { dimension: { location: () => 'minecraft:the_nether' } }
+const mobs = []
+function mob(type, category, x, y, z, opts) {
+  opts = opts || {}
+  // As KubeJS 6 has them on the server (seen with a probe): getType() is the id as text, the category is on entityType.
+  const m = { type, x, y, z, level: opts.level || level, discarded: false, tags: opts.tags || [], named: !!opts.named,
+    getType: () => type, entityType: { getCategory: () => category }, isPlayer: () => false, hasCustomName: () => m.named,
+    getTags: () => ({ toString: () => '[' + m.tags.join(', ') + ']' }), getX: () => m.x, getY: () => m.y, getZ: () => m.z,
+    discard: () => { m.discarded = true } }
+  return m
+}
+const EXIT = { exit: true }
+// Fires EntityEvents.spawned for a mob; true if a handler cancelled it. A mob that isn't cancelled joins the world.
+function spawn(m) {
+  const ev = { entity: m, cancelled: false, cancel() { ev.cancelled = true; throw EXIT } }
+  ;(handlers.spawned || []).forEach(h => { try { h(ev) } catch (e) { if (e !== EXIT) throw e } })
+  if (!ev.cancelled) mobs.push(m)
+  return ev.cancelled
+}
 const server = {
   get players() { return jlist(players) },
+  get entities() { return jlist(players.concat(mobs.filter(m => !m.discarded))) },
   scheduleInTicks: (n, fn) => queue.push([tick + n, fn]),
   persistentData: { getString: k => persistent[k] || '', putString: (k, v) => { persistent[k] = v } },
   getAllLevels: () => jlist([level]),
@@ -60,8 +81,9 @@ function RL(s) { this.s = s }
 // Loads (or reloads) the script, as /reload does: fresh handlers and commands, the same saved data and globals.
 function load() {
   handlers = {}
-  new Function('ServerEvents', 'Java', 'Utils', 'Text', 'console', 'global', src)(
+  new Function('ServerEvents', 'EntityEvents', 'Java', 'Utils', 'Text', 'console', 'global', src)(
     { loaded: on('loaded'), commandRegistry: h => h({ commands: { literal: node, argument: n => Object.assign(node(n), { arg: true }) }, arguments: { INTEGER: { create: () => 'int', getResult: (ctx, k) => ctx.args[k] } }, register: t => { cmdTree = t } }) },
+    { spawned: on('spawned') },
     { loadClass: n => {
       if (/Component\$Serializer/.test(n)) return { fromJsonLenient: j => JSON.parse(j) }
       if (/ResourceLocation/.test(n)) return RL
@@ -146,6 +168,10 @@ ok('a Gladiator match on: refused', /Gladiator match is on/.test(r[0]) && S().ri
 global.Gladiator = { busy: () => false }
 
 // ---------- the rise ----------
+// Before any of it stands, monsters spawn there as usual; a zombie and a tagged ambush mob are about already.
+ok('no Shrine yet: a zombie can spawn at the site', !spawn(mob('minecraft:zombie', 'MONSTER', 1000.5, 64, 2000.5)))
+const oldZombie = mobs[mobs.length - 1]
+const ambusher = mob('minecraft:vindicator', 'MONSTER', 1005.5, 64, 2005.5, { tags: ['portal_ambush'] }); mobs.push(ambusher)
 chunksAt = tick + 30                                  // the site's chunks take a moment to load
 cmds = []
 r = cmd('rise', admin)
@@ -161,6 +187,17 @@ ok('then layer 0: its slice cleared first, then placed at the corner', placed().
   cmds.indexOf('execute in minecraft:overworld run fill 979 64 1979 1020 64 2021 minecraft:air') < cmds.indexOf('execute in minecraft:overworld run place template trollcraft:shrine/l_0 979 64 1979'), cmds.filter(c => /fill|place/.test(c)).join('\n'))
 ok('Bob, standing in the footprint, was moved to the nearest edge onto the ground, and told', bob.x == 1024.5 && bob.y == 64 && bob.z == 2000.5 && said(bob, /lurches/), [bob.x, bob.y, bob.z].join(' '))
 ok('Carol, outside it, wasn\'t moved', carol.x == 1060.5)
+ok('as it starts, the zombie already there is taken away; the ambush mob stays', oldZombie.discarded && !ambusher.discarded)
+// While any of it stands: no monsters spawn in its box or 2 blocks around it.
+ok('a zombie spawning inside the Shrine: cancelled', spawn(mob('minecraft:zombie', 'MONSTER', 1000.5, 90, 2000.5)))
+ok('... at its top, and in the 2-block margin round it: cancelled', spawn(mob('minecraft:skeleton', 'MONSTER', 1000.5, 128.5, 2000.5)) &&
+  spawn(mob('minecraft:creeper', 'MONSTER', 977.5, 64, 2000.5)) && spawn(mob('minecraft:spider', 'MONSTER', 1000.5, 64, 2022.5)))
+ok('... 3 blocks out, below its base, or in another dimension: allowed', !spawn(mob('minecraft:zombie', 'MONSTER', 976.5, 64, 2000.5)) &&
+  !spawn(mob('minecraft:zombie', 'MONSTER', 1000.5, 62, 2000.5)) && !spawn(mob('minecraft:zombie', 'MONSTER', 1000.5, 90, 2000.5, { level: nether })))
+ok('... a cow, an ambush mob, a Shrine event mob and an op\'s named mob inside: allowed', !spawn(mob('minecraft:cow', 'CREATURE', 1000.5, 90, 2000.5)) &&
+  !spawn(mob('minecraft:vindicator', 'MONSTER', 1000.5, 90, 2000.5, { tags: ['portal_ambush', 'pa_g1'] })) &&
+  !spawn(mob('minecraft:vindicator', 'MONSTER', 1000.5, 90, 2000.5, { tags: ['shrine_inspector'] })) &&
+  !spawn(mob('minecraft:zombie', 'MONSTER', 1000.5, 90, 2000.5, { named: true })))
 ok('... with the stone sounds, the anchor\'s charge as it starts, dust and smoke', cmds.some(c => /playsound minecraft:block\.deepslate\.place block @a 1000\.5 64\.5 2000\.5/.test(c)) &&
   cmds.some(c => /playsound minecraft:block\.grindstone\.use block @a 1000\.5 64\.5/.test(c)) && cmds.some(c => /playsound minecraft:block\.respawn_anchor\.charge block @a 1000\.5 64\.5/.test(c)) &&
   cmds.some(c => /particle minecraft:large_smoke/.test(c)))
@@ -214,8 +251,9 @@ const counts2 = {}
 placed().forEach(n => { counts2[n] = (counts2[n] || 0) + 1 })
 ok('a restart mid-rise: it carries on too, still one loop', S().rise.state == 'rising' && placed().length > before + 2 && Object.keys(counts2).every(n => counts2[n] == 1 || n == '23'), JSON.stringify(counts2))
 
-// to the top
+// to the top (a zombie wanders in on the way, and gets walled in)
 carol.msgs = []
+const walledIn = mob('minecraft:zombie', 'MONSTER', 1010.5, 100, 1990.5); mobs.push(walledIn)
 advance(layerTicks * 64)
 const all = placed()
 const missing = []
@@ -226,6 +264,12 @@ ok('... the forceload is removed', cmds.some(c => c == 'execute in minecraft:ove
 ok('... and nothing is waiting to run', queue.length == 0, queue.length)
 ok('/shrine rise once risen: refused', /already risen/.test(cmd('rise', admin)[0]))
 ok('status: risen', /The Shrine has risen, at 1000 64 2000/.test(cmd('status', admin)[4]))
+ok('when it has risen, a zombie walled in on the way is taken away', walledIn.discarded && logs.some(l => /Took away 1 monster from the Shrine/.test(l)))
+const lurker = mob('minecraft:husk', 'MONSTER', 990.5, 120, 2010.5); mobs.push(lurker)
+const pet = mob('minecraft:zombie', 'MONSTER', 991.5, 120, 2010.5, { named: true }); mobs.push(pet)
+r = cmd('clearmobs', admin)
+ok('/shrine clearmobs takes away a monster standing in it, and leaves a named one', lurker.discarded && !pet.discarded && /Took away 1 monster/.test(r[0]), r[0])
+ok('... and again: nothing left', /No monsters in the Shrine/.test(cmd('clearmobs', admin)[0]))
 
 // ---------- the reset ----------
 r = cmd('reset', admin)
@@ -240,6 +284,8 @@ ok('... each within fill\'s 32,768-block limit', fills.every(f => { const n = f.
 ok('... Bob, standing on it, is moved off first', bob.x != 1000.5 || bob.z != 2000.5)
 ok('... loose items in the box are removed', cmds.some(c => /kill @e\[type=minecraft:item,x=979,y=64,z=1979,dx=41,dy=64,dz=42\]/.test(c)))
 ok('... the night is forgotten and the sites are kept', S().rise.state == 'none' && S().rise.next == 0 && S().site.x == 1000 && S().braziers[0].x == 1900 && !global.Shrine.risen())
+ok('once it\'s taken down, monsters spawn there as usual again', !spawn(mob('minecraft:zombie', 'MONSTER', 1000.5, 64, 2000.5)))
+ok('/shrine clearmobs with no Shrine: refused', /no Shrine standing/.test(cmd('clearmobs', admin)[0]))
 r = cmd('reset confirm', admin)
 ok('a reset with nothing built: nothing to take down', /Nothing was built/.test(r[0]))
 // the saved data survives a reload

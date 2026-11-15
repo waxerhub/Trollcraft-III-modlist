@@ -242,6 +242,7 @@ The deliveries, Shrine raids and rewards are Act II's work and get their own spe
 | `/shrine rite` / `/shrine need <n>` | Stage 4; change what the altar needs |
 | `/shrine awaken` | Stage 5 |
 | `/shrine stop` | Stops whatever is running (waves, clock, rise), removes Inspectors and leaves the rest |
+| `/shrine clearmobs` | Takes away the monsters in and right around the Shrine (event mobs and named ones stay) |
 | `/shrine reset confirm` | **Test server:** removes the Shrine, the braziers and the beam, and forgets the night. It needs the word `confirm`, so it can't be run by accident on the live server |
 
 ## How it stays safe
@@ -299,6 +300,21 @@ The deliveries, Shrine raids and rewards are Act II's work and get their own spe
 - **Busy:** it won't start during a Purge or a Gladiator match. `global.Shrine.busy()` says "the Shrine is rising" while it runs.
 - **Taking it down (test server):** `/shrine reset confirm` moves anyone off it, clears the box with four fills of air from the top, removes loose items, and forgets the night. The sites are kept.
 
+## No monsters in the Shrine (built)
+The owner saw a lot of mobs spawning inside the Shrine on the test server. Lighting it up would only cover the dark inside: at night monsters also spawn on its open surfaces (the pedestal's platform, the statue's shoulders). Full light would also spoil the Ignition Rite, where the statue lights up band by band. So the script keeps them out instead:
+- **No spawns:** once any of the Shrine stands (rising, paused or risen), no monster can spawn in its box or within 2 blocks of it (`SPAWN_MARGIN`), from its base to above the head. Below the base (caves) and further out, spawning is as usual.
+- **Who's let in:**
+  - event mobs, which carry a tag from this script, the ambushes, the Purge or the arena (`KEEP_TAGS`), so the rite's Inspectors and the ambushes still work;
+  - mobs with a name, so an op can still summon a named mob for a set-piece;
+  - animals.
+- **Monsters already there** are taken away when the rise starts and when it finishes (some get walled in), and an op can clear them any time with `/shrine clearmobs`.
+- **How a monster is recognised:** by its category, through `entity.entityType`, or `isMonster()`. `entity.getType()` is only the id as text in KubeJS 6, which is why the Gladiator Arena's spawn block never worked (fixed the same day).
+
+**Checked on the test server:**
+- `/shrine clearmobs` took away the 3 monsters standing in the Shrine;
+- **refused:** zombies summoned inside it (on the pedestal and in mid-air) and a skeleton in the 2-block margin;
+- **let in:** a named zombie and a cow inside, a zombie 9 blocks outside, and one below the base.
+
 ## Tried on the test server (2026-11-14)
 The rise ran three times at a site in the sky (6000 150 6000), with the owner watching as leelinda.
 - **The look:** "it looks fantastic". The owner asked for a faster rise, about 30 seconds instead of 4½ minutes. The second and third rises, at 9 ticks a layer, each took 28.4 seconds on the server's clock.
@@ -316,8 +332,9 @@ The rise ran three times at a site in the sky (6000 150 6000), with the owner wa
 ## Build progress
 | Part | State |
 |---|---|
-| The sites (`/shrine site set`, `/shrine brazier set`, where you stand or at coordinates) and `/shrine status`, with each brazier's direction and distance from the castle | ✅ built, 60 mock checks (`tools/tests/suites/shrine.test.js`); tried on the test server |
+| The sites (`/shrine site set`, `/shrine brazier set`, where you stand or at coordinates) and `/shrine status`, with each brazier's direction and distance from the castle | ✅ built, mock checks in `tools/tests/suites/shrine.test.js`; tried on the test server |
 | Stage 3, the rise, with `/shrine stop` and `/shrine reset confirm` | ✅ built, same checks; tried on the test server (see above) |
+| No monsters in the Shrine, and `/shrine clearmobs` | ✅ built, 71 mock checks in all; tried on the test server |
 | Stage 2, the braziers, the beam and the ambushes | to do |
 | Stages 0–1, the Signal and the Summons | to do |
 | Stage 4, the Ignition Rite (waves, potatoes, altar, knockouts) | to do |

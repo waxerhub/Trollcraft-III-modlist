@@ -41,6 +41,7 @@ Server-admin work for the **Trollcraft III** modpack: KubeJS scripts, progressio
 - Text components are built with `Component$Serializer.fromJsonLenient`.
 - Cross-script APIs live on `global.*` and are looked up lazily (`economy/` loads before `factions/`).
 - Minecraft's `closeContainer()` is exposed to scripts as `closeMenu()`.
+- `entity.getType()` is the entity's id as text (`"minecraft:zombie"`). For its category, use `entity.entityType.getCategory()`, with `entity.isMonster()` as the fallback (checked on the test server). Test mocks must do the same, or a broken check passes the tests (the Gladiator Arena's spawn block did).
 
 ## Testing
 `tools/tests/` holds the checks (see its README):

@@ -34,8 +34,11 @@
 - **Winning the match:** the most rounds won.
   - **Ending early:** it ends as soon as nobody can catch up (3–0 with 2 rounds left).
   - **A tie for the lead:** settled by a **deciding round** between those tied, where the last one standing takes the match. After 3 deciding rounds with no winner it's a draw.
-- **Hits:** only between fighters in the current round, while it's being fought. Nobody else can hurt a fighter, and a fighter can't hurt anyone else.
-- **The arena is protected:** its blocks can't be broken or built on (creative excepted), explosions in it break no blocks, and no monsters spawn in it.
+- **Hits:** only between fighters in the current round, while it's being fought. Nobody else can hurt a fighter, and a fighter can't hurt any other player. A fighter can hit a mob, so a stray one is never untouchable.
+- **The arena is protected:** its blocks can't be broken or built on (creative excepted), and explosions in it break no blocks.
+- **No monsters:**
+  - none can spawn in it;
+  - any already there are taken away when it's built and every 10 seconds while it's up.
 - **The end:**
   - The result goes to everyone online, for example "Ana wins the gladiator match against Bob and Cara. Rounds won: Ana 2, Bob 1, Cara 0."
   - Every fighter goes back to world spawn, healed and untagged, and in a kit match gets their belongings back.
@@ -165,6 +168,21 @@ node tools/schematic/schem_to_structures.js Large_Form_arena.schem tools/kubejs/
    - At the end your own things are back, in their slots.
 8. **Leaving:** log out mid-match. The other fighter wins, and on logging back in you're taken to spawn.
 9. **Protection:** try to break the arena's blocks, place blocks in it, and blow up TNT in it. Nothing changes.
+
+## Monsters in the arena: fixed (14 Nov 2026)
+**The bug** (reported by the owner): mobs spawned inside the arena, and fighters couldn't hit them.
+- **No spawn block:** the spawn check read a monster's category with `entity.getType().getCategory()`. A probe on the test server showed that in KubeJS 6, `entity.getType()` is the id as text (`minecraft:zombie`), so that call threw, and the check gave up without cancelling anything.
+  - What works: `entity.entityType.getCategory()` (MONSTER) and `entity.isMonster()`. The arena now uses both.
+  - The mock test had used a fake entity whose `getType()` did have `getCategory()`, so it passed. The mock now behaves like the server, and the new checks fail against the old script.
+- **Untouchable mobs:** a hit between a fighter and "someone outside the match" was cancelled, and a mob counted as outside. Fighters couldn't hurt mobs, while mobs could still hurt fighters. A fighter's hit on a mob now goes through.
+- **A sweep:** monsters already in the arena are taken away when it's built and every 10 seconds while it's up.
+
+**Checked on the test server** with `/gladiator build`:
+- a zombie placed where the arena would go was gone once it was built;
+- a zombie summoned inside the built arena was refused (a named one too, so it wasn't despawning);
+- a zombie moved in with `/tp` was gone within 13 seconds.
+
+A fighter hitting a mob during a match is checked only in the mock test, since that needs two players fighting.
 
 ## Checked on the local test server (13 Nov 2026)
 - **Loading:** the script loads with 0 errors (22 of 22 scripts), and the 25 pieces load from `kubejs/data/`.

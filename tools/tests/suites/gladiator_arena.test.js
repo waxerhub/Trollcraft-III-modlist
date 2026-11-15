@@ -269,6 +269,9 @@ ok('then FIGHT', state().cur.phase == 'fight' && cmds.some(c => /FIGHT!/.test(c)
 // ---------- a round ----------
 ok('fighters can hurt each other now', !hit(bob, ana) && !hit(ana, null, 'fall'))
 ok('Cara (not in the match) can\'t hurt Bob, and Ana can\'t hurt Cara', hit(bob, cara) && hit(cara, ana))
+// A stray mob in the arena (as on the test server: mobs spawned and couldn't be hit): a fighter can hit it.
+const strayMob = { getX: () => 8000, getY: () => 236, getZ: () => 8000, level, isPlayer: () => false, getType: () => 'minecraft:zombie', entityType: { getCategory: () => 'MONSTER' } }
+ok('a fighter can hit a stray mob in the arena', !hit(strayMob, ana))
 c0 = cmds.length
 ok('lethal damage to Bob: no death (cancelled)', die(bob, ana))
 ok('... a knockout: one of his 2 lives gone, healed, credited to Ana, sent to the spawn point furthest from her', fighter('Bob').left == 1 && bob.health == 20 && fighter('Ana').kills == 1 &&
@@ -436,9 +439,16 @@ ok('... placing too; outside it, anything goes; in creative, anything goes', fir
 let removed = false
 fire('afterExplosion', { x: 8000, y: 240, z: 8000, level, removeAllAffectedBlocks: () => { removed = true }, server })
 ok('an explosion in the arena breaks no blocks', removed)
-const zombie = { getX: () => 8000, getY: () => 236, getZ: () => 8000, level, isPlayer: () => false, getType: () => ({ getCategory: () => 'MONSTER' }) }
-const cow = { getX: () => 8000, getY: () => 236, getZ: () => 8000, level, isPlayer: () => false, getType: () => ({ getCategory: () => 'CREATURE' }) }
+// As KubeJS 6 has them on the server: getType() is the id as text; the category is on entityType.
+const zombie = { getX: () => 8000, getY: () => 236, getZ: () => 8000, level, isPlayer: () => false, getType: () => 'minecraft:zombie', entityType: { getCategory: () => 'MONSTER' } }
+const cow = { getX: () => 8000, getY: () => 236, getZ: () => 8000, level, isPlayer: () => false, getType: () => 'minecraft:cow', entityType: { getCategory: () => 'CREATURE' } }
 ok('no monsters spawn in it (a cow may)', fire('spawned', { entity: zombie, server }).cancelled && !fire('spawned', { entity: cow, server }).cancelled)
+const onlyIsMonster = { getX: () => 8000, getY: () => 236, getZ: () => 8000, level, isPlayer: () => false, getType: () => 'modded:thing', isMonster: () => true }
+ok('... a mob only isMonster() can place is kept out too', fire('spawned', { entity: onlyIsMonster, server }).cancelled)
+const lurker = thing('minecraft:husk', 8001, 236, 8001, true); lurker.entityType = { getCategory: () => 'MONSTER' }
+const sheepThere = thing('minecraft:sheep', 8002, 236, 8002, true); sheepThere.entityType = { getCategory: () => 'CREATURE' }
+seconds(11)
+ok('a monster already in the arena is taken away within 10 seconds; a sheep stays', lurker.discarded && !sheepThere.discarded)
 ok('/gladiator site here refuses while it\'s up', /Not while the arena is up/.test(cmd(['site', 'here'], admin)[0]))
 cmd(['clear'], admin)
 seconds(5)

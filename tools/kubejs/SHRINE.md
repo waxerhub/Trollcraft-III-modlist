@@ -1,6 +1,6 @@
 # The Shrine Awakens (Part II): spec
 
-🔨 **Spec for sign-off, not built yet.** It will become `server_scripts/part2/shrine.js`. Once it's built, this file becomes the system's doc: settings, commands, test plan and "what couldn't be verified".
+🔨 **Signed off (owner decisions 2026-11-14), being built in stages** as `server_scripts/part2/shrine.js`. Once it's built, this file becomes the system's doc: settings, commands, test plan and "what couldn't be verified". Built so far: see [Build progress](#build-progress).
 
 The story is in [STORY.md](../../STORY.md), Act I #36. This file says how each stage works in game.
 
@@ -36,7 +36,7 @@ The story is in [STORY.md](../../STORY.md), Act I #36. This file says how each s
 **The Shrine's site:**
 - **Its size:** the statue is 42 × 43 blocks and 64 tall. The bottom 22 layers are a pedestal; the altar is on top of it, with Technoblade's head over the lectern.
 - **What to pick:** flat, open ground with nothing built on it. The rise clears the whole box above ground before placing each layer.
-- **Rehearse first** on the test server, with `/shrine reset` between runs (see the test commands below).
+- **Rehearse first** on the test server, with `/shrine reset confirm` between runs (see the commands below).
 
 ## 0. The Signal (the day before)
 **`/shrine signal`** sends a scrambled, unsigned message to everyone online. Anyone who logs on in the next 24 hours gets it when they join.
@@ -48,7 +48,7 @@ Draft (█ = scrambled):
 
 ## 1. The Summons (at the castle)
 **`/shrine summons`** gives everyone online the book ***A Summons***, signed *The Blood God*. The Castellan reads it out.
-- **The brazier lines** are written from the brazier sites when the command runs, so they're always right (see open question 1).
+- **The brazier lines** give each fire's direction and distance from the castle (world spawn), worked out from the brazier sites when the command runs, so they're always right: "*the first:* about 900 blocks toward the rising sun" (owner decision).
 - **Late arrivals** get the book when they join, until the Awakening.
 
 Draft (each `>` block is a page):
@@ -59,9 +59,11 @@ Draft (each `>` block is a page):
 > It will not wake for one of you. It wakes for all of you, or for none.
 
 > Three fires wait in three far places:
-> *the first:* [direction and distance from the castle, or a riddle]
-> *the second:* [...]
-> *the third:* [...]
+> *the first:* about [distance] blocks [direction]
+> *the second:* about [distance] blocks [direction]
+> *the third:* about [distance] blocks [direction]
+
+(Directions: "toward the rising sun" for east, "toward the setting sun" for west, then north, south, north-east and so on. Distances are rounded to the nearest 50 blocks.)
 
 > Light them as one. A fire that burns alone will die within the minute.
 > When all three burn, I will show you where to stand.
@@ -72,7 +74,7 @@ Draft (each `>` block is a page):
 > They want the Pool full.
 > So do I.
 
-The last page is the first hint of the two threads. It's optional (open question 4).
+The last page is the first hint of the two threads (kept: owner decision).
 
 ## 2. The Pilgrimage: three braziers
 **`/shrine braziers`** places an unlit brazier at each site: a campfire on a small blackstone plinth with chains.
@@ -91,7 +93,10 @@ The last page is the first hint of the two threads. It's optional (open question
 **Ambushes on the way:**
 - **What they are:** unsigned **Inspector** patrols (never "Ministry Inspector") stop "unregistered pilgrims".
 - **What they use:** the Part I patrols' fighters, from `factions/portal_ambush.js`, renamed.
-- **Who starts them:** see open question 3. The recommendation is an op command, `/shrine ambush <player>`, so the ops can time them for drama.
+- **Who starts them:** both (owner decision).
+  - **One automatic ambush per team:** the first pilgrim to come within 200 blocks of a brazier (while it's still unlit) is ambushed there, with anyone near them. Once per brazier.
+  - **More by hand:** `/shrine ambush <player>`, whenever the ops want one.
+- **Deaths in an ambush** are ordinary deaths, as with the Part I patrols. Knockouts are for the rite at the Shrine.
 
 ## 3. The Shrine Rises
 **`/shrine rise`**, run once the pilgrims have gathered at the beam. The Shrine builds itself from the ground up.
@@ -145,7 +150,10 @@ The chunks are force-loaded while it builds, as the Gladiator Arena does, and re
 
   At full, the whole statue glows at night.
 
-**Deaths** are ordinary deaths, with items in a corpse as usual (open question 2).
+**Knockouts instead of deaths** (owner decision), like the Gladiator Arena:
+- **When:** lethal damage while the rite runs, to a player within 64 blocks of the Shrine.
+- **What happens:** they're healed, their fire is put out, and they're set down at the Shrine's edge with a few seconds of Resistance. Nothing drops.
+- **No credit:** a knockout is no kill for anything else (bounties, the Anamian Axe's Souls, the Maul's Grit and the rest). The script loads early (`// priority: 100`) so it cancels the death before other scripts see it.
 
 ## 5. The Awakening
 **`/shrine awaken`**, once the bar is full (an op can also force it). It's respectful: no jokes.
@@ -232,7 +240,7 @@ The deliveries, Shrine raids and rewards are Act II's work and get their own spe
 | `/shrine rite` / `/shrine need <n>` | Stage 4; change what the altar needs |
 | `/shrine awaken` | Stage 5 |
 | `/shrine stop` | Stops whatever is running (waves, clock, rise), removes Inspectors and leaves the rest |
-| `/shrine reset` | **Test server:** removes the Shrine, the braziers and the beam, and forgets the night |
+| `/shrine reset confirm` | **Test server:** removes the Shrine, the braziers and the beam, and forgets the night. It needs the word `confirm`, so it can't be run by accident on the live server |
 
 ## How it stays safe
 - **No overlap:**
@@ -256,14 +264,53 @@ The deliveries, Shrine raids and rewards are Act II's work and get their own spe
 - **The tribute:** `techno_tribute.js` (`/techno all`) and `smite.js` (`/superaura`).
 - **The top-up:** `global.BloodPool.addDrops(n, 'shrine', uuid, name)`.
 
-## Open questions for the owner
-1. **The brazier lines in the Summons:** direction and distance from the castle, filled in automatically ("the first: about 900 blocks toward the rising sun"), or your own riddles?
-2. **Deaths during the rite:** ordinary deaths (corpses, as usual), or knockouts like the Gladiator Arena?
-3. **Pilgrimage ambushes:** started by an op (`/shrine ambush <player>`), or automatic (one per team on the way)?
-4. **The Summons' last page:** keep "They want the Pool full. So do I."?
-5. **To tune at the rehearsal:**
-   - the rise's speed (4 s a layer);
-   - the wave sizes;
-   - the potatoes per Inspector;
-   - how the braziers look.
-6. **Still needed from the owner:** the three brazier sites, the Shrine site and the date.
+## Decided (owner, 2026-11-14)
+1. **The brazier lines:** direction and distance from the castle, filled in automatically.
+2. **Deaths during the rite:** knockouts, like the Gladiator Arena.
+3. **Pilgrimage ambushes:** both: one automatic ambush per brazier team, and `/shrine ambush <player>` for more.
+4. **The Summons' last page:** "They want the Pool full. So do I." stays.
+
+## Still open
+- **To tune at the rehearsal:**
+  - the rise's speed (4 s a layer);
+  - the wave sizes;
+  - the potatoes per Inspector;
+  - how the braziers look.
+- **Still needed from the owner:** the three brazier sites, the Shrine site and the date.
+
+## Install (what's built so far)
+1. Copy `server_scripts/part2/shrine.js` to `kubejs/server_scripts/part2/`.
+2. Copy the 64 layers, `data/trollcraft/structures/shrine/l_0.nbt` … `l_63.nbt`, to `kubejs/data/trollcraft/structures/shrine/`.
+3. Run a full `/reload` (it adds the `/shrine` command). `/shrine status` should say "The rise: not started" with no warning about missing layers.
+
+## How the rise works (built)
+- **The box:** 42 × 43 blocks and 64 tall, centred on the site, from the site's ground level up. `/shrine site set` says its corners.
+- **Each layer:** every 4 seconds (`LAYER_TICKS`):
+  - its slice of the box is cleared to air;
+  - the statue's layer is placed with `/place template trollcraft:shrine/l_<n>`;
+  - deep stone sounds play at every layer, the Warden's dig every 8th, and dust and smoke rise along it;
+  - thunder sounds at layer 21 (the pedestal's top) and layer 63 (the head).
+- **Players in the way:** anyone inside the footprint is moved to the nearest side, 3 blocks out, onto the ground there, and told to stand back. It's checked again at every layer, so walking back in doesn't work.
+- **Who's told:** players within 128 blocks get the narration and a "The Shrine rises" title when it begins, and "Technoblade's Shrine stands" when the last stone settles.
+- **Chunks:** the box is force-loaded while it rises, and released after. If its chunks don't load within 90 seconds, the rise pauses.
+- **Pausing and failures:** `/shrine stop` pauses it, and a layer that won't place pauses it at that layer (with an error in the log). `/shrine rise` carries on from there.
+- **Restarts:** `/reload` or a restart mid-rise carries on from the last layer, with one loop only.
+- **Busy:** it won't start during a Purge or a Gladiator match. `global.Shrine.busy()` says "the Shrine is rising" while it runs.
+- **Taking it down (test server):** `/shrine reset confirm` moves anyone off it, clears the box with four fills of air from the top, removes loose items, and forgets the night. The sites are kept.
+
+## What couldn't be verified yet
+Checked only on the mock server so far:
+- **Placing the layers:** that `/place template` places a 42 × 1 × 43 layer at the corner given, with the lectern and Technoblade's head (and its skin) intact.
+- **The ground:** that clearing each slice first looks right on real terrain (grass, trees and the like give way layer by layer).
+- **The sounds and particles:** that they can be heard and seen from where the pilgrims stand.
+- **Players in the way:** that moving them out of the footprint lands them safely on uneven ground. The mock's ground is flat.
+
+## Build progress
+| Part | State |
+|---|---|
+| The sites (`/shrine site set`, `/shrine brazier set`) and `/shrine status`, with each brazier's direction and distance from the castle | ✅ built, 55 mock checks (`tools/tests/suites/shrine.test.js`) |
+| Stage 3, the rise, with `/shrine stop` and `/shrine reset confirm` | ✅ built, same checks; not yet tried in game |
+| Stage 2, the braziers, the beam and the ambushes | to do |
+| Stages 0–1, the Signal and the Summons | to do |
+| Stage 4, the Ignition Rite (waves, potatoes, altar, knockouts) | to do |
+| Stage 5, the Awakening, and a basic `/regalia` | to do |

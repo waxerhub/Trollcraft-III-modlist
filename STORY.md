@@ -266,26 +266,27 @@ Technoblade's Potato War, revived. **The Pool decides what the server can make; 
     - **Where the server is:** Part II, early, at Blood Pool Tier 2 with about 66,000 Drops.
     - **What it does:** the Blood God reveals Technoblade's Shrine, the relic hunt (Act II) begins, and the Pool reaches its third seal, which opens the Nether.
     1. **The Signal** (the day before): a scrambled, unsigned broadcast, plus a Discord post with the time. Gather at the castle.
-    2. **The Summons** (about 10 minutes, at the castle): the testimony is the **Blood God's** (owner decision 2026-11-13; it was the scout's). His words come as a book that everyone gets, and the Castellan reads them out. They name **three braziers**, far apart.
+    2. **The Summons** (about 10 minutes, at the castle): the testimony is the **Blood God's** (owner decision 2026-11-13; it was the scout's). His words come as a book that everyone gets, and the Castellan reads them out. They name **three braziers**, far apart, each by its direction and distance from the castle, filled in automatically (owner decision 2026-11-14). The book ends on the first hint of the two threads: "They want the Pool full. So do I." (kept, same day).
     3. **The Pilgrimage: three braziers, three teams** (about 30 minutes).
        - **Lighting them:** the server splits up, and the braziers must all be lit within 60 seconds of each other. Otherwise the lit ones gutter out, and the teams try again.
        - **The beam:** once all three burn, a beacon beam rises at the Shrine site, visible from far off.
-       - **Ambushes:** unsigned Inspector patrols ambush "unregistered pilgrims" on the way.
+       - **Ambushes:** unsigned Inspector patrols ambush "unregistered pilgrims" on the way: one automatic ambush per team as it nears its brazier, plus any an op starts (owner decision 2026-11-14).
     4. **The Shrine Rises** (about 15 minutes; changed 2026-11-13 from a Shrine hidden underground): the beam stands over empty ground. Once the pilgrims have gathered there, an op starts the rise, and the Shrine **builds itself layer by layer from the ground up** out of the owner's schematic, with rumbling and particles. It stays afterwards as the Shrine for the relic hunt.
     5. **The Ignition Rite** (about 20 minutes, at the Shrine).
        - **The waves:** Inspectors close in on the Shrine from the land around it, escalating from iron-tier to diamond-tier. The last wave brings a **Senior Inspector** mini-boss, who drops the most.
        - **The potatoes:** every Inspector carries **Potato King's Potatoes**, Techno's own potatoes, which the Inspectors had been hoarding.
        - **The offering:** offered at the altar, each potato fills the rite's bar and lights the Shrine stage by stage. It needs **8 potatoes per player present**.
+       - **Knockouts, not deaths** (owner decision 2026-11-14): like the Gladiator Arena, lethal damage at the Shrine during the rite heals the player and sets them down at its edge. Nothing drops.
     6. **The Awakening** (about 5 minutes, respectful, no jokes).
        - **The tribute:** the Techno Tribute and a server-wide `/superaura`.
        - **The Regalia:** the Blood God names the **Regalia of the Blade**, and `/regalia` opens on the eight relics.
        - **The book:** the book *The Regalia of the Blade* appears on the altar's lectern, under Technoblade's head (owner decision 2026-11-13). It has one page per relic: what each honours and what it asks. Anyone can read it there.
        - **The Pool:** the rite tops it up to **Tier 3's threshold** (120,000; about 54,000 Drops), credited to each player by the potatoes they offered. Everyone present then breaks the third seal together with `/bloodpool vote`, and **the Nether opens** that night.
     - **The reward is the Drops** (owner decision): no title or keepsake.
+    - **The spec** is [SHRINE.md](tools/kubejs/SHRINE.md) (signed off 2026-11-14): every stage's command, the drafts of the Signal, the Summons and the Regalia book, and the build progress.
     - **Still needed:**
-      - **From the owner:** the Shrine's schematic (with an altar), the three brazier sites and the Shrine site, and the date;
-      - **To write:** the Blood God's summons (the book) and the Signal;
-      - **To build:** `part2/shrine.js`: the op-run stages, the braziers and the beam, the layer-by-layer rise (the schematic converted into one structure piece per layer, by `tools/schematic/schem_to_structures.js`), the Inspector waves and the Senior Inspector, the Potato King's Potato and the altar bar, the Drops top-up, the Awakening, and the start of `/regalia`.
+      - **From the owner:** the three brazier sites and the Shrine site, and the date (the schematic is in);
+      - **To build:** `part2/shrine.js`, in stages: the op-run stages, the braziers and the beam, the layer-by-layer rise (the schematic converted into one structure piece per layer, by `tools/schematic/schem_to_structures.js`), the Inspector waves and the Senior Inspector, the Potato King's Potato and the altar bar, the Drops top-up, the Awakening, and the start of `/regalia`.
 
     🔨
 

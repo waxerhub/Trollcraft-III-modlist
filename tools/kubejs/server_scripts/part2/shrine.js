@@ -195,8 +195,13 @@ function placeLayer(server, st, n) {
   const ok = run(server, 'execute in ' + st.dim + ' run place template ' + STRUCTURE + '/l_' + n + ' ' + c.x + ' ' + y + ' ' + c.z)
   if (!ok) return false
   const at = mid.x + ' ' + (y + 0.5) + ' ' + mid.z
+  // Stone, not sculk (owner, after the test rise: the Warden's dig sounded like squishing). Every layer: deepslate set
+  // down; every 3rd: grinding stone; every 8th: the wither's crunch; at the start, the pedestal's top and the head: the
+  // respawn anchor's charge, the Blood God's power gathering.
   run(server, 'execute in ' + st.dim + ' run playsound minecraft:block.deepslate.place block @a ' + at + ' 3 0.6')
-  if (n % 8 == 0) run(server, 'execute in ' + st.dim + ' run playsound minecraft:entity.warden.dig hostile @a ' + at + ' 4 0.6')
+  if (n % 3 == 0) run(server, 'execute in ' + st.dim + ' run playsound minecraft:block.grindstone.use block @a ' + at + ' 2 0.5')
+  if (n % 8 == 4) run(server, 'execute in ' + st.dim + ' run playsound minecraft:entity.wither.break_block hostile @a ' + at + ' 1.5 0.5')
+  if (n == 0 || n == PEDESTAL_TOP || n == SIZE[1] - 1) run(server, 'execute in ' + st.dim + ' run playsound minecraft:block.respawn_anchor.charge block @a ' + at + ' 4 0.5')
   run(server, 'execute in ' + st.dim + ' run particle minecraft:campfire_cosy_smoke ' + at + ' 9 0.3 9 0.01 30 force')
   run(server, 'execute in ' + st.dim + ' run particle minecraft:large_smoke ' + at + ' 11 0.2 11 0.02 40 force')
   if (n == PEDESTAL_TOP || n == SIZE[1] - 1) run(server, 'execute in ' + st.dim + ' run playsound minecraft:entity.lightning_bolt.thunder weather @a ' + at + ' 10 0.8')

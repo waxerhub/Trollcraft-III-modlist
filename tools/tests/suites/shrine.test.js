@@ -161,7 +161,9 @@ ok('then layer 0: its slice cleared first, then placed at the corner', placed().
   cmds.indexOf('execute in minecraft:overworld run fill 979 64 1979 1020 64 2021 minecraft:air') < cmds.indexOf('execute in minecraft:overworld run place template trollcraft:shrine/l_0 979 64 1979'), cmds.filter(c => /fill|place/.test(c)).join('\n'))
 ok('Bob, standing in the footprint, was moved to the nearest edge onto the ground, and told', bob.x == 1024.5 && bob.y == 64 && bob.z == 2000.5 && said(bob, /lurches/), [bob.x, bob.y, bob.z].join(' '))
 ok('Carol, outside it, wasn\'t moved', carol.x == 1060.5)
-ok('... with the rumble, dust and smoke', cmds.some(c => /playsound minecraft:block\.deepslate\.place block @a 1000\.5 64\.5 2000\.5/.test(c)) && cmds.some(c => /particle minecraft:large_smoke/.test(c)) && cmds.some(c => /entity\.warden\.dig/.test(c)))
+ok('... with the stone sounds, the anchor\'s charge as it starts, dust and smoke', cmds.some(c => /playsound minecraft:block\.deepslate\.place block @a 1000\.5 64\.5 2000\.5/.test(c)) &&
+  cmds.some(c => /playsound minecraft:block\.grindstone\.use block @a 1000\.5 64\.5/.test(c)) && cmds.some(c => /playsound minecraft:block\.respawn_anchor\.charge block @a 1000\.5 64\.5/.test(c)) &&
+  cmds.some(c => /particle minecraft:large_smoke/.test(c)))
 advance(layerTicks)
 ok('the next layer comes 9 ticks later, one block up', placed().join() == '0,1' && cmds.some(c => / place template trollcraft:shrine\/l_1 979 65 1979$/.test(c)))
 bob.x = 1000.5; bob.y = 66; bob.z = 1985.5                       // walks back in
@@ -170,6 +172,9 @@ ok('walking back in gets you moved out again (nearest edge: the north side)', bo
 const thunderBefore = cmds.filter(c => /lightning_bolt\.thunder/.test(c)).length
 advance(layerTicks * 19)
 ok('layer 21, the pedestal\'s last: thunder', placed().length == 22 && cmds.filter(c => /lightning_bolt\.thunder/.test(c)).length == thunderBefore + 1, placed().length)
+ok('... the anchor\'s charge there too, and the wither\'s crunch at layers 4, 12 and 20', cmds.some(c => /respawn_anchor\.charge block @a 1000\.5 85\.5/.test(c)) &&
+  [68.5, 76.5, 84.5].every(y => cmds.some(c => new RegExp('entity\\.wither\\.break_block hostile @a 1000\\.5 ' + String(y).replace('.', '\\.') + ' ').test(c))))
+ok('... and never the Warden\'s dig (it sounded like squishing)', !cmds.some(c => /warden/.test(c)))
 ok('status: rising, layer 22 of 64', /layer 22 of 64/.test(cmd('status', admin)[4]))
 
 // pause and carry on

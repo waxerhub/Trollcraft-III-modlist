@@ -104,10 +104,10 @@ The last page is the first hint of the two threads (kept: owner decision).
 **`/shrine rise`**, run once the pilgrims have gathered at the beam. The Shrine builds itself from the ground up.
 1. **Clearing the way:** players standing inside the Shrine's footprint are moved to its edge. The beacon comes out and its ground is put back.
 2. **Layer by layer:** for each of the 64 layers, the script clears that slice of the box, then places the layer, from `trollcraft:shrine/l_0` to `l_63`. One layer every **9 ticks** (a setting) takes about **29 seconds** for all 64. It was 4 seconds a layer (4½ minutes) until the owner watched it on the test server and asked for about 30 seconds (2026-11-14).
-3. **The show:**
-   - deep rumbles and stone sounds at every layer;
-   - dust and smoke along the layer's edge;
-   - a thunderclap when the pedestal is done (layer 21), and another when the head is placed (layer 63).
+3. **The show** (sounds chosen by the owner on the test server, 2026-11-14):
+   - stone sounds: deepslate set down at every layer, grinding stone every 3rd, and a wither's crunch every 8th;
+   - the respawn anchor's charge, the Blood God's power gathering, as it starts, when the pedestal is done (layer 21) and when the head is placed (layer 63), with a thunderclap at the last two;
+   - dust and smoke along the layer's edge.
 4. **The finish:** the altar's lectern and Technoblade's head (with its skin) are placed exactly as in the schematic.
 
 The chunks are force-loaded while it builds, as the Gladiator Arena does, and released afterwards.
@@ -289,8 +289,8 @@ The deliveries, Shrine raids and rewards are Act II's work and get their own spe
 - **Each layer:** every 9 ticks (`LAYER_TICKS`), about 29 seconds for all 64:
   - its slice of the box is cleared to air;
   - the statue's layer is placed with `/place template trollcraft:shrine/l_<n>`;
-  - deep stone sounds play at every layer, the Warden's dig every 8th, and dust and smoke rise along it;
-  - thunder sounds at layer 21 (the pedestal's top) and layer 63 (the head).
+  - stone sounds play: `block.deepslate.place` at every layer, `block.grindstone.use` every 3rd and `entity.wither.break_block` every 8th, and dust and smoke rise along it;
+  - `block.respawn_anchor.charge` sounds at layer 0, layer 21 (the pedestal's top) and layer 63 (the head), with thunder at the last two.
 - **Players in the way:** anyone inside the footprint is moved to the nearest side, 3 blocks out, onto the ground there, and told to stand back. It's checked again at every layer, so walking back in doesn't work.
 - **Who's told:** players within 128 blocks get the narration and a "The Shrine rises" title when it begins, and "Technoblade's Shrine stands" when the last stone settles.
 - **Chunks:** the box is force-loaded while it rises, and released after. If its chunks don't load within 90 seconds, the rise pauses.
@@ -300,9 +300,10 @@ The deliveries, Shrine raids and rewards are Act II's work and get their own spe
 - **Taking it down (test server):** `/shrine reset confirm` moves anyone off it, clears the box with four fills of air from the top, removes loose items, and forgets the night. The sites are kept.
 
 ## Tried on the test server (2026-11-14)
-The rise ran twice at a site in the sky (6000 150 6000), with the owner watching as leelinda.
-- **The look:** "it looks fantastic". The owner asked for a faster rise, about 30 seconds instead of 4½ minutes. The second rise, at 9 ticks a layer, took 28.4 seconds on the server's clock.
-- **The blocks:** a sample of 508 blocks (400 at random, every block of the small top layers, the lectern and the head) was checked with `execute if block`, each with its full state. All 508 matched the statue's files after the first rise. This covered all 64 layers, including the facing and shape of stairs, slab halves, panes, walls and the lectern.
+The rise ran three times at a site in the sky (6000 150 6000), with the owner watching as leelinda.
+- **The look:** "it looks fantastic". The owner asked for a faster rise, about 30 seconds instead of 4½ minutes. The second and third rises, at 9 ticks a layer, each took 28.4 seconds on the server's clock.
+- **The sounds:** the Warden's dig, every 8th layer, sounded like "a strange squishing" rather than stone. The owner heard six candidates played in game, kept the deepslate sound, and liked all the others, so the rise now uses grinding stone, the wither's crunch and the respawn anchor's charge instead. The third rise with them: "perfect".
+- **The blocks:** a sample of 508 blocks (400 at random, every block of the small top layers, the lectern and the head) was checked with `execute if block`, each with its full state. All 508 matched the statue's files after the first rise, and again after the faster second one. This covered all 64 layers, including the facing and shape of stairs, slab halves, panes, walls and the lectern.
 - **Technoblade's head** kept its skin (its `SkullOwner` and texture), and the lectern stands on the altar.
 - **Setting the site from the console** (`/shrine site set <x> <y> <z>`), `/shrine status`, the brazier directions, the `/reload` that adds the command, and `/shrine reset confirm` all worked.
 - **The chunks** unload when the rise ends and lets go of them, unless a player is nearby. That's expected: on the night, the pilgrims are standing there.
@@ -315,7 +316,7 @@ The rise ran twice at a site in the sky (6000 150 6000), with the owner watching
 ## Build progress
 | Part | State |
 |---|---|
-| The sites (`/shrine site set`, `/shrine brazier set`, where you stand or at coordinates) and `/shrine status`, with each brazier's direction and distance from the castle | ✅ built, 58 mock checks (`tools/tests/suites/shrine.test.js`); tried on the test server |
+| The sites (`/shrine site set`, `/shrine brazier set`, where you stand or at coordinates) and `/shrine status`, with each brazier's direction and distance from the castle | ✅ built, 60 mock checks (`tools/tests/suites/shrine.test.js`); tried on the test server |
 | Stage 3, the rise, with `/shrine stop` and `/shrine reset confirm` | ✅ built, same checks; tried on the test server (see above) |
 | Stage 2, the braziers, the beam and the ambushes | to do |
 | Stages 0–1, the Signal and the Summons | to do |

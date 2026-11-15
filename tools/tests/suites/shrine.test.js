@@ -18,7 +18,7 @@ const persistent = {}, logs = []
 let cmds = []
 let chunksAt = 0, layersThere = true, placeWorks = true
 // The ground: solid below y 64, open above, plus whatever /setblock put down (world: "x,y,z" -> block state text).
-const world = {}
+const world = {}, worldNbt = {}
 function blockAt(x, y, z) {
   const s = world[x + ',' + y + ',' + z] || (y < 64 ? 'minecraft:grass_block' : 'minecraft:air')
   const m = s.match(/^([^\[]+)(?:\[(.*)\])?$/), props = {}
@@ -37,7 +37,7 @@ const players = []
 function player(name, x, y, z, op) {
   const p = { name, op: !!op, x, y, z, msgs: [], level, creative: false, isPlayer: () => true, getGameProfile: () => ({ getName: () => name }),
     getX: () => p.x, getY: () => p.y, getZ: () => p.z, tell: c => p.msgs.push(textOf(c)),
-    isCreative: () => p.creative, isSpectator: () => false, isAlive: () => true }
+    isCreative: () => p.creative, isSpectator: () => false, isAlive: () => true, getStringUuid: () => name.toLowerCase() + '-uuid' }
   players.push(p)
   return p
 }
@@ -75,7 +75,14 @@ const server = {
     let m
     if ((m = c.match(/run tp (\S+) ([-\d.]+) ([-\d.]+) ([-\d.]+)$/))) { const p = byName(m[1]); if (p) { p.x = +m[2]; p.y = +m[3]; p.z = +m[4] } return 1 }
     if (/run place template /.test(c)) return placeWorks ? 1 : 0
-    if ((m = c.match(/run setblock (-?\d+) (-?\d+) (-?\d+) (\S+)$/))) { world[m[1] + ',' + m[2] + ',' + m[3]] = m[4]; return 1 }
+    // /setblock x y z block[state]{nbt}: the NBT (a lectern's book) is kept in worldNbt.
+    if ((m = c.match(/run setblock (-?\d+) (-?\d+) (-?\d+) ([^\s{\[]+(?:\[[^\]]*\])?)(\{.*\})?$/))) {
+      const k = m[1] + ',' + m[2] + ',' + m[3]
+      if (world[k] == m[4] && !m[5]) return 0              // like the game: setting the same block is an error
+      world[k] = m[4]
+      if (m[5]) worldNbt[k] = m[5]; else delete worldNbt[k]
+      return 1
+    }
     if ((m = c.match(/run fill (-?\d+) (-?\d+) (-?\d+) (-?\d+) (-?\d+) (-?\d+) minecraft:air$/))) {
       const b = m.slice(1).map(Number)
       Object.keys(world).forEach(k => { const q = k.split(',').map(Number); if (q[0] >= b[0] && q[0] <= b[3] && q[1] >= b[1] && q[1] <= b[4] && q[2] >= b[2] && q[2] <= b[5]) delete world[k] })
@@ -91,8 +98,9 @@ const server = {
     return 1
   },
 }
-// KubeJS events and commands
+// KubeJS events and commands (roots: every command registered, by name; cmdTree: /shrine)
 let handlers = {}, cmdTree = null
+const roots = {}
 const on = name => h => { (handlers[name] = handlers[name] || []).push(h) }
 const node = n => ({ n, ch: [], req: null, f: null, then(c) { this.ch.push(c); return this }, requires(f) { this.req = f; return this }, executes(f) { this.f = f; return this } })
 const global = {}
@@ -102,11 +110,12 @@ function RL(s) { this.s = s }
 // Loads (or reloads) the script, as /reload does: fresh handlers and commands, the same saved data and globals.
 function load() {
   handlers = {}
-  new Function('ServerEvents', 'EntityEvents', 'BlockEvents', 'Java', 'Utils', 'Text', 'console', 'global', src)(
+  new Function('ServerEvents', 'EntityEvents', 'BlockEvents', 'LevelEvents', 'Java', 'Utils', 'Text', 'console', 'global', src)(
     { loaded: on('loaded'), commandRegistry: h => h({ commands: { literal: node, argument: (n, t) => Object.assign(node(n), { arg: true, type: t }) },
-      arguments: { INTEGER: { create: () => 'int', getResult: (ctx, k) => ctx.args[k] }, PLAYER: { create: () => 'player', getResult: (ctx, k) => ctx.args[k] } }, register: t => { cmdTree = t } }) },
+      arguments: { INTEGER: { create: () => 'int', getResult: (ctx, k) => ctx.args[k] }, PLAYER: { create: () => 'player', getResult: (ctx, k) => ctx.args[k] } }, register: t => { roots[t.n] = t; cmdTree = roots.shrine || t } }) },
     { spawned: on('spawned') },
-    { broken: on('broken') },
+    { broken: on('broken'), placed: on('placed') },
+    { afterExplosion: on('afterExplosion') },
     { loadClass: n => {
       if (/Component\$Serializer/.test(n)) return { fromJsonLenient: j => JSON.parse(j) }
       if (/ResourceLocation/.test(n)) return RL
@@ -131,6 +140,12 @@ function cmd(line, as) {
     n = next
   }
   n.f(ctx)
+  return replies
+}
+// /regalia, which anyone can run
+function regalia(as) {
+  const replies = []
+  roots.regalia.f({ args: {}, source: { server, hasPermission: () => !as || as.op, getPlayer: () => as || null, sendSystemMessage: c => replies.push(textOf(c)) } })
   return replies
 }
 const S = () => global.Shrine.state()
@@ -435,6 +450,128 @@ cmd('reset confirm', admin)
 advance(40)
 ok('a reset with no Shrine standing still brings the beam down', !S().beam.up && world['1000,62,2000'] == 'minecraft:grass_block' && B().state == 'none')
 admin.creative = false
+
+// ---------- Stage 5: the Awakening, the Regalia book, /regalia ----------
+// A stand-in Blood Pool: 66,000 Drops at Tier 2; Tier 3 opens at 120,000.
+const pool = { drops: 66000, tier: 2, adds: [] }
+global.BloodPool = { drops: () => pool.drops, tier: () => pool.tier, tiers: [{ tier: 1, drops: 20000 }, { tier: 2, drops: 60000 }, { tier: 3, drops: 120000 }],
+  addDrops: (n, source, uuid, name) => { pool.drops += n; pool.adds.push({ n, source, uuid, name }) } }
+const LECTERN = '1007,86,1999'                                   // the corner (979 64 1979) + (28, 22, 20)
+const bookOf = () => worldNbt[LECTERN] || ''
+const awakeTicks = 920
+ok('/regalia before the Awakening: nothing named yet', /The Blood God has named nothing yet/.test(regalia(carol)[0]))
+ok('/shrine awaken before the Shrine has risen: refused', /hasn't risen yet/.test(cmd('awaken', admin)[0]))
+cmd('rise', admin)
+advance(layerTicks * 66 + 30)
+ok('when the Shrine has risen, the altar\'s lectern is left empty (no hollow book)', S().rise.state == 'risen' && world[LECTERN] == 'minecraft:lectern[facing=east,has_book=false,powered=false]', world[LECTERN])
+// who's there: Carol and Bob at the Shrine; Far and the op elsewhere; an Inspector still about
+carol.x = 1010.5; carol.z = 2010.5; bob.x = 1030.5; bob.y = 64; bob.z = 2000.5; admin.x = 5000.5; admin.z = 5000.5
+players.forEach(p => { p.msgs = [] })
+const straggler = mob('minecraft:vindicator', 'MONSTER', 1040.5, 64, 2000.5, { tags: ['shrine_inspector', 'shrine_rite'], named: true }); mobs.push(straggler)
+cmds = []
+r = cmd('awaken', admin)
+ok('/shrine awaken: the tribute, the words, the book, the Pool and the vote, in about 46 seconds', /The Awakening begins/.test(r[0]) && /Tier 3 \(120,000 Drops\)/.test(r[0]) && /About 46 seconds/.test(r[0]), r[0])
+advance(2)
+ok('it begins: every Inspector left is taken away', straggler.discarded)
+ok('... those present see "The Shrine awakens" and hear it; someone far away doesn\'t get the title', cmds.some(c => /^title Carol title .*The Shrine awakens/.test(c)) && cmds.some(c => /^title Bob title/.test(c)) && !cmds.some(c => /^title Far title/.test(c)))
+ok('... the Techno Tribute for everyone at the Shrine, and a server-wide /superaura', cmds.indexOf('execute in minecraft:overworld positioned 1000.5 64 2000.5 run techno all @a[distance=..64]') >= 0 && cmds.indexOf('superaura @a') >= 0)
+ok('... nothing said yet while the tribute plays', !said(carol, /BLOOD GOD/))
+advance(560)
+ok('then the Blood God speaks, to everyone online', said(carol, /\[BLOOD GOD\] You lit my fires\. You fed my Shrine\. You remembered\./) && said(far, /You lit my fires/))
+advance(120)
+ok('... and names the Regalia', said(far, /\[BLOOD GOD\] Eight things were mine\. They were scattered, stolen, forgotten\. Restore them here, and my name returns with them\./))
+advance(80)
+ok('the book appears on the altar\'s lectern', world[LECTERN] == 'minecraft:lectern[facing=east,has_book=true,powered=false]' && /id:"minecraft:written_book"/.test(bookOf()), world[LECTERN])
+ok('... "The Regalia of the Blade", by the Blood God, 10 pages: the intro, one per relic, and the closing line', /title:'The Regalia of the Blade'/.test(bookOf()) && /author:'The Blood God'/.test(bookOf()) &&
+  (bookOf().match(/'\["",/g) || []).length == 10, (bookOf().match(/'\["",/g) || []).length)
+const pageTexts = (bookOf().match(/'(\[.*?\])'/g) || []).map(s => JSON.parse(s.slice(1, -1).replace(/\\'/g, "'").replace(/\\\\/g, '\\')).map(x => (typeof x == 'string' ? x : x.text)).join(''))
+ok('... the War Chest\'s page: what it honours, what it asks', pageTexts.some(t => /^THE WAR CHEST\n\nFor the Potato War, which I won\.\n\nFill it again: ten thousand potatoes\.$/.test(t)), pageTexts[1])
+ok('... the Crown\'s page ends on what it asks; "When the Crown returns, so does my name." is the last page, on its own', /^THE CROWN OF THE BLADE[\s\S]*a shard of chaos\.$/.test(pageTexts[8]) &&
+  pageTexts[9] == 'When the Crown returns, so does my name.', pageTexts[8] + ' || ' + pageTexts[9])
+// A book page holds 14 lines, about 19 characters each (14 in bold capitals): on the test server, the Crown's page
+// with the closing line ran to 15 and was cut off. This estimate, a little pessimistic, has to come out at 14 or fewer.
+const pageLines = t => t.split('\n').reduce((n, para, i) => n + Math.max(1, Math.ceil(para.length / (i == 0 ? 14 : 19))), 0)
+ok('... every page fits a book page: 14 lines or fewer, under 256 characters', pageTexts.length == 10 && pageTexts.every(t => pageLines(t) <= 14 && t.length < 256), pageTexts.map(pageLines).join(','))
+ok('... (the estimate does catch the old Crown page, which was cut off)', pageLines(pageTexts[8] + '\n\n' + pageTexts[9]) > 14, pageLines(pageTexts[8] + '\n\n' + pageTexts[9]))
+ok('... with sparkles and a page turning; everyone is told, with a [/regalia] to click', cmds.some(c => /particle minecraft:enchant 1007\.5 87 1999\.5/.test(c)) && said(far, /\[REGALIA\] The Regalia of the Blade lies on the Shrine's altar/) &&
+  carol.msgs.some(m => /\[\/regalia\]/.test(m)))
+r = regalia(carol)
+ok('/regalia: the eight relics, none restored yet', /THE REGALIA OF THE BLADE {3}restored at the Shrine: 0 of 8/.test(r[0]) && r.length == 10 && /The War Chest {2}0 \/ 10,000 potatoes/.test(r[1]) &&
+  /The Crown of the Blade {2}0 \/ 1 crown/.test(r[8]), r.slice(0, 3).join(' | '))
+ok('global.Regalia: open, eight relics', global.Regalia.isOpen() && global.Regalia.relics.length == 8 && global.Regalia.progress('war_chest').have == 0)
+advance(120)
+ok('the Blood God: "The third seal is yours to break."', said(carol, /\[BLOOD GOD\] The third seal is yours to break\./))
+advance(40)
+ok('the Pool is topped up to Tier 3\'s 120,000: 54,000 Drops, shared by those present (nobody offered potatoes)', pool.drops == 120000 && pool.adds.length == 2 &&
+  pool.adds.every(a => a.source == 'shrine' && a.n == 27000) && pool.adds.map(a => a.name).sort().join() == 'Bob,Carol', JSON.stringify(pool.adds))
+ok('... and those present are asked to break the third seal, with a [/bloodpool vote] to click', carol.msgs.some(m => /break the third seal together/.test(m)) && !said(far, /break the third seal together/))
+ok('the Awakening is done; status says so, with who was credited', S().awake.state == 'done' && global.Shrine.awakened() && /The Awakening: done\. The Regalia is open; Drops credited: (Carol 27,000, Bob 27,000|Bob 27,000, Carol 27,000)/.test(cmd('status', admin)[7]), cmd('status', admin)[7])
+ok('/shrine awaken again: refused', /already awakened/.test(cmd('awaken', admin)[0]))
+// someone takes the book from the lectern
+world[LECTERN] = 'minecraft:lectern[facing=east,has_book=false,powered=false]'; delete worldNbt[LECTERN]
+advance(100)
+ok('a book taken from the altar is put back within 5 seconds', world[LECTERN] == 'minecraft:lectern[facing=east,has_book=true,powered=false]' && /The Regalia of the Blade/.test(bookOf()))
+// the Shrine can't be broken (as happened on the test server: the lectern and the head, by an op in creative)
+function blockEvent(name, p, x, y, z) {
+  const e = { block: { level, x, y, z }, player: p, cancelled: false, cancel() { e.cancelled = true; throw EXIT } }
+  ;(handlers[name] || []).forEach(h => { try { h(e) } catch (err) { if (err !== EXIT) throw err } })
+  return e.cancelled
+}
+carol.msgs = []
+ok('a player can\'t break the Shrine, or build on it', blockEvent('broken', carol, 990, 70, 1990) && blockEvent('placed', carol, 1000, 90, 2000) && said(carol, /The Shrine will not be changed/))
+ok('... outside its box, anything goes', !blockEvent('broken', carol, 970, 70, 1990) && !blockEvent('broken', carol, 990, 63, 1990))
+admin.creative = true
+ok('an op in creative can change the Shrine\'s other blocks', !blockEvent('broken', admin, 990, 70, 1990))
+ok('... but not the altar: the lectern and Technoblade\'s head stay, even in creative', blockEvent('broken', admin, 1007, 86, 1999) && blockEvent('broken', admin, 1007, 87, 1999) &&
+  said(admin, /The altar will not move\. \(An op's \/shrine repair puts the Shrine back\.\)/))
+admin.creative = false
+let blasted = false
+;(handlers.afterExplosion || []).forEach(h => h({ x: 1000.3, y: 80.5, z: 2000.6, level, removeAllAffectedBlocks: () => { blasted = true } }))
+ok('an explosion in the Shrine breaks none of its blocks', blasted)
+blasted = false
+;(handlers.afterExplosion || []).forEach(h => h({ x: 900.3, y: 80.5, z: 2000.6, level, removeAllAffectedBlocks: () => { blasted = true } }))
+ok('... one outside it is left alone', !blasted)
+// /shrine repair
+cmds = []
+delete world[LECTERN]; delete worldNbt[LECTERN]
+r = cmd('repair', admin)
+ok('/shrine repair places every layer again over the Shrine (nothing cleared), then puts the book back on the altar', /put back as it was built/.test(r[0]) &&
+  cmds.filter(c => /run place template trollcraft:shrine\/l_\d+ 979 \d+ 1979$/.test(c)).length == 64 && !cmds.some(c => /run fill .* minecraft:air$/.test(c)) &&
+  world[LECTERN] == 'minecraft:lectern[facing=east,has_book=true,powered=false]' && /The Regalia of the Blade/.test(bookOf()), r[0])
+ok('... with its chunks loaded for it, and let go after', cmds.indexOf('execute in minecraft:overworld run forceload add 979 1979 1020 2021') >= 0 && cmds.indexOf('execute in minecraft:overworld run forceload remove 979 1979 1020 2021') >= 0)
+
+// a second night (test server): the potatoes offered decide the shares, and a /reload mid-way carries on
+cmd('reset confirm', admin); advance(40)
+ok('the reset forgets the Awakening and closes the Regalia', S().awake.state == 'none' && !global.Regalia.isOpen() && /named nothing yet/.test(regalia(carol)[0]))
+cmd('rise', admin); advance(layerTicks * 66 + 30)
+const saved = JSON.parse(persistent.shrine)
+saved.rite.offered = { 'carol-uuid': { name: 'Carol', n: 30 }, 'bob-uuid': { name: 'Bob', n: 10 } }
+persistent.shrine = JSON.stringify(saved)
+load()
+pool.drops = 70000; pool.adds = []
+far.msgs = []
+cmd('awaken', admin)
+advance(600)
+load()                                            // a /reload just after the first words
+advance(awakeTicks)
+ok('a /reload mid-Awakening carries on from the next step: nothing said twice', far.msgs.filter(m => /You lit my fires/.test(m)).length == 1 && far.msgs.filter(m => /Eight things were mine/.test(m)).length == 1 &&
+  S().awake.state == 'done', far.msgs.length)
+ok('... the potatoes offered decide the shares: Carol 30, Bob 10 of 50,000 Drops', pool.drops == 120000 && pool.adds.find(a => a.name == 'Carol').n == 37500 && pool.adds.find(a => a.name == 'Bob').n == 12500, JSON.stringify(pool.adds))
+// a third night with the Pool already past Tier 3 and open: no Drops, no vote prompt
+cmd('reset confirm', admin); advance(40)
+cmd('rise', admin); advance(layerTicks * 66 + 30)
+pool.drops = 130000; pool.tier = 3; pool.adds = []; carol.msgs = []
+cmd('awaken', admin); advance(awakeTicks + 5)
+ok('with the Pool already past Tier 3 and open: no Drops added, no vote asked for', pool.adds.length == 0 && !carol.msgs.some(m => /break the third seal/.test(m)) && S().awake.state == 'done')
+// and with no Blood Pool at all
+cmd('reset confirm', admin); advance(40)
+cmd('rise', admin); advance(layerTicks * 66 + 30)
+const keepPool = global.BloodPool
+delete global.BloodPool
+cmd('awaken', admin); advance(awakeTicks + 5)
+ok('without the Blood Pool script: the Awakening still runs, and the log says no Drops were added', S().awake.state == 'done' && logs.some(l => /No Blood Pool: the Awakening adds no Drops/.test(l)) && /\[BLOOD GOD\]/.test(far.msgs.join('\n')))
+global.BloodPool = keepPool
+cmd('reset confirm', admin); advance(40)
 // the saved data survives a reload
 load()
 ok('the sites survive a /reload', S().site.x == 1000 && S().braziers[2].z == -300)

@@ -23,7 +23,12 @@
 //   - The ambushes: the Shrine's own Inspectors (Part II has no portal_ambush.js). The first pilgrim within 200
 //     blocks of a brazier that isn't lit is ambushed there once, with anyone near them; /shrine ambush <player> for more.
 //     Deaths in an ambush are ordinary. Ambushers left over are taken away when the rise begins.
-// Still to come: the Signal and the Summons, the Ignition Rite and the Awakening.
+//   - Stage 5, the Awakening (/shrine awaken, once the Shrine has risen): the Techno Tribute and a server-wide
+//     /superaura, the Blood God's words, the Regalia book on the altar's lectern (put back if taken), /regalia opened,
+//     and the Pool topped up to Tier 3, credited by the potatoes offered (or shared by those present), with the vote.
+//     /regalia (anyone) lists the eight relics. The Shrine can't be broken or built on outside creative, nor its altar
+//     even in creative; /shrine repair puts it back as it was built.
+// Still to come: the Signal and the Summons, and the Ignition Rite.
 //
 // Part II only. Copy to <server>/kubejs/server_scripts/part2/ and the layers to
 // <server>/kubejs/data/trollcraft/structures/shrine/, then /reload.
@@ -78,6 +83,39 @@ const AMBUSH = { radius: 200, team: 32, base: 2, max: 6, ring: [8, 12] }
 // The Inspectors (unsigned: never "Ministry"). armour protects them, though illagers don't show it.
 const INSPECTOR = { name: 'Inspector', color: 'gold', armour: 'iron', voice: 'Unregistered pilgrims. Remain where you are.' }
 
+// --- Stage 5: the Awakening ---
+// The altar: the lectern in the statue (Shrine-local offset from the corner, as in technoblade_statue.schem), with
+// Technoblade's head on top. It's left empty when the Shrine rises; the Regalia book appears there at the Awakening, and
+// a copy taken from it is put back (checked every LECTERN_CHECK_TICKS).
+const ALTAR = { lectern: [28, 22, 20], facing: 'east' }
+const LECTERN_CHECK_TICKS = 100
+const PRESENT_RADIUS = 64                 // players this close to the Shrine count as present
+const TOP_UP_TIER = 3                     // the Pool is topped up to this tier's threshold (the Nether's seal)
+// The Awakening's steps, in ticks from /shrine awaken: the tribute first (/techno all takes about 25 seconds), then the
+// Blood God's words, the book on the altar, the third seal, and the Pool.
+const AWAKEN_STEPS = [
+  { at: 0, step: 'begin' },
+  { at: 560, step: 'line', text: 'You lit my fires. You fed my Shrine. You remembered.' },
+  { at: 680, step: 'line', text: 'Eight things were mine. They were scattered, stolen, forgotten. Restore them here, and my name returns with them.' },
+  { at: 760, step: 'book' },
+  { at: 880, step: 'line', text: 'The third seal is yours to break.' },
+  { at: 920, step: 'pool' },
+]
+const VOICE_BLOOD = { tag: '[BLOOD GOD]', tagColor: 'dark_red', textColor: 'red' }   // as part2/blood_pool.js has it
+// The Regalia of the Blade: the eight relics, in the book's order. need and unit are placeholders until the owner sets
+// them (STORY.md, Act II); the deliveries come with Act II.
+const RELICS = [
+  { id: 'war_chest', name: 'The War Chest', need: 10000, unit: 'potatoes', honours: 'For the Potato War, which I won.', asks: 'Fill it again: ten thousand potatoes.' },
+  { id: 'axe_of_peace', name: 'The Axe of Peace', need: 1, unit: 'axe', honours: 'I carried it in peace. Mostly.', asks: 'Forge me its equal: a broad axe of manyullyn or hepatizon, made netherite.' },
+  { id: 'totem_hoard', name: 'The Totem Hoard', need: 64, unit: 'Totems of Undying', honours: 'I never died. I simply declined to.', asks: 'Bring me sixty-four Totems of Undying.' },
+  { id: 'withers_due', name: 'The Wither\'s Due', need: 8, unit: 'Nether Stars', honours: 'I once loosed withers on a nation that wronged me.', asks: 'Bring me eight Nether Stars.' },
+  { id: 'chalice', name: 'The Chalice of Blood', need: 1000, unit: 'buckets of blood', honours: 'Blood for the Blood God. It was never a metaphor.', asks: 'Fill it: a thousand buckets of blood.' },
+  { id: 'carls_bridle', name: 'Carl\'s Bridle', need: 1, unit: 'horse', honours: 'For Carl, the finest horse who ever lived.', asks: 'Breed me his equal: swift as wind, and a jump to clear any wall.' },
+  { id: 'swines_oath', name: 'The Swine\'s Oath', need: 10, unit: 'Pig Escorts', honours: 'For the pig who wore the crown.', asks: 'See the pigs safely home, ten times over.' },
+  { id: 'crown', name: 'The Crown of the Blade', need: 1, unit: 'crown', honours: 'My crown. They wore it. They used it.', asks: 'Last, and hardest: awakened draconium, a dragon\'s heart, a Gaia spirit and a shard of chaos.', after: 'When the Crown returns, so does my name.' },
+]
+const BOOK = { title: 'The Regalia of the Blade', author: 'The Blood God', intro: 'Eight things were mine. Restore them at my Shrine, and my name returns with them.' }
+
 // ===================== STATE =====================
 
 let Serializer = null, ResourceLocation = null
@@ -106,6 +144,9 @@ function db() {
   }
   if (!data.fires) data.fires = freshFires()
   if (!data.beam) data.beam = { up: false, at: null, saved: [] }
+  if (!data.awake) data.awake = { state: 'none', step: 0, credited: {} }   // state: none, running or done
+  if (!data.regalia) data.regalia = { open: false, progress: {} }          // progress: relic id -> { have, by: { uuid: { name, n } } }
+  if (!data.rite) data.rite = { offered: {} }                              // uuid -> { name, n }: potatoes offered at the altar
   return data
 }
 function save() {
@@ -123,6 +164,10 @@ function comp(parts) {
   return Text.of(parts.map(p => (typeof p == 'string' ? p : p.text || '')).join(''))
 }
 function nameOf(p) { return String(p.getGameProfile().getName()) }
+function uuidOf(e) {
+  try { return String(e.getStringUuid()).toLowerCase() } catch (err) { }
+  return String(e.getStringUUID()).toLowerCase()
+}
 function levelOfEntity(e) { const l = e.level; return typeof l == 'function' ? e.level() : l }
 function dimKey(lv) {
   let d = lv.dimension
@@ -164,6 +209,7 @@ function clock(seconds) {
   return Math.floor(seconds / 60) + ':' + (seconds % 60 < 10 ? '0' : '') + (seconds % 60)
 }
 function flat(a, b) { const dx = a.x - b.x, dz = a.z - b.z; return Math.sqrt(dx * dx + dz * dz) }
+function fmt(n) { return String(Math.floor(Number(n) || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, ',') }
 // Everyone online gets the line (player.tell each, never tellraw @a).
 function narrateAll(server, text, color) { players(server).forEach(p => narrate(p, text, color)) }
 // Players who can be ambushed or count as pilgrims: alive, in survival or adventure.
@@ -411,6 +457,7 @@ function startRise(server, resumed) {
       R.state = 'risen'
       save()
       sweepMonsters(server, st)
+      emptyLectern(server, st)                    // the altar waits for the Regalia book (the Awakening)
       forceload(server, st, false)
       nearby(server, st).forEach(p => narrate(p, 'The last stone settles. Technoblade\'s Shrine stands.', 'gold'))
       console.info('[Shrine] The Shrine has risen at ' + siteText(st))
@@ -442,7 +489,12 @@ function stopRise() {
 function resetShrine(server, done) {
   const D = db(), R = D.rise, st = R.site
   global.__shrineRise = (global.__shrineRise || 0) + 1
+  global.__shrineAwaken = (global.__shrineAwaken || 0) + 1      // an Awakening under way stops
+  global.__shrineLectern = (global.__shrineLectern || 0) + 1    // and so does the lectern's watch
   resetFires(server)
+  D.awake = { state: 'none', step: 0, credited: {} }
+  D.regalia = { open: false, progress: {} }
+  D.rite = { offered: {} }
   const forget = () => {
     D.rise = { state: 'none', next: 0, site: null }
     save()
@@ -755,6 +807,213 @@ function clearInspectors(server, tag) {
   return n
 }
 
+// ===================== STAGE 5: THE AWAKENING =====================
+
+function lecternPos(st) { const c = corner(st); return { x: c.x + ALTAR.lectern[0], y: c.y + ALTAR.lectern[1], z: c.z + ALTAR.lectern[2] } }
+function lecternState(hasBook) { return 'minecraft:lectern[facing=' + ALTAR.facing + ',has_book=' + (hasBook ? 'true' : 'false') + ',powered=false]' }
+// The book's pages, as written-book page text: the intro, then one page per relic (what it honours, what it asks). A
+// relic's `after` line gets a page of its own after it: a page holds 14 lines, and the Crown's page ran over (seen on
+// the test server, where "When the Crown returns, so does my name." was cut off).
+function bookPages() {
+  const page = parts => snbtString(JSON.stringify([''].concat(parts)))
+  const pages = [page([{ text: BOOK.title.toUpperCase() + '\n\n', color: 'dark_red', bold: true }, { text: BOOK.intro, color: 'black' }])]
+  RELICS.forEach(r => {
+    pages.push(page([{ text: r.name.toUpperCase() + '\n\n', color: 'dark_red', bold: true }, { text: r.honours + '\n\n', color: 'black' }, { text: r.asks, color: 'dark_gray', italic: true }]))
+    if (r.after) pages.push(page([{ text: r.after, color: 'dark_red' }]))
+  })
+  return pages
+}
+function bookNbt() {
+  return '{Book:{id:"minecraft:written_book",Count:1b,tag:{title:' + snbtString(BOOK.title) + ',author:' + snbtString(BOOK.author) +
+    ',resolved:1b,pages:[' + bookPages().join(',') + ']}},Page:0}'
+}
+// Empties the altar's lectern (the schematic's lectern is in its "has a book" state with no book in it).
+function emptyLectern(server, st) {
+  const L = lecternPos(st)
+  run(server, 'execute in ' + st.dim + ' run setblock ' + L.x + ' ' + L.y + ' ' + L.z + ' ' + lecternState(false))
+}
+// Puts the Regalia book on the altar's lectern.
+function placeBook(server, st) {
+  const L = lecternPos(st)
+  run(server, 'execute in ' + st.dim + ' run setblock ' + L.x + ' ' + L.y + ' ' + L.z + ' ' + lecternState(false))
+  return !!run(server, 'execute in ' + st.dim + ' run setblock ' + L.x + ' ' + L.y + ' ' + L.z + ' ' + lecternState(true) + bookNbt())
+}
+// After the Awakening, a book taken from the lectern is put back (when its chunk is loaded, i.e. someone is near).
+function startLecternWatch(server) {
+  const token = (global.__shrineLectern = (global.__shrineLectern || 0) + 1)
+  const step = () => {
+    if (token != global.__shrineLectern) return
+    const D = db()
+    if (D.awake.state == 'none' || !D.regalia.open || D.rise.state != 'risen' || !D.rise.site) return   // from the book on, until a reset
+    try {
+      let st = D.rise.site, lv = levelByDim(server, st.dim), L = lecternPos(st)
+      let loaded = false
+      try { loaded = !!lv.hasChunk(Math.floor(L.x / 16), Math.floor(L.z / 16)) } catch (e) { }
+      if (loaded) {
+        let blk = lv.getBlock(L.x, L.y, L.z)
+        if (String(blk.id) == 'minecraft:lectern' && String(blk.properties.get('has_book')) != 'true') {
+          placeBook(server, st)
+          console.info('[Shrine] The Regalia book was taken from the altar; another is in its place')
+        }
+      }
+    } catch (e) { console.error('[Shrine] Lectern: ' + e) }
+    server.scheduleInTicks(LECTERN_CHECK_TICKS, step)
+  }
+  server.scheduleInTicks(LECTERN_CHECK_TICKS, step)
+}
+function presentAt(server, st) {
+  const m = centreOf(st)
+  return players(server).filter(p => dimOf(p) == st.dim && flat(pos(p), m) <= PRESENT_RADIUS)
+}
+function tierThreshold(n) {
+  try {
+    let t = global.BloodPool.tiers.filter(x => Number(x.tier) == n)[0]
+    return t ? Number(t.drops) : 0
+  } catch (e) { return 0 }
+}
+// Tops the Pool up to Tier TOP_UP_TIER's threshold, credited by the potatoes each player offered at the altar (or, if
+// nobody offered any, shared by those present). Returns { added, shares: [{ name, n }] }.
+function topUpPool(server, present) {
+  const BP = global.BloodPool
+  if (!BP || typeof BP.addDrops != 'function') { console.warn('[Shrine] No Blood Pool: the Awakening adds no Drops'); return { added: 0, shares: [] } }
+  const target = tierThreshold(TOP_UP_TIER), need = Math.max(0, target - Number(BP.drops()))
+  if (!(need > 0)) return { added: 0, shares: [] }
+  const offered = db().rite.offered || {}
+  let shares = Object.keys(offered).filter(u => offered[u].n > 0).map(u => ({ uuid: u, name: offered[u].name, w: offered[u].n }))
+  if (!shares.length) shares = present.map(p => ({ uuid: uuidOf(p), name: nameOf(p), w: 1 }))
+  if (!shares.length) { BP.addDrops(need, 'shrine', '', ''); return { added: need, shares: [] } }
+  const W = shares.reduce((a, s) => a + s.w, 0)
+  let given = 0
+  shares.forEach(s => { s.n = Math.floor(need * s.w / W); given += s.n })
+  shares.sort((a, b) => b.w - a.w)
+  shares[0].n += need - given                       // what rounding left over goes to the biggest share
+  const credited = db().awake.credited
+  shares.forEach(s => {
+    if (s.n <= 0) return
+    BP.addDrops(s.n, 'shrine', s.uuid, s.name)
+    credited[s.uuid] = { name: s.name, n: (credited[s.uuid] ? credited[s.uuid].n : 0) + s.n }
+  })
+  save()
+  console.info('[Shrine] The Awakening added ' + need + ' Drops: ' + shares.map(s => s.name + ' ' + s.n).join(', '))
+  return { added: need, shares: shares.map(s => ({ name: s.name, n: s.n })) }
+}
+function bloodGod(server, text) {
+  players(server).forEach(p => { try { p.tell(comp([{ text: VOICE_BLOOD.tag, color: VOICE_BLOOD.tagColor, bold: true }, { text: ' ' + text, color: VOICE_BLOOD.textColor }])) } catch (e) { } })
+}
+// One step of the Awakening.
+function awakenStep(server, s) {
+  const st = db().rise.site, m = centreOf(st), here = m.x + ' ' + (m.y + 23) + ' ' + m.z
+  if (s.step == 'begin') {
+    clearInspectors(server, 'shrine_inspector')
+    bossbarOff(server)
+    presentAt(server, st).forEach(p => {
+      run(server, 'title ' + nameOf(p) + ' title ' + JSON.stringify({ text: 'The Shrine awakens', color: 'dark_red' }))
+      run(server, 'execute as ' + nameOf(p) + ' at @s run playsound minecraft:block.respawn_anchor.set_spawn master @s ~ ~ ~ 1 0.6')
+    })
+    run(server, 'execute in ' + st.dim + ' positioned ' + m.x + ' ' + m.y + ' ' + m.z + ' run techno all @a[distance=..' + PRESENT_RADIUS + ']')
+    run(server, 'superaura @a')
+  } else if (s.step == 'line') {
+    bloodGod(server, s.text)
+  } else if (s.step == 'book') {
+    placeBook(server, st)
+    let L = lecternPos(st), at = (L.x + 0.5) + ' ' + (L.y + 1) + ' ' + (L.z + 0.5)
+    run(server, 'execute in ' + st.dim + ' run particle minecraft:enchant ' + at + ' 0.6 0.6 0.6 1 120 force')
+    run(server, 'execute in ' + st.dim + ' run playsound minecraft:block.enchantment_table.use block @a ' + at + ' 2 0.8')
+    run(server, 'execute in ' + st.dim + ' run playsound minecraft:item.book.page_turn block @a ' + at + ' 2 0.8')
+    db().regalia.open = true
+    save()
+    players(server).forEach(p => {
+      try {
+        p.tell(comp([{ text: '[REGALIA] ', color: 'gold', bold: true }, { text: 'The Regalia of the Blade lies on the Shrine\'s altar. ', color: 'yellow' },
+          { text: '[/regalia]', color: 'gold', bold: true, clickEvent: { action: 'run_command', value: '/regalia' }, hoverEvent: { action: 'show_text', contents: 'The eight relics' } }]))
+      } catch (e) { }
+    })
+    startLecternWatch(server)
+  } else if (s.step == 'pool') {
+    let present = presentAt(server, st)
+    topUpPool(server, present)
+    let open = 0
+    try { open = Number(global.BloodPool.tier()) } catch (e) { }
+    if (open < TOP_UP_TIER) {
+      present.forEach(p => {
+        try {
+          p.tell(comp([{ text: 'Everyone here: break the third seal together. ', color: 'gray', italic: true },
+            { text: '[/bloodpool vote]', color: 'dark_red', bold: true, clickEvent: { action: 'run_command', value: '/bloodpool vote' }, hoverEvent: { action: 'show_text', contents: 'Five voices break it' } }]))
+        } catch (e) { }
+      })
+    }
+  }
+}
+// Runs the Awakening's steps from step `from` (a /reload or restart carries on where it was).
+function runAwakening(server, from) {
+  const token = (global.__shrineAwaken = (global.__shrineAwaken || 0) + 1)
+  const A = db().awake
+  const next = i => {
+    if (token != global.__shrineAwaken || db().awake.state != 'running') return
+    if (i >= AWAKEN_STEPS.length) {
+      A.state = 'done'
+      save()
+      console.info('[Shrine] The Awakening is done')
+      return
+    }
+    try { awakenStep(server, AWAKEN_STEPS[i]) } catch (e) { console.error('[Shrine] Awakening, ' + AWAKEN_STEPS[i].step + ': ' + e) }
+    A.step = i + 1
+    save()
+    let wait = i + 1 < AWAKEN_STEPS.length ? AWAKEN_STEPS[i + 1].at - AWAKEN_STEPS[i].at : 1
+    server.scheduleInTicks(Math.max(1, wait), () => next(i + 1))
+  }
+  server.scheduleInTicks(from == 0 ? 1 : 20, () => next(from))
+}
+// /shrine repair: the Shrine put back as it was built. Every layer is placed again over it (nothing is cleared, so only
+// missing or broken blocks change; Technoblade's head comes back with its skin), then the altar: the Regalia book if
+// it's open, an empty lectern if not. Returns false if there's no risen Shrine.
+function repairShrine(server) {
+  const D = db(), st = D.rise.site
+  if (D.rise.state != 'risen' || !st) return false
+  const c = corner(st)
+  withChunks(server, st.dim, c.x, c.z, c.x + SIZE[0] - 1, c.z + SIZE[2] - 1, lv => {
+    let placed = 0
+    for (let n = 0; n < SIZE[1]; n++) {
+      if (run(server, 'execute in ' + st.dim + ' run place template ' + STRUCTURE + '/l_' + n + ' ' + c.x + ' ' + (c.y + n) + ' ' + c.z)) placed++
+    }
+    if (db().regalia.open) placeBook(server, st)
+    else emptyLectern(server, st)
+    console.info('[Shrine] Repaired: ' + placed + ' of ' + SIZE[1] + ' layers placed again')
+  })
+  return true
+}
+// /shrine awaken. '' or why not.
+function awaken(server) {
+  const D = db()
+  if (D.rise.state != 'risen') return 'The Shrine hasn\'t risen yet (/shrine rise).'
+  if (D.awake.state == 'running') return 'The Awakening is already under way.'
+  if (D.awake.state == 'done') return 'The Shrine has already awakened. (/shrine reset confirm forgets the night, on the test server.)'
+  D.awake = { state: 'running', step: 0, credited: {} }
+  save()
+  console.info('[Shrine] The Awakening begins')
+  runAwakening(server, 0)
+  return ''
+}
+
+// ===================== /regalia =====================
+
+function relicProgress(id) { const P = db().regalia.progress[id]; return P ? P : { have: 0, by: {} } }
+function regaliaLines() {
+  const R = db().regalia
+  if (!R.open) return null
+  const restored = RELICS.filter(r => relicProgress(r.id).have >= r.need).length
+  const lines = [[{ text: 'THE REGALIA OF THE BLADE', color: 'dark_red', bold: true }, { text: '   restored at the Shrine: ' + restored + ' of ' + RELICS.length, color: 'gray' }]]
+  RELICS.forEach(r => {
+    let P = relicProgress(r.id), done = P.have >= r.need
+    let by = Object.keys(P.by).map(u => P.by[u]).sort((a, b) => b.n - a.n).slice(0, 3).map(x => x.name + ' ' + x.n)
+    lines.push([{ text: (done ? ' ✔ ' : ' • '), color: done ? 'green' : 'dark_red' },
+      { text: r.name, color: done ? 'green' : 'gold', hoverEvent: { action: 'show_text', contents: r.honours + '\n' + r.asks } },
+      { text: '  ' + fmt(Math.min(P.have, r.need)) + ' / ' + fmt(r.need) + ' ' + r.unit + (by.length ? ' (' + by.join(', ') + ')' : ''), color: 'gray' }])
+  })
+  lines.push([{ text: 'Read them on the Shrine\'s altar. Hover over a relic for what it asks.', color: 'dark_gray', italic: true }])
+  return lines
+}
+
 // What else is on that the Shrine mustn't overlap: a Purge or a Gladiator match. '' if nothing.
 function otherBusy() {
   try { if (global.Purge && typeof global.Purge.busy == 'function' && String(global.Purge.busy() || '')) return 'A Purge is on. The Shrine waits until it ends.' } catch (e) { }
@@ -782,22 +1041,30 @@ function statusLines(server) {
   else if (F.state == 'lit') out.push('The fires: all three burn.')
   else out.push('The fires: done (the rise has begun).')
   out.push(D.beam.up ? 'The beam: up at ' + siteText(D.beam.at) + '.' : 'The beam: down.')
+  const A = D.awake, credited = Object.keys(A.credited || {}).map(u => A.credited[u])
+  if (A.state == 'none') out.push('The Awakening: not yet (/shrine awaken, once the Shrine has risen).')
+  else if (A.state == 'running') out.push('The Awakening: under way (step ' + A.step + ' of ' + AWAKEN_STEPS.length + ').')
+  else out.push('The Awakening: done. The Regalia is open' + (credited.length ? '; Drops credited: ' + credited.map(c => c.name + ' ' + fmt(c.n)).join(', ') : '') + '.')
   return out
 }
 
 // ===================== EVENTS AND COMMANDS =====================
 
-ServerEvents.loaded(event => {
-  if (db().rise.state == 'rising') startRise(event.server, true)
+// A restart or /reload carries on what was under way: a rise from its last layer, the fires' watch, the Awakening from
+// its next step, and the lectern's watch.
+function resume(server, restart) {
+  const D = db()
+  if (D.rise.state == 'rising') startRise(server, true)
   if (firesActive()) {
-    db().fires.sites.forEach(b => brazierForceload(event.server, b, true))
-    startFireWatch(event.server)
+    if (restart) D.fires.sites.forEach(b => brazierForceload(server, b, true))
+    startFireWatch(server)
   }
-})
-// After /reload: a rise under way carries on from its last layer, and the fires are watched again.
+  if (D.awake.state == 'running') runAwakening(server, D.awake.step)
+  if (D.awake.state != 'none' && D.regalia.open && D.rise.state == 'risen') startLecternWatch(server)
+}
+ServerEvents.loaded(event => { resume(event.server, true) })
 try {
-  if (Utils.server && db().rise.state == 'rising') startRise(Utils.server, true)
-  if (Utils.server && firesActive()) startFireWatch(Utils.server)
+  if (Utils.server) resume(Utils.server, false)
 } catch (e) { console.error('[Shrine] After reload: ' + e) }
 
 // The braziers can't be broken (outside creative) once they're out.
@@ -811,6 +1078,39 @@ BlockEvents.broken(event => {
   if (creative) return
   try { narrate(event.player, 'The brazier will not move.', 'gray') } catch (e) { }
   event.cancel()
+})
+
+// The Shrine can't be broken or built on outside creative, and the altar (the lectern and Technoblade's head) not even in
+// creative, where a stray left-click would break it (it happened on the test server). Explosions in it break nothing.
+function blockInShrine(st, d, x, y, z) {
+  if (!st || d != st.dim) return false
+  const c = corner(st)
+  return x >= c.x && x < c.x + SIZE[0] && z >= c.z && z < c.z + SIZE[2] && y >= c.y && y < c.y + SIZE[1]
+}
+function altarAt(st, x, y, z) { const L = lecternPos(st); return x == L.x && z == L.z && (y == L.y || y == L.y + 1) }
+function guardShrine(event) {
+  const st = shrineStanding(), blk = event.block, p = event.player
+  if (!st || !blk) return
+  let d = ''
+  try { d = dimKey(blk.level) } catch (e) { return }
+  const x = Number(blk.x), y = Number(blk.y), z = Number(blk.z)
+  if (!blockInShrine(st, d, x, y, z)) return
+  const altar = altarAt(st, x, y, z)
+  let creative = false
+  try { creative = !!p.isCreative() } catch (e) { }
+  if (creative && !altar) return
+  try { narrate(p, altar ? 'The altar will not move. (An op\'s /shrine repair puts the Shrine back.)' : 'The Shrine will not be changed.', 'gray') } catch (e) { }
+  event.cancel()
+}
+BlockEvents.broken(event => guardShrine(event))
+BlockEvents.placed(event => guardShrine(event))
+LevelEvents.afterExplosion(event => {
+  const st = shrineStanding()
+  if (!st) return
+  try {
+    let q = { x: Math.floor(Number(event.x)), y: Math.floor(Number(event.y)), z: Math.floor(Number(event.z)) }
+    if (inShrineSpace(st, dimKey(event.level), q)) event.removeAllAffectedBlocks()
+  } catch (e) { }
 })
 
 ServerEvents.commandRegistry(event => {
@@ -904,6 +1204,22 @@ ServerEvents.commandRegistry(event => {
       const n = ambush(ctx.source.server, p)
       return reply(ctx, n ? n + ' Inspectors close in on ' + nameOf(p) + '.' : 'No Inspector could be placed near ' + nameOf(p) + '.', !n)
     }))))
+    .then(Commands.literal('awaken').executes(safe(ctx => {
+      const why = awaken(ctx.source.server)
+      if (why) return reply(ctx, why, true)
+      return reply(ctx, 'The Awakening begins: the tribute, the Blood God\'s words, the Regalia book on the altar, then the Pool topped up to Tier ' + TOP_UP_TIER +
+        ' (' + fmt(tierThreshold(TOP_UP_TIER)) + ' Drops) and the vote. About ' + Math.round(AWAKEN_STEPS[AWAKEN_STEPS.length - 1].at / 20) + ' seconds.')
+    })))
+    .then(Commands.literal('repair').executes(safe(ctx => {
+      if (!repairShrine(ctx.source.server)) return reply(ctx, 'There is no risen Shrine to repair.', true)
+      return reply(ctx, 'The Shrine is put back as it was built: every layer placed again, Technoblade\'s head included' +
+        (db().regalia.open ? ', and the Regalia book on the altar.' : '.'))
+    })))
+    .then(Commands.literal('book').executes(safe(ctx => {
+      const st = shrineStanding()
+      if (!st || db().rise.state != 'risen') return reply(ctx, 'The Shrine hasn\'t risen.', true)
+      return placeBook(ctx.source.server, st) ? reply(ctx, 'The Regalia book is on the altar.') : reply(ctx, 'The lectern couldn\'t be set (is its chunk loaded?).', true)
+    })))
     .then(Commands.literal('clearmobs').executes(safe(ctx => {
       const st = shrineStanding()
       if (!st) return reply(ctx, 'There is no Shrine standing.', true)
@@ -920,6 +1236,17 @@ ServerEvents.commandRegistry(event => {
         resetShrine(ctx.source.server, () => { })
         return reply(ctx, st ? 'Taking the Shrine down at ' + siteText(st) + '. The sites are kept.' : 'Nothing was built. The night is forgotten; the sites are kept.')
       })))))
+
+  // /regalia, for everyone: the eight relics and how far each has come (opened at the Awakening).
+  event.register(Commands.literal('regalia').executes(safe(ctx => {
+    const lines = regaliaLines()
+    if (!lines) {
+      ctx.source.sendSystemMessage(comp([{ text: '[REGALIA] ', color: 'gold', bold: true }, { text: 'The Blood God has named nothing yet.', color: 'gray' }]))
+      return 1
+    }
+    lines.forEach(l => ctx.source.sendSystemMessage(comp(l)))
+    return 1
+  })))
 })
 
 // ===================== API =====================
@@ -932,7 +1259,14 @@ global.Shrine = {
   risen: () => db().rise.state == 'risen',
   fires: () => db().fires.state,                     // none, placed, counting, lit or done
   beamUp: () => !!db().beam.up,
+  awakened: () => db().awake.state == 'done',
   fromCastle: st => fromCastle(Utils.server, st),
+}
+// The relic hunt (Act II builds the deliveries on this): whether it's open, the relics, and each one's progress.
+global.Regalia = {
+  isOpen: () => !!db().regalia.open,
+  relics: RELICS,
+  progress: id => JSON.parse(JSON.stringify(relicProgress(String(id)))),
 }
 
 })()

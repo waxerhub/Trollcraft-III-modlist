@@ -177,32 +177,47 @@ The chunks are force-loaded while it builds, as the Gladiator Arena does, and re
 - **What happens:** they're healed, their fire is put out, and they're set down at the Shrine's edge with a few seconds of Resistance. Nothing drops.
 - **No credit:** a knockout is no kill for anything else (bounties, the Anamian Axe's Souls, the Maul's Grit and the rest). The script loads early (`// priority: 100`) so it cancels the death before other scripts see it.
 
-## 5. The Awakening
-**`/shrine awaken`**, once the bar is full (an op can also force it). It's respectful: no jokes.
-1. **Clean-up:** the waves stop, every Inspector is removed, and leftover Potato King's Potatoes crumble.
-2. **The tribute:**
-   - the Techno Tribute for everyone at the Shrine (`/techno all`);
-   - a server-wide `/superaura`.
-3. **The Blood God speaks,** in lines sent to each player:
+## 5. The Awakening ✅ built
+**`/shrine awaken`**, once the Shrine has risen. It's respectful: no jokes. About 46 seconds, step by step (`AWAKEN_STEPS`); a `/reload` or restart carries on from the next step.
+- **Until the rite is built:** the rite will gate it (the bar full). For now, an op runs it once the Shrine stands.
+1. **At once:**
+   - **Clean-up:** every Inspector left is removed. (Leftover Potato King's Potatoes will crumble here once the rite exists.)
+   - **The title:** everyone at the Shrine (within 64 blocks) sees "The Shrine awakens" and hears a respawn anchor set.
+   - **The tribute:** the Techno Tribute for everyone at the Shrine (`/techno all`), and a server-wide `/superaura @a`.
+2. **The Blood God speaks** once the tribute has played (28 seconds in), in lines to everyone online ([BLOOD GOD], as the Pool's own messages):
    > You lit my fires. You fed my Shrine. You remembered.
 
-   > Eight things were mine. They were scattered, stolen, forgotten. Restore them here, and my name returns with them.
+   Then 6 seconds later:
 
+   > Eight things were mine. They were scattered, stolen, forgotten. Restore them here, and my name returns with them.
+3. **The Regalia** (38 seconds in):
+   - the book *The Regalia of the Blade* appears on the altar's lectern, with sparkles and a page turning;
+   - `/regalia` opens on the eight relics;
+   - everyone is told, with a `[/regalia]` to click.
+4. **The third seal** (44 seconds in):
    > The third seal is yours to break.
-4. **The Regalia:**
-   - the book *The Regalia of the Blade* appears on the altar's lectern, readable by anyone (draft below);
-   - `/regalia` opens on the eight relics.
-5. **The Pool:**
-   - it's topped up to **Tier 3's threshold (120,000)**, about 54,000 Drops on the night;
-   - the Drops are credited to each player in proportion to the potatoes they offered;
-   - everyone present is then asked to `/bloodpool vote`.
+5. **The Pool** (46 seconds in):
+   - **The top-up:** it's raised to **Tier 3's threshold (120,000)**, read from `blood_pool.js`'s tiers: about 54,000 Drops on the night.
+   - **Who's credited:** the Drops go to each player in proportion to the potatoes they offered at the altar. If nobody offered any (as now, before the rite exists), they're shared equally among the players present.
+   - **Already there:** if the Pool is already past the threshold, nothing is added.
+   - **The vote:** while Tier 3 isn't open, the players present are asked to break the seal together, with a `[/bloodpool vote]` to click. The Pool also announces that the tier is ready, as it always does.
 
    Five votes break the third seal, and **the Nether opens**. With fewer than five players there, an op uses `/bloodpool unlock`.
 
 **The reward is the Drops:** there's no title or keepsake (owner decision).
 
+**The altar:**
+- **Before the Awakening:** in the schematic, the lectern is in its "has a book" state with nothing in it. So when the Shrine has risen, the lectern is emptied, and it waits for the book.
+- **A taken book:** a book taken from the lectern is replaced within 5 seconds, so the taker keeps a copy and the altar keeps the book. `/shrine book` puts it back by hand.
+
+**Protecting the Shrine** (added after the test, where a stray left-click in creative broke the lectern and Technoblade's head):
+- outside creative, the Shrine's blocks can't be broken or built on;
+- **the altar (the lectern and the head) can't be broken even in creative;**
+- explosions in it break nothing.
+- **`/shrine repair`** puts it back as it was built: every layer placed again over it, so only missing or broken blocks change, and the head comes back with its skin. Then the book goes back on the altar, if the Regalia is open.
+
 ### The Regalia of the Blade (the book on the lectern)
-Signed *The Blood God*. One page per relic: what it honours, then what it asks. The amounts are placeholders until the owner sets them.
+Signed *The Blood God*. One page per relic: what it honours, then what it asks. The last line, "When the Crown returns, so does my name.", has a page of its own, since a page holds only 14 lines (on the test server it was cut off at the end of the Crown's page). So the book has 10 pages. The amounts are placeholders until the owner sets them.
 
 > THE REGALIA OF THE BLADE
 > Eight things were mine. Restore them at my Shrine, and my name returns with them.
@@ -238,14 +253,19 @@ Signed *The Blood God*. One page per relic: what it honours, then what it asks. 
 > **THE CROWN OF THE BLADE**
 > My crown. They wore it. They used it.
 > Last, and hardest: awakened draconium, a dragon's heart, a Gaia spirit and a shard of chaos.
+
 > When the Crown returns, so does my name.
 
 The Crown's page plants the final act: "They wore it" points at the Ministry ruling in his name.
 
-## `/regalia` (what the event needs)
-**`/shrine awaken` opens the relic hunt**, so a basic `/regalia` has to exist by the night:
-- `/regalia` lists the eight relics, each one's progress, and who has contributed;
-- **the Shrine holds the progress**, server-wide.
+## `/regalia` ✅ built (the basic one)
+**`/shrine awaken` opens the relic hunt**, so a basic `/regalia` exists for the night. It's for everyone, not just ops:
+- **Before the Awakening:** "The Blood God has named nothing yet."
+- **After it:**
+  - the eight relics, with how many are restored;
+  - each relic's progress, e.g. "The War Chest  0 / 10,000 potatoes", with its top three contributors;
+  - hovering over a relic shows what it honours and what it asks.
+- **The Shrine holds the progress,** server-wide. Other scripts can read it through `global.Regalia` (`isOpen()`, `relics`, `progress(id)`).
 
 The deliveries, Shrine raids and rewards are Act II's work and get their own spec. STORY.md lists what's still open: the amounts, a Blood offering, the order, and Purge losses.
 
@@ -263,6 +283,9 @@ The deliveries, Shrine raids and rewards are Act II's work and get their own spe
 | `/shrine rise` | Stage 3 |
 | `/shrine rite` / `/shrine need <n>` | Stage 4; change what the altar needs |
 | `/shrine awaken` | Stage 5 |
+| `/shrine book` | Put the Regalia book back on the altar |
+| `/shrine repair` | Put the Shrine back as it was built (every layer placed again; the head with its skin), then the book |
+| `/regalia` | **Anyone:** the eight relics and their progress |
 | `/shrine stop` | Stops whatever is running (waves, clock, rise), removes Inspectors and leaves the rest |
 | `/shrine clearmobs` | Takes away the monsters in and right around the Shrine (event mobs and named ones stay) |
 | `/shrine reset confirm` | **Test server:** removes the Shrine, the braziers and the beam, and forgets the night. It needs the word `confirm`, so it can't be run by accident on the live server |
@@ -362,7 +385,19 @@ The braziers were set 100 blocks around the sky site and `/shrine braziers` run 
   - the ambushers were taken away;
   - the Shrine rose as usual.
 
+## Stage 5 on the test server (2026-11-14)
+The Awakening ran on the risen sky Shrine with leelinda standing by the altar.
+- **The whole sequence played:** it began, then reported done 46 seconds later, and the book was on the lectern (`Book.tag.title` "The Regalia of the Blade").
+- **The Pool:** the test server's Pool was already at 120,000 with Tier 3 open, so no Drops were added and no vote was asked for, as intended.
+- **leelinda's feedback:**
+  - **"I broke the lectern and techno's skull":** in creative, a left-click breaks a block. The book step put a lectern back with the book on it, but the head was gone. The Shrine is now guarded (above), and `/shrine repair` brought the head back on the test server, skin and all (its `SkullOwner` texture checked).
+  - **"last page looks cut off":** the Crown's page ran past the page's 14 lines and lost the end of "When the Crown returns, so does my name." That line now has its own page (page 10, checked on the server). A check in the tests estimates every page's lines and would have caught it.
+
 ## What couldn't be verified yet
+- **Stage 5:**
+  - the tribute and the Blood God's lines as players see them;
+  - the top-up with a Pool below Tier 3 and five players voting (both are mock-tested);
+  - the guard against breaking and building, in game.
 - **Stage 2 with players:**
   - lighting a brazier with flint and steel, a fire charge or a flaming arrow (it was lit with `/setblock`);
   - the automatic ambush on a survival team on its way;
@@ -370,7 +405,6 @@ The braziers were set 100 blocks around the sky site and `/shrine braziers` run 
   - how far away the beam shows.
 - **The ground:** the test rise was in the sky. That clearing each slice first looks right on real terrain (grass, trees and the like giving way layer by layer) is still to see.
 - **Players in the way:** nobody stood in the footprint during the test, so moving players out (onto the ground beside it) is checked only on the mock. Over a drop with no ground within 20 blocks, the edge spot falls back to the site's height.
-- **The lectern before the Awakening:** in the schematic, the lectern is in its "has a book" state with no book in it. Until the Awakening puts the Regalia book there, it shows a book that has nothing in it.
 
 ## Build progress
 | Part | State |
@@ -381,4 +415,4 @@ The braziers were set 100 blocks around the sky site and `/shrine braziers` run 
 | Stage 2, the braziers, the beam and the ambushes (the Shrine's own Inspectors) | ✅ built, 112 mock checks in all; tried on the test server (see above) |
 | Stages 0–1, the Signal and the Summons | to do |
 | Stage 4, the Ignition Rite (waves, potatoes, altar, knockouts) | to do |
-| Stage 5, the Awakening, and a basic `/regalia` | to do |
+| Stage 5, the Awakening, the Regalia book on the altar, a basic `/regalia`, the Shrine's guard and `/shrine repair` | ✅ built, 150 mock checks in all; tried on the test server (see above) |

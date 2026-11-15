@@ -33,14 +33,27 @@ const level = {
 }
 const jlist = arr => ({ size: () => arr.length, get: i => arr[i], iterator() { let i = 0; return { hasNext: () => i < arr.length, next: () => arr[i++] } } })
 function textOf(c) { return Array.isArray(c) ? c.map(x => (typeof x == 'string' ? x : x.text || '')).join('') : String(c) }
+// Item stacks: an id, a count and (for the King's Potatoes) a marked tag, as KubeJS gives them.
+function stack(id, count, marked) {
+  const s = { id, count, marked: !!marked, isEmpty: () => s.count <= 0 || s.id == 'minecraft:air', getCount: () => s.count, shrink: n => { s.count = Math.max(0, s.count - n) },
+    get nbt() { return s.marked ? { contains: k => k == 'trollcraft', getCompound: () => ({ contains: k => k == 'kingspotato' }) } : null } }
+  return s
+}
+const kings = n => stack('minecraft:potato', n, true)
 const players = []
 function player(name, x, y, z, op) {
+  const slots = []
+  for (let i = 0; i < 41; i++) slots.push(stack('minecraft:air', 0))
   const p = { name, op: !!op, x, y, z, msgs: [], level, creative: false, isPlayer: () => true, getGameProfile: () => ({ getName: () => name }),
     getX: () => p.x, getY: () => p.y, getZ: () => p.z, tell: c => p.msgs.push(textOf(c)),
-    isCreative: () => p.creative, isSpectator: () => false, isAlive: () => true, getStringUuid: () => name.toLowerCase() + '-uuid' }
+    isCreative: () => p.creative, isSpectator: () => false, isAlive: () => true, getStringUuid: () => name.toLowerCase() + '-uuid',
+    hasPermissions: () => p.op, health: 20, fire: 0, setHealth: h => { p.health = h }, getMaxHealth: () => 20, clearFire: () => { p.fire = 0 },
+    inventory: { getItem: i => slots[i], setItem: (i, s) => { slots[i] = s }, getContainerSize: () => 41 }, slots,
+    get mainHandItem() { return slots[0] } }
   players.push(p)
   return p
 }
+const kingsCarried = p => p.slots.filter(s => s.marked && s.count > 0).reduce((a, s) => a + s.count, 0)
 const byName = n => players.find(p => p.name == n)
 // Mobs: what spawns (EntityEvents.spawned) and what's already about (server.entities).
 const nether = { dimension: { location: () => 'minecraft:the_nether' } }
@@ -51,7 +64,9 @@ function mob(type, category, x, y, z, opts) {
   const m = { type, x, y, z, level: opts.level || level, discarded: false, tags: opts.tags || [], named: !!opts.named,
     getType: () => type, entityType: { getCategory: () => category }, isPlayer: () => false, hasCustomName: () => m.named,
     getTags: () => ({ toString: () => '[' + m.tags.join(', ') + ']' }), getX: () => m.x, getY: () => m.y, getZ: () => m.z,
-    discard: () => { m.discarded = true } }
+    discard: () => { m.discarded = true }, dead: false, target: null, health: 24,
+    isAlive: () => !m.dead && !m.discarded, isRemoved: () => m.discarded, getTarget: () => m.target, setTarget: t => { m.target = t },
+    getHealth: () => m.health, getMaxHealth: () => 24 }
   return m
 }
 const EXIT = { exit: true }
@@ -83,16 +98,18 @@ const server = {
       if (m[5]) worldNbt[k] = m[5]; else delete worldNbt[k]
       return 1
     }
-    if ((m = c.match(/run fill (-?\d+) (-?\d+) (-?\d+) (-?\d+) (-?\d+) (-?\d+) minecraft:air$/))) {
-      const b = m.slice(1).map(Number)
-      Object.keys(world).forEach(k => { const q = k.split(',').map(Number); if (q[0] >= b[0] && q[0] <= b[3] && q[1] >= b[1] && q[1] <= b[4] && q[2] >= b[2] && q[2] <= b[5]) delete world[k] })
+    // /fill ... minecraft:air, or only where a given block is (fill ... minecraft:air replace <block>)
+    if ((m = c.match(/run fill (-?\d+) (-?\d+) (-?\d+) (-?\d+) (-?\d+) (-?\d+) minecraft:air(?: replace (\S+))?$/))) {
+      const b = m.slice(1, 7).map(Number), only = m[7]
+      Object.keys(world).forEach(k => { const q = k.split(',').map(Number); if (q[0] >= b[0] && q[0] <= b[3] && q[1] >= b[1] && q[1] <= b[4] && q[2] >= b[2] && q[2] <= b[5] && (!only || world[k] == only)) delete world[k] })
       return 1
     }
     // A summoned mob joins the world (and goes through EntityEvents.spawned), named and tagged as its NBT says.
     if ((m = c.match(/run summon minecraft:(\S+) ([-\d.]+) ([-\d.]+) ([-\d.]+) (\{.*\})$/))) {
       const tm = m[5].match(/Tags:\[([^\]]*)\]/)
-      const mb = mob('minecraft:' + m[1], 'MONSTER', +m[2], +m[3], +m[4], { tags: tm ? tm[1].split(',').map(s => s.replace(/"/g, '')) : [], named: /CustomName/.test(m[5]) })
+      const mb = mob('minecraft:' + m[1], m[1] == 'item' ? 'MISC' : 'MONSTER', +m[2], +m[3], +m[4], { tags: tm ? tm[1].split(',').map(s => s.replace(/"/g, '')) : [], named: /CustomName/.test(m[5]) })
       mb.nbt = m[5]
+      const hm = m[5].match(/,Health:(\d+)f/); if (hm) mb.health = +hm[1]
       return spawn(mb) ? 0 : 1
     }
     return 1
@@ -110,12 +127,13 @@ function RL(s) { this.s = s }
 // Loads (or reloads) the script, as /reload does: fresh handlers and commands, the same saved data and globals.
 function load() {
   handlers = {}
-  new Function('ServerEvents', 'EntityEvents', 'BlockEvents', 'LevelEvents', 'Java', 'Utils', 'Text', 'console', 'global', src)(
+  new Function('ServerEvents', 'EntityEvents', 'BlockEvents', 'LevelEvents', 'ItemEvents', 'Java', 'Utils', 'Text', 'console', 'global', src)(
     { loaded: on('loaded'), commandRegistry: h => h({ commands: { literal: node, argument: (n, t) => Object.assign(node(n), { arg: true, type: t }) },
       arguments: { INTEGER: { create: () => 'int', getResult: (ctx, k) => ctx.args[k] }, PLAYER: { create: () => 'player', getResult: (ctx, k) => ctx.args[k] } }, register: t => { roots[t.n] = t; cmdTree = roots.shrine || t } }) },
-    { spawned: on('spawned') },
-    { broken: on('broken'), placed: on('placed') },
+    { spawned: on('spawned'), death: on('death') },
+    { broken: on('broken'), placed: on('placed'), rightClicked: on('blockRightClicked') },
     { afterExplosion: on('afterExplosion') },
+    { rightClicked: on('itemRightClicked') },
     { loadClass: n => {
       if (/Component\$Serializer/.test(n)) return { fromJsonLenient: j => JSON.parse(j) }
       if (/ResourceLocation/.test(n)) return RL
@@ -215,6 +233,8 @@ const ambusher = mob('minecraft:vindicator', 'MONSTER', 1005.5, 64, 2005.5, { ta
 chunksAt = tick + 30                                  // the site's chunks take a moment to load
 cmds = []
 r = cmd('rise', admin)
+ok('/shrine rise before the braziers\' beam is up: refused, the braziers come first (force goes ahead)', /The beam isn't up yet/.test(r[0]) && /\/shrine rise force raises it anyway/.test(r[0]) && S().rise.state == 'none' && placed().length == 0, r[0])
+r = cmd('rise force', admin)
 ok('/shrine rise: 64 layers in about 29 seconds', /64 layers in about 29 seconds\./.test(r[0]) && S().rise.state == 'rising', r[0])
 ok('... the site is force-loaded', cmds.some(c => c == 'execute in minecraft:overworld run forceload add 979 1979 1020 2021'), cmds.join('\n'))
 ok('... nearby players are told and get the title; someone far away isn\'t', said(carol, /ground beneath the beam begins to shake/) && cmds.some(c => /^title Carol title .*The Shrine rises/.test(c)) && !said(far, /shake/))
@@ -301,7 +321,7 @@ for (let n = 0; n < 64; n++) if (all.indexOf(n) < 0) missing.push(n)
 ok('every layer 0..63 was placed, and the Shrine has risen', missing.length == 0 && S().rise.state == 'risen' && global.Shrine.risen() && S().rise.next == 64, 'missing ' + missing.join())
 ok('... the head at the top: thunder, and the watchers are told', cmds.some(c => / place template trollcraft:shrine\/l_63 979 127 1979$/.test(c)) && said(carol, /Technoblade's Shrine stands/))
 ok('... the forceload is removed', cmds.some(c => c == 'execute in minecraft:overworld run forceload remove 979 1979 1020 2021'))
-ok('... and nothing is waiting to run', queue.length == 0, queue.length)
+ok('... and nothing is waiting to run but the steps\' glow', queue.length == 1, queue.length)
 ok('/shrine rise once risen: refused', /already risen/.test(cmd('rise', admin)[0]))
 ok('status: risen', /The Shrine has risen, at 1000 64 2000/.test(cmd('status', admin)[4]))
 ok('when it has risen, a zombie walled in on the way is taken away', walledIn.discarded && logs.some(l => /Took away 1 monster from the Shrine/.test(l)))
@@ -311,6 +331,48 @@ r = cmd('clearmobs', admin)
 ok('/shrine clearmobs takes away a monster standing in it, and leaves a named one', lurker.discarded && !pet.discarded && /Took away 1 monster/.test(r[0]), r[0])
 ok('... and again: nothing left', /No monsters in the Shrine/.test(cmd('clearmobs', admin)[0]))
 
+// ---------- the steps up to the altar ----------
+// Corner 979 64 1979: the top step is at statue (38, 21), z 19..21, so 1017 85 1998..2000; each one out and one down, to
+// the ground at y 64 (22 steps: a 23rd, at y 63, would be all ground).
+const stepAt = (k, dz) => world[(1017 + k) + ',' + (85 - k) + ',' + (1998 + (dz || 0))]
+ok('when it has risen, the steps up to the altar are laid: barriers 3 wide, from the platform\'s edge to the ground (22)',
+  S().stairs == 22 && [0, 1, 2].every(dz => stepAt(0, dz) == 'minecraft:barrier' && stepAt(21, dz) == 'minecraft:barrier') && !stepAt(22, 1) &&
+  !world['1016,85,1999'] && !world['1017,85,1997'] && logs.some(l => /The steps to the altar: 22/.test(l)), S().stairs)
+ok('... status says so', /22 steps up to the altar/.test(cmd('status', admin)[4]), cmd('status', admin)[4])
+const spots = players.map(p => [p.x, p.z])
+carol.x = 1030.5; carol.z = 1990.5
+cmds = []
+advance(20)
+ok('... faint red dust over the middle of each step while someone is near', cmds.filter(c => /run particle minecraft:dust 0\.55 0 0 1 [\d.]+ [\d.]+ 1999\.5 0\.3 0 1 0 2 normal$/.test(c)).length == 22,
+  cmds.filter(c => /dust/.test(c)).length)
+players.forEach(p => { p.x = 9000.5; p.z = 9000.5 })
+cmds = []
+advance(20)
+ok('... and none with nobody near', !cmds.some(c => /particle minecraft:dust/.test(c)))
+players.forEach((p, i) => { p.x = spots[i][0]; p.z = spots[i][1] })
+// /shrine repair: missing steps go back, and what stands in their way (a tree grown there) is left alone
+delete world['1020,82,1998']; world['1020,82,1999'] = 'minecraft:oak_log'; delete world['1030,72,2000']
+r = cmd('repair', admin)
+advance(2)
+ok('/shrine repair lays any missing steps again, and leaves what stands in their way', stepAt(3, 0) == 'minecraft:barrier' && stepAt(3, 1) == 'minecraft:oak_log' &&
+  stepAt(13, 2) == 'minecraft:barrier' && S().stairs == 22 && /any missing steps/.test(r[0]), r[0])
+// where the land rises to meet them, the flight ends there
+;[0, 1, 2].forEach(dz => { world[(1027) + ',' + (75) + ',' + (1998 + dz)] = 'minecraft:stone' })
+cmd('repair', admin)
+advance(2)
+ok('... and where the land rises to meet them, the flight ends there (10 steps)', S().stairs == 10, S().stairs)
+;[0, 1, 2].forEach(dz => { delete world['1027,75,' + (1998 + dz)] })
+delete world['1020,82,1999']
+cmd('repair', admin)
+advance(2)
+ok('... the land gone again, the 22 steps are back', S().stairs == 22 && [0, 1, 2].every(dz => stepAt(10, dz) == 'minecraft:barrier'))
+load()                                            // a /reload: the glow carries on, one loop only
+carol.x = 1030.5; carol.z = 1990.5
+cmds = []
+advance(20)
+ok('after a /reload the glow carries on, from one loop only', cmds.filter(c => /particle minecraft:dust/.test(c)).length == 22, cmds.filter(c => /dust/.test(c)).length)
+players.forEach((p, i) => { p.x = spots[i][0]; p.z = spots[i][1] })
+
 // ---------- the reset ----------
 r = cmd('reset', admin)
 ok('/shrine reset alone only explains (it needs confirm)', /reset confirm/.test(r[0]) && S().rise.state == 'risen')
@@ -318,8 +380,10 @@ cmds = []
 bob.x = 1000.5; bob.y = 90; bob.z = 2000.5                        // on the Shrine
 r = cmd('reset confirm', admin)
 advance(2)
-const fills = cmds.filter(c => /run fill /.test(c))
+const fills = cmds.filter(c => /run fill /.test(c) && !/ replace /.test(c))
 ok('/shrine reset confirm: four fills of air from the top, covering all 64 layers', fills.length == 4 && /fill 979 110 1979 1020 127 2021 minecraft:air/.test(fills[0]) && /fill 979 64 1979 1020 73 2021 minecraft:air/.test(fills[3]), fills.join('\n'))
+ok('... the steps go too: every barrier along the flight, and nothing else', cmds.filter(c => /run fill \d+ \d+ \d+ \d+ \d+ \d+ minecraft:air replace minecraft:barrier$/.test(c)).length == 34 &&
+  !Object.keys(world).some(k => world[k] == 'minecraft:barrier') && S().stairs == 0)
 ok('... each within fill\'s 32,768-block limit', fills.every(f => { const n = f.match(/fill (\S+) (\S+) (\S+) (\S+) (\S+) (\S+)/).slice(1).map(Number); return (n[3] - n[0] + 1) * (n[4] - n[1] + 1) * (n[5] - n[2] + 1) <= 32768 }))
 ok('... Bob, standing on it, is moved off first', bob.x != 1000.5 || bob.z != 2000.5)
 ok('... loose items in the box are removed', cmds.some(c => /kill @e\[type=minecraft:item,x=979,y=64,z=1979,dx=41,dy=64,dz=42\]/.test(c)))
@@ -451,6 +515,144 @@ advance(40)
 ok('a reset with no Shrine standing still brings the beam down', !S().beam.up && world['1000,62,2000'] == 'minecraft:grass_block' && B().state == 'none')
 admin.creative = false
 
+// ---------- Stage 4: the Ignition Rite ----------
+const riteMobsNow = () => mobs.filter(m => !m.discarded && !m.dead && m.tags.indexOf('shrine_rite') >= 0)
+const waveMobs = i => riteMobsNow().filter(m => m.tags.indexOf('shrine_wave_' + i) >= 0)
+const kill = m => { m.dead = true; ;(handlers.death || []).forEach(h => { try { h({ entity: m, server, source: { getMsgId: () => 'player' }, cancel() { throw EXIT } }) } catch (e) { if (e !== EXIT) throw e } }) }
+const dies = (p, type) => { const ev = { entity: p, server, source: { getMsgId: () => type || 'mob' }, cancelled: false, cancel() { ev.cancelled = true; throw EXIT } }
+  ;(handlers.death || []).forEach(h => { try { h(ev) } catch (e) { if (e !== EXIT) throw e } }); return ev.cancelled }
+const RT = () => S().rite
+const riteOnNow = () => global.Shrine.riteOn()
+ok('/shrine rite before the Shrine has risen: refused', /hasn't risen yet/.test(cmd('rite', admin)[0]))
+cmd('rise force', admin)
+advance(layerTicks * 66 + 30)
+// at the Shrine: Carol and Bob in survival, the op in creative (not counted); Far is far away
+carol.x = 1010.5; carol.z = 2010.5; bob.x = 1030.5; bob.y = 64; bob.z = 2000.5
+admin.creative = true; admin.x = 1000.5; admin.z = 1975.5; far.x = 5000.5; far.z = 5000.5
+players.forEach(p => { p.msgs = [] })
+cmds = []
+// The Inspectors' ground. With Math.random at 0, each one's first spot is 30 blocks out at 0, 120 and 240 degrees, and
+// its second 0.6 radians before that. The first spots: (1030, 2000) is on the steps; (985, 2026) is under a hill that
+// rises past the scan's top (the old way found a cave in it); (985, 1974) is a lake. The third one's second spot,
+// (973, 1987), is forest floor under a canopy of leaves: fine.
+const terrain = []
+const put = (x, y, z, b) => { world[x + ',' + y + ',' + z] = b; terrain.push(x + ',' + y + ',' + z) }
+for (let y = 64; y <= 110; y++) put(985, y, 2026, 'minecraft:stone')
+put(985, 63, 1974, 'minecraft:water')
+put(973, 70, 1987, 'minecraft:oak_leaves'); put(973, 71, 1987, 'minecraft:oak_leaves')
+const random = Math.random
+Math.random = () => 0
+r = cmd('rite', admin)
+Math.random = random
+const colOf = m => Math.floor(m.x) + ',' + m.y + ',' + Math.floor(m.z)
+ok('the Inspectors\' ground: never on the steps, in a hill\'s cave or a lake; under leaves, the forest floor', waveMobs(0).map(colOf).sort().join(' ') == '1002,64,2030 1025,64,1983 973,64,1987',
+  waveMobs(0).map(colOf).join(' '))
+terrain.forEach(k => { delete world[k] })
+ok('/shrine rite: 2 present (the op in creative doesn\'t count), so the altar needs 16 potatoes', /2 present, so the altar needs 16 Potato King's Potatoes/.test(r[0]) && RT().state == 'running' && RT().need == 16, r[0])
+ok('... wave 1: 3 Inspectors (1 per player, at least 3), in iron, seeing 64 blocks, each to drop 2 potatoes', waveMobs(0).length == 3 &&
+  waveMobs(0).every(m => /iron_chestplate/.test(m.nbt) && /generic\.follow_range",Base:64\.0d/.test(m.nbt) && m.tags.indexOf('shrine_pot_2') >= 0 && m.tags.indexOf('shrine_inspector') >= 0))
+ok('... on the land around the Shrine, 30 to 45 blocks from its centre', waveMobs(0).every(m => { const d = Math.hypot(m.x - 1000.5, m.z - 2000.5); return d >= 29 && d <= 46 }),
+  waveMobs(0).map(m => Math.hypot(m.x - 1000.5, m.z - 2000.5).toFixed(0)).join(','))
+ok('... those present are told what to do; someone far away isn\'t', said(carol, /Take the Potato King's Potatoes from the Inspectors and offer them at the altar: 16 in all/) &&
+  said(bob, /Wave 1 of 4: 3 Inspectors close in on the Shrine/) && !said(far, /Wave 1/))
+ok('... the rite\'s boss bar: 0 / 16 potatoes', cmds.some(c => /^bossbar set trollcraft:shrine_rite name .*The Ignition Rite: .*0 \/ 16 potatoes/.test(c)))
+ok('/shrine awaken now: refused, the altar isn\'t full (force goes ahead)', /The altar isn't full yet \(0 of 16 potatoes\)\. \/shrine awaken force goes ahead anyway\./.test(cmd('awaken', admin)[0]))
+ok('global.Shrine.busy(): the Purge and the arena wait', /Ignition Rite is on/.test(global.Shrine.busy()))
+ok('/shrine rite again: already under way', /already under way \(wave 1 of 4\)/.test(cmd('rite', admin)[0]))
+advance(20)
+ok('the Inspectors go after the pilgrims at the Shrine (not the op in creative)', waveMobs(0).every(m => m.target === carol || m.target === bob))
+// an Inspector of the rite dies: 2 Potato King's Potatoes
+cmds = []
+kill(waveMobs(0)[0])
+ok('an Inspector killed drops 2 Potato King\'s Potatoes, marked, named in gold, with a glint', cmds.some(c => /run summon minecraft:item .*Count:2b,tag:\{trollcraft:\{kingspotato:1b\}.*Potato King\\'s Potato.*Enchantments/.test(c)), cmds.filter(c => /summon minecraft:item/.test(c)).join('\n'))
+// the next wave comes when three-quarters of the last are down
+kill(waveMobs(0)[0])
+advance(20)
+ok('with 2 of 3 down, no new wave yet', RT().wave == 0)
+kill(waveMobs(0)[0])
+advance(20)
+ok('with all 3 down: wave 2, 3 Inspectors (1.5 per player), the vindicators with shields', RT().wave == 1 && waveMobs(1).length == 3 &&
+  waveMobs(1).filter(m => m.type == 'minecraft:vindicator').every(m => /minecraft:shield/.test(m.nbt)) && said(carol, /Wave 2 of 4/))
+// /shrine stop pauses the rite; /shrine rite brings the wave back
+r = cmd('stop', admin)
+ok('/shrine stop pauses the rite: the waves stop, the Inspectors go, the altar keeps its count', /The rite is paused/.test(r[0]) && RT().state == 'paused' && riteMobsNow().length == 0 &&
+  cmds.indexOf('bossbar remove trollcraft:shrine_rite') >= 0, r[0])
+ok('... status says so', /The Ignition Rite: paused at wave 2/.test(cmd('status', admin)[7]), cmd('status', admin)[7])
+r = cmd('rite', admin)
+ok('/shrine rite carries on: wave 2 comes again', /wave 2 comes again/.test(r[0]) && RT().state == 'running' && waveMobs(1).length == 3, r[0])
+// a wave nobody clears: the next comes after 3 minutes anyway
+seconds(181)
+ok('after 3 minutes, wave 3 comes anyway: in diamond', RT().wave == 2 && waveMobs(2).length == 3 && waveMobs(2).every(m => /diamond_chestplate/.test(m.nbt)))
+waveMobs(1).concat(waveMobs(2)).forEach(m => kill(m))
+cmds = []
+advance(20)
+const senior = () => riteMobsNow().filter(m => m.tags.indexOf('shrine_senior') >= 0)[0]
+ok('wave 4: 3 Inspectors and the Senior Inspector (150 health, netherite axe, named in bold)', RT().wave == 3 && waveMobs(3).length == 4 && !!senior() &&
+  /"text":"Senior Inspector","color":"gold","italic":false,"bold":true/.test(senior().nbt) && /netherite_axe/.test(senior().nbt) && senior().health == 150 && said(carol, /a Senior Inspector at their head/))
+ok('... with Resistance and his own boss bar', cmds.indexOf('effect give @e[tag=shrine_senior] minecraft:resistance infinite 0 true') >= 0 && cmds.some(c => /^bossbar add trollcraft:shrine_senior .*Senior Inspector/.test(c)))
+ok('... the last wave: no more come after it', (advance(20 * 200), RT().wave == 3))
+senior().health = 70
+cmds = []
+advance(20)
+ok('at half health he calls two Inspectors to help, once', riteMobsNow().filter(m => m.tags.indexOf('shrine_senior') < 0 && /diamond/.test(m.nbt)).length == 5 && said(carol, /calls for assistance/) &&
+  cmds.indexOf('bossbar set trollcraft:shrine_senior value 70') >= 0)
+advance(40)
+ok('... only once', riteMobsNow().length == 6)
+cmds = []
+kill(senior())
+advance(20)
+ok('the Senior Inspector falls: 8 potatoes, his bar goes, and those present are told', cmds.some(c => /summon minecraft:item .*Count:8b/.test(c)) && cmds.indexOf('bossbar remove trollcraft:shrine_senior') >= 0 &&
+  said(carol, /The Senior Inspector falls/))
+// the potatoes: only the altar takes them
+carol.slots[0] = kings(6); carol.slots[5] = kings(2)
+let ce = { player: carol, item: carol.slots[0], cancelled: false, cancel() { ce.cancelled = true; throw EXIT } }
+;(handlers.itemRightClicked || []).forEach(h => { try { h(ce) } catch (e) { if (e !== EXIT) throw e } })
+ok('a Potato King\'s Potato can\'t be eaten', ce.cancelled && said(carol, /Only the Shrine's altar will take these/))
+const clickBlock = (p, x, y, z) => { const e = { player: p, item: p.slots[0], hand: 'MAIN_HAND', block: { level, x, y, z }, server, cancelled: false, cancel() { e.cancelled = true; throw EXIT } }
+  ;(handlers.blockRightClicked || []).forEach(h => { try { h(e) } catch (err) { if (err !== EXIT) throw err } }); return e.cancelled }
+ok('... or planted (a right-click on any other block)', clickBlock(carol, 990, 63, 1990) && kingsCarried(carol) == 8)
+cmds = []
+players.forEach(p => { p.msgs = [] })
+ok('right-clicking the altar\'s lectern offers every one Carol carries (8)', clickBlock(carol, 1007, 86, 1999) && kingsCarried(carol) == 0 && RT().total == 8 && RT().offered['carol-uuid'].n == 8 &&
+  said(bob, /Carol offers 8 Potato King's Potatoes at the altar\. 8 of 16\./))
+ok('... half the bar: the statue\'s first two bands light up (light blocks where there\'s air, flames rising)', RT().lit == 2 &&
+  cmds.some(c => /run setblock \d+ (6[4-9]|7\d|8\d|9[0-5]) \d+ minecraft:light\[level=15\]$/.test(c)) && !cmds.some(c => /run setblock \d+ (9[6-9]|1[0-2]\d) \d+ minecraft:light/.test(c)) &&
+  cmds.filter(c => /particle minecraft:flame .* 8 [\d.]+ 8 0\.03 300 force/.test(c)).length == 2)
+ok('... the bar shows 8 / 16', cmds.some(c => /^bossbar set trollcraft:shrine_rite name .*8 \/ 16 potatoes/.test(c)))
+// knockouts while the rite is on
+carol.health = 0; carol.x = 1000.5; carol.y = 90; carol.z = 2000.5; carol.fire = 5; carol.msgs = []
+ok('a pilgrim at the Shrine who would die is knocked down instead: the death is cancelled', dies(carol, 'mob'))
+ok('... healed, fire out, set down at the Shrine\'s edge with a few seconds of Resistance', carol.health == 20 && carol.fire == 0 && (carol.x > 1020 || carol.x < 979 || carol.z > 2021 || carol.z < 1979) &&
+  cmds.indexOf('effect give Carol minecraft:resistance 3 4 true') >= 0 && said(carol, /you wake at its edge/), [carol.x, carol.y, carol.z].join(' '))
+ok('... on the ground, under the steps (the east edge, 1024 2000), not on them', carol.x == 1024.5 && carol.z == 2000.5 && carol.y == 64 && world['1024,78,2000'] == 'minecraft:barrier',
+  [carol.x, carol.y, carol.z].join(' '))
+ok('... the log says what would have killed her', logs.some(l => l == '[Shrine] Knockout: Carol (mob)'))
+ok('... someone dying far from the Shrine dies as usual; /kill still kills', !dies(far, 'mob') && !dies(bob, 'genericKill'))
+// Bob fills the altar at Technoblade's head
+bob.slots[0] = kings(10)
+players.forEach(p => { p.msgs = [] })
+cmds = []
+clickBlock(bob, 1007, 87, 1999)
+ok('Bob offers 10 at the head: 18 of 16, the altar is full', RT().total == 18 && RT().state == 'full' && RT().offered['bob-uuid'].n == 10)
+ok('... the last bands catch: the Shrine burns to its crown', RT().lit == 4 && cmds.some(c => /run setblock \d+ 1[0-2]\d \d+ minecraft:light\[level=15\]$/.test(c)) && said(carol, /The Shrine burns from its feet to its crown/))
+ok('... the op is told: /shrine awaken', said(admin, /The altar is full\. When you're ready: \/shrine awaken/) && !said(carol, /shrine awaken/))
+ok('... the bar says so, and no more waves come', cmds.some(c => /^bossbar set trollcraft:shrine_rite name .*The Shrine burns to its crown/.test(c)) && (advance(20 * 200), RT().wave == 3))
+ok('status: the altar is full', /The Ignition Rite: the altar is full \(18 of 16\)\. \/shrine awaken\./.test(cmd('status', admin)[7]), cmd('status', admin)[7])
+// the Awakening ends the rite: leftovers crumble, the Inspectors go
+carol.slots[3] = kings(3)
+cmds = []
+r = cmd('awaken', admin)
+advance(2)
+ok('/shrine awaken (no force needed now): the leftover potatoes crumble, in pockets and on the ground', /The Awakening begins/.test(r[0]) && kingsCarried(carol) == 0 && said(carol, /crumble to dust/) &&
+  cmds.indexOf('kill @e[type=minecraft:item,nbt={Item:{tag:{trollcraft:{kingspotato:1b}}}}]') >= 0, r[0])
+ok('... the rite is done: its Inspectors go, its bars go', RT().state == 'done' && riteMobsNow().length == 0 && cmds.indexOf('bossbar remove trollcraft:shrine_rite') >= 0 && !riteOnNow())
+ok('... no knockouts once it\'s done', !dies(carol, 'mob'))
+advance(1000)
+ok('the Awakening finishes after the rite (the shares by potatoes offered are checked with a Pool below)', S().awake.state == 'done' && S().rite.offered['bob-uuid'].n == 10)
+cmd('reset confirm', admin); advance(40)
+ok('the reset forgets the rite', RT().state == 'none' && RT().total == 0)
+admin.creative = false
+
 // ---------- Stage 5: the Awakening, the Regalia book, /regalia ----------
 // A stand-in Blood Pool: 66,000 Drops at Tier 2; Tier 3 opens at 120,000.
 const pool = { drops: 66000, tier: 2, adds: [] }
@@ -461,7 +663,7 @@ const bookOf = () => worldNbt[LECTERN] || ''
 const awakeTicks = 920
 ok('/regalia before the Awakening: nothing named yet', /The Blood God has named nothing yet/.test(regalia(carol)[0]))
 ok('/shrine awaken before the Shrine has risen: refused', /hasn't risen yet/.test(cmd('awaken', admin)[0]))
-cmd('rise', admin)
+cmd('rise force', admin)
 advance(layerTicks * 66 + 30)
 ok('when the Shrine has risen, the altar\'s lectern is left empty (no hollow book)', S().rise.state == 'risen' && world[LECTERN] == 'minecraft:lectern[facing=east,has_book=false,powered=false]', world[LECTERN])
 // who's there: Carol and Bob at the Shrine; Far and the op elsewhere; an Inspector still about
@@ -469,7 +671,7 @@ carol.x = 1010.5; carol.z = 2010.5; bob.x = 1030.5; bob.y = 64; bob.z = 2000.5; 
 players.forEach(p => { p.msgs = [] })
 const straggler = mob('minecraft:vindicator', 'MONSTER', 1040.5, 64, 2000.5, { tags: ['shrine_inspector', 'shrine_rite'], named: true }); mobs.push(straggler)
 cmds = []
-r = cmd('awaken', admin)
+r = cmd('awaken force', admin)
 ok('/shrine awaken: the tribute, the words, the book, the Pool and the vote, in about 46 seconds', /The Awakening begins/.test(r[0]) && /Tier 3 \(120,000 Drops\)/.test(r[0]) && /About 46 seconds/.test(r[0]), r[0])
 advance(2)
 ok('it begins: every Inspector left is taken away', straggler.discarded)
@@ -505,7 +707,7 @@ advance(40)
 ok('the Pool is topped up to Tier 3\'s 120,000: 54,000 Drops, shared by those present (nobody offered potatoes)', pool.drops == 120000 && pool.adds.length == 2 &&
   pool.adds.every(a => a.source == 'shrine' && a.n == 27000) && pool.adds.map(a => a.name).sort().join() == 'Bob,Carol', JSON.stringify(pool.adds))
 ok('... and those present are asked to break the third seal, with a [/bloodpool vote] to click', carol.msgs.some(m => /break the third seal together/.test(m)) && !said(far, /break the third seal together/))
-ok('the Awakening is done; status says so, with who was credited', S().awake.state == 'done' && global.Shrine.awakened() && /The Awakening: done\. The Regalia is open; Drops credited: (Carol 27,000, Bob 27,000|Bob 27,000, Carol 27,000)/.test(cmd('status', admin)[7]), cmd('status', admin)[7])
+ok('the Awakening is done; status says so, with who was credited', S().awake.state == 'done' && global.Shrine.awakened() && /The Awakening: done\. The Regalia is open; Drops credited: (Carol 27,000, Bob 27,000|Bob 27,000, Carol 27,000)/.test(cmd('status', admin)[8]), cmd('status', admin)[8])
 ok('/shrine awaken again: refused', /already awakened/.test(cmd('awaken', admin)[0]))
 // someone takes the book from the lectern
 world[LECTERN] = 'minecraft:lectern[facing=east,has_book=false,powered=false]'; delete worldNbt[LECTERN]
@@ -543,14 +745,14 @@ ok('... with its chunks loaded for it, and let go after', cmds.indexOf('execute 
 // a second night (test server): the potatoes offered decide the shares, and a /reload mid-way carries on
 cmd('reset confirm', admin); advance(40)
 ok('the reset forgets the Awakening and closes the Regalia', S().awake.state == 'none' && !global.Regalia.isOpen() && /named nothing yet/.test(regalia(carol)[0]))
-cmd('rise', admin); advance(layerTicks * 66 + 30)
+cmd('rise force', admin); advance(layerTicks * 66 + 30)
 const saved = JSON.parse(persistent.shrine)
 saved.rite.offered = { 'carol-uuid': { name: 'Carol', n: 30 }, 'bob-uuid': { name: 'Bob', n: 10 } }
 persistent.shrine = JSON.stringify(saved)
 load()
 pool.drops = 70000; pool.adds = []
 far.msgs = []
-cmd('awaken', admin)
+cmd('awaken force', admin)
 advance(600)
 load()                                            // a /reload just after the first words
 advance(awakeTicks)
@@ -559,16 +761,16 @@ ok('a /reload mid-Awakening carries on from the next step: nothing said twice', 
 ok('... the potatoes offered decide the shares: Carol 30, Bob 10 of 50,000 Drops', pool.drops == 120000 && pool.adds.find(a => a.name == 'Carol').n == 37500 && pool.adds.find(a => a.name == 'Bob').n == 12500, JSON.stringify(pool.adds))
 // a third night with the Pool already past Tier 3 and open: no Drops, no vote prompt
 cmd('reset confirm', admin); advance(40)
-cmd('rise', admin); advance(layerTicks * 66 + 30)
+cmd('rise force', admin); advance(layerTicks * 66 + 30)
 pool.drops = 130000; pool.tier = 3; pool.adds = []; carol.msgs = []
-cmd('awaken', admin); advance(awakeTicks + 5)
+cmd('awaken force', admin); advance(awakeTicks + 5)
 ok('with the Pool already past Tier 3 and open: no Drops added, no vote asked for', pool.adds.length == 0 && !carol.msgs.some(m => /break the third seal/.test(m)) && S().awake.state == 'done')
 // and with no Blood Pool at all
 cmd('reset confirm', admin); advance(40)
-cmd('rise', admin); advance(layerTicks * 66 + 30)
+cmd('rise force', admin); advance(layerTicks * 66 + 30)
 const keepPool = global.BloodPool
 delete global.BloodPool
-cmd('awaken', admin); advance(awakeTicks + 5)
+cmd('awaken force', admin); advance(awakeTicks + 5)
 ok('without the Blood Pool script: the Awakening still runs, and the log says no Drops were added', S().awake.state == 'done' && logs.some(l => /No Blood Pool: the Awakening adds no Drops/.test(l)) && /\[BLOOD GOD\]/.test(far.msgs.join('\n')))
 global.BloodPool = keepPool
 cmd('reset confirm', admin); advance(40)

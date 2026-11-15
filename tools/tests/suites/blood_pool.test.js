@@ -399,6 +399,12 @@ ok('tithe everything: 118 potatoes (100 loose + 2 crates) = 29 Drops; 116 taken,
 ok('... credited to the player', PDB().contributors['ana-1111'] && PDB().contributors['ana-1111'].drops == 29)
 cmd('bloodpool tithe', ana); ok('2 potatoes: too few for a Drop, nothing taken', /in fours/.test(flat(lastReply())) && countOf(ana, 'minecraft:potato') == 2)
 cmd('bloodpool tithe -5', ana); ok('a negative amount is refused', /stays in the Pool/.test(flat(lastReply())) && countOf(ana, 'minecraft:potato') == 2)
+// The Shrine's Potato King's Potatoes (marked) are for its altar only: the tithe doesn't count or take them.
+ana.give(stack('minecraft:potato', 8, '{trollcraft:{kingspotato:1b}}'))
+const marked = () => realSlots(ana).slice(0, 36).filter(s => s.count > 0 && s.parsed && s.parsed.trollcraft).reduce((a, s) => a + s.count, 0)
+cmd('bloodpool tithe', ana)
+ok('the Shrine\'s Potato King\'s Potatoes don\'t count for the tithe: 2 plain ones are still too few, and the 8 are kept', /in fours/.test(flat(lastReply())) && marked() == 8, flat(lastReply()))
+realSlots(ana).forEach(s => { if (s.parsed && s.parsed.trollcraft) s.count = 0 })
 give(bo, 'minecraft:potato', 50)
 cmd('bloodpool tithe 41', bo)
 ok('tithe 41: 10 Drops, 40 potatoes taken (whole Drops only)', countOf(bo, 'minecraft:potato') == 10 && /40 potatoes spilled into the Pool/.test(flat(lastReply())), flat(lastReply()))

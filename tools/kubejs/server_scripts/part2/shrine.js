@@ -1,3 +1,6 @@
+// priority: 100
+// (Loads before the other scripts, so a knockout at the Shrine is cancelled before any of their death handlers see it:
+// a knockout is no kill for bounties, Souls, Grit and the rest. The Gladiator Arena does the same.)
 // The Shrine Awakens (Part II, Act I #36): one big evening, run live by ops, in which Technoblade's Shrine rises out of
 // the ground and the Blood God names the Regalia of the Blade. Every stage is one op command (see
 // tools/kubejs/SHRINE.md).
@@ -83,11 +86,40 @@ const AMBUSH = { radius: 200, team: 32, base: 2, max: 6, ring: [8, 12] }
 // The Inspectors (unsigned: never "Ministry"). armour protects them, though illagers don't show it.
 const INSPECTOR = { name: 'Inspector', color: 'gold', armour: 'iron', voice: 'Unregistered pilgrims. Remain where you are.' }
 
+// --- Stage 4: the Ignition Rite ---
+const POTATOES_PER_PLAYER = 8             // the altar needs this many Potato King's Potatoes per player present
+// The waves: per = Inspectors per player present (at least min, at most WAVE_MAX), their armour, shields on the
+// vindicators, and how many potatoes each one drops. The last wave brings the Senior Inspector.
+const WAVES = [
+  { per: 1, min: 3, armour: 'iron', potatoes: 2 },
+  { per: 1.5, min: 3, armour: 'iron', shields: true, potatoes: 2 },
+  { per: 1, min: 3, armour: 'diamond', potatoes: 2 },
+  { per: 1, min: 3, armour: 'diamond', potatoes: 2, senior: true },
+]
+const WAVE_MAX = 12
+const WAVE_RING = [30, 45]                // they appear this many blocks from the Shrine's centre, on the ground
+const SURFACE_SCAN = [40, 20]             // Inspectors' ground: looked for from 40 above the site's height to 20 below
+const SPAWN_TRIES = 12                    // spots tried for each Inspector (not in water, a cave or a tree) before falling back
+const NEXT_WAVE = { share: 0.75, minutes: 3 }   // the next wave: once this share of the last is down, or after this long
+const SENIOR = { name: 'Senior Inspector', health: 150, potatoes: 8, helpers: 2 }   // helpers: called at half health
+const KINGS_POTATO = { name: 'Potato King\'s Potato', lore: 'Technoblade\'s own. Hoarded by the Inspectors.' }
+const BANDS = 4                           // the statue lights up in this many bands, one per quarter of the bar
+const LIGHT_SPACING = 4                   // in a lit band, a light block every this many blocks (where there's air)
+const KNOCKOUT_RESISTANCE_SECONDS = 3     // after a knockout at the Shrine
+const RITE_BOSSBAR = 'trollcraft:shrine_rite', SENIOR_BOSSBAR = 'trollcraft:shrine_senior'
+
 // --- Stage 5: the Awakening ---
 // The altar: the lectern in the statue (Shrine-local offset from the corner, as in technoblade_statue.schem), with
 // Technoblade's head on top. It's left empty when the Shrine rises; the Regalia book appears there at the Awakening, and
 // a copy taken from it is put back (checked every LECTERN_CHECK_TICKS).
 const ALTAR = { lectern: [28, 22, 20], facing: 'east' }
+// The steps up to the altar (owner, 2026-11-14, after the test rite: the pedestal is 22 blocks high, nobody in survival
+// could reach the lectern, and the Shrine won't let them build up to it). Barriers, solid and invisible, laid when the
+// rise ends: a flight 3 wide (statue z 19..21, the lectern's row) from the platform's edge east of the lectern (statue
+// x 38, level with layer 21), one block out and one down per step toward the rising sun, until a step is all ground
+// (at most `below` under the base). They fill air only, so the build and the land are never cut into. Faint red dust
+// marks them every glowTicks while anyone is within glowRadius. Monsters can't spawn on barriers.
+const STAIRS = { top: [38, 21], z: [19, 21], below: 12, glowTicks: 20, glowRadius: 48 }
 const LECTERN_CHECK_TICKS = 100
 const PRESENT_RADIUS = 64                 // players this close to the Shrine count as present
 const TOP_UP_TIER = 3                     // the Pool is topped up to this tier's threshold (the Nether's seal)
@@ -128,6 +160,12 @@ let data = null
 // ambushed: [bool] x 3, firstLitAt: ms }. D.beam: { up, at: the site, saved: [{ x, y, z, state }] it replaced }.
 // The loops' tokens are on global, so a /reload stops the old ones.
 function freshFires() { return { state: 'none', sites: [], built: [false, false, false], lit: [false, false, false], ambushed: [false, false, false], firstLitAt: 0 } }
+// D.rite: { state: 'none' | 'running' | 'paused' | 'full' | 'done', offered: uuid -> { name, n } (potatoes offered at the
+// altar), total, need, present (players counted at the start), wave (the last one sent, -1 none), waveAt, waveSize,
+// lit (bands lit), seniorUp, seniorCalled }.
+function freshRite(offered) {
+  return { state: 'none', offered: offered || {}, total: 0, need: 0, present: 0, wave: -1, waveAt: 0, waveSize: 0, lit: 0, seniorUp: false, seniorCalled: false }
+}
 function db() {
   if (data) return data
   data = { site: null, braziers: [null, null, null], rise: { state: 'none', next: 0, site: null } }
@@ -146,7 +184,8 @@ function db() {
   if (!data.beam) data.beam = { up: false, at: null, saved: [] }
   if (!data.awake) data.awake = { state: 'none', step: 0, credited: {} }   // state: none, running or done
   if (!data.regalia) data.regalia = { open: false, progress: {} }          // progress: relic id -> { have, by: { uuid: { name, n } } }
-  if (!data.rite) data.rite = { offered: {} }                              // uuid -> { name, n }: potatoes offered at the altar
+  if (!data.rite || !data.rite.state) data.rite = freshRite((data.rite && data.rite.offered) || {})
+  if (!(data.stairs >= 0)) data.stairs = 0                                 // the steps to the altar laid (0: none)
   return data
 }
 function save() {
@@ -297,6 +336,7 @@ function inFootprint(st, d, q) {
   return q.x >= c.x && q.x < c.x + SIZE[0] && q.z >= c.z && q.z < c.z + SIZE[2] && q.y >= c.y - 1 && q.y < c.y + SIZE[1] + 2
 }
 function isOpen(id) { return /(^|:)(cave_|void_)?air$/.test(String(id)) }
+function isStep(id) { return /(^|:)barrier$/.test(String(id)) }   // the steps up to the altar: not ground to land on
 // Somewhere to stand in the column at x, z: the top of the ground near the site's height (two open blocks over a solid
 // one). Falls back to the site's own height.
 function standY(lv, x, z, around) {
@@ -304,9 +344,39 @@ function standY(lv, x, z, around) {
   for (let y = around + 20; y >= around - 20; y--) {
     let below = '', feet = '', head = ''
     try { below = lv.getBlock(x, y - 1, z).id; feet = lv.getBlock(x, y, z).id; head = lv.getBlock(x, y + 1, z).id } catch (e) { return around }
-    if (!isOpen(below) && isOpen(feet) && isOpen(head)) return y
+    if (!isOpen(below) && !isStep(below) && isOpen(feet) && isOpen(head)) return y
   }
   return around
+}
+// Ground for an Inspector in the column at x, z: coming down from SURFACE_SCAN[0] above `around`, the first block that
+// isn't air, through any leaves (onto the forest floor). Null where it's no good: the column starts inside a hill (the
+// old way found a cave under it: an Inspector spawned underground on the test server), the ground is water or lava (one
+// landed in a lake), a tree trunk or the Shrine's steps, or there's nothing within SURFACE_SCAN[1] below.
+function groundAt(lv, x, z, around) {
+  if (!lv) return null
+  try {
+    if (!isOpen(lv.getBlock(x, around + SURFACE_SCAN[0], z).id)) return null
+    for (let y = around + SURFACE_SCAN[0]; y > around - SURFACE_SCAN[1]; y--) {
+      let below = String(lv.getBlock(x, y - 1, z).id)
+      if (isOpen(below) || /leaves$/.test(below)) continue
+      if (/(^|:)(water|lava|bubble_column|barrier|light)$|_(log|stem|wood|hyphae)$/.test(below)) return null
+      return y
+    }
+  } catch (e) { }
+  return null
+}
+// A spot on the ground rMin..rMax blocks from (cx, cz), about angle a: SPAWN_TRIES spots are tried round it, then the
+// first one's standY as before.
+function groundSpot(lv, cx, cz, around, rMin, rMax, a) {
+  let first = null
+  for (let t = 0; t < SPAWN_TRIES; t++) {
+    let ang = a + (t ? (Math.random() - 0.5) * 1.2 : 0), r = rMin + Math.random() * (rMax - rMin)
+    let x = Math.floor(cx + Math.cos(ang) * r), z = Math.floor(cz + Math.sin(ang) * r)
+    if (!first) first = { x: x, z: z }
+    let y = groundAt(lv, x, z, around)
+    if (y !== null) return { x: x + 0.5, y: y, z: z + 0.5 }
+  }
+  return { x: first.x + 0.5, y: standY(lv, first.x, first.z, around), z: first.z + 0.5 }
 }
 // Moves a player out of the footprint to the nearest side, EDGE_GAP blocks out, onto the ground there.
 function moveOut(server, lv, st, p) {
@@ -404,8 +474,9 @@ function nearby(server, st) {
   const m = centreOf(st)
   return players(server).filter(p => dimOf(p) == st.dim && Math.abs(pos(p).x - m.x) <= NEAR && Math.abs(pos(p).z - m.z) <= NEAR)
 }
-// Starts the rise (or carries it on from R.next). Returns '' or why not.
-function startRise(server, resumed) {
+// Starts the rise (or carries it on from R.next). Returns '' or why not. A new rise waits for the braziers' beam
+// (owner, 2026-11-14: so it can't be started out of order by mistake); force skips that.
+function startRise(server, resumed, force) {
   const D = db(), R = D.rise
   if (R.state == 'rising' && !resumed) return 'The Shrine is already rising (layer ' + R.next + ' of ' + SIZE[1] + ').'
   if (R.state == 'risen') return 'The Shrine has already risen. (/shrine reset confirm takes it down, on the test server.)'
@@ -418,6 +489,9 @@ function startRise(server, resumed) {
   const lv = levelByDim(server, st.dim)
   if (!lv) return 'There is no dimension ' + st.dim + '.'
   if (!layersInstalled(server)) return 'The Shrine\'s layers are missing (kubejs/data/trollcraft/structures/shrine/l_0 .. l_63).'
+  if (!resumed && !force && R.state == 'none' && !D.beam.up) {
+    return 'The beam isn\'t up yet: the braziers come first (/shrine braziers), and the Shrine rises under the beam. /shrine rise force raises it anyway.'
+  }
   const first = R.next == 0
   R.state = 'rising'
   R.site = st
@@ -459,6 +533,7 @@ function startRise(server, resumed) {
       sweepMonsters(server, st)
       emptyLectern(server, st)                    // the altar waits for the Regalia book (the Awakening)
       forceload(server, st, false)
+      layStairs(server, st)                       // after the box's chunks are let go: the steps force-load their own
       nearby(server, st).forEach(p => narrate(p, 'The last stone settles. Technoblade\'s Shrine stands.', 'gold'))
       console.info('[Shrine] The Shrine has risen at ' + siteText(st))
       return
@@ -491,10 +566,16 @@ function resetShrine(server, done) {
   global.__shrineRise = (global.__shrineRise || 0) + 1
   global.__shrineAwaken = (global.__shrineAwaken || 0) + 1      // an Awakening under way stops
   global.__shrineLectern = (global.__shrineLectern || 0) + 1    // and so does the lectern's watch
+  global.__shrineRite = (global.__shrineRite || 0) + 1          // and the rite's waves
   resetFires(server)
+  clearInspectors(server, 'shrine_inspector')
+  riteBarsOff(server)
+  crumbleKings(server)
   D.awake = { state: 'none', step: 0, credited: {} }
   D.regalia = { open: false, progress: {} }
-  D.rite = { offered: {} }
+  D.rite = freshRite({})
+  if (st) clearStairs(server, st)
+  D.stairs = 0
   const forget = () => {
     D.rise = { state: 'none', next: 0, site: null }
     save()
@@ -525,6 +606,70 @@ function resetShrine(server, done) {
     forget()
   }
   server.scheduleInTicks(1, step)
+}
+
+// ===================== THE STEPS UP TO THE ALTAR =====================
+
+function stairSpan() { return STAIRS.top[1] + STAIRS.below + 1 }   // the most steps there can be
+// Step k's blocks (k = 0 at the top), across the flight's width.
+function stairCells(st, k) {
+  const c = corner(st), out = []
+  for (let z = STAIRS.z[0]; z <= STAIRS.z[1]; z++) out.push({ x: c.x + STAIRS.top[0] + k, y: c.y + STAIRS.top[1] - k, z: c.z + z })
+  return out
+}
+function withStairChunks(server, st, fn) {
+  const c = corner(st)
+  withChunks(server, st.dim, c.x + STAIRS.top[0], c.z + STAIRS.z[0], c.x + STAIRS.top[0] + stairSpan() - 1, c.z + STAIRS.z[1], fn)
+}
+// Lays the steps, top down, where there's air (or a light block), and stops at the first step that's all ground. Laying
+// them again (/shrine repair) only fills the gaps. Their count goes in db().stairs, and the glow starts.
+function layStairs(server, st) {
+  withStairChunks(server, st, lv => {
+    let n = 0
+    for (let k = 0; k < stairSpan(); k++) {
+      let cells = stairCells(st, k), ground = 0
+      cells.forEach(q => {
+        let id = ''
+        try { id = String(lv.getBlock(q.x, q.y, q.z).id) } catch (e) { }
+        if (isOpen(id) || /(^|:)light$/.test(id)) run(server, 'execute in ' + st.dim + ' run setblock ' + q.x + ' ' + q.y + ' ' + q.z + ' minecraft:barrier')
+        else if (!isStep(id)) ground++
+      })
+      if (ground == cells.length) break
+      n = k + 1
+    }
+    db().stairs = n
+    save()
+    startStairGlow(server)
+    console.info('[Shrine] The steps to the altar: ' + n)
+  })
+}
+// Takes every step away (barriers only, over the whole span), and stops the glow.
+function clearStairs(server, st) {
+  global.__shrineStairs = (global.__shrineStairs || 0) + 1
+  withStairChunks(server, st, lv => {
+    for (let k = 0; k < stairSpan(); k++) {
+      let cells = stairCells(st, k), a = cells[0], b = cells[cells.length - 1]
+      run(server, 'execute in ' + st.dim + ' run fill ' + a.x + ' ' + a.y + ' ' + a.z + ' ' + b.x + ' ' + b.y + ' ' + b.z + ' minecraft:air replace minecraft:barrier')
+    }
+  })
+}
+// Faint red dust over the middle of each step, while anyone is near.
+function startStairGlow(server) {
+  const token = (global.__shrineStairs = (global.__shrineStairs || 0) + 1)
+  const tick = () => {
+    if (token != global.__shrineStairs) return
+    const D = db(), st = D.rise.site
+    if (D.rise.state != 'risen' || !st || !D.stairs) return
+    const half = stairCells(st, Math.floor(D.stairs / 2)), mid = half[Math.floor(half.length / 2)]
+    if (players(server).some(p => dimOf(p) == st.dim && flat(pos(p), mid) <= STAIRS.glowRadius)) {
+      for (let k = 0; k < D.stairs; k++) {
+        let cells = stairCells(st, k), q = cells[Math.floor(cells.length / 2)]
+        run(server, 'execute in ' + st.dim + ' run particle minecraft:dust 0.55 0 0 1 ' + (q.x + 0.5) + ' ' + (q.y + 1.05) + ' ' + (q.z + 0.5) + ' 0.3 0 1 0 2 normal')
+      }
+    }
+    server.scheduleInTicks(STAIRS.glowTicks, tick)
+  }
+  server.scheduleInTicks(STAIRS.glowTicks, tick)
 }
 
 // ===================== STAGE 2: THE BRAZIERS =====================
@@ -744,16 +889,24 @@ function skyBlock(lv, st) {
 // ===================== STAGE 2: THE AMBUSHES (the Shrine's own Inspectors) =====================
 // Part II has no portal_ambush.js, so the Shrine spawns its Inspectors itself (the rite's waves will use them too).
 
-function inspectorNbt(kind, tag) {
-  const armour = ['boots', 'leggings', 'chestplate', 'helmet'].map(s => '{id:"minecraft:' + INSPECTOR.armour + '_' + s + '",Count:1b}')
-  const hand = kind == 'pillager' ? '{id:"minecraft:crossbow",Count:1b}' : '{id:"minecraft:iron_axe",Count:1b}'
+// opts: armour ('iron' or 'diamond'), shield (vindicators), axe (the item id), name, health, tags (more tags).
+// They see players up to 64 blocks off, so the rite's waves, coming from 30-45 blocks out, find their way in.
+function inspectorNbt(kind, tag, opts) {
+  opts = opts || {}
+  const metal = opts.armour || INSPECTOR.armour
+  const armour = ['boots', 'leggings', 'chestplate', 'helmet'].map(s => '{id:"minecraft:' + metal + '_' + s + '",Count:1b}')
+  const main = kind == 'pillager' ? '{id:"minecraft:crossbow",Count:1b}' : '{id:"' + (opts.axe || 'minecraft:' + metal + '_axe') + '",Count:1b}'
+  const off = opts.shield && kind != 'pillager' ? '{id:"minecraft:shield",Count:1b}' : '{}'
+  const tags = ['shrine_inspector', tag].concat(opts.tags || [])
+  const attrs = ['{Name:"minecraft:generic.follow_range",Base:64.0d}'].concat(opts.health ? ['{Name:"minecraft:generic.max_health",Base:' + opts.health + '.0d}'] : [])
   return '{PersistenceRequired:1b,CanPickUpLoot:0b,CanJoinRaid:0b,PatrolLeader:0b,Patrolling:0b,DeathLootTable:"minecraft:empty"' +
-    ',Tags:["shrine_inspector","' + tag + '"]' +
-    ',CustomName:' + snbtString(JSON.stringify({ text: INSPECTOR.name, color: INSPECTOR.color, italic: false })) + ',CustomNameVisible:1b' +
-    ',HandItems:[' + hand + ',{}],HandDropChances:[0f,0f],ArmorItems:[' + armour.join(',') + '],ArmorDropChances:[0f,0f,0f,0f]}'
+    ',Tags:[' + tags.map(t => '"' + t + '"').join(',') + ']' +
+    ',CustomName:' + snbtString(JSON.stringify({ text: opts.name || INSPECTOR.name, color: INSPECTOR.color, italic: false, bold: !!opts.name })) + ',CustomNameVisible:1b' +
+    ',HandItems:[' + main + ',' + off + '],HandDropChances:[0f,0f],ArmorItems:[' + armour.join(',') + '],ArmorDropChances:[0f,0f,0f,0f]' +
+    ',Attributes:[' + attrs.join(',') + ']' + (opts.health ? ',Health:' + opts.health + 'f' : '') + '}'
 }
-function summonInspector(server, dim, x, y, z, kind, tag) {
-  return !!run(server, 'execute in ' + dim + ' run summon minecraft:' + kind + ' ' + x + ' ' + y + ' ' + z + ' ' + inspectorNbt(kind, tag))
+function summonInspector(server, dim, x, y, z, kind, tag, opts) {
+  return !!run(server, 'execute in ' + dim + ' run summon minecraft:' + kind + ' ' + x + ' ' + y + ' ' + z + ' ' + inspectorNbt(kind, tag, opts))
 }
 // An ambush on p and the pilgrims within AMBUSH.team blocks: Inspectors on the ground in a ring round them. Returns how
 // many came.
@@ -763,11 +916,8 @@ function ambush(server, p) {
   const n = Math.min(AMBUSH.max, AMBUSH.base + team.length)
   let made = 0
   for (let i = 0; i < n; i++) {
-    let a = i * 2 * 3.14159265 / n + Math.random() * 0.6
-    let r = AMBUSH.ring[0] + Math.random() * (AMBUSH.ring[1] - AMBUSH.ring[0])
-    let x = Math.floor(q.x + Math.cos(a) * r), z = Math.floor(q.z + Math.sin(a) * r)
-    let y = standY(lv, x, z, Math.floor(q.y))
-    if (summonInspector(server, d, x + 0.5, y, z + 0.5, i % 2 == 0 ? 'vindicator' : 'pillager', 'shrine_ambush')) made++
+    let s = groundSpot(lv, q.x, q.z, Math.floor(q.y), AMBUSH.ring[0], AMBUSH.ring[1], i * 2 * 3.14159265 / n + Math.random() * 0.6)
+    if (summonInspector(server, d, s.x, s.y, s.z, i % 2 == 0 ? 'vindicator' : 'pillager', 'shrine_ambush')) made++
   }
   team.forEach(o => {
     narrate(o, 'Figures close in, clipboards first.', 'gray')
@@ -806,6 +956,315 @@ function clearInspectors(server, tag) {
   })
   return n
 }
+
+// ===================== STAGE 4: THE IGNITION RITE =====================
+
+// --- The Potato King's Potatoes: Technoblade's own, hoarded by the Inspectors; only the altar takes them ---
+function kingsTag() {
+  return '{trollcraft:{kingspotato:1b},display:{Name:' + snbtString(JSON.stringify({ text: KINGS_POTATO.name, color: 'gold', italic: false })) +
+    ',Lore:[' + snbtString(JSON.stringify({ text: KINGS_POTATO.lore, color: 'gray', italic: true })) + ']},Enchantments:[{id:"minecraft:unbreaking",lvl:1s}],HideFlags:1}'
+}
+function isKingsPotato(s) {
+  if (!s || s.isEmpty() || String(s.id) != 'minecraft:potato') return false
+  try { return s.nbt != null && s.nbt.contains('trollcraft') && s.nbt.getCompound('trollcraft').contains('kingspotato') } catch (e) { return false }
+}
+function dropKings(server, dim, q, n) {
+  run(server, 'execute in ' + dim + ' run summon minecraft:item ' + q.x + ' ' + (q.y + 0.5) + ' ' + q.z + ' {Item:{id:"minecraft:potato",Count:' + n + 'b,tag:' + kingsTag() + '},PickupDelay:10s}')
+}
+// Takes every Potato King's Potato the player carries (hotbar, inventory, off hand). Returns how many.
+function takeKings(p) {
+  const inv = p.inventory
+  let n = 0
+  for (let i = 0; i < 41; i++) {
+    let s = inv.getItem(i)
+    if (!isKingsPotato(s)) continue
+    n += s.getCount()
+    s.shrink(s.getCount())
+  }
+  return n
+}
+// The Awakening: leftovers crumble, in pockets and on the ground.
+function crumbleKings(server) {
+  players(server).forEach(p => {
+    let n = 0
+    try { n = takeKings(p) } catch (e) { }
+    if (n > 0) narrate(p, 'The Potato King\'s Potatoes you carried crumble to dust. Their work is done.', 'gray')
+  })
+  run(server, 'kill @e[type=minecraft:item,nbt={Item:{tag:{trollcraft:{kingspotato:1b}}}}]')
+}
+
+// --- The waves ---
+function riteOn() { const s = db().rite.state; return s == 'running' || s == 'full' }
+function waveSize(w, n) { return Math.min(WAVE_MAX, Math.max(w.min, Math.ceil(w.per * n))) }
+function ringSpot(lv, st, rMin, rMax, a) { const m = centreOf(st); return groundSpot(lv, m.x, m.z, st.y, rMin, rMax, a) }
+function riteTold(server, text, color) { presentAt(server, db().rise.site).forEach(p => narrate(p, text, color)) }
+function spawnWave(server, i) {
+  const D = db(), R = D.rite, st = D.rise.site, w = WAVES[i], lv = levelByDim(server, st.dim)
+  const n = waveSize(w, R.present)
+  let made = 0
+  for (let k = 0; k < n; k++) {
+    let q = ringSpot(lv, st, WAVE_RING[0], WAVE_RING[1], k * 2 * 3.14159265 / n + Math.random() * 0.5)
+    if (summonInspector(server, st.dim, q.x, q.y, q.z, k % 3 == 2 ? 'pillager' : 'vindicator', 'shrine_rite',
+      { armour: w.armour, shield: w.shields, tags: ['shrine_wave_' + i, 'shrine_pot_' + w.potatoes] })) made++
+  }
+  if (w.senior) {
+    let q = ringSpot(lv, st, WAVE_RING[0], WAVE_RING[1], Math.random() * 2 * 3.14159265)
+    if (summonInspector(server, st.dim, q.x, q.y, q.z, 'vindicator', 'shrine_rite',
+      { armour: 'diamond', axe: 'minecraft:netherite_axe', name: SENIOR.name, health: SENIOR.health, tags: ['shrine_wave_' + i, 'shrine_senior', 'shrine_pot_' + SENIOR.potatoes] })) {
+      made++
+      R.seniorUp = true
+      run(server, 'effect give @e[tag=shrine_senior] minecraft:resistance infinite 0 true')
+      run(server, 'bossbar add ' + SENIOR_BOSSBAR + ' ' + JSON.stringify({ text: SENIOR.name, color: 'gold', bold: true }))
+      run(server, 'bossbar set ' + SENIOR_BOSSBAR + ' color yellow')
+      run(server, 'bossbar set ' + SENIOR_BOSSBAR + ' max ' + SENIOR.health)
+      run(server, 'bossbar set ' + SENIOR_BOSSBAR + ' value ' + SENIOR.health)
+      run(server, 'bossbar set ' + SENIOR_BOSSBAR + ' players @a')
+    }
+  }
+  R.wave = i
+  R.waveAt = Date.now()
+  R.waveSize = made
+  save()
+  riteTold(server, 'Wave ' + (i + 1) + ' of ' + WAVES.length + ': ' + made + ' Inspectors close in on the Shrine' + (w.senior ? ', a Senior Inspector at their head.' : '.'), 'gold')
+  console.info('[Shrine] Rite wave ' + (i + 1) + ': ' + made + ' Inspectors')
+}
+function riteMobs(server) {
+  let all = []
+  try { all = list(server.entities) } catch (e) { return [] }
+  return all.filter(e => {
+    let tags = ''
+    try { tags = String(e.getTags()) } catch (err) { }
+    if (tags.indexOf('shrine_rite') < 0) return false
+    try { return e.isAlive() && !e.isRemoved() } catch (err) { return true }
+  })
+}
+function hasTag(e, t) { try { return String(e.getTags()).indexOf(t) >= 0 } catch (err) { return false } }
+function riteBar(server) {
+  const R = db().rite
+  const name = R.state == 'full' ? [{ text: 'The Shrine burns to its crown', color: 'gold', bold: true }] :
+    [{ text: 'The Ignition Rite: ', color: 'dark_red', bold: true }, { text: R.total + ' / ' + R.need + ' potatoes', color: 'gold' }]
+  run(server, 'bossbar add ' + RITE_BOSSBAR + ' ' + JSON.stringify(name))
+  run(server, 'bossbar set ' + RITE_BOSSBAR + ' name ' + JSON.stringify(name))
+  run(server, 'bossbar set ' + RITE_BOSSBAR + ' color ' + (R.state == 'full' ? 'yellow' : 'red'))
+  run(server, 'bossbar set ' + RITE_BOSSBAR + ' max ' + Math.max(1, R.need))
+  run(server, 'bossbar set ' + RITE_BOSSBAR + ' value ' + Math.min(R.need, R.total))
+  run(server, 'bossbar set ' + RITE_BOSSBAR + ' players @a')
+}
+function riteBarsOff(server) {
+  run(server, 'bossbar remove ' + RITE_BOSSBAR)
+  run(server, 'bossbar remove ' + SENIOR_BOSSBAR)
+}
+// Once a second during the rite: Inspectors go after the pilgrims at the Shrine, the Senior Inspector's bar and his
+// call for help, and the next wave (once NEXT_WAVE.share of the last is down, or after NEXT_WAVE.minutes).
+function startRiteLoop(server) {
+  const token = (global.__shrineRite = (global.__shrineRite || 0) + 1)
+  const step = () => {
+    if (token != global.__shrineRite || !riteOn()) return
+    try { riteTick(server) } catch (e) { console.error('[Shrine] Rite: ' + e) }
+    server.scheduleInTicks(20, step)
+  }
+  server.scheduleInTicks(20, step)
+}
+function riteTick(server) {
+  const D = db(), R = D.rite, st = D.rise.site
+  const alive = riteMobs(server)
+  const pilgrims = presentAt(server, st).filter(pilgrim)
+  alive.forEach(m => {
+    let t = null
+    try { t = m.getTarget() } catch (e) { }
+    if (t || !pilgrims.length) return
+    let q = pos(m), best = pilgrims[0]
+    pilgrims.forEach(p => { if (flat(pos(p), q) < flat(pos(best), q)) best = p })
+    try { m.setTarget(best) } catch (e) { }
+  })
+  // the Senior Inspector
+  const senior = alive.filter(m => hasTag(m, 'shrine_senior'))[0]
+  if (senior) {
+    let hp = SENIOR.health
+    try { hp = Number(senior.getHealth()) } catch (e) { }
+    run(server, 'bossbar set ' + SENIOR_BOSSBAR + ' value ' + Math.max(0, Math.round(hp)))
+    if (!R.seniorCalled && hp <= SENIOR.health / 2) {
+      R.seniorCalled = true
+      save()
+      let lv = levelByDim(server, st.dim), q = pos(senior)
+      for (let k = 0; k < SENIOR.helpers; k++) {
+        let a = k * 3.14159265 + Math.random(), x = Math.floor(q.x + Math.cos(a) * 4), z = Math.floor(q.z + Math.sin(a) * 4)
+        summonInspector(server, st.dim, x + 0.5, standY(lv, x, z, Math.floor(q.y)), z + 0.5, 'vindicator', 'shrine_rite',
+          { armour: 'diamond', tags: ['shrine_wave_' + R.wave, 'shrine_pot_' + WAVES[WAVES.length - 1].potatoes] })
+      }
+      riteTold(server, 'The Senior Inspector calls for assistance.', 'gold')
+    }
+  } else if (R.seniorUp) {
+    R.seniorUp = false
+    save()
+    run(server, 'bossbar remove ' + SENIOR_BOSSBAR)
+    riteTold(server, 'The Senior Inspector falls. His clipboard does not.', 'gold')
+  }
+  // the next wave
+  if (R.state == 'running' && R.wave < WAVES.length - 1) {
+    let up = alive.filter(m => hasTag(m, 'shrine_wave_' + R.wave)).length
+    if (R.waveSize - up >= R.waveSize * NEXT_WAVE.share || Date.now() - R.waveAt >= NEXT_WAVE.minutes * 60000) spawnWave(server, R.wave + 1)
+  }
+  riteBar(server)
+}
+
+// --- The altar and the light ---
+// Lights band k of the statue (its layers k*16 .. k*16+15): light blocks, LIGHT_SPACING apart, wherever there's air,
+// and flames rising along it. Once all four are lit, the statue glows at night.
+function lightBand(server, st, k) {
+  const c = corner(st), per = SIZE[1] / BANDS, y0 = k * per, mid = centreOf(st)
+  withChunks(server, st.dim, c.x, c.z, c.x + SIZE[0] - 1, c.z + SIZE[2] - 1, lv => {
+    for (let y = y0; y < y0 + per; y += LIGHT_SPACING) {
+      for (let x = 1; x < SIZE[0]; x += LIGHT_SPACING) {
+        for (let z = 1; z < SIZE[2]; z += LIGHT_SPACING) {
+          let id = ''
+          try { id = String(lv.getBlock(c.x + x, c.y + y, c.z + z).id) } catch (e) { continue }
+          if (isOpen(id)) run(server, 'execute in ' + st.dim + ' run setblock ' + (c.x + x) + ' ' + (c.y + y) + ' ' + (c.z + z) + ' minecraft:light[level=15]')
+        }
+      }
+    }
+    let at = mid.x + ' ' + (c.y + y0 + per / 2) + ' ' + mid.z
+    run(server, 'execute in ' + st.dim + ' run particle minecraft:flame ' + at + ' 8 ' + (per / 3) + ' 8 0.03 300 force')
+    run(server, 'execute in ' + st.dim + ' run playsound minecraft:item.firecharge.use block @a ' + at + ' 3 0.6')
+  })
+}
+// Right-clicking the altar (the lectern or Technoblade's head) with Potato King's Potatoes offers every one carried.
+function offerAt(server, p) {
+  const D = db(), R = D.rite, st = D.rise.site
+  const n = takeKings(p)
+  if (!n) return
+  const u = uuidOf(p)
+  R.offered[u] = { name: nameOf(p), n: (R.offered[u] ? R.offered[u].n : 0) + n }
+  R.total += n
+  save()
+  const L = lecternPos(st), at = (L.x + 0.5) + ' ' + (L.y + 1) + ' ' + (L.z + 0.5)
+  run(server, 'execute in ' + st.dim + ' run particle minecraft:flame ' + at + ' 0.4 0.4 0.4 0.02 40 force')
+  run(server, 'execute in ' + st.dim + ' run playsound minecraft:block.respawn_anchor.charge block @a ' + at + ' 2 1.2')
+  riteTold(server, nameOf(p) + ' offers ' + n + ' Potato King\'s Potato' + (n == 1 ? '' : 'es') + ' at the altar. ' + Math.min(R.total, R.need) + ' of ' + R.need + '.', 'gold')
+  const bands = Math.min(BANDS, Math.floor(R.total * BANDS / Math.max(1, R.need)))
+  while (R.lit < bands) { lightBand(server, st, R.lit); R.lit++ }
+  save()
+  if (R.total >= R.need && R.state == 'running') riteFull(server)
+  else riteBar(server)
+}
+function riteFull(server) {
+  const R = db().rite, st = db().rise.site
+  R.state = 'full'
+  while (R.lit < BANDS) { lightBand(server, st, R.lit); R.lit++ }
+  save()
+  riteBar(server)
+  riteTold(server, 'The last band catches. The Shrine burns from its feet to its crown.', 'gold')
+  players(server).forEach(p => {
+    let isOp = false
+    try { isOp = !!p.hasPermissions(2) } catch (e) { }
+    if (isOp) narrate(p, 'The altar is full. When you\'re ready: /shrine awaken', 'yellow')
+  })
+  console.info('[Shrine] The altar is full: ' + R.total + ' of ' + R.need)
+}
+
+// /shrine rite: the waves begin (or carry on, after /shrine stop). '' or why not.
+function startRite(server) {
+  const D = db(), R = D.rite
+  if (D.rise.state != 'risen') return 'The Shrine hasn\'t risen yet (/shrine rise).'
+  if (D.awake.state != 'none') return 'The Shrine has already awakened.'
+  if (R.state == 'running') return 'The rite is already under way (wave ' + (R.wave + 1) + ' of ' + WAVES.length + ').'
+  if (R.state == 'full') return 'The altar is already full: /shrine awaken.'
+  const why = otherBusy()
+  if (why) return why
+  const st = D.rise.site
+  if (R.state == 'paused') {
+    R.state = 'running'
+    save()
+    spawnWave(server, Math.max(0, R.wave))     // the wave that was cleared away comes again
+    startRiteLoop(server)
+    return ''
+  }
+  const n = Math.max(1, presentAt(server, st).filter(pilgrim).length)
+  D.rite = freshRite({})
+  D.rite.state = 'running'
+  D.rite.present = n
+  D.rite.need = n * POTATOES_PER_PLAYER
+  save()
+  riteTold(server, 'Figures gather on the land around the Shrine. They are carrying something that is not theirs.', 'dark_red')
+  riteTold(server, 'Take the Potato King\'s Potatoes from the Inspectors and offer them at the altar: ' + D.rite.need + ' in all.', 'gold')
+  spawnWave(server, 0)
+  riteBar(server)
+  startRiteLoop(server)
+  console.info('[Shrine] The Ignition Rite begins: ' + n + ' present, ' + D.rite.need + ' potatoes needed')
+  return ''
+}
+// /shrine stop during the rite: the waves stop and the Inspectors go; the bar is kept. /shrine rite carries on.
+function pauseRite(server) {
+  const R = db().rite
+  if (R.state != 'running') return false
+  global.__shrineRite = (global.__shrineRite || 0) + 1
+  R.state = 'paused'
+  R.seniorUp = false
+  save()
+  clearInspectors(server, 'shrine_rite')
+  riteBarsOff(server)
+  return true
+}
+
+// --- Knockouts: lethal damage at the Shrine while the rite is on heals and sets the player down at its edge ---
+function damageType(source) {
+  try { return String(typeof source.getMsgId == 'function' ? source.getMsgId() : source.getType()) } catch (e) { return '' }
+}
+function knockout(server, p, why) {
+  const st = db().rise.site, n = nameOf(p)
+  try { p.setHealth(p.getMaxHealth()) } catch (e) { try { p.health = 20 } catch (e2) { } }
+  try { p.clearFire() } catch (e) { }
+  try { p.fallDistance = 0 } catch (e) { }
+  moveOut(server, levelByDim(server, st.dim), st, p)
+  run(server, 'effect give ' + n + ' minecraft:resistance ' + KNOCKOUT_RESISTANCE_SECONDS + ' 4 true')
+  narrate(p, 'Knocked down. The Shrine will not let you fall here: you wake at its edge.', 'gray')
+  console.info('[Shrine] Knockout: ' + n + (why ? ' (' + why + ')' : ''))
+}
+EntityEvents.death(event => {
+  const e = event.entity, server = event.server || Utils.server
+  let player = false
+  try { player = !!e.isPlayer() } catch (err) { }
+  if (player) {
+    let st = db().rise.site
+    let why = damageType(event.source)
+    if (!riteOn() || !st || why == 'genericKill') return   // /kill still kills
+    if (dimOf(e) != st.dim || flat(pos(e), centreOf(st)) > PRESENT_RADIUS) return
+    knockout(server, e, why)
+    event.cancel()
+    return
+  }
+  // an Inspector of the rite drops its potatoes
+  let tags = ''
+  try { tags = String(e.getTags()) } catch (err) { return }
+  const m = tags.match(/shrine_pot_(\d+)/)
+  if (!m || tags.indexOf('shrine_rite') < 0) return
+  dropKings(server, dimOf(e), pos(e), Number(m[1]))
+})
+// Only the altar takes the potatoes: they can't be eaten or planted.
+ItemEvents.rightClicked(event => {
+  const p = event.player
+  let held = null
+  try { held = event.item } catch (e) { }
+  if (!held) { try { held = p.mainHandItem } catch (e) { return } }
+  if (!isKingsPotato(held)) return
+  narrate(p, 'Only the Shrine\'s altar will take these.', 'gray')
+  event.cancel()
+})
+BlockEvents.rightClicked(event => {
+  const p = event.player, blk = event.block
+  let held = null
+  try { held = event.item } catch (e) { }
+  if (!held) { try { held = p.mainHandItem } catch (e) { return } }
+  if (!isKingsPotato(held)) return
+  let hand = ''
+  try { hand = String(event.hand) } catch (e) { }
+  const st = db().rise.site
+  let atAltar = false
+  try { atAltar = !!st && db().rise.state == 'risen' && dimKey(blk.level) == st.dim && altarAt(st, Number(blk.x), Number(blk.y), Number(blk.z)) } catch (e) { }
+  if (atAltar && riteOn() && (!hand || hand.indexOf('MAIN') >= 0)) offerAt(event.server || Utils.server, p)
+  else if (!atAltar) narrate(p, 'Only the Shrine\'s altar will take these.', 'gray')
+  event.cancel()
+})
 
 // ===================== STAGE 5: THE AWAKENING =====================
 
@@ -904,6 +1363,10 @@ function bloodGod(server, text) {
 function awakenStep(server, s) {
   const st = db().rise.site, m = centreOf(st), here = m.x + ' ' + (m.y + 23) + ' ' + m.z
   if (s.step == 'begin') {
+    global.__shrineRite = (global.__shrineRite || 0) + 1         // the rite is over: its waves stop
+    if (db().rite.state != 'none') { db().rite.state = 'done'; save() }
+    riteBarsOff(server)
+    crumbleKings(server)
     clearInspectors(server, 'shrine_inspector')
     bossbarOff(server)
     presentAt(server, st).forEach(p => {
@@ -980,14 +1443,17 @@ function repairShrine(server) {
     else emptyLectern(server, st)
     console.info('[Shrine] Repaired: ' + placed + ' of ' + SIZE[1] + ' layers placed again')
   })
+  layStairs(server, st)                           // any missing steps go back (and a Shrine risen before them gets them)
   return true
 }
 // /shrine awaken. '' or why not.
-function awaken(server) {
-  const D = db()
+function awaken(server, force) {
+  const D = db(), R = D.rite
   if (D.rise.state != 'risen') return 'The Shrine hasn\'t risen yet (/shrine rise).'
   if (D.awake.state == 'running') return 'The Awakening is already under way.'
   if (D.awake.state == 'done') return 'The Shrine has already awakened. (/shrine reset confirm forgets the night, on the test server.)'
+  if (R.state != 'full' && !force) return (R.state == 'none' ? 'The Ignition Rite hasn\'t been held (/shrine rite).' : 'The altar isn\'t full yet (' + R.total + ' of ' + R.need + ' potatoes).') +
+    ' /shrine awaken force goes ahead anyway.'
   D.awake = { state: 'running', step: 0, credited: {} }
   save()
   console.info('[Shrine] The Awakening begins')
@@ -1030,10 +1496,10 @@ function statusLines(server) {
     let b = D.braziers[i]
     out.push('Brazier ' + (i + 1) + ': ' + (b ? siteText(b) + ', ' + fromCastle(server, b) + ' from the castle' : 'not set (/shrine brazier set ' + (i + 1) + ')'))
   }
-  if (R.state == 'none') out.push('The rise: not started.' + (layersInstalled(server) ? '' : ' The layers are missing (kubejs/data/trollcraft/structures/shrine/).'))
+  if (R.state == 'none') out.push('The rise: not started (/shrine rise, once the beam is up).' + (layersInstalled(server) ? '' : ' The layers are missing (kubejs/data/trollcraft/structures/shrine/).'))
   else if (R.state == 'rising') out.push('The rise: layer ' + R.next + ' of ' + SIZE[1] + ', at ' + siteText(R.site) + '.')
   else if (R.state == 'stopped') out.push('The rise: paused at layer ' + R.next + ' of ' + SIZE[1] + ' (/shrine rise carries on).')
-  else out.push('The Shrine has risen, at ' + siteText(R.site) + '.')
+  else out.push('The Shrine has risen, at ' + siteText(R.site) + '. ' + (D.stairs ? D.stairs + ' steps up to the altar.' : 'No steps up to the altar yet (/shrine repair lays them).'))
   const F = D.fires, ambushed = F.ambushed.filter(x => x).length
   if (F.state == 'none') out.push('The fires: not out yet (/shrine braziers, once all three sites are set).')
   else if (F.state == 'placed') out.push('The fires: out, none lit. Ambushes so far: ' + ambushed + ' of 3.')
@@ -1041,6 +1507,12 @@ function statusLines(server) {
   else if (F.state == 'lit') out.push('The fires: all three burn.')
   else out.push('The fires: done (the rise has begun).')
   out.push(D.beam.up ? 'The beam: up at ' + siteText(D.beam.at) + '.' : 'The beam: down.')
+  const RT = D.rite
+  if (RT.state == 'none') out.push('The Ignition Rite: not yet (/shrine rite, once the Shrine has risen).')
+  else if (RT.state == 'running') out.push('The Ignition Rite: wave ' + (RT.wave + 1) + ' of ' + WAVES.length + '; ' + RT.total + ' of ' + RT.need + ' potatoes offered; ' + RT.lit + ' of ' + BANDS + ' bands lit.')
+  else if (RT.state == 'paused') out.push('The Ignition Rite: paused at wave ' + (RT.wave + 1) + '; ' + RT.total + ' of ' + RT.need + ' potatoes (/shrine rite carries on).')
+  else if (RT.state == 'full') out.push('The Ignition Rite: the altar is full (' + RT.total + ' of ' + RT.need + '). /shrine awaken.')
+  else out.push('The Ignition Rite: done (' + RT.total + ' potatoes offered).')
   const A = D.awake, credited = Object.keys(A.credited || {}).map(u => A.credited[u])
   if (A.state == 'none') out.push('The Awakening: not yet (/shrine awaken, once the Shrine has risen).')
   else if (A.state == 'running') out.push('The Awakening: under way (step ' + A.step + ' of ' + AWAKEN_STEPS.length + ').')
@@ -1059,8 +1531,10 @@ function resume(server, restart) {
     if (restart) D.fires.sites.forEach(b => brazierForceload(server, b, true))
     startFireWatch(server)
   }
+  if (riteOn()) startRiteLoop(server)
   if (D.awake.state == 'running') runAwakening(server, D.awake.step)
   if (D.awake.state != 'none' && D.regalia.open && D.rise.state == 'risen') startLecternWatch(server)
+  if (D.rise.state == 'risen' && D.stairs) startStairGlow(server)
 }
 ServerEvents.loaded(event => { resume(event.server, true) })
 try {
@@ -1130,6 +1604,19 @@ ServerEvents.commandRegistry(event => {
     const p = self(ctx)
     return p ? here(p) : null
   }
+  const awakenReply = (ctx, force) => {
+    const why = awaken(ctx.source.server, force)
+    if (why) return reply(ctx, why, true)
+    return reply(ctx, 'The Awakening begins: the tribute, the Blood God\'s words, the Regalia book on the altar, then the Pool topped up to Tier ' + TOP_UP_TIER +
+      ' (' + fmt(tierThreshold(TOP_UP_TIER)) + ' Drops) and the vote. About ' + Math.round(AWAKEN_STEPS[AWAKEN_STEPS.length - 1].at / 20) + ' seconds.')
+  }
+  const riseReply = force => ctx => {
+    const R = db().rise, resuming = R.state == 'stopped'
+    const why = startRise(ctx.source.server, false, force)
+    if (why) return reply(ctx, why, true)
+    return reply(ctx, resuming ? 'The rise carries on from layer ' + R.next + '.' :
+      'The Shrine rises: ' + SIZE[1] + ' layers in about ' + Math.round(SIZE[1] * LAYER_TICKS / 20) + ' seconds.')
+  }
   const xyz = fn => Commands.argument('x', Arguments.INTEGER.create(event)).then(Commands.argument('y', Arguments.INTEGER.create(event))
     .then(Commands.argument('z', Arguments.INTEGER.create(event)).executes(safe(fn))))
 
@@ -1163,13 +1650,7 @@ ServerEvents.commandRegistry(event => {
     .then(Commands.literal('site').then(Commands.literal('set').executes(safe(setSite(false))).then(xyz(setSite(true)))))
     .then(Commands.literal('brazier').then(Commands.literal('set').then(Commands.argument('n', Arguments.INTEGER.create(event)).executes(safe(setBrazier(false)))
       .then(xyz(setBrazier(true))))))
-    .then(Commands.literal('rise').executes(safe(ctx => {
-      const R = db().rise, resuming = R.state == 'stopped'
-      const why = startRise(ctx.source.server, false)
-      if (why) return reply(ctx, why, true)
-      return reply(ctx, resuming ? 'The rise carries on from layer ' + R.next + '.' :
-        'The Shrine rises: ' + SIZE[1] + ' layers in about ' + Math.round(SIZE[1] * LAYER_TICKS / 20) + ' seconds.')
-    })))
+    .then(Commands.literal('rise').executes(safe(riseReply(false))).then(Commands.literal('force').executes(safe(riseReply(true)))))
     .then(Commands.literal('braziers').executes(safe(ctx => {
       const why = placeBraziers(ctx.source.server)
       if (why) return reply(ctx, why, true)
@@ -1204,16 +1685,29 @@ ServerEvents.commandRegistry(event => {
       const n = ambush(ctx.source.server, p)
       return reply(ctx, n ? n + ' Inspectors close in on ' + nameOf(p) + '.' : 'No Inspector could be placed near ' + nameOf(p) + '.', !n)
     }))))
-    .then(Commands.literal('awaken').executes(safe(ctx => {
-      const why = awaken(ctx.source.server)
+    .then(Commands.literal('rite').executes(safe(ctx => {
+      const R = db().rite, resuming = R.state == 'paused'
+      const why = startRite(ctx.source.server)
       if (why) return reply(ctx, why, true)
-      return reply(ctx, 'The Awakening begins: the tribute, the Blood God\'s words, the Regalia book on the altar, then the Pool topped up to Tier ' + TOP_UP_TIER +
-        ' (' + fmt(tierThreshold(TOP_UP_TIER)) + ' Drops) and the vote. About ' + Math.round(AWAKEN_STEPS[AWAKEN_STEPS.length - 1].at / 20) + ' seconds.')
+      return reply(ctx, resuming ? 'The rite carries on: wave ' + (db().rite.wave + 1) + ' comes again.' :
+        'The Ignition Rite begins: ' + db().rite.present + ' present, so the altar needs ' + db().rite.need + ' Potato King\'s Potatoes. ' + WAVES.length + ' waves, the last with the Senior Inspector.')
     })))
+    .then(Commands.literal('need').then(Commands.argument('n', Arguments.INTEGER.create(event)).executes(safe(ctx => {
+      const R = db().rite, n = intArg(ctx, 'n')
+      if (R.state != 'running' && R.state != 'paused') return reply(ctx, 'The rite isn\'t under way.', true)
+      if (!(n >= 1)) return reply(ctx, 'The altar needs at least 1.', true)
+      R.need = n
+      save()
+      if (R.total >= R.need && R.state == 'running') riteFull(ctx.source.server)
+      else if (R.state == 'running') riteBar(ctx.source.server)
+      return reply(ctx, 'The altar now needs ' + n + ' potatoes (' + R.total + ' offered).')
+    }))))
+    .then(Commands.literal('awaken').executes(safe(ctx => awakenReply(ctx, false)))
+      .then(Commands.literal('force').executes(safe(ctx => awakenReply(ctx, true)))))
     .then(Commands.literal('repair').executes(safe(ctx => {
       if (!repairShrine(ctx.source.server)) return reply(ctx, 'There is no risen Shrine to repair.', true)
       return reply(ctx, 'The Shrine is put back as it was built: every layer placed again, Technoblade\'s head included' +
-        (db().regalia.open ? ', and the Regalia book on the altar.' : '.'))
+        (db().regalia.open ? ', the Regalia book on the altar' : '') + ', and any missing steps up to it.')
     })))
     .then(Commands.literal('book').executes(safe(ctx => {
       const st = shrineStanding()
@@ -1227,8 +1721,9 @@ ServerEvents.commandRegistry(event => {
       return reply(ctx, n ? 'Took away ' + n + ' monster' + (n == 1 ? '' : 's') + ' from the Shrine. (Event mobs and named ones stay.)' : 'No monsters in the Shrine.')
     })))
     .then(Commands.literal('stop').executes(safe(ctx => {
-      if (!stopRise()) return reply(ctx, 'Nothing is running.', true)
-      return reply(ctx, 'The rise is paused at layer ' + db().rise.next + '. /shrine rise carries on.')
+      if (stopRise()) return reply(ctx, 'The rise is paused at layer ' + db().rise.next + '. /shrine rise carries on.')
+      if (pauseRite(ctx.source.server)) return reply(ctx, 'The rite is paused: the waves stop and the Inspectors are gone; the altar keeps its ' + db().rite.total + ' potatoes. /shrine rite carries on.')
+      return reply(ctx, 'Nothing is running.', true)
     })))
     .then(Commands.literal('reset').executes(safe(ctx => reply(ctx, 'This takes the Shrine down and forgets the night (the sites are kept). For the test server. To do it: /shrine reset confirm', true)))
       .then(Commands.literal('confirm').executes(safe(ctx => {
@@ -1253,7 +1748,9 @@ ServerEvents.commandRegistry(event => {
 
 global.Shrine = {
   // Why a Purge or a match should wait ('' if they needn't): for now, only while the Shrine is rising.
-  busy: () => (db().rise.state == 'rising' ? 'the Shrine is rising' : ''),
+  busy: () => (db().rise.state == 'rising' ? 'the Shrine is rising' : riteOn() ? 'the Ignition Rite is on at the Shrine' : ''),
+  riteOn: () => riteOn(),
+  isKingsPotato: s => isKingsPotato(s),
   state: () => JSON.parse(JSON.stringify(db())),
   site: () => db().site,
   risen: () => db().rise.state == 'risen',

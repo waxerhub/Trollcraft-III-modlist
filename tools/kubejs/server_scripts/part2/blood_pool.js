@@ -1191,6 +1191,8 @@ function potatoRoom(uuid) {
 // Main inventory and hotbar (slots 0-35), the same slots the black market takes coins from.
 function potatoWorth(s) {
   if (!s || s.isEmpty()) return 0
+  // Marked items aren't ordinary potatoes: the Shrine's Potato King's Potatoes (part2/shrine.js) are for its altar only.
+  try { if (s.nbt != null && s.nbt.contains('trollcraft')) return 0 } catch (e) { }
   return POTATO_WORTH[String(s.id)] || 0
 }
 function countPotatoes(p) {

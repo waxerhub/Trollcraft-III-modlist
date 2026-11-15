@@ -122,6 +122,9 @@ The last page is the first hint of the two threads (kept: owner decision).
 
 ## 3. The Shrine Rises
 **`/shrine rise`**, run once the pilgrims have gathered at the beam. The Shrine builds itself from the ground up.
+
+**It waits for the beam** (owner decision 2026-11-14, so it can't be started out of order by mistake): until the braziers' beam is up, `/shrine rise` refuses and says the braziers come first. `/shrine rise force` raises it anyway (for a rehearsal, or if the braziers go wrong on the night). A rise that was paused carries on without the check.
+
 1. **Clearing the way:** players standing inside the Shrine's footprint are moved to its edge. The beacon comes out and its ground is put back.
 2. **Layer by layer:** for each of the 64 layers, the script clears that slice of the box, then places the layer, from `trollcraft:shrine/l_0` to `l_63`. One layer every **9 ticks** (a setting) takes about **29 seconds** for all 64. It was 4 seconds a layer (4½ minutes) until the owner watched it on the test server and asked for about 30 seconds (2026-11-14).
 3. **The show** (sounds chosen by the owner on the test server, 2026-11-14):
@@ -129,52 +132,78 @@ The last page is the first hint of the two threads (kept: owner decision).
    - the respawn anchor's charge, the Blood God's power gathering, as it starts, when the pedestal is done (layer 21) and when the head is placed (layer 63), with a thunderclap at the last two;
    - dust and smoke along the layer's edge.
 4. **The finish:** the altar's lectern and Technoblade's head (with its skin) are placed exactly as in the schematic.
+5. **The steps up to the altar** (owner decision 2026-11-14, from the owner's idea): the pedestal is 22 blocks high, so the script lays a flight of **barrier blocks**: solid, invisible, and no monster can spawn on them.
+   - **Where:** 3 wide, in the lectern's row, from the platform's edge east of the lectern down toward the rising sun, one block out and one down per step, until it meets the ground (at most 12 below the base). On the test server's ground that was 21 steps.
+   - **They only fill air,** so they never cut into the build or the land.
+   - **Faint red dust** marks the middle of each step once a second while anyone is within 48 blocks. The owner, climbing them in survival: "stairs are perfect, I can see where they are and everything".
+   - `/shrine repair` lays any missing steps again (and gives a Shrine risen before the steps existed its flight). `/shrine reset confirm` takes them away with the Shrine.
 
 The chunks are force-loaded while it builds, as the Gladiator Arena does, and released afterwards.
 
 **The Shrine stays** after the night, as the Shrine for the relic hunt (Act II).
 
-## 4. The Ignition Rite
-**`/shrine rite`** starts the waves. **Inspectors close in from the land around the Shrine**, spawning 30–45 blocks out, on solid ground and out of sight where they can.
-- **Who counts as present:** the players within 64 blocks of the Shrine when the rite starts.
+## 4. The Ignition Rite ✅ built
+**`/shrine rite`**, once the Shrine has risen, starts the waves. **Inspectors close in from the land around the Shrine**, appearing 30–45 blocks from its centre, on the ground.
+- **Where exactly:** each one's spot is the top of the ground there, through any leaves to the forest floor. A spot is skipped if it's water or lava, a tree trunk, the steps, or under a hill too high to see over (40 blocks above the site). Twelve spots are tried round its place in the ring (`SPAWN_TRIES`). The Stage 2 ambushes find their ground the same way.
+- **Who counts as present:** the players in survival or adventure within 64 blocks of the Shrine when the rite starts (at least 1).
 - **What the altar needs:** **8 potatoes per player present.** An op can change it with `/shrine need <n>`.
+- **The rite's boss bar,** for everyone: "The Ignition Rite: 8 / 16 potatoes".
+- **The Purge and the arena wait** while the rite is on (and while the Shrine rises), and the rite won't start while either is on.
 
-**The waves (defaults to tune at the rehearsal):**
+**The waves (defaults to tune at the rehearsal, `WAVES`):**
 
 | Wave | Inspectors | Gear | Potatoes each |
 |---|---|---|---|
 | 1 | 1 per player present (at least 3) | iron | 2 |
-| 2 | 1½ per player | iron, with shields and crossbows | 2 |
-| 3 | 1 per player | diamond | 2 |
-| 4 | 1 per player, plus the **Senior Inspector** | diamond | 2 (the Senior Inspector: 8) |
+| 2 | 1½ per player (at least 3) | iron; the vindicators carry shields | 2 |
+| 3 | 1 per player (at least 3) | diamond | 2 |
+| 4 | 1 per player (at least 3), plus the **Senior Inspector** | diamond | 2 (the Senior Inspector: 8) |
 
-- **The next wave** comes when three-quarters of the last one is dead, or after 3 minutes.
+At most 12 Inspectors in a wave (`WAVE_MAX`). One in three is a pillager with a crossbow; the rest are vindicators with axes.
+- **The next wave** comes once three-quarters of the last one is down, or after 3 minutes (`NEXT_WAVE`).
 - **Enough, just about:** all four waves drop about 9 potatoes per player plus 8, so the server has to clear nearly every wave.
 - **The Inspectors:**
-  - vindicators and pillagers named **Inspector** in gold. Their iron or diamond armour protects them, though illagers don't show armour;
-  - they don't despawn, and every one left is removed at the end;
-  - they only go after players near the Shrine.
+  - vindicators and pillagers named **Inspector** in gold. Their armour protects them, though illagers don't show it;
+  - they see players up to 64 blocks away, and once a second any without a target is sent after the nearest pilgrim at the Shrine;
+  - they don't despawn, and every one left is removed at the Awakening;
+  - they drop nothing but their potatoes.
 - **The Senior Inspector,** a mini-boss:
-  - about 150 health, diamond gear, Resistance and a boss bar;
-  - at half health he calls two Inspectors to help.
+  - 150 health, diamond armour, a netherite axe, Resistance I, and his name in bold;
+  - his own boss bar shows his health;
+  - at half health he calls two Inspectors in diamond to help, once;
+  - when he falls: "The Senior Inspector falls. His clipboard does not."
 
 **The Potato King's Potatoes:**
 - **What they are:** potatoes named *Potato King's Potato* in gold, with a glint and the lore "Technoblade's own. Hoarded by the Inspectors."
-- **Only for the altar:** they can't be eaten or planted, and they don't count toward the Potato Tithe or anyone's Potato Standing.
-- **Leftovers** crumble to nothing at the Awakening. The owner decided there's no keepsake.
+  - They're dropped where an Inspector of the rite dies (2 each; the Senior Inspector 8).
+  - They're marked (`trollcraft.kingspotato`), so the script knows them.
+- **Only for the altar:**
+  - they can't be eaten or planted ("Only the Shrine's altar will take these");
+  - the Blood Pool's tithe and `/potatowar offer` ignore them (`blood_pool.js` skips marked items).
+- **Leftovers** crumble to nothing at the Awakening, in pockets and on the ground. The owner decided there's no keepsake.
 
 **The altar:**
-- **Offering:** right-clicking the lectern or Technoblade's head with the potatoes offers every one the player carries.
-- **The bar:** a boss bar, "The Ignition Rite", fills toward the need. Each offering is counted for the player who made it.
+- **Offering:** right-clicking the lectern or Technoblade's head with the potatoes offers every one the player carries. Each offering is counted for the player who made it (the Awakening's Drops follow these counts), and everyone present is told.
 - **The Shrine lights up stage by stage, from the feet to the head.** At each quarter of the bar:
-  - invisible light blocks fill the next band of the statue (layers 0–15, 16–31, 32–47, 48–63);
-  - flames rise along that band.
+  - the next band of the statue lights up (layers 0–15, 16–31, 32–47, 48–63);
+  - invisible light blocks (level 15) go every 4 blocks where there's air, and flames rise along the band.
 
-  At full, the whole statue glows at night.
+  The light stays, so the statue glows at night. It also keeps monsters off it.
+- **Full:** "The last band catches. The Shrine burns from its feet to its crown."
+  - No more waves come. The Inspectors still about stay until the Awakening.
+  - Ops are told "/shrine awaken".
+- **The Awakening waits for a full altar:** `/shrine awaken` refuses until then, and `/shrine awaken force` goes ahead anyway.
+
+**Pausing:** `/shrine stop` during the rite stops the waves and takes the Inspectors away; the altar keeps its count. `/shrine rite` carries on, and the wave that was cleared away comes again.
 
 **Knockouts instead of deaths** (owner decision), like the Gladiator Arena:
-- **When:** lethal damage while the rite runs, to a player within 64 blocks of the Shrine.
-- **What happens:** they're healed, their fire is put out, and they're set down at the Shrine's edge with a few seconds of Resistance. Nothing drops.
+- **When:** lethal damage to a player within 64 blocks of the Shrine, from the start of the rite until the Awakening.
+- **What happens:**
+  - they're healed and their fire is put out;
+  - they're set down at the Shrine's edge (the nearest side, 3 blocks out, on the ground) with 3 seconds of Resistance V;
+  - nothing drops.
+  - `/kill` still kills.
+- **The log** says who was knocked out and what would have killed them ("Knockout: leelinda (mob)").
 - **No credit:** a knockout is no kill for anything else (bounties, the Anamian Axe's Souls, the Maul's Grit and the rest). The script loads early (`// priority: 100`) so it cancels the death before other scripts see it.
 
 ## 5. The Awakening ✅ built
@@ -280,11 +309,11 @@ The deliveries, Shrine raids and rewards are Act II's work and get their own spe
 | `/shrine fires light` / `/shrine fires out` | Light all three by hand (the beam goes up), or end a running clock early |
 | `/shrine beam up` / `/shrine beam down` | Raise or lower the beam by hand |
 | `/shrine ambush <player>` | An Inspector ambush on that player and the pilgrims near them |
-| `/shrine rise` | Stage 3 |
-| `/shrine rite` / `/shrine need <n>` | Stage 4; change what the altar needs |
-| `/shrine awaken` | Stage 5 |
+| `/shrine rise` / `/shrine rise force` | Stage 3, once the beam is up; `force` raises it anyway |
+| `/shrine rite` / `/shrine need <n>` | Stage 4 (or carry on after `/shrine stop`); change what the altar needs |
+| `/shrine awaken` / `/shrine awaken force` | Stage 5, once the altar is full; `force` goes ahead anyway |
 | `/shrine book` | Put the Regalia book back on the altar |
-| `/shrine repair` | Put the Shrine back as it was built (every layer placed again; the head with its skin), then the book |
+| `/shrine repair` | Put the Shrine back as it was built (every layer placed again; the head with its skin), then the book and any missing steps |
 | `/regalia` | **Anyone:** the eight relics and their progress |
 | `/shrine stop` | Stops whatever is running (waves, clock, rise), removes Inspectors and leaves the rest |
 | `/shrine clearmobs` | Takes away the monsters in and right around the Shrine (event mobs and named ones stay) |
@@ -317,6 +346,8 @@ The deliveries, Shrine raids and rewards are Act II's work and get their own spe
 2. **Deaths during the rite:** knockouts, like the Gladiator Arena.
 3. **Pilgrimage ambushes:** both: one automatic ambush per brazier team, and `/shrine ambush <player>` for more.
 4. **The Summons' last page:** "They want the Pool full. So do I." stays.
+5. **The way up to the altar:** barrier steps, marked with dust (after the test rite, where nobody in survival could reach the lectern).
+6. **The rise waits for the beam,** with `force` to skip it.
 
 ## Still open
 - **To tune at the rehearsal:**
@@ -342,8 +373,10 @@ The deliveries, Shrine raids and rewards are Act II's work and get their own spe
 - **Chunks:** the box is force-loaded while it rises, and released after. If its chunks don't load within 90 seconds, the rise pauses.
 - **Pausing and failures:** `/shrine stop` pauses it, and a layer that won't place pauses it at that layer (with an error in the log). `/shrine rise` carries on from there.
 - **Restarts:** `/reload` or a restart mid-rise carries on from the last layer, with one loop only.
+- **The beam first:** a new rise refuses until the beam is up, unless `force`.
+- **The steps:** laid when the last layer settles (see Stage 3).
 - **Busy:** it won't start during a Purge or a Gladiator match. `global.Shrine.busy()` says "the Shrine is rising" while it runs.
-- **Taking it down (test server):** `/shrine reset confirm` moves anyone off it, clears the box with four fills of air from the top, removes loose items, and forgets the night. The sites are kept.
+- **Taking it down (test server):** `/shrine reset confirm` moves anyone off it, clears the box with four fills of air from the top, takes the steps away (barriers only), removes loose items, and forgets the night. The sites are kept.
 
 ## No monsters in the Shrine (built)
 The owner saw a lot of mobs spawning inside the Shrine on the test server. Lighting it up would only cover the dark inside: at night monsters also spawn on its open surfaces (the pedestal's platform, the statue's shoulders). Full light would also spoil the Ignition Rite, where the statue lights up band by band. So the script keeps them out instead:
@@ -393,7 +426,28 @@ The Awakening ran on the risen sky Shrine with leelinda standing by the altar.
   - **"I broke the lectern and techno's skull":** in creative, a left-click breaks a block. The book step put a lectern back with the book on it, but the head was gone. The Shrine is now guarded (above), and `/shrine repair` brought the head back on the test server, skin and all (its `SkullOwner` texture checked).
   - **"last page looks cut off":** the Crown's page ran past the page's 14 lines and lost the end of "When the Crown returns, so does my name." That line now has its own page (page 10, checked on the server). A check in the tests estimates every page's lines and would have caught it.
 
+## Stage 4 on the test server (2026-11-14)
+The Shrine rose on real ground at 10490 71 4304 (28 seconds), and leelinda ran the rite alone in survival, in a diamond kit.
+- **The waves:** all four came, 3 Inspectors each, then 4 with the Senior Inspector. Wave 3 came early (1 minute 19 seconds after wave 2), once three-quarters of wave 2 was down. Waves 2 and 4 came on the 3-minute clock, with one Inspector of the wave before still about.
+- **The Senior Inspector** fell, and his call for help worked: she carried 32 potatoes, and without his two helpers the Inspectors she killed could have dropped only 30.
+- **The potatoes:** the dead Inspectors' King's Potatoes went into her pockets, marked (32 by the end).
+- **The altar:** one right-click on the lectern offered all 32 at once. The altar was full (32 of 8), all four bands lit (light blocks found in each quarter of the statue's height) and ops were told to awaken.
+- **The Awakening** took away the last Inspector and the one King's Potato left on the ground, left no boss bar behind, and finished in 46 seconds. The rite's status reads "done (32 potatoes offered)".
+- **A knockout** came 6 seconds in, while she was away from the keyboard and not yet in her armour. She woke at the Shrine's edge, alive.
+- **What it found, fixed the same night:**
+  - **"I can't reach the lectern":** the pedestal is 22 blocks high, and the guard stops anyone building up it. So the barrier steps (Stage 3), the owner's idea. After `/shrine repair` laid them (21 steps), she climbed them in survival: "stairs are perfect".
+  - **"one of the inspectors spawned underground":** the old spot search started 20 blocks above the site's height, so under a taller hill it found a cave. Another landed in a lake. Spots are now the top of the ground, coming down from 40 above, and water, trunks and the steps are skipped (above).
+  - **She asked why the Shrine rose without the braziers** (they were skipped for this test): the rise now waits for the beam, her choice.
+  - **The knockout's log line** didn't say what hit her; it does now.
+
 ## What couldn't be verified yet
+- **Stage 4:**
+  - the new ground search for Inspectors in game (it's mock-tested, with a hill, a lake, the steps and a canopy; the test rite ran before it);
+  - a knockout from a real fight (the one seen was while she was away), and the knockout's new log line;
+  - the King's Potatoes refused when eaten or planted, and skipped by the tithe (both mock-tested);
+  - the Senior Inspector's boss bar and his call for help, as players see them;
+  - a rite with several players, and `/shrine stop` and `/shrine rite` mid-rite;
+  - the refusal of a beamless `/shrine rise` in game (`/shrine rise force` was checked to parse).
 - **Stage 5:**
   - the tribute and the Blood God's lines as players see them;
   - the top-up with a Pool below Tier 3 and five players voting (both are mock-tested);
@@ -403,7 +457,7 @@ The Awakening ran on the risen sky Shrine with leelinda standing by the altar.
   - the automatic ambush on a survival team on its way;
   - the Inspectors fighting;
   - how far away the beam shows.
-- **The ground:** the test rise was in the sky. That clearing each slice first looks right on real terrain (grass, trees and the like giving way layer by layer) is still to see.
+- **The ground:** the Stage 4 test rose on real ground and looked right, but its blocks weren't sampled there.
 - **Players in the way:** nobody stood in the footprint during the test, so moving players out (onto the ground beside it) is checked only on the mock. Over a drop with no ground within 20 blocks, the edge spot falls back to the site's height.
 
 ## Build progress
@@ -414,5 +468,6 @@ The Awakening ran on the risen sky Shrine with leelinda standing by the altar.
 | No monsters in the Shrine, and `/shrine clearmobs` | ✅ built, 71 mock checks in all; tried on the test server |
 | Stage 2, the braziers, the beam and the ambushes (the Shrine's own Inspectors) | ✅ built, 112 mock checks in all; tried on the test server (see above) |
 | Stages 0–1, the Signal and the Summons | to do |
-| Stage 4, the Ignition Rite (waves, potatoes, altar, knockouts) | to do |
+| Stage 4, the Ignition Rite (waves, the Senior Inspector, the King's Potatoes, the altar and its light, knockouts) | ✅ built, mock checks plus one in the Blood Pool suite; tried on the test server (see above) |
+| The steps up to the altar, the Inspectors' ground, and the rise waiting for the beam | ✅ built, 204 mock checks in all; the steps tried on the test server |
 | Stage 5, the Awakening, the Regalia book on the altar, a basic `/regalia`, the Shrine's guard and `/shrine repair` | ✅ built, 150 mock checks in all; tried on the test server (see above) |

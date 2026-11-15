@@ -651,6 +651,9 @@ function busyWhy() {
   if (D.arena.state == 'building' || D.arena.state == 'clearing') return 'The arena is still being ' + (D.arena.state == 'building' ? 'built' : 'taken down') + '. Try again in a moment.'
   const pb = purgeBusy()
   if (pb) return 'A Purge is on. No arena matches until it ends.'
+  let sb = ''
+  try { sb = global.Shrine && typeof global.Shrine.busy == 'function' ? String(global.Shrine.busy() || '') : '' } catch (e) { }
+  if (sb) return 'The Shrine Awakens is on (' + sb + '). No arena matches until it ends.'
   return ''
 }
 // Sends the challenge from a draft. Returns '' or why not.

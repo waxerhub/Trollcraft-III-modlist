@@ -272,11 +272,15 @@ Technoblade's Potato War, revived. **The Pool decides what the server can make; 
        - **The beam:** once all three burn, a beacon beam rises at the Shrine site, visible from far off.
        - **Ambushes:** unsigned Inspector patrols ambush "unregistered pilgrims" on the way: one automatic ambush per team as it nears its brazier, plus any an op starts (owner decision 2026-11-14).
     4. **The Shrine Rises** (about 15 minutes; changed 2026-11-13 from a Shrine hidden underground): the beam stands over empty ground. Once the pilgrims have gathered there, an op starts the rise, and the Shrine **builds itself layer by layer from the ground up** out of the owner's schematic, with rumbling and particles, in **about 30 seconds** (owner decision 2026-11-14, after watching it on the test server). It stays afterwards as the Shrine for the relic hunt.
+       - **It waits for the beam:** an op can't start the rise before the braziers' beam is up, except with `force` (owner decision 2026-11-14).
+       - **The way up:** the altar is 22 blocks up, so invisible barrier steps, marked with red dust, climb to it from the east (the owner's idea, 2026-11-14, after nobody in survival could reach the lectern at the test rite).
     5. **The Ignition Rite** (about 20 minutes, at the Shrine).
        - **The waves:** Inspectors close in on the Shrine from the land around it, escalating from iron-tier to diamond-tier. The last wave brings a **Senior Inspector** mini-boss, who drops the most.
        - **The potatoes:** every Inspector carries **Potato King's Potatoes**, Techno's own potatoes, which the Inspectors had been hoarding.
        - **The offering:** offered at the altar, each potato fills the rite's bar and lights the Shrine stage by stage. It needs **8 potatoes per player present**.
        - **Knockouts, not deaths** (owner decision 2026-11-14): like the Gladiator Arena, lethal damage at the Shrine during the rite heals the player and sets them down at its edge. Nothing drops.
+       - **The King's Potatoes are only for the altar:** they can't be eaten, planted or tithed, and any left over crumble at the Awakening (owner decision 2026-11-14: no keepsake). The Awakening waits until the altar is full.
+       ✅ (`part2/shrine.js`, `/shrine rite`, built and run on the test server 2026-11-14)
     6. **The Awakening** (about 5 minutes, respectful, no jokes).
        - **The tribute:** the Techno Tribute and a server-wide `/superaura`.
        - **The Regalia:** the Blood God names the **Regalia of the Blade**, and `/regalia` opens on the eight relics.
@@ -286,7 +290,7 @@ Technoblade's Potato War, revived. **The Pool decides what the server can make; 
     - **The spec** is [SHRINE.md](tools/kubejs/SHRINE.md) (signed off 2026-11-14): every stage's command, the drafts of the Signal, the Summons and the Regalia book, and the build progress.
     - **Still needed:**
       - **From the owner:** the three brazier sites and the Shrine site, and the date (the schematic is in);
-      - **To build:** `part2/shrine.js`, in stages: the op-run stages, the braziers and the beam, the layer-by-layer rise (the schematic converted into one structure piece per layer, by `tools/schematic/schem_to_structures.js`), the Inspector waves and the Senior Inspector, the Potato King's Potato and the altar bar, the Drops top-up, the Awakening, and the start of `/regalia`.
+      - **To build:** the Signal and the Summons (Stages 0–1: the broadcast and the Blood God's book with the brazier directions). The braziers and the beam, the rise, the Ignition Rite and the Awakening are built (`part2/shrine.js`).
 
     🔨
 

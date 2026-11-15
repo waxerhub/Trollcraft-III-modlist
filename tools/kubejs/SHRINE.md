@@ -78,27 +78,47 @@ Draft (each `>` block is a page):
 
 The last page is the first hint of the two threads (kept: owner decision).
 
-## 2. The Pilgrimage: three braziers
-**`/shrine braziers`** places an unlit brazier at each site: a campfire on a small blackstone plinth with chains.
+## 2. The Pilgrimage: three braziers ✅ built
+**`/shrine braziers`** places an unlit brazier at each site. It needs all three sites set.
+- **The brazier:** a 3 × 3 plinth of polished blackstone bricks on the ground, an unlit campfire on it in the middle, and blackstone walls with chains at the corners (`BRAZIER_PARTS`).
+- **Building them:** each brazier's chunk is force-loaded while the fires are watched, so each is built once its chunk loads, even with nobody near.
+- **Protected:** the braziers can't be broken outside creative ("The brazier will not move").
 
 **Lighting them:**
-- **Any way works:** flint and steel, a fire charge or a flaming arrow. The script checks each brazier's flame once a second.
-- **The window:** when the first one catches, a 60-second clock starts. Everyone sees it as a boss bar: "The fires: 1 / 3, 0:47".
+- **Any way works:** flint and steel, a fire charge or a flaming arrow. The script checks each brazier's campfire once a second.
+- **Everyone is told:** "Far away, a fire catches. 1 of 3. The others have a minute." Then "Another fire catches. 2 of 3."
+- **The window:** the first one lit starts a 60-second clock (`FIRE_WINDOW_SECONDS`). Everyone sees it as a boss bar, "The fires: 1 / 3   0:47", counting down.
 - **Too slow:** if all three aren't burning before it runs out, the lit ones gutter out (smoke and a hiss), and the teams try again. Nothing else is lost.
-- **Done:** when all three burn, they stay lit for the rest of the night.
+  - A fire put out before the others catch counts as out.
+  - If all of them are put out, the clock stops.
+- **Done:** when all three burn, everyone is told "Three fires burn as one", hears the beacon, and the beam goes up.
+  - The fires stay lit for the rest of the night: one put out or taken away is lit again within a second.
+- **Ops:** `/shrine fires light` lights all three by hand (say a team can't get there), and `/shrine fires out` ends a clock early.
 
 **The beam:**
-- **What it is:** a red beacon beam rises from the Shrine site, visible from far off.
-- **How it's made:** a real beacon on a hidden iron base under the ground, with red glass. The blocks it replaces are saved, and they're put back when the rise begins.
-- **What it needs:** open sky above the site's centre.
+- **What it is:** a red beacon beam over the Shrine site.
+- **How it's made:**
+  - a real beacon two blocks under the site's centre, on a 3 × 3 of iron blocks;
+  - red stained glass in the ground above it, so the only thing that shows is a red glass block where the Shrine will stand.
+  - The blocks it replaces are saved, and they're put back when the rise begins (or with `/shrine beam down`).
+- **What it needs:** open sky above the site's centre. The log warns if anything is in the way.
+- **How far it shows:** a beacon beam shows only as far as the player's render distance (at most 256 blocks). So it guides the teams in once they're on their way back, not from the braziers.
+- **Ops:** `/shrine beam up` and `/shrine beam down` raise and lower it by hand.
 
 **Ambushes on the way:**
-- **What they are:** unsigned **Inspector** patrols (never "Ministry Inspector") stop "unregistered pilgrims".
-- **What they use:** the Part I patrols' fighters, from `factions/portal_ambush.js`, renamed.
+- **What they are:** unsigned **Inspectors** (never "Ministry Inspector") stop "unregistered pilgrims": "Remain where you are."
+- **Who they are:** the Shrine's own Inspectors.
+  - The Part I patrols (`factions/portal_ambush.js`) aren't on the Part II server, so the Shrine spawns its own.
+  - They're vindicators with iron axes and pillagers with crossbows, in iron armour, named **Inspector** in gold.
+  - They're tagged `shrine_inspector` and `shrine_ambush`, so the Shrine's no-monster rule lets them through.
+  - They don't despawn, and they drop nothing.
+- **How many:** 2 plus 1 for each pilgrim within 32 blocks of the one targeted, at most 6. They appear on the ground in a ring 8 to 12 blocks around that pilgrim.
 - **Who starts them:** both (owner decision).
-  - **One automatic ambush per team:** the first pilgrim to come within 200 blocks of a brazier (while it's still unlit) is ambushed there, with anyone near them. Once per brazier.
+  - **One automatic ambush per team:** the nearest pilgrim within 200 blocks of a brazier that isn't lit yet is ambushed there, with the pilgrims near them. Once per brazier.
+  - Players in creative or spectator are never ambushed.
   - **More by hand:** `/shrine ambush <player>`, whenever the ops want one.
-- **Deaths in an ambush** are ordinary deaths, as with the Part I patrols. Knockouts are for the rite at the Shrine.
+- **Deaths in an ambush** are ordinary deaths. Knockouts are for the rite at the Shrine.
+- **Leftovers:** any ambushers still alive are taken away when the rise begins.
 
 ## 3. The Shrine Rises
 **`/shrine rise`**, run once the pilgrims have gathered at the beam. The Shrine builds itself from the ground up.
@@ -237,7 +257,9 @@ The deliveries, Shrine raids and rewards are Act II's work and get their own spe
 | `/shrine signal` | Stage 0 |
 | `/shrine summons` | Stage 1: the books |
 | `/shrine braziers` | Stage 2: place the braziers and start watching them |
-| `/shrine ambush <player>` | An Inspector patrol on that player (stage 2) |
+| `/shrine fires light` / `/shrine fires out` | Light all three by hand (the beam goes up), or end a running clock early |
+| `/shrine beam up` / `/shrine beam down` | Raise or lower the beam by hand |
+| `/shrine ambush <player>` | An Inspector ambush on that player and the pilgrims near them |
 | `/shrine rise` | Stage 3 |
 | `/shrine rite` / `/shrine need <n>` | Stage 4; change what the altar needs |
 | `/shrine awaken` | Stage 5 |
@@ -324,7 +346,28 @@ The rise ran three times at a site in the sky (6000 150 6000), with the owner wa
 - **Setting the site from the console** (`/shrine site set <x> <y> <z>`), `/shrine status`, the brazier directions, the `/reload` that adds the command, and `/shrine reset confirm` all worked.
 - **The chunks** unload when the rise ends and lets go of them, unless a player is nearby. That's expected: on the night, the pilgrims are standing there.
 
+## Stage 2 on the test server (2026-11-14)
+The braziers were set 100 blocks around the sky site and `/shrine braziers` run from the console; lighting was done with `/setblock`.
+- **Building:** all three were built (the unlit campfire, the plinth and the chains all checked).
+- **The clock:** one lit started it. The boss bar read "The fires: 1 / 3   0:57" with a value of 57, shown to leelinda.
+- **Guttering:** with two lit and no third after a minute, both guttered out (back to unlit), and the stage went back to waiting.
+- **The beam:** with all three lit, it went up.
+  - The beacon, the glass and the iron were in place.
+  - The beacon reported `Levels: 1`, so its base is complete and the beam shines (the sky was clear).
+- **Burning for the night:** a campfire put out after all three burned was lit again within a second.
+- **`/shrine ambush leelinda`:** 3 Inspectors, named "Inspector" in gold, in iron chestplates.
+- **When the rise began:**
+  - the beam came out (the block under the site was air again, as before);
+  - the fires went to "done" and stayed lit;
+  - the ambushers were taken away;
+  - the Shrine rose as usual.
+
 ## What couldn't be verified yet
+- **Stage 2 with players:**
+  - lighting a brazier with flint and steel, a fire charge or a flaming arrow (it was lit with `/setblock`);
+  - the automatic ambush on a survival team on its way;
+  - the Inspectors fighting;
+  - how far away the beam shows.
 - **The ground:** the test rise was in the sky. That clearing each slice first looks right on real terrain (grass, trees and the like giving way layer by layer) is still to see.
 - **Players in the way:** nobody stood in the footprint during the test, so moving players out (onto the ground beside it) is checked only on the mock. Over a drop with no ground within 20 blocks, the edge spot falls back to the site's height.
 - **The lectern before the Awakening:** in the schematic, the lectern is in its "has a book" state with no book in it. Until the Awakening puts the Regalia book there, it shows a book that has nothing in it.
@@ -335,7 +378,7 @@ The rise ran three times at a site in the sky (6000 150 6000), with the owner wa
 | The sites (`/shrine site set`, `/shrine brazier set`, where you stand or at coordinates) and `/shrine status`, with each brazier's direction and distance from the castle | ✅ built, mock checks in `tools/tests/suites/shrine.test.js`; tried on the test server |
 | Stage 3, the rise, with `/shrine stop` and `/shrine reset confirm` | ✅ built, same checks; tried on the test server (see above) |
 | No monsters in the Shrine, and `/shrine clearmobs` | ✅ built, 71 mock checks in all; tried on the test server |
-| Stage 2, the braziers, the beam and the ambushes | to do |
+| Stage 2, the braziers, the beam and the ambushes (the Shrine's own Inspectors) | ✅ built, 112 mock checks in all; tried on the test server (see above) |
 | Stages 0–1, the Signal and the Summons | to do |
 | Stage 4, the Ignition Rite (waves, potatoes, altar, knockouts) | to do |
 | Stage 5, the Awakening, and a basic `/regalia` | to do |

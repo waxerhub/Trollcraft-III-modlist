@@ -17,10 +17,17 @@ const seconds = n => advance(n * 20)
 const persistent = {}, logs = []
 let cmds = []
 let chunksAt = 0, layersThere = true, placeWorks = true
-// The ground: solid below y 64, open above.
+// The ground: solid below y 64, open above, plus whatever /setblock put down (world: "x,y,z" -> block state text).
+const world = {}
+function blockAt(x, y, z) {
+  const s = world[x + ',' + y + ',' + z] || (y < 64 ? 'minecraft:grass_block' : 'minecraft:air')
+  const m = s.match(/^([^\[]+)(?:\[(.*)\])?$/), props = {}
+  if (m[2]) m[2].split(',').forEach(kv => { const i = kv.indexOf('='); props[kv.slice(0, i)] = kv.slice(i + 1) })
+  return { id: m[1], blockState: { toString: () => 'Block{' + m[1] + '}' + (m[2] ? '[' + m[2] + ']' : '') }, properties: { get: k => (k in props ? props[k] : null) } }
+}
 const level = {
   dimension: { location: () => OW },
-  getBlock: (x, y, z) => ({ id: y < 64 ? 'minecraft:grass_block' : 'minecraft:air' }),
+  getBlock: blockAt,
   hasChunk: () => tick >= chunksAt,
   getSharedSpawnPos: () => ({ getX: () => 0, getY: () => 64, getZ: () => 0 }),
 }
@@ -28,8 +35,9 @@ const jlist = arr => ({ size: () => arr.length, get: i => arr[i], iterator() { l
 function textOf(c) { return Array.isArray(c) ? c.map(x => (typeof x == 'string' ? x : x.text || '')).join('') : String(c) }
 const players = []
 function player(name, x, y, z, op) {
-  const p = { name, op: !!op, x, y, z, msgs: [], level, isPlayer: () => true, getGameProfile: () => ({ getName: () => name }),
-    getX: () => p.x, getY: () => p.y, getZ: () => p.z, tell: c => p.msgs.push(textOf(c)) }
+  const p = { name, op: !!op, x, y, z, msgs: [], level, creative: false, isPlayer: () => true, getGameProfile: () => ({ getName: () => name }),
+    getX: () => p.x, getY: () => p.y, getZ: () => p.z, tell: c => p.msgs.push(textOf(c)),
+    isCreative: () => p.creative, isSpectator: () => false, isAlive: () => true }
   players.push(p)
   return p
 }
@@ -67,6 +75,19 @@ const server = {
     let m
     if ((m = c.match(/run tp (\S+) ([-\d.]+) ([-\d.]+) ([-\d.]+)$/))) { const p = byName(m[1]); if (p) { p.x = +m[2]; p.y = +m[3]; p.z = +m[4] } return 1 }
     if (/run place template /.test(c)) return placeWorks ? 1 : 0
+    if ((m = c.match(/run setblock (-?\d+) (-?\d+) (-?\d+) (\S+)$/))) { world[m[1] + ',' + m[2] + ',' + m[3]] = m[4]; return 1 }
+    if ((m = c.match(/run fill (-?\d+) (-?\d+) (-?\d+) (-?\d+) (-?\d+) (-?\d+) minecraft:air$/))) {
+      const b = m.slice(1).map(Number)
+      Object.keys(world).forEach(k => { const q = k.split(',').map(Number); if (q[0] >= b[0] && q[0] <= b[3] && q[1] >= b[1] && q[1] <= b[4] && q[2] >= b[2] && q[2] <= b[5]) delete world[k] })
+      return 1
+    }
+    // A summoned mob joins the world (and goes through EntityEvents.spawned), named and tagged as its NBT says.
+    if ((m = c.match(/run summon minecraft:(\S+) ([-\d.]+) ([-\d.]+) ([-\d.]+) (\{.*\})$/))) {
+      const tm = m[5].match(/Tags:\[([^\]]*)\]/)
+      const mb = mob('minecraft:' + m[1], 'MONSTER', +m[2], +m[3], +m[4], { tags: tm ? tm[1].split(',').map(s => s.replace(/"/g, '')) : [], named: /CustomName/.test(m[5]) })
+      mb.nbt = m[5]
+      return spawn(mb) ? 0 : 1
+    }
     return 1
   },
 }
@@ -81,9 +102,11 @@ function RL(s) { this.s = s }
 // Loads (or reloads) the script, as /reload does: fresh handlers and commands, the same saved data and globals.
 function load() {
   handlers = {}
-  new Function('ServerEvents', 'EntityEvents', 'Java', 'Utils', 'Text', 'console', 'global', src)(
-    { loaded: on('loaded'), commandRegistry: h => h({ commands: { literal: node, argument: n => Object.assign(node(n), { arg: true }) }, arguments: { INTEGER: { create: () => 'int', getResult: (ctx, k) => ctx.args[k] } }, register: t => { cmdTree = t } }) },
+  new Function('ServerEvents', 'EntityEvents', 'BlockEvents', 'Java', 'Utils', 'Text', 'console', 'global', src)(
+    { loaded: on('loaded'), commandRegistry: h => h({ commands: { literal: node, argument: (n, t) => Object.assign(node(n), { arg: true, type: t }) },
+      arguments: { INTEGER: { create: () => 'int', getResult: (ctx, k) => ctx.args[k] }, PLAYER: { create: () => 'player', getResult: (ctx, k) => ctx.args[k] } }, register: t => { cmdTree = t } }) },
     { spawned: on('spawned') },
+    { broken: on('broken') },
     { loadClass: n => {
       if (/Component\$Serializer/.test(n)) return { fromJsonLenient: j => JSON.parse(j) }
       if (/ResourceLocation/.test(n)) return RL
@@ -103,7 +126,7 @@ function cmd(line, as) {
   let n = cmdTree
   for (const a of line.split(' ')) {
     let next = n.ch.find(c => c.n == a && !c.arg)
-    if (!next) { next = n.ch.find(c => c.arg); if (next) ctx.args[next.n] = Number(a) }
+    if (!next) { next = n.ch.find(c => c.arg); if (next) ctx.args[next.n] = next.type == 'player' ? byName(a) : Number(a) }
     if (!next) throw new Error('no command shrine ' + line)
     n = next
   }
@@ -126,6 +149,8 @@ ok('status with nothing set: no site, no braziers, not started', /Shrine site: n
 ok('/shrine is op only', cmd('status', bob)[0] == 'DENIED')
 r = cmd('rise', admin)
 ok('/shrine rise with no site: refused, says how to set it', /site first/.test(r[0]) && !S().rise.state.match(/rising/), r[0])
+r = cmd('braziers', admin)
+ok('/shrine braziers with no brazier sites: refused, says which to set', /Set every brazier first: \/shrine brazier set 1, 2, 3/.test(r[0]) && S().fires.state == 'none', r[0])
 r = cmd('site set', null)
 ok('/shrine site set from the console: refused, says how to give coordinates', /Run this as a player/.test(r[0]) && /site set <x> <y> <z>/.test(r[0]))
 r = cmd('site set 5000 120 -3000', null)
@@ -288,6 +313,128 @@ ok('once it\'s taken down, monsters spawn there as usual again', !spawn(mob('min
 ok('/shrine clearmobs with no Shrine: refused', /no Shrine standing/.test(cmd('clearmobs', admin)[0]))
 r = cmd('reset confirm', admin)
 ok('a reset with nothing built: nothing to take down', /Nothing was built/.test(r[0]))
+
+// ---------- Stage 2: the braziers, the beam and the ambushes ----------
+const B = () => S().fires
+const fireKey = b => b.x + ',' + (b.y + 1) + ',' + b.z
+const fireOf = b => world[fireKey(b)] || ''
+const lightFire = b => { world[fireKey(b)] = 'minecraft:campfire[lit=true,signal_fire=false]' }
+const douse = b => { world[fireKey(b)] = 'minecraft:campfire[lit=false,signal_fire=false]' }
+const [b1, b2, b3] = S().braziers
+const inspectors = () => mobs.filter(m => !m.discarded && m.tags.indexOf('shrine_ambush') >= 0)
+players.forEach(p => { p.msgs = [] })
+admin.creative = true                                   // the op watches; creative players are never ambushed
+cmds = []
+r = cmd('braziers', admin)
+ok('/shrine braziers: all three go out, each with its place and direction', B().state == 'placed' && /1 at 1900 70 0 \(about 1900 blocks toward the rising sun\)/.test(r[0]) &&
+  /within 60 seconds/.test(r[0]), r[0])
+ok('... their chunks are force-loaded while they\'re watched', [b1, b2, b3].every(b => cmds.indexOf('execute in minecraft:overworld run forceload add ' + (b.x - 1) + ' ' + (b.z - 1) + ' ' + (b.x + 1) + ' ' + (b.z + 1)) >= 0))
+advance(2)
+ok('... and each is built: a blackstone plinth, an unlit campfire on it, walls and chains at the corners',
+  [b1, b2, b3].every(b => world[b.x + ',' + b.y + ',' + b.z] == 'minecraft:polished_blackstone_bricks' && fireOf(b) == 'minecraft:campfire[lit=false,signal_fire=false]' &&
+    world[(b.x + 1) + ',' + (b.y + 1) + ',' + (b.z + 1)] == 'minecraft:polished_blackstone_wall' && world[(b.x - 1) + ',' + (b.y + 2) + ',' + (b.z - 1)] == 'minecraft:chain[axis=y]'))
+ok('... status: the fires are out, none lit', /The fires: out, none lit/.test(cmd('status', admin)[5]), cmd('status', admin)[5])
+ok('/shrine braziers again: they\'re already out', /already out/.test(cmd('braziers', admin)[0]))
+// breaking one
+let ev = { block: { level, x: b1.x, y: b1.y, z: b1.z }, player: bob, cancelled: false, cancel() { ev.cancelled = true; throw EXIT } }
+;(handlers.broken || []).forEach(h => { try { h(ev) } catch (e) { if (e !== EXIT) throw e } })
+ok('a player can\'t break a brazier', ev.cancelled && said(bob, /The brazier will not move/))
+ev = { block: { level, x: b1.x, y: b1.y, z: b1.z }, player: admin, cancelled: false, cancel() { ev.cancelled = true; throw EXIT } }
+;(handlers.broken || []).forEach(h => { try { h(ev) } catch (e) { if (e !== EXIT) throw e } })
+ok('... an op in creative can', !ev.cancelled)
+
+// the automatic ambush: Carol comes within 200 blocks of brazier 3 (300, -300); Dave walks with her; Admin in creative too
+const dave = player('Dave', 300 + 150, 64, -300 + 10)
+carol.x = 300 + 160; carol.z = -300; carol.msgs = []
+const admin0 = { x: admin.x, z: admin.z }
+admin.x = 300 + 100; admin.z = -300
+advance(20)
+ok('the first pilgrim within 200 blocks of an unlit brazier is ambushed there, with those near them', B().ambushed[2] && inspectors().length == 4 &&
+  said(carol, /Inspector: "Unregistered pilgrims\. Remain where you are\."/) && said(dave, /clipboards first/) && !said(admin, /clipboards/), inspectors().length)
+ok('... Inspectors named in gold, unsigned (never "Ministry"), in iron, tagged as event mobs', inspectors().every(m => /"text":"Inspector","color":"gold"/.test(m.nbt) &&
+  !/Ministry/i.test(m.nbt) && /iron_chestplate/.test(m.nbt) && /PersistenceRequired:1b/.test(m.nbt) && m.tags.indexOf('shrine_inspector') >= 0))
+ok('... on the ground in a ring 8 to 12 blocks round Dave (the nearest to the brazier, so the one ambushed)', inspectors().every(m => { const d = Math.hypot(m.x - dave.x, m.z - dave.z); return d >= 7.5 && d <= 12.8 && m.y == 64 }),
+  inspectors().map(m => Math.hypot(m.x - dave.x, m.z - dave.z).toFixed(1) + '@' + m.y).join(' '))
+advance(60)
+ok('... only once per brazier', inspectors().length == 4 && B().ambushed.filter(x => x).length == 1)
+admin.x = admin0.x; admin.z = admin0.z
+dave.x = 9000; carol.x = 1060.5; carol.z = 2000.5
+// /shrine ambush <player>
+bob.x = 5000.5; bob.z = 2000.5; bob.msgs = []
+r = cmd('ambush Bob', admin)
+ok('/shrine ambush Bob: Inspectors close in on him (2 + 1 for Bob)', /3 Inspectors close in on Bob/.test(r[0]) && inspectors().length == 7 && said(bob, /Remain where you are/), r[0])
+
+// lighting: one, two, then the clock runs out
+players.forEach(p => { p.msgs = [] })
+lightFire(b1)
+advance(20)
+ok('lighting one starts the clock: 1 of 3, and everyone is told', B().state == 'counting' && B().lit[0] && said(carol, /Far away, a fire catches\. 1 of 3/) && said(far, /1 of 3/))
+ok('... the boss bar shows the fires and the time left', cmds.some(c => /^bossbar set trollcraft:shrine_fires name .*The fires: 1 \/ 3.*(1:00|0:5\d)/.test(c)) && cmds.some(c => c == 'bossbar set trollcraft:shrine_fires players @a'))
+advance(100)
+ok('... counting down', cmds.some(c => /^bossbar set trollcraft:shrine_fires name .*The fires: 1 \/ 3.*0:5[45]/.test(c)) && /The fires: 1 of 3 lit, 0:5\d left/.test(cmd('status', admin)[5]), cmd('status', admin)[5])
+lightFire(b2)
+advance(20)
+ok('a second: 2 of 3', B().lit[1] && said(carol, /Another fire catches\. 2 of 3/))
+// a /reload while the clock runs: the watch carries on
+load()
+seconds(60)
+ok('after a minute without the third, the lit ones gutter out (even across a /reload)', B().state == 'placed' && fireOf(b1) == 'minecraft:campfire[lit=false,signal_fire=false]' &&
+  fireOf(b2) == 'minecraft:campfire[lit=false,signal_fire=false]' && said(carol, /The fires gutter out\. They must burn together\./), B().state)
+ok('... with smoke and a hiss, and the boss bar goes', cmds.some(c => /particle minecraft:large_smoke 1900\.5 71\.5 0\.5/.test(c)) && cmds.some(c => /block\.fire\.extinguish/.test(c)) &&
+  cmds.lastIndexOf('bossbar remove trollcraft:shrine_fires') > cmds.findIndex(c => /The fires: 2 \/ 3/.test(c)))
+ok('/shrine fires out with no clock running: refused', /No fire is burning against the clock/.test(cmd('fires out', admin)[0]))
+// all three in time
+players.forEach(p => { p.msgs = [] })
+lightFire(b1); advance(20)
+lightFire(b2); lightFire(b3); advance(20)
+ok('all three within the minute: they burn as one, and everyone is told', B().state == 'lit' && said(carol, /Three fires burn as one/) && said(far, /red light rises/))
+advance(15)
+ok('... the beam goes up under the Shrine site: iron, a beacon, red glass in the ground', world['999,61,1999'] == 'minecraft:iron_block' && world['1001,61,2001'] == 'minecraft:iron_block' &&
+  world['1000,62,2000'] == 'minecraft:beacon' && world['1000,63,2000'] == 'minecraft:red_stained_glass' && S().beam.up && global.Shrine.beamUp())
+ok('... keeping what it replaced (the ground there)', S().beam.saved.length == 11 && S().beam.saved.every(c => c.state == 'minecraft:grass_block'))
+ok('... the beacon\'s sound plays to everyone', cmds.some(c => /execute as Carol at @s run playsound minecraft:block\.beacon\.activate/.test(c)))
+advance(110)
+ok('... and the boss bar goes after a few seconds', cmds.lastIndexOf('bossbar remove trollcraft:shrine_fires') > cmds.findIndex(c => /Three fires burn as one/.test(c)))
+ok('status: all three burn, the beam is up', /The fires: all three burn/.test(cmd('status', admin)[5]) && /The beam: up at 1000 64 2000/.test(cmd('status', admin)[6]))
+douse(b3)
+advance(20)
+ok('once they all burn, one put out is lit again (they burn for the night)', fireOf(b3) == 'minecraft:campfire[lit=true,signal_fire=false]')
+delete world[fireKey(b2)]
+advance(20)
+ok('... and a campfire taken away is put back, lit', fireOf(b2) == 'minecraft:campfire[lit=true,signal_fire=false]')
+ok('/shrine braziers while they burn: refused', /already burn/.test(cmd('braziers', admin)[0]))
+
+// the rise: the beam comes out (its ground back), the fires' stage ends, the ambushers go
+cmds = []
+cmd('rise', admin)
+advance(25)
+ok('when the rise begins, the beam comes out and its ground is put back', !S().beam.up && world['1000,62,2000'] == 'minecraft:grass_block' && world['999,61,1999'] == 'minecraft:grass_block')
+ok('... the fires\' stage ends: they stay lit, their chunks are let go', B().state == 'done' && fireOf(b1) == 'minecraft:campfire[lit=true,signal_fire=false]' &&
+  cmds.indexOf('execute in minecraft:overworld run forceload remove ' + (b1.x - 1) + ' ' + (b1.z - 1) + ' ' + (b1.x + 1) + ' ' + (b1.z + 1)) >= 0)
+ok('... and the Inspectors left from the ambushes are taken away', inspectors().length == 0)
+ok('status: the fires are done, the beam is down', /The fires: done/.test(cmd('status', admin)[5]) && /The beam: down/.test(cmd('status', admin)[6]))
+advance(layerTicks * 66)
+ok('(the Shrine rises as before)', S().rise.state == 'risen')
+// the reset takes the braziers too
+cmd('reset confirm', admin)
+advance(40)
+ok('/shrine reset confirm also takes the braziers away and forgets the fires', B().state == 'none' && [b1, b2, b3].every(b => !world[fireKey(b)] && !world[b.x + ',' + b.y + ',' + b.z]))
+
+// by hand: /shrine fires light, /shrine beam up|down
+cmd('braziers', admin); advance(2)
+r = cmd('fires light', admin)
+advance(5)
+ok('/shrine fires light lights all three and raises the beam', /All three fires lit by hand/.test(r[0]) && B().state == 'lit' && [b1, b2, b3].every(b => /lit=true/.test(fireOf(b))) && S().beam.up)
+ok('/shrine fires light again: refused', /aren't out, or they already burn/.test(cmd('fires light', admin)[0]))
+r = cmd('beam down', admin)
+ok('/shrine beam down puts the ground back', /comes down/.test(r[0]) && !S().beam.up && world['1000,62,2000'] == 'minecraft:grass_block')
+ok('/shrine beam down again: refused', /isn't up/.test(cmd('beam down', admin)[0]))
+r = cmd('beam up', admin)
+ok('/shrine beam up raises it by hand', /goes up at 1000 64 2000/.test(r[0]) && S().beam.up && world['1000,62,2000'] == 'minecraft:beacon')
+cmd('reset confirm', admin)
+advance(40)
+ok('a reset with no Shrine standing still brings the beam down', !S().beam.up && world['1000,62,2000'] == 'minecraft:grass_block' && B().state == 'none')
+admin.creative = false
 // the saved data survives a reload
 load()
 ok('the sites survive a /reload', S().site.x == 1000 && S().braziers[2].z == -300)

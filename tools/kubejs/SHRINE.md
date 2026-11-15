@@ -29,9 +29,10 @@ The story is in [STORY.md](../../STORY.md), Act I #36. This file says how each s
 ## Setting up (before the night)
 **Sites are set in game.** An op stands on the spot and runs:
 - `/shrine site set`: the Shrine's centre, at ground level;
-- `/shrine brazier set <1|2|3>`: each brazier.
+- `/shrine brazier set <1|2|3>`: each brazier;
+- `/shrine start set`: the start, where `/shrine braziers` brings every player (near the castle, say).
 
-Or give the coordinates, in the Overworld, which also works from the console: `/shrine site set <x> <y> <z>` and `/shrine brazier set <1-3> <x> <y> <z>`.
+Or give the coordinates, in the Overworld, which also works from the console: `/shrine site set <x> <y> <z>`, `/shrine brazier set <1-3> <x> <y> <z>` and `/shrine start set <x> <y> <z>`.
 
 `/shrine status` shows the sites, the stage, and each brazier's distance and direction from the castle.
 
@@ -79,7 +80,8 @@ Draft (each `>` block is a page):
 The last page is the first hint of the two threads (kept: owner decision).
 
 ## 2. The Pilgrimage: three braziers ✅ built
-**`/shrine braziers`** places an unlit brazier at each site. It needs all three sites set.
+**`/shrine braziers`** places an unlit brazier at each site and **starts the night's event** (below). It needs all three brazier sites and the start set, and it won't start during a Purge or a Gladiator match.
+- **Everyone to the start:** every player online is teleported to the start and told "The pilgrimage begins. Until the Shrine awakens, falling is not the end: you wake by the last fire lit, or here."
 - **The brazier:** a 3 × 3 plinth of polished blackstone bricks on the ground, an unlit campfire on it in the middle, and blackstone walls with chains at the corners (`BRAZIER_PARTS`).
 - **Building them:** each brazier's chunk is force-loaded while the fires are watched, so each is built once its chunk loads, even with nobody near.
 - **Protected:** the braziers can't be broken outside creative ("The brazier will not move").
@@ -117,8 +119,21 @@ The last page is the first hint of the two threads (kept: owner decision).
   - **One automatic ambush per team:** the nearest pilgrim within 200 blocks of a brazier that isn't lit yet is ambushed there, with the pilgrims near them. Once per brazier.
   - Players in creative or spectator are never ambushed.
   - **More by hand:** `/shrine ambush <player>`, whenever the ops want one.
-- **Deaths in an ambush** are ordinary deaths. Knockouts are for the rite at the Shrine.
+- **Deaths in an ambush:** none. The night's event is on from `/shrine braziers`, so a lethal hit is a knockout (below).
 - **Leftovers:** any ambushers still alive are taken away when the rise begins.
+
+## The night's event: knockouts for everyone ✅ built
+**Owner decision 2026-11-15**, after an ambush killed the owner on the test server: "once the command /shrine braziers is run consider it an event trigger. all players are teleported and event rules engage until the end".
+- **When:** from `/shrine braziers` until the Awakening ends. `/shrine reset confirm` ends it too. `/shrine status` shows whether it's on.
+- **Who and where:** every player, anywhere in any dimension.
+- **A lethal hit is a knockout:** the player is healed, their fire put out, their effects cleared (as the arena and the Purge do) and given 3 seconds of Resistance V. Nothing drops. `/kill` still kills.
+- **Where they wake** (the owner's rule):
+  - beside the **last brazier lit** that still burns (3 blocks east of it, on the ground): "You wake beside the last fire lit.";
+  - at **the start** if none burns yet, or they guttered out: "You wake where the pilgrimage began.";
+  - near the Shrine during the rite, at the Shrine's edge, as before.
+- **The log** says who, what would have killed them, and where they woke ("Knockout: leelinda (mob), woken at the start").
+- **No overlap:** the Purge and the Gladiator Arena wait for the whole event (`global.Shrine.busy()` says "the Shrine Awakens is on"), and the Shrine won't start a stage during either. The Shrine asks the Purge whether one is running or counting down (`active()`, `pending()`), not `busy()`, which names the Shrine itself as a reason (that made the Shrine wait on itself on the test server).
+- **Without the event** (a rehearsal with `/shrine rise force` and no braziers), only the rite's knockouts at the Shrine apply.
 
 ## 3. The Shrine Rises
 **`/shrine rise`**, run once the pilgrims have gathered at the beam. The Shrine builds itself from the ground up.
@@ -144,7 +159,7 @@ The chunks are force-loaded while it builds, as the Gladiator Arena does, and re
 
 ## 4. The Ignition Rite ✅ built
 **`/shrine rite`**, once the Shrine has risen, starts the waves. **Inspectors close in from the land around the Shrine**, appearing 30–45 blocks from its centre, on the ground.
-- **Where exactly:** each one's spot is the top of the ground there, through any leaves to the forest floor. A spot is skipped if it's water or lava, a tree trunk, the steps, or under a hill too high to see over (40 blocks above the site). Twelve spots are tried round its place in the ring (`SPAWN_TRIES`). The Stage 2 ambushes find their ground the same way.
+- **Where exactly:** each one's spot is the top of the ground there, through any leaves to the forest floor. A spot is skipped if it's water or lava, a tree trunk, the steps, or under a hill too high to see over (40 blocks above the site). Twelve spots are tried round its place in the ring (`SPAWN_TRIES`), then twelve anywhere on the ring (a lake filled the whole north side of the test ring), and only then is one placed regardless, with a warning in the log ("No dry ground ..."). The Stage 2 ambushes find their ground the same way.
 - **Who counts as present:** the players in survival or adventure within 64 blocks of the Shrine when the rite starts (at least 1).
 - **What the altar needs:** **8 potatoes per player present.** An op can change it with `/shrine need <n>`.
 - **The rite's boss bar,** for everyone: "The Ignition Rite: 8 / 16 potatoes".
@@ -197,7 +212,7 @@ At most 12 Inspectors in a wave (`WAVE_MAX`). One in three is a pillager with a 
 **Pausing:** `/shrine stop` during the rite stops the waves and takes the Inspectors away; the altar keeps its count. `/shrine rite` carries on, and the wave that was cleared away comes again.
 
 **Knockouts instead of deaths** (owner decision), like the Gladiator Arena:
-- **When:** lethal damage to a player within 64 blocks of the Shrine, from the start of the rite until the Awakening.
+- **When:** lethal damage to a player within 64 blocks of the Shrine, from the start of the rite until the Awakening. (On the night, the event's knockouts cover everyone else too.)
 - **What happens:**
   - they're healed and their fire is put out;
   - they're set down at the Shrine's edge (the nearest side, 3 blocks out, on the ground) with 3 seconds of Resistance V;
@@ -302,10 +317,10 @@ The deliveries, Shrine raids and rewards are Act II's work and get their own spe
 | Command | What it does |
 |---|---|
 | `/shrine status` | The sites, the stage, the braziers, the rite's bar and who offered what |
-| `/shrine site set [x y z]` / `/shrine brazier set <1-3> [x y z]` | Set the Shrine's centre or a brazier where you stand, or at those coordinates in the Overworld (the console can too) |
+| `/shrine site set [x y z]` / `/shrine brazier set <1-3> [x y z]` / `/shrine start set [x y z]` | Set the Shrine's centre, a brazier or the start where you stand, or at those coordinates in the Overworld (the console can too) |
 | `/shrine signal` | Stage 0 |
 | `/shrine summons` | Stage 1: the books |
-| `/shrine braziers` | Stage 2: place the braziers and start watching them |
+| `/shrine braziers` | Stage 2: place the braziers, bring everyone to the start, start the event (knockouts for everyone until the Awakening ends) |
 | `/shrine fires light` / `/shrine fires out` | Light all three by hand (the beam goes up), or end a running clock early |
 | `/shrine beam up` / `/shrine beam down` | Raise or lower the beam by hand |
 | `/shrine ambush <player>` | An Inspector ambush on that player and the pilgrims near them |
@@ -317,12 +332,12 @@ The deliveries, Shrine raids and rewards are Act II's work and get their own spe
 | `/regalia` | **Anyone:** the eight relics and their progress |
 | `/shrine stop` | Stops whatever is running (waves, clock, rise), removes Inspectors and leaves the rest |
 | `/shrine clearmobs` | Takes away the monsters in and right around the Shrine (event mobs and named ones stay) |
-| `/shrine reset confirm` | **Test server:** removes the Shrine, the braziers and the beam, and forgets the night. It needs the word `confirm`, so it can't be run by accident on the live server |
+| `/shrine reset confirm` | **Test server:** removes the Shrine, the braziers, the beam and the steps, ends the event, and forgets the night (the sites and the start are kept). It needs the word `confirm`, so it can't be run by accident on the live server |
 
 ## How it stays safe
 - **No overlap:**
   - the Shrine's stages refuse to start while a Purge or a Gladiator match is on;
-  - Purges and matches wait while the rite is running.
+  - Purges and matches wait from `/shrine braziers` until the Awakening ends.
 - **No secrets in Discord:** every message goes to each player by name (`player.tell`), never with `tellraw @a`.
 - **The Ministry stays unnamed:**
   - the Inspectors, the Signal and every message are unsigned;
@@ -348,6 +363,7 @@ The deliveries, Shrine raids and rewards are Act II's work and get their own spe
 4. **The Summons' last page:** "They want the Pool full. So do I." stays.
 5. **The way up to the altar:** barrier steps, marked with dust (after the test rite, where nobody in survival could reach the lectern).
 6. **The rise waits for the beam,** with `force` to skip it.
+7. **The night's event** (2026-11-15): `/shrine braziers` brings everyone to a set start, and knockouts cover everyone until the Awakening ends, waking at the last brazier lit or the start.
 
 ## Still open
 - **To tune at the rehearsal:**
@@ -440,7 +456,28 @@ The Shrine rose on real ground at 10490 71 4304 (28 seconds), and leelinda ran t
   - **She asked why the Shrine rose without the braziers** (they were skipped for this test): the rise now waits for the beam, her choice.
   - **The knockout's log line** didn't say what hit her; it does now.
 
+## The whole night on the test server (2026-11-15)
+The owner ran the whole night from `/shrine braziers` to the Awakening with the script's own commands, alone in survival, as an op, on real ground. The Pool was first put back to the night's start (Tier 2, 66,000 Drops), the braziers set 40–72 blocks from the Shrine site, the start beside it.
+- **The first try** found that an ambush death was a real death (all three ambushes come at once when the braziers are this close: 9 Inspectors). The owner made `/shrine braziers` the event's trigger (above), and the run was reset.
+- **The second run:**
+  - `/shrine start set`, then `/shrine braziers`: she was brought to the start, and the event came on;
+  - the three ambushes knocked her out, and she woke at the start ("woken at the start");
+  - she lit the three braziers with flint and steel, and the beam went up (`Levels: 1`);
+  - **`/shrine rise` was refused:** "A Purge is on", while `/purge` said none was running. The Shrine asked the Purge's `busy()`, which named the Shrine. Fixed (the event section above) and reloaded mid-run; the event, fires and beam carried on;
+  - `/shrine rise` then worked under the beam with no `force`; the Shrine stood in 28 seconds, and the rise laid 21 steps itself;
+  - **`/shrine rite`** (the owner had expected the Inspectors to come on their own after the rise; each stage is its own op command): 1 present, 8 potatoes. A knockout during the rite woke her at the Shrine's edge;
+  - **an Inspector in a lake:** a lake fills the whole north side of the ring, so all twelve nearby tries failed and the fallback put one in the water. Fixed: the whole ring is searched first (the Stage 4 section above), and installed after the run;
+  - the altar was full at 8 of 8 during wave 2, and she ran `/shrine awaken`. In 46 seconds it added 54,000 Drops credited to her (66,000 to 120,000), Tier 3 was ready, and the event ended ("deaths are deaths again");
+  - afterwards: no Inspectors, boss bars or King's Potatoes left, and the Regalia book on the lectern.
+- **The vote** needs 5 votes, so the seal couldn't be broken with one player.
+- **The owner asked** whether everyone is told how long the rise takes: only the op's reply says so ("about 29 seconds"); players within 128 blocks get the shaking ground and a title. Left as it is for now.
+
 ## What couldn't be verified yet
+- **The night's event:**
+  - waking beside a brazier (only the start and the Shrine's edge were seen live; the brazier is mock-tested);
+  - the teleport to the start with several players, and with players in another dimension;
+  - the whole-ring search for dry ground in game (the lake case is mock-tested);
+  - the vote with five players.
 - **Stage 4:**
   - the new ground search for Inspectors in game (it's mock-tested, with a hill, a lake, the steps and a canopy; the test rite ran before it);
   - a knockout from a real fight (the one seen was while she was away), and the knockout's new log line;
@@ -469,5 +506,6 @@ The Shrine rose on real ground at 10490 71 4304 (28 seconds), and leelinda ran t
 | Stage 2, the braziers, the beam and the ambushes (the Shrine's own Inspectors) | ✅ built, 112 mock checks in all; tried on the test server (see above) |
 | Stages 0–1, the Signal and the Summons | to do |
 | Stage 4, the Ignition Rite (waves, the Senior Inspector, the King's Potatoes, the altar and its light, knockouts) | ✅ built, mock checks plus one in the Blood Pool suite; tried on the test server (see above) |
-| The steps up to the altar, the Inspectors' ground, and the rise waiting for the beam | ✅ built, 204 mock checks in all; the steps tried on the test server |
+| The steps up to the altar, the Inspectors' ground, and the rise waiting for the beam | ✅ built; the steps tried on the test server |
+| The night's event: `/shrine start set`, everyone to the start, knockouts for everyone until the Awakening ends | ✅ built, 224 mock checks in all; the whole night run on the test server (see above) |
 | Stage 5, the Awakening, the Regalia book on the altar, a basic `/regalia`, the Shrine's guard and `/shrine repair` | ✅ built, 150 mock checks in all; tried on the test server (see above) |

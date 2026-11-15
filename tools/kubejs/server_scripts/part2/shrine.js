@@ -59,6 +59,11 @@ const DATA_KEY = 'shrine'
 
 // --- Stage 2: the braziers, the beam and the ambushes ---
 const FIRE_WINDOW_SECONDS = 60            // all three must burn within this long of the first one catching
+// The night's event (owner, 2026-11-15, after a death to an ambush on the test server): /shrine braziers starts it and
+// teleports every player online to the start (/shrine start set). From then until the Awakening ends, a lethal hit
+// knocks anyone out instead of killing them: they wake beside the last brazier lit that still burns, or at the start if
+// none does (at the Shrine's edge if they're near it during the rite, as before).
+const WAKE_BESIDE_FIRE = 3                // knocked out: woken this many blocks east of the brazier, on the ground
 const FIRE_BOSSBAR = 'trollcraft:shrine_fires'
 // A brazier, built on the ground at its site: a 3 x 3 plinth, the campfire on it in the middle, walls with chains at the
 // corners. [dx, dy, dz, block] from the site (the spot an op stood on).
@@ -159,7 +164,7 @@ let data = null
 // D.fires: { state: 'none' | 'placed' | 'counting' | 'lit' | 'done', sites: the braziers as built, built, lit and
 // ambushed: [bool] x 3, firstLitAt: ms }. D.beam: { up, at: the site, saved: [{ x, y, z, state }] it replaced }.
 // The loops' tokens are on global, so a /reload stops the old ones.
-function freshFires() { return { state: 'none', sites: [], built: [false, false, false], lit: [false, false, false], ambushed: [false, false, false], firstLitAt: 0 } }
+function freshFires() { return { state: 'none', sites: [], built: [false, false, false], lit: [false, false, false], litAt: [0, 0, 0], ambushed: [false, false, false], firstLitAt: 0 } }
 // D.rite: { state: 'none' | 'running' | 'paused' | 'full' | 'done', offered: uuid -> { name, n } (potatoes offered at the
 // altar), total, need, present (players counted at the start), wave (the last one sent, -1 none), waveAt, waveSize,
 // lit (bands lit), seniorUp, seniorCalled }.
@@ -186,6 +191,8 @@ function db() {
   if (!data.regalia) data.regalia = { open: false, progress: {} }          // progress: relic id -> { have, by: { uuid: { name, n } } }
   if (!data.rite || !data.rite.state) data.rite = freshRite((data.rite && data.rite.offered) || {})
   if (!(data.stairs >= 0)) data.stairs = 0                                 // the steps to the altar laid (0: none)
+  if (data.start === undefined) data.start = null                          // the start: { dim, x, y, z }
+  if (!data.event) data.event = { on: false, at: 0 }                       // the night's event: knockouts for everyone
   return data
 }
 function save() {
@@ -365,17 +372,20 @@ function groundAt(lv, x, z, around) {
   } catch (e) { }
   return null
 }
-// A spot on the ground rMin..rMax blocks from (cx, cz), about angle a: SPAWN_TRIES spots are tried round it, then the
-// first one's standY as before.
+// A spot on the ground rMin..rMax blocks from (cx, cz), about angle a: SPAWN_TRIES spots are tried round it, then as many
+// again anywhere on the ring (on the test server a lake filled the whole north side of the rite's ring, and with only
+// the nearby tries an Inspector was put in it). Only then the first spot's standY as before, with a warning.
 function groundSpot(lv, cx, cz, around, rMin, rMax, a) {
   let first = null
-  for (let t = 0; t < SPAWN_TRIES; t++) {
-    let ang = a + (t ? (Math.random() - 0.5) * 1.2 : 0), r = rMin + Math.random() * (rMax - rMin)
+  for (let t = 0; t < SPAWN_TRIES * 2; t++) {
+    let ang = t == 0 ? a : t < SPAWN_TRIES ? a + (Math.random() - 0.5) * 1.2 : Math.random() * 2 * 3.14159265
+    let r = rMin + Math.random() * (rMax - rMin)
     let x = Math.floor(cx + Math.cos(ang) * r), z = Math.floor(cz + Math.sin(ang) * r)
     if (!first) first = { x: x, z: z }
     let y = groundAt(lv, x, z, around)
     if (y !== null) return { x: x + 0.5, y: y, z: z + 0.5 }
   }
+  console.warn('[Shrine] No dry ground ' + rMin + ' to ' + rMax + ' blocks from ' + Math.floor(cx) + ' ' + Math.floor(cz) + '; one placed at ' + first.x + ' ' + first.z + ' anyway')
   return { x: first.x + 0.5, y: standY(lv, first.x, first.z, around), z: first.z + 0.5 }
 }
 // Moves a player out of the footprint to the nearest side, EDGE_GAP blocks out, onto the ground there.
@@ -574,6 +584,7 @@ function resetShrine(server, done) {
   D.awake = { state: 'none', step: 0, credited: {} }
   D.regalia = { open: false, progress: {} }
   D.rite = freshRite({})
+  D.event = { on: false, at: 0 }
   if (st) clearStairs(server, st)
   D.stairs = 0
   const forget = () => {
@@ -719,14 +730,46 @@ function placeBraziers(server) {
   const missing = []
   for (let i = 0; i < BRAZIERS; i++) { if (!D.braziers[i]) missing.push(i + 1) }
   if (missing.length) return 'Set every brazier first: /shrine brazier set ' + missing.join(', ') + '.'
+  if (!D.start) return 'Set the start first: /shrine start set, where everyone is gathered when the braziers go out.'
+  const why = otherBusy()
+  if (why) return why
   D.fires = freshFires()
   D.fires.state = 'placed'
   D.fires.sites = D.braziers.map(b => ({ dim: b.dim, x: b.x, y: b.y, z: b.z }))
+  if (!D.event.on) D.event = { on: true, at: Date.now() }
   save()
   D.fires.sites.forEach(b => brazierForceload(server, b, true))   // kept loaded while the fires are watched
+  gatherAll(server)
   startFireWatch(server)
-  console.info('[Shrine] The braziers are out')
+  console.info('[Shrine] The braziers are out; the event is on')
   return ''
+}
+// Every player online goes to the start, wherever they are.
+function gatherAll(server) {
+  const s = db().start
+  players(server).forEach(p => {
+    run(server, 'execute in ' + s.dim + ' run tp ' + nameOf(p) + ' ' + (s.x + 0.5) + ' ' + s.y + ' ' + (s.z + 0.5))
+    narrate(p, 'The pilgrimage begins. Until the Shrine awakens, falling is not the end: you wake by the last fire lit, or here.', 'dark_red')
+  })
+  console.info('[Shrine] Everyone gathered at the start, ' + siteText(s))
+}
+function eventOn() { return !!db().event.on }
+function endEvent() {
+  const D = db()
+  if (!D.event.on) return
+  D.event = { on: false, at: 0 }
+  save()
+  console.info('[Shrine] The event is over: deaths are deaths again')
+}
+// The brazier lit last that still burns, or null.
+function lastLitBrazier() {
+  const F = db().fires
+  let best = -1, at = -1
+  F.sites.forEach((b, i) => {
+    let t = (F.litAt && F.litAt[i]) || 0
+    if (F.lit[i] && t >= at) { best = i; at = t }
+  })
+  return best < 0 ? null : F.sites[best]
 }
 function bossbar(server, name, value, color) {
   run(server, 'bossbar add ' + FIRE_BOSSBAR + ' ' + JSON.stringify(name))
@@ -759,6 +802,7 @@ function fireTick(server) {
     if (F.state == 'lit') { if (!lit) setFire(server, b, true); return }  // they burn for the rest of the night
     if (lit && !F.lit[i]) {
       F.lit[i] = true
+      if (F.litAt) F.litAt[i] = now
       changed = true
       if (F.state == 'placed') { F.state = 'counting'; F.firstLitAt = now }
       let n = litCount()
@@ -1206,30 +1250,57 @@ function pauseRite(server) {
   return true
 }
 
-// --- Knockouts: lethal damage at the Shrine while the rite is on heals and sets the player down at its edge ---
+// --- Knockouts: lethal damage heals the player and wakes them somewhere safe, nothing dropped. Near the Shrine while
+// the rite is on: at its edge. Anywhere else while the night's event is on: beside the last brazier lit, or at the start.
 function damageType(source) {
   try { return String(typeof source.getMsgId == 'function' ? source.getMsgId() : source.getType()) } catch (e) { return '' }
 }
-function knockout(server, p, why) {
-  const st = db().rise.site, n = nameOf(p)
+// Where a player knocked out now wakes ({ shrine }, { brazier } or { start }), or null: no rule covers them.
+function wakeSpot(p) {
+  const D = db(), st = D.rise.site
+  if (riteOn() && st && dimOf(p) == st.dim && flat(pos(p), centreOf(st)) <= PRESENT_RADIUS) return { shrine: st }
+  if (!eventOn()) return null
+  const b = lastLitBrazier()
+  if (b) return { brazier: b }
+  return D.start ? { start: D.start } : null
+}
+function knockout(server, p, why, to) {
+  const n = nameOf(p)
+  let where = ''
   try { p.setHealth(p.getMaxHealth()) } catch (e) { try { p.health = 20 } catch (e2) { } }
   try { p.clearFire() } catch (e) { }
   try { p.fallDistance = 0 } catch (e) { }
-  moveOut(server, levelByDim(server, st.dim), st, p)
+  run(server, 'effect clear ' + n)                      // as the arena and the Purge do: no wither or poison to finish the job
+  if (to.shrine) {
+    moveOut(server, levelByDim(server, to.shrine.dim), to.shrine, p)
+    narrate(p, 'Knocked down. The Shrine will not let you fall here: you wake at its edge.', 'gray')
+    where = 'the Shrine\'s edge'
+  } else if (to.brazier) {
+    let b = to.brazier, lv = levelByDim(server, b.dim), x = b.x + WAKE_BESIDE_FIRE, z = b.z
+    let y = groundAt(lv, x, z, b.y)
+    if (y === null) y = standY(lv, x, z, b.y)
+    run(server, 'execute in ' + b.dim + ' run tp ' + n + ' ' + (x + 0.5) + ' ' + y + ' ' + (z + 0.5))
+    narrate(p, 'Knocked down. You wake beside the last fire lit.', 'gray')
+    where = 'the brazier at ' + siteText(b)
+  } else {
+    let s = to.start
+    run(server, 'execute in ' + s.dim + ' run tp ' + n + ' ' + (s.x + 0.5) + ' ' + s.y + ' ' + (s.z + 0.5))
+    narrate(p, 'Knocked down. You wake where the pilgrimage began.', 'gray')
+    where = 'the start'
+  }
   run(server, 'effect give ' + n + ' minecraft:resistance ' + KNOCKOUT_RESISTANCE_SECONDS + ' 4 true')
-  narrate(p, 'Knocked down. The Shrine will not let you fall here: you wake at its edge.', 'gray')
-  console.info('[Shrine] Knockout: ' + n + (why ? ' (' + why + ')' : ''))
+  console.info('[Shrine] Knockout: ' + n + (why ? ' (' + why + ')' : '') + ', woken at ' + where)
 }
 EntityEvents.death(event => {
   const e = event.entity, server = event.server || Utils.server
   let player = false
   try { player = !!e.isPlayer() } catch (err) { }
   if (player) {
-    let st = db().rise.site
     let why = damageType(event.source)
-    if (!riteOn() || !st || why == 'genericKill') return   // /kill still kills
-    if (dimOf(e) != st.dim || flat(pos(e), centreOf(st)) > PRESENT_RADIUS) return
-    knockout(server, e, why)
+    if (why == 'genericKill') return                    // /kill still kills
+    let to = wakeSpot(e)
+    if (!to) return
+    knockout(server, e, why, to)
     event.cancel()
     return
   }
@@ -1417,6 +1488,7 @@ function runAwakening(server, from) {
       A.state = 'done'
       save()
       console.info('[Shrine] The Awakening is done')
+      endEvent()
       return
     }
     try { awakenStep(server, AWAKEN_STEPS[i]) } catch (e) { console.error('[Shrine] Awakening, ' + AWAKEN_STEPS[i].step + ': ' + e) }
@@ -1481,8 +1553,14 @@ function regaliaLines() {
 }
 
 // What else is on that the Shrine mustn't overlap: a Purge or a Gladiator match. '' if nothing.
+// A Purge running or counting down, or a Gladiator match. Not global.Purge.busy(): that says why a Purge can't start,
+// and the Shrine itself is one of the reasons, so the Shrine would wait on itself (seen on the test server once the
+// night's event kept the Shrine busy from the braziers on).
 function otherBusy() {
-  try { if (global.Purge && typeof global.Purge.busy == 'function' && String(global.Purge.busy() || '')) return 'A Purge is on. The Shrine waits until it ends.' } catch (e) { }
+  try {
+    let P = global.Purge
+    if (P && ((typeof P.active == 'function' && P.active()) || (typeof P.pending == 'function' && P.pending()))) return 'A Purge is on. The Shrine waits until it ends.'
+  } catch (e) { }
   try { if (global.Gladiator && typeof global.Gladiator.busy == 'function' && global.Gladiator.busy()) return 'A Gladiator match is on. The Shrine waits until it ends.' } catch (e) { }
   return ''
 }
@@ -1517,6 +1595,8 @@ function statusLines(server) {
   if (A.state == 'none') out.push('The Awakening: not yet (/shrine awaken, once the Shrine has risen).')
   else if (A.state == 'running') out.push('The Awakening: under way (step ' + A.step + ' of ' + AWAKEN_STEPS.length + ').')
   else out.push('The Awakening: done. The Regalia is open' + (credited.length ? '; Drops credited: ' + credited.map(c => c.name + ' ' + fmt(c.n)).join(', ') : '') + '.')
+  out.push('The start: ' + (D.start ? siteText(D.start) + ' (/shrine braziers brings everyone here)' : 'not set (/shrine start set, where everyone gathers)'))
+  out.push(D.event.on ? 'The event: on. Knockouts instead of deaths for everyone, until the Awakening ends.' : 'The event: off (/shrine braziers starts it).')
   return out
 }
 
@@ -1631,6 +1711,13 @@ ServerEvents.commandRegistry(event => {
     return reply(ctx, 'The Shrine will rise ' + (given ? 'there' : 'here') + ', centred on ' + siteText(db().site) + ': ' + SIZE[0] + ' x ' + SIZE[2] + ' blocks (' + c.x + ' ' + c.z + ' to ' +
       (c.x + SIZE[0] - 1) + ' ' + (c.z + SIZE[2] - 1) + ') and ' + SIZE[1] + ' tall. Everything in that box above the ground is cleared as it rises.')
   }
+  const setStart = given => ctx => {
+    const st = spotOf(ctx, given)
+    if (!st) return reply(ctx, 'Run this as a player, standing where everyone should gather, or give its coordinates: /shrine start set <x> <y> <z>.', true)
+    db().start = st
+    save()
+    return reply(ctx, 'The start is ' + (given ? 'there' : 'here') + ', at ' + siteText(st) + ': /shrine braziers brings every player here, and anyone knocked out before a brazier burns wakes here.')
+  }
   const setBrazier = given => ctx => {
     const st = spotOf(ctx, given)
     if (!st) return reply(ctx, 'Run this as a player, standing where the brazier should go, or give its coordinates: /shrine brazier set <1-3> <x> <y> <z>.', true)
@@ -1648,6 +1735,7 @@ ServerEvents.commandRegistry(event => {
       return 1
     })))
     .then(Commands.literal('site').then(Commands.literal('set').executes(safe(setSite(false))).then(xyz(setSite(true)))))
+    .then(Commands.literal('start').then(Commands.literal('set').executes(safe(setStart(false))).then(xyz(setStart(true)))))
     .then(Commands.literal('brazier').then(Commands.literal('set').then(Commands.argument('n', Arguments.INTEGER.create(event)).executes(safe(setBrazier(false)))
       .then(xyz(setBrazier(true))))))
     .then(Commands.literal('rise').executes(safe(riseReply(false))).then(Commands.literal('force').executes(safe(riseReply(true)))))
@@ -1656,7 +1744,8 @@ ServerEvents.commandRegistry(event => {
       if (why) return reply(ctx, why, true)
       const server = ctx.source.server
       return reply(ctx, 'The braziers are going out: ' + db().fires.sites.map((b, i) => (i + 1) + ' at ' + siteText(b) + ' (' + fromCastle(server, b) + ')').join('; ') +
-        '. They must all burn within ' + FIRE_WINDOW_SECONDS + ' seconds of the first. Each team is ambushed once on the way.')
+        '. They must all burn within ' + FIRE_WINDOW_SECONDS + ' seconds of the first. Each team is ambushed once on the way. Everyone is at the start (' + siteText(db().start) +
+        '), and the event is on: knockouts instead of deaths, for everyone, until the Awakening ends.')
     })))
     .then(Commands.literal('fires')
       .then(Commands.literal('light').executes(safe(ctx => {
@@ -1748,7 +1837,8 @@ ServerEvents.commandRegistry(event => {
 
 global.Shrine = {
   // Why a Purge or a match should wait ('' if they needn't): for now, only while the Shrine is rising.
-  busy: () => (db().rise.state == 'rising' ? 'the Shrine is rising' : riteOn() ? 'the Ignition Rite is on at the Shrine' : ''),
+  busy: () => (db().rise.state == 'rising' ? 'the Shrine is rising' : riteOn() ? 'the Ignition Rite is on at the Shrine' : eventOn() ? 'the Shrine Awakens is on' : ''),
+  eventOn: () => eventOn(),
   riteOn: () => riteOn(),
   isKingsPotato: s => isKingsPotato(s),
   state: () => JSON.parse(JSON.stringify(db())),

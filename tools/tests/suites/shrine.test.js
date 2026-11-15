@@ -216,10 +216,14 @@ r = cmd('rise', admin)
 ok('the layers missing: refused, nothing placed', /layers are missing/.test(r[0]) && S().rise.state == 'none' && placed().length == 0, r[0])
 ok('... and status says so', /layers are missing/.test(cmd('status', admin)[4]))
 layersThere = true
-global.Purge = { busy: () => 'a Purge is running' }
+// A stand-in Purge shaped like purge.js: busy() says why a Purge can't start, and the Shrine is one of the reasons;
+// active() and pending() say whether one runs or counts down.
+const purgeStandIn = running => ({ active: () => running, pending: () => null,
+  busy: () => (running ? 'A Purge is already running' : global.Shrine && global.Shrine.busy() ? 'The Shrine Awakens is on (' + global.Shrine.busy() + '). The Purge waits.' : '') })
+global.Purge = purgeStandIn(true)
 r = cmd('rise', admin)
 ok('a Purge on: refused', /A Purge is on/.test(r[0]) && S().rise.state == 'none', r[0])
-global.Purge = { busy: () => '' }
+global.Purge = purgeStandIn(false)
 global.Gladiator = { busy: () => true }
 r = cmd('rise', admin)
 ok('a Gladiator match on: refused', /Gladiator match is on/.test(r[0]) && S().rise.state == 'none', r[0])
@@ -403,10 +407,23 @@ const [b1, b2, b3] = S().braziers
 const inspectors = () => mobs.filter(m => !m.discarded && m.tags.indexOf('shrine_ambush') >= 0)
 players.forEach(p => { p.msgs = [] })
 admin.creative = true                                   // the op watches; creative players are never ambushed
+// the start: where /shrine braziers brings everyone (owner, 2026-11-15)
+r = cmd('braziers', admin)
+ok('/shrine braziers with no start set: refused, says how to set it', /Set the start first: \/shrine start set/.test(r[0]) && B().state == 'none' && !global.Shrine.eventOn(), r[0])
+ok('status: no start, the event off', /The start: not set/.test(cmd('status', admin)[9]) && /The event: off/.test(cmd('status', admin)[10]), cmd('status', admin).slice(9).join(' | '))
+r = cmd('start set 5000 64 5000', null)
+ok('/shrine start set <x> <y> <z> from the console', S().start.x == 5000 && S().start.y == 64 && S().start.z == 5000 && /The start is there, at 5000 64 5000/.test(r[0]), r[0])
+global.Purge = purgeStandIn(true)
+ok('/shrine braziers during a Purge: refused, the event doesn\'t start', /A Purge is on/.test(cmd('braziers', admin)[0]) && B().state == 'none' && !global.Shrine.eventOn())
+global.Purge = purgeStandIn(false)
 cmds = []
 r = cmd('braziers', admin)
 ok('/shrine braziers: all three go out, each with its place and direction', B().state == 'placed' && /1 at 1900 70 0 \(about 1900 blocks toward the rising sun\)/.test(r[0]) &&
   /within 60 seconds/.test(r[0]), r[0])
+ok('... the event begins: every player online is brought to the start, and told', players.every(p => p.x == 5000.5 && p.y == 64 && p.z == 5000.5 && said(p, /The pilgrimage begins/)) &&
+  global.Shrine.eventOn() && /Everyone is at the start \(5000 64 5000\), and the event is on/.test(r[0]), players.map(p => p.name + ' ' + p.x + ' ' + p.z).join(', '))
+ok('... status: the start and the event', /The start: 5000 64 5000/.test(cmd('status', admin)[9]) && /The event: on/.test(cmd('status', admin)[10]), cmd('status', admin).slice(9).join(' | '))
+ok('... global.Shrine.busy(): the Purge and the arena wait all night, not just for the rite', global.Shrine.busy() == 'the Shrine Awakens is on')
 ok('... their chunks are force-loaded while they\'re watched', [b1, b2, b3].every(b => cmds.indexOf('execute in minecraft:overworld run forceload add ' + (b.x - 1) + ' ' + (b.z - 1) + ' ' + (b.x + 1) + ' ' + (b.z + 1)) >= 0))
 advance(2)
 ok('... and each is built: a blackstone plinth, an unlit campfire on it, walls and chains at the corners',
@@ -442,18 +459,31 @@ dave.x = 9000; carol.x = 1060.5; carol.z = 2000.5
 bob.x = 5000.5; bob.z = 2000.5; bob.msgs = []
 r = cmd('ambush Bob', admin)
 ok('/shrine ambush Bob: Inspectors close in on him (2 + 1 for Bob)', /3 Inspectors close in on Bob/.test(r[0]) && inspectors().length == 7 && said(bob, /Remain where you are/), r[0])
+// knockouts all night (the event): anyone, anywhere
+const fall = (p, type) => { const ev = { entity: p, server, source: { getMsgId: () => type || 'mob' }, cancelled: false, cancel() { ev.cancelled = true; throw EXIT } }
+  ;(handlers.death || []).forEach(h => { try { h(ev) } catch (e) { if (e !== EXIT) throw e } }); return ev.cancelled }
+bob.health = 0; bob.msgs = []; cmds = []
+ok('the event on: Bob, killed by an ambush, is knocked out instead; with no fire lit he wakes at the start, healed, effects cleared',
+  fall(bob, 'mob') && bob.x == 5000.5 && bob.y == 64 && bob.z == 5000.5 && bob.health == 20 && said(bob, /You wake where the pilgrimage began/) &&
+  cmds.indexOf('effect clear Bob') >= 0 && cmds.indexOf('effect clear Bob') < cmds.indexOf('effect give Bob minecraft:resistance 3 4 true') &&
+  logs.some(l => l == '[Shrine] Knockout: Bob (mob), woken at the start'), [bob.x, bob.y, bob.z].join(' '))
+ok('... /kill still kills', !fall(bob, 'genericKill'))
 
 // lighting: one, two, then the clock runs out
 players.forEach(p => { p.msgs = [] })
 lightFire(b1)
 advance(20)
 ok('lighting one starts the clock: 1 of 3, and everyone is told', B().state == 'counting' && B().lit[0] && said(carol, /Far away, a fire catches\. 1 of 3/) && said(far, /1 of 3/))
+bob.x = 3000.5; bob.z = 3000.5
+ok('a knockout with a fire lit: woken beside it, 3 blocks east, on the ground', fall(bob, 'mob') && bob.x == 1903.5 && bob.y == 64 && bob.z == 0.5 && said(bob, /beside the last fire lit/),
+  [bob.x, bob.y, bob.z].join(' '))
 ok('... the boss bar shows the fires and the time left', cmds.some(c => /^bossbar set trollcraft:shrine_fires name .*The fires: 1 \/ 3.*(1:00|0:5\d)/.test(c)) && cmds.some(c => c == 'bossbar set trollcraft:shrine_fires players @a'))
 advance(100)
 ok('... counting down', cmds.some(c => /^bossbar set trollcraft:shrine_fires name .*The fires: 1 \/ 3.*0:5[45]/.test(c)) && /The fires: 1 of 3 lit, 0:5\d left/.test(cmd('status', admin)[5]), cmd('status', admin)[5])
 lightFire(b2)
 advance(20)
 ok('a second: 2 of 3', B().lit[1] && said(carol, /Another fire catches\. 2 of 3/))
+ok('... a knockout now wakes beside the second, the last one lit', fall(bob, 'arrow') && bob.x == -496.5 && bob.z == 10.5, [bob.x, bob.y, bob.z].join(' '))
 // a /reload while the clock runs: the watch carries on
 load()
 seconds(60)
@@ -462,6 +492,7 @@ ok('after a minute without the third, the lit ones gutter out (even across a /re
 ok('... with smoke and a hiss, and the boss bar goes', cmds.some(c => /particle minecraft:large_smoke 1900\.5 71\.5 0\.5/.test(c)) && cmds.some(c => /block\.fire\.extinguish/.test(c)) &&
   cmds.lastIndexOf('bossbar remove trollcraft:shrine_fires') > cmds.findIndex(c => /The fires: 2 \/ 3/.test(c)))
 ok('/shrine fires out with no clock running: refused', /No fire is burning against the clock/.test(cmd('fires out', admin)[0]))
+ok('with the fires guttered out, a knockout wakes at the start again', fall(bob, 'mob') && bob.x == 5000.5 && bob.z == 5000.5)
 // all three in time
 players.forEach(p => { p.msgs = [] })
 lightFire(b1); advance(20)
@@ -484,8 +515,10 @@ ok('... and a campfire taken away is put back, lit', fireOf(b2) == 'minecraft:ca
 ok('/shrine braziers while they burn: refused', /already burn/.test(cmd('braziers', admin)[0]))
 
 // the rise: the beam comes out (its ground back), the fires' stage ends, the ambushers go
+ok('(the Purge, asked why it can\'t start, names the Shrine: the Shrine mustn\'t take that for a Purge running)', /The Shrine Awakens is on/.test(global.Purge.busy()))
 cmds = []
-cmd('rise', admin)
+r = cmd('rise', admin)
+ok('/shrine rise with the beam up and the event on: no force needed, and the Shrine doesn\'t wait on itself', /64 layers in about 29 seconds/.test(r[0]), r[0])
 advance(25)
 ok('when the rise begins, the beam comes out and its ground is put back', !S().beam.up && world['1000,62,2000'] == 'minecraft:grass_block' && world['999,61,1999'] == 'minecraft:grass_block')
 ok('... the fires\' stage ends: they stay lit, their chunks are let go', B().state == 'done' && fireOf(b1) == 'minecraft:campfire[lit=true,signal_fire=false]' &&
@@ -498,6 +531,7 @@ ok('(the Shrine rises as before)', S().rise.state == 'risen')
 cmd('reset confirm', admin)
 advance(40)
 ok('/shrine reset confirm also takes the braziers away and forgets the fires', B().state == 'none' && [b1, b2, b3].every(b => !world[fireKey(b)] && !world[b.x + ',' + b.y + ',' + b.z]))
+ok('... and ends the event (the start is kept)', !global.Shrine.eventOn() && global.Shrine.busy() == '' && S().start.x == 5000 && (bob.health = 0, !fall(bob, 'mob')))
 
 // by hand: /shrine fires light, /shrine beam up|down
 cmd('braziers', admin); advance(2)
@@ -569,10 +603,25 @@ ok('an Inspector killed drops 2 Potato King\'s Potatoes, marked, named in gold, 
 kill(waveMobs(0)[0])
 advance(20)
 ok('with 2 of 3 down, no new wave yet', RT().wave == 0)
+// A lake over the whole ring but its south-east corner (on the test server one filled the ring's north side, and an
+// Inspector was put in it): they look all round the ring for dry ground.
+const lake = []
+for (let x = 952; x <= 1049; x++) {
+  for (let z = 1952; z <= 2049; z++) {
+    const d = Math.hypot(x + 0.5 - 1000.5, z + 0.5 - 2000.5)
+    if (d >= 28 && d <= 48 && !(x > 1002 && z > 2002)) { world[x + ',63,' + z] = 'minecraft:water'; lake.push(x + ',63,' + z) }
+  }
+}
+let seed = 0
+Math.random = () => { seed = (seed + 0.6180339887) % 1; return seed }
 kill(waveMobs(0)[0])
 advance(20)
+Math.random = random
 ok('with all 3 down: wave 2, 3 Inspectors (1.5 per player), the vindicators with shields', RT().wave == 1 && waveMobs(1).length == 3 &&
   waveMobs(1).filter(m => m.type == 'minecraft:vindicator').every(m => /minecraft:shield/.test(m.nbt)) && said(carol, /Wave 2 of 4/))
+ok('... with a lake over all the ring but one corner, every one still lands on dry ground there', waveMobs(1).every(m => m.x > 1002 && m.z > 2002 && m.y == 64) &&
+  !logs.some(l => /No dry ground/.test(l)), waveMobs(1).map(m => m.x + ' ' + m.y + ' ' + m.z).join(', '))
+lake.forEach(k => { delete world[k] })
 // /shrine stop pauses the rite; /shrine rite brings the wave back
 r = cmd('stop', admin)
 ok('/shrine stop pauses the rite: the waves stop, the Inspectors go, the altar keeps its count', /The rite is paused/.test(r[0]) && RT().state == 'paused' && riteMobsNow().length == 0 &&
@@ -626,7 +675,7 @@ ok('... healed, fire out, set down at the Shrine\'s edge with a few seconds of R
   cmds.indexOf('effect give Carol minecraft:resistance 3 4 true') >= 0 && said(carol, /you wake at its edge/), [carol.x, carol.y, carol.z].join(' '))
 ok('... on the ground, under the steps (the east edge, 1024 2000), not on them', carol.x == 1024.5 && carol.z == 2000.5 && carol.y == 64 && world['1024,78,2000'] == 'minecraft:barrier',
   [carol.x, carol.y, carol.z].join(' '))
-ok('... the log says what would have killed her', logs.some(l => l == '[Shrine] Knockout: Carol (mob)'))
+ok('... the log says what would have killed her, and where she woke', logs.some(l => l == '[Shrine] Knockout: Carol (mob), woken at the Shrine\'s edge'))
 ok('... someone dying far from the Shrine dies as usual; /kill still kills', !dies(far, 'mob') && !dies(bob, 'genericKill'))
 // Bob fills the altar at Technoblade's head
 bob.slots[0] = kings(10)
@@ -760,11 +809,20 @@ ok('a /reload mid-Awakening carries on from the next step: nothing said twice', 
   S().awake.state == 'done', far.msgs.length)
 ok('... the potatoes offered decide the shares: Carol 30, Bob 10 of 50,000 Drops', pool.drops == 120000 && pool.adds.find(a => a.name == 'Carol').n == 37500 && pool.adds.find(a => a.name == 'Bob').n == 12500, JSON.stringify(pool.adds))
 // a third night with the Pool already past Tier 3 and open: no Drops, no vote prompt
+// (this night begins with the braziers: the event runs from them to the Awakening's end)
 cmd('reset confirm', admin); advance(40)
+cmd('braziers', admin); advance(2)
+ok('a night begun with /shrine braziers: the event is on', global.Shrine.eventOn())
 cmd('rise force', admin); advance(layerTicks * 66 + 30)
+ok('... still on once the Shrine has risen (and the fires\' stage is done)', global.Shrine.eventOn() && S().fires.state == 'done')
 pool.drops = 130000; pool.tier = 3; pool.adds = []; carol.msgs = []
-cmd('awaken force', admin); advance(awakeTicks + 5)
+cmd('awaken force', admin)
+advance(awakeTicks - 20)
+ok('... and through the Awakening', global.Shrine.eventOn() && S().awake.state == 'running')
+advance(25)
 ok('with the Pool already past Tier 3 and open: no Drops added, no vote asked for', pool.adds.length == 0 && !carol.msgs.some(m => /break the third seal/.test(m)) && S().awake.state == 'done')
+ok('the Awakening done, the event ends: deaths are deaths again, and the Purge and the arena may run', !global.Shrine.eventOn() && global.Shrine.busy() == '' &&
+  (carol.health = 0, !fall(carol, 'mob')) && logs.some(l => /The event is over/.test(l)))
 // and with no Blood Pool at all
 cmd('reset confirm', admin); advance(40)
 cmd('rise force', admin); advance(layerTicks * 66 + 30)

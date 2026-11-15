@@ -31,6 +31,8 @@ The story is in [STORY.md](../../STORY.md), Act I #36. This file says how each s
 - `/shrine site set`: the Shrine's centre, at ground level;
 - `/shrine brazier set <1|2|3>`: each brazier.
 
+Or give the coordinates, in the Overworld, which also works from the console: `/shrine site set <x> <y> <z>` and `/shrine brazier set <1-3> <x> <y> <z>`.
+
 `/shrine status` shows the sites, the stage, and each brazier's distance and direction from the castle.
 
 **The Shrine's site:**
@@ -101,7 +103,7 @@ The last page is the first hint of the two threads (kept: owner decision).
 ## 3. The Shrine Rises
 **`/shrine rise`**, run once the pilgrims have gathered at the beam. The Shrine builds itself from the ground up.
 1. **Clearing the way:** players standing inside the Shrine's footprint are moved to its edge. The beacon comes out and its ground is put back.
-2. **Layer by layer:** for each of the 64 layers, the script clears that slice of the box, then places the layer, from `trollcraft:shrine/l_0` to `l_63`. One layer every **4 seconds** (a setting) takes about 4½ minutes.
+2. **Layer by layer:** for each of the 64 layers, the script clears that slice of the box, then places the layer, from `trollcraft:shrine/l_0` to `l_63`. One layer every **9 ticks** (a setting) takes about **29 seconds** for all 64. It was 4 seconds a layer (4½ minutes) until the owner watched it on the test server and asked for about 30 seconds (2026-11-14).
 3. **The show:**
    - deep rumbles and stone sounds at every layer;
    - dust and smoke along the layer's edge;
@@ -231,7 +233,7 @@ The deliveries, Shrine raids and rewards are Act II's work and get their own spe
 | Command | What it does |
 |---|---|
 | `/shrine status` | The sites, the stage, the braziers, the rite's bar and who offered what |
-| `/shrine site set` / `/shrine brazier set <1-3>` | Set the Shrine's centre or a brazier where you stand |
+| `/shrine site set [x y z]` / `/shrine brazier set <1-3> [x y z]` | Set the Shrine's centre or a brazier where you stand, or at those coordinates in the Overworld (the console can too) |
 | `/shrine signal` | Stage 0 |
 | `/shrine summons` | Stage 1: the books |
 | `/shrine braziers` | Stage 2: place the braziers and start watching them |
@@ -272,7 +274,6 @@ The deliveries, Shrine raids and rewards are Act II's work and get their own spe
 
 ## Still open
 - **To tune at the rehearsal:**
-  - the rise's speed (4 s a layer);
   - the wave sizes;
   - the potatoes per Inspector;
   - how the braziers look.
@@ -285,7 +286,7 @@ The deliveries, Shrine raids and rewards are Act II's work and get their own spe
 
 ## How the rise works (built)
 - **The box:** 42 × 43 blocks and 64 tall, centred on the site, from the site's ground level up. `/shrine site set` says its corners.
-- **Each layer:** every 4 seconds (`LAYER_TICKS`):
+- **Each layer:** every 9 ticks (`LAYER_TICKS`), about 29 seconds for all 64:
   - its slice of the box is cleared to air;
   - the statue's layer is placed with `/place template trollcraft:shrine/l_<n>`;
   - deep stone sounds play at every layer, the Warden's dig every 8th, and dust and smoke rise along it;
@@ -298,18 +299,24 @@ The deliveries, Shrine raids and rewards are Act II's work and get their own spe
 - **Busy:** it won't start during a Purge or a Gladiator match. `global.Shrine.busy()` says "the Shrine is rising" while it runs.
 - **Taking it down (test server):** `/shrine reset confirm` moves anyone off it, clears the box with four fills of air from the top, removes loose items, and forgets the night. The sites are kept.
 
+## Tried on the test server (2026-11-14)
+The rise ran twice at a site in the sky (6000 150 6000), with the owner watching as leelinda.
+- **The look:** "it looks fantastic". The owner asked for a faster rise, about 30 seconds instead of 4½ minutes. The second rise, at 9 ticks a layer, took 28.4 seconds on the server's clock.
+- **The blocks:** a sample of 508 blocks (400 at random, every block of the small top layers, the lectern and the head) was checked with `execute if block`, each with its full state. All 508 matched the statue's files after the first rise. This covered all 64 layers, including the facing and shape of stairs, slab halves, panes, walls and the lectern.
+- **Technoblade's head** kept its skin (its `SkullOwner` and texture), and the lectern stands on the altar.
+- **Setting the site from the console** (`/shrine site set <x> <y> <z>`), `/shrine status`, the brazier directions, the `/reload` that adds the command, and `/shrine reset confirm` all worked.
+- **The chunks** unload when the rise ends and lets go of them, unless a player is nearby. That's expected: on the night, the pilgrims are standing there.
+
 ## What couldn't be verified yet
-Checked only on the mock server so far:
-- **Placing the layers:** that `/place template` places a 42 × 1 × 43 layer at the corner given, with the lectern and Technoblade's head (and its skin) intact.
-- **The ground:** that clearing each slice first looks right on real terrain (grass, trees and the like give way layer by layer).
-- **The sounds and particles:** that they can be heard and seen from where the pilgrims stand.
-- **Players in the way:** that moving them out of the footprint lands them safely on uneven ground. The mock's ground is flat.
+- **The ground:** the test rise was in the sky. That clearing each slice first looks right on real terrain (grass, trees and the like giving way layer by layer) is still to see.
+- **Players in the way:** nobody stood in the footprint during the test, so moving players out (onto the ground beside it) is checked only on the mock. Over a drop with no ground within 20 blocks, the edge spot falls back to the site's height.
+- **The lectern before the Awakening:** in the schematic, the lectern is in its "has a book" state with no book in it. Until the Awakening puts the Regalia book there, it shows a book that has nothing in it.
 
 ## Build progress
 | Part | State |
 |---|---|
-| The sites (`/shrine site set`, `/shrine brazier set`) and `/shrine status`, with each brazier's direction and distance from the castle | ✅ built, 55 mock checks (`tools/tests/suites/shrine.test.js`) |
-| Stage 3, the rise, with `/shrine stop` and `/shrine reset confirm` | ✅ built, same checks; not yet tried in game |
+| The sites (`/shrine site set`, `/shrine brazier set`, where you stand or at coordinates) and `/shrine status`, with each brazier's direction and distance from the castle | ✅ built, 58 mock checks (`tools/tests/suites/shrine.test.js`); tried on the test server |
+| Stage 3, the rise, with `/shrine stop` and `/shrine reset confirm` | ✅ built, same checks; tried on the test server (see above) |
 | Stage 2, the braziers, the beam and the ambushes | to do |
 | Stages 0–1, the Signal and the Summons | to do |
 | Stage 4, the Ignition Rite (waves, potatoes, altar, knockouts) | to do |

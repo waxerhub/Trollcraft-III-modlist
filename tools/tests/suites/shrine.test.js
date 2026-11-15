@@ -61,7 +61,7 @@ function RL(s) { this.s = s }
 function load() {
   handlers = {}
   new Function('ServerEvents', 'Java', 'Utils', 'Text', 'console', 'global', src)(
-    { loaded: on('loaded'), commandRegistry: h => h({ commands: { literal: node, argument: n => node(n) }, arguments: { INTEGER: { create: () => 'int', getResult: (ctx, k) => ctx.args[k] } }, register: t => { cmdTree = t } }) },
+    { loaded: on('loaded'), commandRegistry: h => h({ commands: { literal: node, argument: n => Object.assign(node(n), { arg: true }) }, arguments: { INTEGER: { create: () => 'int', getResult: (ctx, k) => ctx.args[k] } }, register: t => { cmdTree = t } }) },
     { loadClass: n => {
       if (/Component\$Serializer/.test(n)) return { fromJsonLenient: j => JSON.parse(j) }
       if (/ResourceLocation/.test(n)) return RL
@@ -80,8 +80,8 @@ function cmd(line, as) {
   if (cmdTree.req && !cmdTree.req(ctx.source)) return ['DENIED']
   let n = cmdTree
   for (const a of line.split(' ')) {
-    let next = n.ch.find(c => c.n == a)
-    if (!next) { next = n.ch.find(c => c.n == 'n'); if (next) ctx.args.n = Number(a) }
+    let next = n.ch.find(c => c.n == a && !c.arg)
+    if (!next) { next = n.ch.find(c => c.arg); if (next) ctx.args[next.n] = Number(a) }
     if (!next) throw new Error('no command shrine ' + line)
     n = next
   }
@@ -91,7 +91,7 @@ function cmd(line, as) {
 const S = () => global.Shrine.state()
 const said = (p, re) => p.msgs.some(m => re.test(m))
 const placed = () => cmds.filter(c => /run place template trollcraft:shrine\/l_\d+ /.test(c)).map(c => +c.match(/l_(\d+) /)[1])
-const layerTicks = 80
+const layerTicks = 9
 
 const admin = player('Admin', 1000.5, 64, 2000.5, true)
 const bob = player('Bob', 1000.5, 64, 2000.5)          // standing right where the Shrine will rise
@@ -105,7 +105,13 @@ ok('/shrine is op only', cmd('status', bob)[0] == 'DENIED')
 r = cmd('rise', admin)
 ok('/shrine rise with no site: refused, says how to set it', /site first/.test(r[0]) && !S().rise.state.match(/rising/), r[0])
 r = cmd('site set', null)
-ok('/shrine site set from the console: refused', /Run this as a player/.test(r[0]))
+ok('/shrine site set from the console: refused, says how to give coordinates', /Run this as a player/.test(r[0]) && /site set <x> <y> <z>/.test(r[0]))
+r = cmd('site set 5000 120 -3000', null)
+ok('/shrine site set <x> <y> <z> from the console: set in the Overworld', S().site.x == 5000 && S().site.y == 120 && S().site.z == -3000 && S().site.dim == OW && /will rise there/.test(r[0]), r[0])
+r = cmd('brazier set 2 -40 70 900', null)
+ok('/shrine brazier set <n> <x> <y> <z> from the console', S().braziers[1].x == -40 && S().braziers[1].z == 900 && /about 900 blocks south/.test(r[0]), r[0])
+r = cmd('brazier set 2', null)
+ok('/shrine brazier set <n> from the console with no coordinates: refused', /brazier set <1-3> <x> <y> <z>/.test(r[0]))
 r = cmd('site set', admin)
 ok('/shrine site set: the centre at the op\'s feet, with the box it will clear', S().site.x == 1000 && S().site.y == 64 && S().site.z == 2000 &&
   /979 1979 to 1020 2021/.test(r[0]) && /42 x 43 blocks/.test(r[0]) && /64 tall/.test(r[0]), r[0])
@@ -143,7 +149,7 @@ global.Gladiator = { busy: () => false }
 chunksAt = tick + 30                                  // the site's chunks take a moment to load
 cmds = []
 r = cmd('rise', admin)
-ok('/shrine rise: 64 layers, one every 4 seconds', /64 layers, one every 4 seconds \(about 5 minutes\)/.test(r[0]) && S().rise.state == 'rising', r[0])
+ok('/shrine rise: 64 layers in about 29 seconds', /64 layers in about 29 seconds\./.test(r[0]) && S().rise.state == 'rising', r[0])
 ok('... the site is force-loaded', cmds.some(c => c == 'execute in minecraft:overworld run forceload add 979 1979 1020 2021'), cmds.join('\n'))
 ok('... nearby players are told and get the title; someone far away isn\'t', said(carol, /ground beneath the beam begins to shake/) && cmds.some(c => /^title Carol title .*The Shrine rises/.test(c)) && !said(far, /shake/))
 ok('global.Shrine.busy() while it rises', global.Shrine.busy() == 'the Shrine is rising')
@@ -157,7 +163,7 @@ ok('Bob, standing in the footprint, was moved to the nearest edge onto the groun
 ok('Carol, outside it, wasn\'t moved', carol.x == 1060.5)
 ok('... with the rumble, dust and smoke', cmds.some(c => /playsound minecraft:block\.deepslate\.place block @a 1000\.5 64\.5 2000\.5/.test(c)) && cmds.some(c => /particle minecraft:large_smoke/.test(c)) && cmds.some(c => /entity\.warden\.dig/.test(c)))
 advance(layerTicks)
-ok('the next layer comes 4 seconds later, one block up', placed().join() == '0,1' && cmds.some(c => / place template trollcraft:shrine\/l_1 979 65 1979$/.test(c)))
+ok('the next layer comes 9 ticks later, one block up', placed().join() == '0,1' && cmds.some(c => / place template trollcraft:shrine\/l_1 979 65 1979$/.test(c)))
 bob.x = 1000.5; bob.y = 66; bob.z = 1985.5                       // walks back in
 advance(layerTicks)
 ok('walking back in gets you moved out again (nearest edge: the north side)', bob.z == 1976.5 && bob.x == 1000.5, [bob.x, bob.y, bob.z].join(' '))

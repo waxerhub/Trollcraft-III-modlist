@@ -4,8 +4,9 @@
 //
 // Built so far:
 //   - The sites, set where an op stands: /shrine site set (the Shrine's centre, at ground level) and
-//     /shrine brazier set <1-3>. /shrine status shows them, each brazier's direction and distance from the castle
-//     (world spawn), and the stage.
+//     /shrine brazier set <1-3>, or at coordinates in the Overworld (/shrine site set <x> <y> <z>, also from the
+//     console). /shrine status shows them, each brazier's direction and distance from the castle (world spawn), and the
+//     stage.
 //   - Stage 3, the rise (/shrine rise): the Shrine builds itself from the ground up, one layer of the statue every
 //     LAYER_TICKS, from kubejs/data/trollcraft/structures/shrine/l_0 .. l_63. Each layer's slice is cleared first, so
 //     the ground and anything on it give way. Players in the footprint are moved to its edge. Rumbles, dust and smoke at
@@ -26,7 +27,7 @@ const STRUCTURE = 'trollcraft:shrine'     // the statue, one piece per layer: ST
 const SIZE = [42, 64, 43]                 // x, layers, z (Technoblade's statue: technoblade_statue.schem)
 const CENTRE = [21, 21]                   // the site's centre, as an offset from the statue's corner (x, z)
 const PEDESTAL_TOP = 21                   // the pedestal's last layer: thunder when it's placed
-const LAYER_TICKS = 80                    // a layer every 4 seconds: about 4 1/2 minutes for the 64
+const LAYER_TICKS = 9                     // a layer every 9 ticks: about 29 seconds for the 64 (owner, 2026-11-14)
 const LOAD_WAIT_SECONDS = 90              // how long to wait for the site's chunks to load before pausing the rise
 const CLEAR_SLAB = 18                     // taking it down: fills of 42 x 18 x 43 blocks (fill's limit is 32,768)
 const EDGE_GAP = 3                        // players moved out of the footprint land this far outside its edge
@@ -354,24 +355,33 @@ ServerEvents.commandRegistry(event => {
   const op = src => src.hasPermission(2)
   const self = ctx => ctx.source.getPlayer()
   const here = p => { const q = pos(p); return { dim: dimOf(p), x: Math.floor(q.x), y: Math.floor(q.y + 0.01), z: Math.floor(q.z) } }
-
-  const setSite = ctx => {
+  const intArg = (ctx, k) => Number(Arguments.INTEGER.getResult(ctx, k))
+  // Where to set: the coordinates given (in the Overworld, so the console can do it too), or where the op stands.
+  const spotOf = (ctx, given) => {
+    if (given) return { dim: 'minecraft:overworld', x: intArg(ctx, 'x'), y: intArg(ctx, 'y'), z: intArg(ctx, 'z') }
     const p = self(ctx)
-    if (!p) return reply(ctx, 'Run this as a player, standing at the Shrine\'s centre on the ground.', true)
+    return p ? here(p) : null
+  }
+  const xyz = fn => Commands.argument('x', Arguments.INTEGER.create(event)).then(Commands.argument('y', Arguments.INTEGER.create(event))
+    .then(Commands.argument('z', Arguments.INTEGER.create(event)).executes(safe(fn))))
+
+  const setSite = given => ctx => {
+    const st = spotOf(ctx, given)
+    if (!st) return reply(ctx, 'Run this as a player, standing at the Shrine\'s centre on the ground, or give its coordinates: /shrine site set <x> <y> <z>.', true)
     const R = db().rise
     if (R.state != 'none') return reply(ctx, 'The Shrine is already ' + (R.state == 'risen' ? 'up' : 'half risen') + ' at ' + siteText(R.site) + '. It can\'t move now (/shrine reset confirm takes it down, on the test server).', true)
-    db().site = here(p)
+    db().site = st
     save()
     const c = corner(db().site)
-    return reply(ctx, 'The Shrine will rise here, centred on ' + siteText(db().site) + ': ' + SIZE[0] + ' x ' + SIZE[2] + ' blocks (' + c.x + ' ' + c.z + ' to ' +
+    return reply(ctx, 'The Shrine will rise ' + (given ? 'there' : 'here') + ', centred on ' + siteText(db().site) + ': ' + SIZE[0] + ' x ' + SIZE[2] + ' blocks (' + c.x + ' ' + c.z + ' to ' +
       (c.x + SIZE[0] - 1) + ' ' + (c.z + SIZE[2] - 1) + ') and ' + SIZE[1] + ' tall. Everything in that box above the ground is cleared as it rises.')
   }
-  const setBrazier = ctx => {
-    const p = self(ctx)
-    if (!p) return reply(ctx, 'Run this as a player, standing where the brazier should go.', true)
-    const n = Number(Arguments.INTEGER.getResult(ctx, 'n'))
+  const setBrazier = given => ctx => {
+    const st = spotOf(ctx, given)
+    if (!st) return reply(ctx, 'Run this as a player, standing where the brazier should go, or give its coordinates: /shrine brazier set <1-3> <x> <y> <z>.', true)
+    const n = intArg(ctx, 'n')
     if (!(n >= 1 && n <= BRAZIERS)) return reply(ctx, 'Braziers are numbered 1 to ' + BRAZIERS + '.', true)
-    db().braziers[n - 1] = here(p)
+    db().braziers[n - 1] = st
     save()
     return reply(ctx, 'Brazier ' + n + ' set at ' + siteText(db().braziers[n - 1]) + ': the Summons will call it ' + ordinal(n - 1) + ', ' +
       fromCastle(ctx.source.server, db().braziers[n - 1]) + ' from the castle.')
@@ -382,14 +392,15 @@ ServerEvents.commandRegistry(event => {
       statusLines(ctx.source.server).forEach((l, i) => reply(ctx, l))
       return 1
     })))
-    .then(Commands.literal('site').then(Commands.literal('set').executes(safe(setSite))))
-    .then(Commands.literal('brazier').then(Commands.literal('set').then(Commands.argument('n', Arguments.INTEGER.create(event)).executes(safe(setBrazier)))))
+    .then(Commands.literal('site').then(Commands.literal('set').executes(safe(setSite(false))).then(xyz(setSite(true)))))
+    .then(Commands.literal('brazier').then(Commands.literal('set').then(Commands.argument('n', Arguments.INTEGER.create(event)).executes(safe(setBrazier(false)))
+      .then(xyz(setBrazier(true))))))
     .then(Commands.literal('rise').executes(safe(ctx => {
       const R = db().rise, resuming = R.state == 'stopped'
       const why = startRise(ctx.source.server, false)
       if (why) return reply(ctx, why, true)
       return reply(ctx, resuming ? 'The rise carries on from layer ' + R.next + '.' :
-        'The Shrine rises: ' + SIZE[1] + ' layers, one every ' + (LAYER_TICKS / 20) + ' seconds (about ' + Math.ceil(SIZE[1] * LAYER_TICKS / 20 / 60) + ' minutes).')
+        'The Shrine rises: ' + SIZE[1] + ' layers in about ' + Math.round(SIZE[1] * LAYER_TICKS / 20) + ' seconds.')
     })))
     .then(Commands.literal('stop').executes(safe(ctx => {
       if (!stopRise()) return reply(ctx, 'Nothing is running.', true)

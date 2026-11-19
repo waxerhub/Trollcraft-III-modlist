@@ -848,6 +848,7 @@ carol.x = 1010.5; carol.y = 64; carol.z = 2030.5; carol.msgs = []           // s
 cmd('rise force', admin); riseUntilRisen()
 ok('during the night\'s event: once risen, the rite is due 8 seconds later, and those near hear something stir', !!S().rise.riteAt && RT().state == 'none' &&
   said(carol, /Something stirs on the land around the Shrine/))
+ok('... status says when', /The Ignition Rite: begins by itself in [78]s \(\/shrine stop holds it\)/.test(cmd('status', admin)[7]), cmd('status', admin)[7])
 advance(150)
 ok('... not before then', RT().state == 'none')
 advance(15)

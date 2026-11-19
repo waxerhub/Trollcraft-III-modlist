@@ -1725,7 +1725,8 @@ function statusLines(server) {
   else out.push('The fires: done (the rise has begun).')
   out.push(D.beam.up ? 'The beam: up at ' + siteText(D.beam.at) + '.' : 'The beam: down.')
   const RT = D.rite
-  if (RT.state == 'none') out.push('The Ignition Rite: not yet (/shrine rite, once the Shrine has risen).')
+  if (RT.state == 'none') out.push(D.rise.riteAt ? 'The Ignition Rite: begins by itself in ' + Math.max(0, Math.ceil((D.rise.riteAt - Date.now()) / 1000)) + 's (/shrine stop holds it).' :
+    'The Ignition Rite: not yet. During the event it begins by itself ' + AUTO_RITE_SECONDS + ' seconds after the rise; /shrine rite starts it by hand.')
   else if (RT.state == 'running') out.push('The Ignition Rite: wave ' + (RT.wave + 1) + ' of ' + WAVES.length + '; ' + RT.total + ' of ' + RT.need + ' potatoes offered; ' + RT.lit + ' of ' + BANDS + ' bands lit.')
   else if (RT.state == 'paused') out.push('The Ignition Rite: paused at wave ' + (RT.wave + 1) + '; ' + RT.total + ' of ' + RT.need + ' potatoes (/shrine rite carries on).')
   else if (RT.state == 'full') out.push('The Ignition Rite: the altar is full (' + RT.total + ' of ' + RT.need + '). /shrine awaken.')

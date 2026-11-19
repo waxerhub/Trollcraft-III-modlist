@@ -135,6 +135,28 @@ if (PT) {
   ok('every tree node has a quest (' + PT.nodes.length + ' nodes)', missing.length == 0, missing.map(n => n.id).join(', '))
   const noStage = PT.nodes.filter(n => rewardStages[PT.stagePrefix + n.id] != PT.questId(n.id))
   ok('... whose reward is the node\'s stage (' + PT.stagePrefix + '<node>)', noStage.length == 0, noStage.map(n => n.id).join(', '))
+
+  // ---------- 4. the price revealed (part2/blood_pool.js, Tier 5) ----------
+  // Tiers 6-8 cost Enchanted Potatoes, 9-12 Enchanted Baked Potatoes, with the same numbers; the book hides those
+  // prices until the invisible quest ticking on the stage potato_war_revealed is done.
+  const reveal = Object.keys(quests).map(k => quests[k]).find(q => (q.tags || []).indexOf('potato_reveal') >= 0)
+  ok('an invisible "price revealed" quest that ticks on the stage potato_war_revealed', !!reveal && reveal.invisible === true &&
+    reveal.tasks.length == 1 && reveal.tasks[0].type == 'gamestage' && reveal.tasks[0].stage == 'potato_war_revealed')
+  const tierOf = n => Math.max(1, n.tier || 0, n.rank || 0)
+  const want = n => tierOf(n) >= 9 ? ['kubejs:enchanted_baked_potato', 'potato_offer_ebp'] : tierOf(n) >= 6 ? ['kubejs:enchanted_potato', 'potato_offer_ep'] : ['minecraft:potato', 'potato_offer']
+  const offerTask = q => (q.tasks || []).find(t => t.type == 'item' && /potato_offer/.test((t.tags || []).join(',')))
+  const wrongUnit = PT.nodes.filter(n => n.potatoes > 0).filter(n => {
+    const t = offerTask(quests[PT.questId(n.id)] || {}), w = want(n)
+    return !t || t.item != w[0] || t.tags[0] != w[1] || !t.count || t.count.long != n.potatoes
+  })
+  ok('every node\'s potato cost is its number in its tier\'s unit (potatoes to Tier 5, Enchanted 6-8, Enchanted Baked 9-12)', wrongUnit.length == 0, wrongUnit.map(n => n.id).join(', '))
+  const late = PT.nodes.filter(n => tierOf(n) >= 6), early = PT.nodes.filter(n => tierOf(n) < 6)
+  const unveiled = late.filter(n => { const q = quests[PT.questId(n.id)]; return !q || q.hide_details_until_startable !== true || (q.dependencies || []).indexOf(reveal && reveal.id) < 0 })
+  ok('Tier 6+ nodes (' + late.length + ') wait for the reveal and hide their details until then', late.length > 0 && unveiled.length == 0, unveiled.map(n => n.id).join(', '))
+  const veiled = early.filter(n => { const q = quests[PT.questId(n.id)]; return q && (q.hide_details_until_startable || (q.dependencies || []).indexOf(reveal && reveal.id) >= 0) })
+  ok('... Tier 5 and below (' + early.length + ') don\'t', veiled.length == 0, veiled.map(n => n.id).join(', '))
+  const subtitles = late.filter(n => n.potatoes > 0).filter(n => { const q = quests[PT.questId(n.id)]; return !q || !/ · [\d,]+$/.test(q.subtitle || '') })
+  ok('... and their subtitles show the number without a unit', subtitles.length == 0, subtitles.map(n => n.id).join(', '))
 }
 
 try { fs.rmSync(tmp, { recursive: true, force: true }) } catch (e) {}

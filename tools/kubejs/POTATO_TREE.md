@@ -72,7 +72,13 @@ There's no `data.snbt` to copy. FTB Quests keeps its own defaults.
   - **a hidden stage reward** `potato_tree_<node>`. That stage is what the locks check.
   - In the files, the stage tasks and rewards have type `gamestage`, the name FTB Quests 2001.4.22 uses. (An earlier version of these files used `stage`, which FTB Quests ignores: re-upload the chapters.)
 - **Potatoes handed in count toward your rank.** When a node's potato task completes, its potatoes are added to your Potato Standing, as if offered with `/potatowar offer`, with the rank-up line. They never fill the Blood Pool.
-  - Only plain potatoes count. Break crates first.
+  - Only plain potatoes count for the potato tasks. Break crates first.
+  - **The late nodes** (Tier 6 and up) take Enchanted Potatoes or Enchanted Baked Potatoes instead (see below). Those count at their worth: 160 and 25,600 potatoes each. The tasks are tagged `potato_offer`, `potato_offer_ep` and `potato_offer_ebp`, and `potato_tree.js` credits each at its worth.
+- **The price revealed** (owner decision, 15 November 2026; see BLOOD_POOL.md): the nodes keep their numbers, but from Tier 6 the number counts **Enchanted Potatoes** and from Tier 9 **Enchanted Baked Potatoes**. Dragonsteel (Tier 9) costs 500,000 Enchanted Baked Potatoes. The book keeps that hidden until the Blood Pool opens Tier 5:
+  - an **invisible quest**, "The price revealed" (in The Ranks), ticks when the player gets the stage `potato_war_revealed`;
+  - every Tier 6+ node **depends on it** and has `hide_details_until_startable`, so before the reveal its tasks and description are hidden;
+  - every node's subtitle shows its number with no unit: "Potato General · Tier 9 · 500,000". The ranks chapter shows ranks 6–11 the same way. Players assume potatoes until the reveal.
+  - After the reveal, a node's description says "The price was never potatoes: 500,000 Enchanted Baked Potatoes (25600 potatoes' worth each, made in the Potato Oven)."
 - **Personal:** the script switches FTB Teams **parties off**, so every player is their own team and has their own progress. Allies still work.
   - Parties made before install keep their shared progress, so disband them.
 
@@ -163,6 +169,7 @@ Ops, creative and spectator players are exempt. A refusal shows "<Node> needed (
 
 ## Catch-up
 When the Blood Pool opens Tier T, everyone gets everything of Tier T−2 and below. `CATCH_UP_GAP` in `blood_pool.js` sets the gap; 0 turns it off.
+- **Full Measure:** at Tier 12 (`OPEN_ALL_TIER` in `blood_pool.js`, owner decision, 15 November 2026) everyone gets every node, Quantum Crafting (Tier 11) too. Catch-up alone would stop at Tier 10.
 - **Crafting:** you can craft Tiers 1..T−2 at a table whatever your rank. `/potatowar` shows "Crafting access: Tier 3 (catch-up)".
   - Your **rank's name**, the rank-up lines and the **black market** still use your real rank. Those are earned with potatoes.
 - **Nodes:**
@@ -217,8 +224,12 @@ Moving nodes around in the book's editor is fine. Keep the ids, and re-run the g
 7. **A Tinkers hammer** without its node: does its area mining stop too?
 8. **Tooltips:** hold Shift over a sealed item, an autocrafter and a cobalt tool. The lines show ✘, and turn ✔ after `/bloodpool settier` or `/potatotree grant` (you may need to reopen the inventory).
 9. **`/potatowar next`** and the message when a tier opens (`/bloodpool unlock force`): each player is told privately what they can craft and buy.
+10. **The price revealed:** at Tier 4, open Alloy Smithing (Tier 6): its title and "Potato Sergeant · Tier 6 · 100,000" show, but not its tasks. `/bloodpool settier 5`, reopen the book: the tasks show 100,000 Enchanted Potatoes, and the description says the price was never potatoes. Submit 10 Enchanted Potatoes: `/potatowar` goes up by 1,600.
+11. **Full Measure:** `/bloodpool settier 12`: an unranked account is granted every node, Quantum Crafting too.
 
 ## What couldn't be verified for KubeJS 6 on 1.20.1
+**The price revealed** (16 November 2026): on the test server FTB Quests loaded the regenerated book (63 quests), with the Enchanted tasks, the invisible reveal quest and `hide_details_until_startable`, without errors. Not seen with a player: the late nodes' details staying hidden before the reveal and showing after it, and handing in Enchanted Potatoes. `generated_files.test.js` checks the files (units, the reveal dependency, hidden details, unit-less subtitles), and `potato_tree.test.js` the credit at their worth and Full Measure.
+
 A mock-server test passed 117 checks (with the Blood Pool's tests). The Blood Pool's own suite passes with the tree absent (135), and the tooltip script passed 10:
 - **gear:** Tinkers NBT, the variant suffix, TF gear, ops and creative exempt, armour taken off and kept on;
 - **placing:** the held item and the block fallback, AE2 parts and Thermal attachments, a node letting an unranked player place a Mechanical Crafter (`blood_pool.js`'s rank rule stepping aside);

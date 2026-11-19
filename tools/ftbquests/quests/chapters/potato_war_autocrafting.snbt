@@ -21,7 +21,7 @@
 					type: "gamestage"
 				}
 			]
-			subtitle: "Potato Private · Tier 4"
+			subtitle: "Potato Private · Tier 4 · 25,000"
 			tags: ["potato_tree"]
 			tasks: [
 				{
@@ -69,7 +69,7 @@
 					type: "gamestage"
 				}
 			]
-			subtitle: "Potato Private · Tier 4"
+			subtitle: "Potato Private · Tier 4 · 25,000"
 			tags: ["potato_tree"]
 			tasks: [
 				{
@@ -117,7 +117,7 @@
 					type: "gamestage"
 				}
 			]
-			subtitle: "Potato Soldier · Tier 5"
+			subtitle: "Potato Soldier · Tier 5 · 50,000"
 			tags: ["potato_tree"]
 			tasks: [
 				{
@@ -165,7 +165,7 @@
 					type: "gamestage"
 				}
 			]
-			subtitle: "Potato Soldier · Tier 5"
+			subtitle: "Potato Soldier · Tier 5 · 50,000"
 			tags: ["potato_tree"]
 			tasks: [
 				{
@@ -202,8 +202,9 @@
 			y: 0.0d
 		}
 		{
-			dependencies: ["507A700000010011"]
-			description: ["Place and use AE2 (and Advanced AE) pattern providers, crafting CPUs and Molecular Assemblers, and use wireless crafting and pattern terminals.", "", "&6Unlocks&r", "- Place: pattern provider, cable pattern provider, pattern encoding terminal, crafting unit, crafting accelerator, 1k crafting storage, 4k crafting storage, 16k crafting storage, 64k crafting storage, 256k crafting storage, crafting monitor, molecular assembler, adv pattern provider, adv pattern provider part, small adv pattern provider, small adv pattern provider part", "- Use (whoever placed it): pattern provider, crafting unit, crafting accelerator, 1k crafting storage, 4k crafting storage, 16k crafting storage, 64k crafting storage, 256k crafting storage, crafting monitor, molecular assembler, adv pattern provider, small adv pattern provider", "- Wireless terminals: wireless crafting terminal, wireless quantum crafter terminal, wireless universal terminal, wireless pattern encoding terminal, wireless pattern access terminal", "", "&7Needs Potato Sergeant, Blood Pool Tier 6, and ME Logistics.", "&7Potatoes handed in here count toward your rank. Items are taken when you submit them (loose potatoes only).", "&7Comes to you for free once the Blood Pool is 2 tiers past Tier 6 (catch-up)."]
+			dependencies: ["507A700000010011", "507A700000010190"]
+			description: ["Place and use AE2 (and Advanced AE) pattern providers, crafting CPUs and Molecular Assemblers, and use wireless crafting and pattern terminals.", "", "&6Unlocks&r", "- Place: pattern provider, cable pattern provider, pattern encoding terminal, crafting unit, crafting accelerator, 1k crafting storage, 4k crafting storage, 16k crafting storage, 64k crafting storage, 256k crafting storage, crafting monitor, molecular assembler, adv pattern provider, adv pattern provider part, small adv pattern provider, small adv pattern provider part", "- Use (whoever placed it): pattern provider, crafting unit, crafting accelerator, 1k crafting storage, 4k crafting storage, 16k crafting storage, 64k crafting storage, 256k crafting storage, crafting monitor, molecular assembler, adv pattern provider, small adv pattern provider", "- Wireless terminals: wireless crafting terminal, wireless quantum crafter terminal, wireless universal terminal, wireless pattern encoding terminal, wireless pattern access terminal", "", "&7Needs Potato Sergeant, Blood Pool Tier 6, and ME Logistics.", "&5The price was never potatoes: 100,000 Enchanted Potatoes (160 potatoes' worth each, made in the Potato Press). They count toward your rank at that worth.&r", "&7Comes to you for free once the Blood Pool is 2 tiers past Tier 6 (catch-up)."]
+			hide_details_until_startable: true
 			icon: "ae2:molecular_assembler"
 			id: "507A700000010019"
 			rewards: [
@@ -214,7 +215,7 @@
 					type: "gamestage"
 				}
 			]
-			subtitle: "Potato Sergeant · Tier 6"
+			subtitle: "Potato Sergeant · Tier 6 · 100,000"
 			tags: ["potato_tree"]
 			tasks: [
 				{
@@ -233,9 +234,9 @@
 					consume_items: true
 					count: 100000L
 					id: "507A700000020192"
-					item: "minecraft:potato"
-					tags: ["potato_offer"]
-					title: "100,000 potatoes for the war chest"
+					item: "kubejs:enchanted_potato"
+					tags: ["potato_offer_ep"]
+					title: "100,000 Enchanted Potatoes for the war chest"
 					type: "item"
 				}
 				{
@@ -251,8 +252,9 @@
 			y: -2.0d
 		}
 		{
-			dependencies: ["507A700000010017"]
-			description: ["Place and use RFTools Crafters.", "", "&6Unlocks&r", "- Place: crafter1, crafter2, crafter3", "- Use (whoever placed it): crafter1, crafter2, crafter3", "", "&7Needs Potato Lieutenant, Blood Pool Tier 7, and Ender IO Crafting.", "&7Potatoes handed in here count toward your rank. Items are taken when you submit them (loose potatoes only).", "&7Comes to you for free once the Blood Pool is 2 tiers past Tier 7 (catch-up)."]
+			dependencies: ["507A700000010017", "507A700000010190"]
+			description: ["Place and use RFTools Crafters.", "", "&6Unlocks&r", "- Place: crafter1, crafter2, crafter3", "- Use (whoever placed it): crafter1, crafter2, crafter3", "", "&7Needs Potato Lieutenant, Blood Pool Tier 7, and Ender IO Crafting.", "&5The price was never potatoes: 175,000 Enchanted Potatoes (160 potatoes' worth each, made in the Potato Press). They count toward your rank at that worth.&r", "&7Comes to you for free once the Blood Pool is 2 tiers past Tier 7 (catch-up)."]
+			hide_details_until_startable: true
 			icon: "rftoolsutility:crafter1"
 			id: "507A70000001001A"
 			rewards: [
@@ -263,7 +265,7 @@
 					type: "gamestage"
 				}
 			]
-			subtitle: "Potato Lieutenant · Tier 7"
+			subtitle: "Potato Lieutenant · Tier 7 · 175,000"
 			tags: ["potato_tree"]
 			tasks: [
 				{
@@ -282,9 +284,9 @@
 					consume_items: true
 					count: 175000L
 					id: "507A7000000201A2"
-					item: "minecraft:potato"
-					tags: ["potato_offer"]
-					title: "175,000 potatoes for the war chest"
+					item: "kubejs:enchanted_potato"
+					tags: ["potato_offer_ep"]
+					title: "175,000 Enchanted Potatoes for the war chest"
 					type: "item"
 				}
 				{
@@ -300,8 +302,9 @@
 			y: -2.0d
 		}
 		{
-			dependencies: ["507A700000010019"]
-			description: ["Place and use Advanced AE's Quantum Crafter.", "", "&6Unlocks&r", "- Place: quantum crafter, quantum crafter terminal", "- Use (whoever placed it): quantum crafter", "", "&7Needs Potato Emperor, Blood Pool Tier 11, and ME Autocrafting.", "&7Potatoes handed in here count toward your rank. Items are taken when you submit them (loose potatoes only).", "&7Comes to you for free once the Blood Pool is 2 tiers past Tier 11 (catch-up)."]
+			dependencies: ["507A700000010019", "507A700000010190"]
+			description: ["Place and use Advanced AE's Quantum Crafter.", "", "&6Unlocks&r", "- Place: quantum crafter, quantum crafter terminal", "- Use (whoever placed it): quantum crafter", "", "&7Needs Potato Emperor, Blood Pool Tier 11, and ME Autocrafting.", "&5The price was never potatoes: 500,000 Enchanted Baked Potatoes (25600 potatoes' worth each, made in the Potato Oven). They count toward your rank at that worth.&r", "&7Comes to you for free at Tier 12 (Full Measure) (catch-up)."]
+			hide_details_until_startable: true
 			icon: "advanced_ae:quantum_crafter"
 			id: "507A70000001001B"
 			rewards: [
@@ -312,7 +315,7 @@
 					type: "gamestage"
 				}
 			]
-			subtitle: "Potato Emperor · Tier 11"
+			subtitle: "Potato Emperor · Tier 11 · 500,000"
 			tags: ["potato_tree"]
 			tasks: [
 				{
@@ -331,9 +334,9 @@
 					consume_items: true
 					count: 500000L
 					id: "507A7000000201B2"
-					item: "minecraft:potato"
-					tags: ["potato_offer"]
-					title: "500,000 potatoes for the war chest"
+					item: "kubejs:enchanted_baked_potato"
+					tags: ["potato_offer_ebp"]
+					title: "500,000 Enchanted Baked Potatoes for the war chest"
 					type: "item"
 				}
 				{
@@ -360,7 +363,7 @@
 					type: "gamestage"
 				}
 			]
-			subtitle: "Potato Private · Tier 4"
+			subtitle: "Potato Private · Tier 4 · 25,000"
 			tags: ["potato_tree"]
 			tasks: [
 				{
@@ -408,7 +411,7 @@
 					type: "gamestage"
 				}
 			]
-			subtitle: "Potato Private · Tier 4"
+			subtitle: "Potato Private · Tier 4 · 25,000"
 			tags: ["potato_tree"]
 			tasks: [
 				{
@@ -445,7 +448,9 @@
 			y: 0.0d
 		}
 		{
-			description: ["Place and use Blue Power's Auto Project Table.", "", "&6Unlocks&r", "- Place: auto project table", "- Use (whoever placed it): auto project table", "", "&7Needs Potato Lieutenant, Blood Pool Tier 7.", "&7Potatoes handed in here count toward your rank. Items are taken when you submit them (loose potatoes only).", "&7Comes to you for free once the Blood Pool is 2 tiers past Tier 7 (catch-up)."]
+			dependencies: ["507A700000010190"]
+			description: ["Place and use Blue Power's Auto Project Table.", "", "&6Unlocks&r", "- Place: auto project table", "- Use (whoever placed it): auto project table", "", "&7Needs Potato Lieutenant, Blood Pool Tier 7.", "&5The price was never potatoes: 175,000 Enchanted Potatoes (160 potatoes' worth each, made in the Potato Press). They count toward your rank at that worth.&r", "&7Comes to you for free once the Blood Pool is 2 tiers past Tier 7 (catch-up)."]
+			hide_details_until_startable: true
 			icon: "bluepower:auto_project_table"
 			id: "507A70000001001E"
 			rewards: [
@@ -456,7 +461,7 @@
 					type: "gamestage"
 				}
 			]
-			subtitle: "Potato Lieutenant · Tier 7"
+			subtitle: "Potato Lieutenant · Tier 7 · 175,000"
 			tags: ["potato_tree"]
 			tasks: [
 				{
@@ -475,9 +480,9 @@
 					consume_items: true
 					count: 175000L
 					id: "507A7000000201E2"
-					item: "minecraft:potato"
-					tags: ["potato_offer"]
-					title: "175,000 potatoes for the war chest"
+					item: "kubejs:enchanted_potato"
+					tags: ["potato_offer_ep"]
+					title: "175,000 Enchanted Potatoes for the war chest"
 					type: "item"
 				}
 				{

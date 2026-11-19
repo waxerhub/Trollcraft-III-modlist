@@ -52,6 +52,27 @@ const fmt = n => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ',')
 const pretty = id => id.split(':')[1].replace(/_/g, ' ')
 const TASK_STAGE = 'gamestage', TASK_ITEM = 'item', TASK_CHECK = 'checkmark', REWARD_STAGE = 'gamestage'
 
+// ---------- the price revealed ----------
+// part2/blood_pool.js reveals at Tier 5 that the Potato War's numbers for Tiers 6-8 count Enchanted Potatoes and for
+// Tiers 9-12 Enchanted Baked Potatoes. The book keeps the numbers and hides the unit until then: those nodes depend on
+// an invisible quest that ticks when the player gets the stage potato_war_revealed, and hide their details (tasks and
+// description) until they can be started. Ranks show their numbers without a unit.
+const REVEAL_N = 400
+const OFFER_TAG = { 1: 'potato_offer', 160: 'potato_offer_ep', 25600: 'potato_offer_ebp' }   // part2/potato_tree.js credits them
+function unitOf(tier) {
+  let u = null
+  BP.units.forEach(x => { if (tier >= x.from) u = x })
+  return u
+}
+function revealQuest() {
+  return { id: questId(REVEAL_N), title: 'The price revealed', icon: BP.units[0].item, x: D(3), y: D(0), invisible: true,
+    description: ['It was never potatoes.'], tags: ['potato_reveal'],
+    tasks: [{ id: taskId(REVEAL_N, 0), type: TASK_STAGE, stage: BP.revealStage, title: 'The Blood Pool opens Tier ' + BP.revealTier }] }
+}
+// Where catch-up (or Full Measure) hands out tier t.
+const catchUpAt = t => Math.min(t + BP.catchUpGap, BP.openAllTier)
+const catchUpText = t => catchUpAt(t) >= BP.openAllTier ? 'at Tier ' + BP.openAllTier + ' (Full Measure)' : 'once the Blood Pool is ' + BP.catchUpGap + ' tiers past Tier ' + t
+
 // ---------- the node quests ----------
 function rankTask(n, k, rank) {
   return { id: taskId(n, k), type: TASK_STAGE, stage: 'potato_standing_' + rank, title: 'Rank: ' + BP.rankName(rank) }
@@ -61,12 +82,13 @@ function tierTask(n, k, tier) {
 }
 function nodeQuest(N) {
   const tasks = []
+  const tier = Math.max(1, N.tier || 0, N.rank || 0), unit = unitOf(tier)
   let k = 0
   if (N.rank > 0) tasks.push(rankTask(N.n, k++, N.rank))
   if (N.tier > 0) tasks.push(tierTask(N.n, k++, N.tier))
   if (N.potatoes > 0) {
-    tasks.push({ id: taskId(N.n, k++), type: TASK_ITEM, item: 'minecraft:potato', count: L(N.potatoes), consume_items: true,
-      tags: ['potato_offer'], title: fmt(N.potatoes) + ' potatoes for the war chest' })
+    tasks.push({ id: taskId(N.n, k++), type: TASK_ITEM, item: unit ? unit.item : 'minecraft:potato', count: L(N.potatoes), consume_items: true,
+      tags: [OFFER_TAG[unit ? unit.worth : 1]], title: fmt(N.potatoes) + ' ' + (unit ? unit.many : 'potatoes') + ' for the war chest' })
   }
   ;(N.items || []).forEach(it => {
     const t = { id: taskId(N.n, k++), type: TASK_ITEM, item: it[0], consume_items: true }
@@ -84,15 +106,19 @@ function nodeQuest(N) {
   const desc = [N.desc, '', '&6Unlocks&r'].concat(unlocks.map(u => '- ' + u))
     .concat(['', '&7Needs ' + (N.rank ? BP.rankName(N.rank) : 'no rank') + (N.tier ? ', Blood Pool Tier ' + N.tier : '') +
       (needs.length ? ', and ' + needs.map(x => x.name).join(' and ') : '') + '.',
-    '&7Potatoes handed in here count toward your rank. Items are taken when you submit them (loose potatoes only).',
-    '&7Comes to you for free once the Blood Pool is ' + BP.catchUpGap + ' tiers past Tier ' + Math.max(1, N.tier || 0, N.rank || 0) + ' (catch-up).'])
+    unit ? '&5The price was never potatoes: ' + fmt(N.potatoes) + ' ' + unit.many + ' (' + unit.worth + ' potatoes\' worth each, made in the Potato ' +
+      (unit.worth > 160 ? 'Oven' : 'Press') + '). They count toward your rank at that worth.&r'
+      : '&7Potatoes handed in here count toward your rank. Items are taken when you submit them (loose potatoes only).',
+    '&7Comes to you for free ' + catchUpText(tier) + ' (catch-up).'])
   const q = {
     id: questId(N.n), title: N.name, icon: N.icon, x: D(N.x), y: D(N.y),
-    subtitle: (N.rank ? BP.rankName(N.rank) : 'No rank') + (N.tier ? ' · Tier ' + N.tier : ''),
+    subtitle: (N.rank ? BP.rankName(N.rank) : 'No rank') + (N.tier ? ' · Tier ' + N.tier : '') + (N.potatoes > 0 ? ' · ' + fmt(N.potatoes) : ''),
     description: desc, tags: ['potato_tree'], tasks: tasks,
     rewards: [{ id: rewardId(N.n, 0), type: REWARD_STAGE, stage: PT.stagePrefix + N.id, auto: 'invisible' }],
   }
-  if (needs.length) q.dependencies = needs.map(x => questId(x.n))
+  const deps = needs.map(x => questId(x.n))
+  if (unit) { deps.push(questId(REVEAL_N)); q.hide_details_until_startable = true }
+  if (deps.length) q.dependencies = deps
   return q
 }
 function rankQuest(r) {
@@ -100,12 +126,14 @@ function rankQuest(r) {
   const T = BP.tiers.find(x => x.tier === r)
   const q = {
     id: questId(n), title: BP.rankName(r), icon: r == BP.rankCount ? 'minecraft:golden_carrot' : 'minecraft:potato',
-    x: D(0), y: D(-(r - 1) * 1.5), subtitle: 'Rank ' + r + ' · ' + fmt(BP.standingThresholds[r - 1]) + ' potatoes' +
+    // A rank priced in a revealed unit shows its number alone (/potatowar ranks names the unit once it's revealed).
+    x: D(0), y: D(-(r - 1) * 1.5), subtitle: 'Rank ' + r + ' · ' + fmt(BP.standingThresholds[r - 1]) + (unitOf(r) ? '' : ' potatoes') +
       (BP.rankTier(r) ? ' · Blood Pool Tier ' + BP.rankTier(r) : ''),
-    description: ['Offer potatoes with &6/potatowar offer&r, or hand them in for nodes in this book.',
-      ...(BP.rankTier(r) ? ['&cNeeds the Blood Pool at Tier ' + BP.rankTier(r) + '.&r Until it opens, your rank stops below this one; the potatoes you offer still count, and the rank comes when the tier opens.'] : []),
+    description: [(unitOf(r) ? 'Offer to Techno\'s war chest' : 'Offer potatoes') + ' with &6/potatowar offer&r, or hand them in for nodes in this book. &6/potatowar ranks&r shows what each rank counts.',
+      ...(BP.rankTier(r) ? ['&cNeeds the Blood Pool at Tier ' + BP.rankTier(r) + '.&r Until it opens, your rank stops below this one; what you offer still counts, and the rank comes when the tier opens.'] : []),
       'Rank ' + r + ' lets you craft Tier ' + r + (T ? ' (' + T.name + ')' : '') + '\'s items at a crafting table, once the Blood Pool opens it.',
-      '&7Catch-up: when the Blood Pool is ' + BP.catchUpGap + ' tiers past Tier ' + r + ', you can craft it whatever your rank (this quest then ticks too).'],
+      '&7Catch-up: ' + (catchUpAt(r) >= BP.openAllTier ? 'at Tier ' + BP.openAllTier + ' (Full Measure)' : 'when the Blood Pool is ' + BP.catchUpGap + ' tiers past Tier ' + r) +
+        ', you can craft it whatever your rank (this quest then ticks too).'],
     tags: ['potato_rank'], tasks: [rankTask(n, 0, r)],
   }
   if (r > 1) q.dependencies = [questId(100 + r - 1)]
@@ -122,7 +150,10 @@ function tierQuest(T) {
   if (T.tier === BP.netherTier) lines.push('- &cThe Nether&r')
   if (T.tier === BP.endTier) lines.push('- &5The End&r')
   if (T.tier > BP.rankCount) lines.push('- The last seal')
-  if (T.tier <= BP.rankCount) lines.push('', '&7Crafting its items at a table also needs ' + BP.rankName(T.tier) + ' (or catch-up at Tier ' + (T.tier + BP.catchUpGap) + '). Machines work for everyone.')
+  if (T.tier === BP.openAllTier) lines.push('- &cFull Measure&r: every tier\'s crafting and every upgrade-tree node, for everyone')
+  const share = BP.potatoShare[T.tier]
+  if (share != null && share < 1) lines.push('', '&7Potatoes may pay up to ' + Math.round(share * 100) + '% of this tier\'s Drops; the rest must be blood.')
+  if (T.tier <= BP.rankCount) lines.push('', '&7Crafting its items at a table also needs ' + BP.rankName(T.tier) + ' (or catch-up at Tier ' + catchUpAt(T.tier) + '). Machines work for everyone.')
   const q = {
     id: questId(n), title: 'Tier ' + T.tier + ': ' + T.name, icon: T.tier === BP.netherTier ? 'minecraft:netherrack' : T.tier === BP.endTier ? 'minecraft:ender_eye' : 'minecraft:redstone',
     x: D(0), y: D(-(T.tier - 1) * 1.5), subtitle: fmt(T.drops) + ' Drops', description: lines, tags: ['blood_pool_tier'],
@@ -157,6 +188,7 @@ const START = [
     'A node unlocks things for you alone: Tinkers metals your tools may be made of, building smelteries, and placing and using autocrafters, logistics and farm machines.']],
   ['Nobody falls behind', 'minecraft:clock', [
     'When the Blood Pool is ' + BP.catchUpGap + ' tiers past something, it comes to everyone for free: crafting access and every tree node up to that tier.',
+    'At Tier ' + BP.openAllTier + ' (Full Measure) everything opens to everyone.',
     'Autocrafters only make what every player can already craft, so recipes from the newest ' + BP.catchUpGap + ' tiers have to be crafted by hand.',
     'Your rank\'s name and black market perks still come only from potatoes.']],
   ['The black market', 'minecraft:gold_nugget', [
@@ -187,6 +219,7 @@ const files = {}
 files.start = chapterFile('start', START.map(startQuest), ['How the Blood Pool, your rank and the upgrade tree fit together.'])
 const ranks = []
 for (let r = 1; r <= BP.rankCount; r++) ranks.push(rankQuest(r))
+ranks.push(revealQuest())
 files.ranks = chapterFile('ranks', ranks, ['Techno\'s Potato War: your rank, from the potatoes you offer.', 'Each rank opens a tier of crafting-table recipes.'])
 files.blood_pool = chapterFile('blood_pool', BP.tiers.map(tierQuest), ['The server\'s Blood Pool: each tier ticks when it opens.'])
 const subtitles = {

@@ -604,6 +604,10 @@ cmd('bloodpool check', bo); ok('/bloodpool check names the node needed to place 
 const anaP = glob.BloodPool.standing(ana).potatoes, pool0 = PDB().drops
 fireFtbq('#potato_offer', { player: ana, object: { getMaxProgress: () => 2500 } })
 ok('a completed potato task credits the potatoes to rank (the Pool is untouched)', glob.BloodPool.standing(ana).potatoes == anaP + 2500 && PDB().drops == pool0)
+fireFtbq('#potato_offer_ep', { player: ana, object: { getMaxProgress: () => 10 } })
+ok('a late node\'s Enchanted Potatoes count at their worth: 10 make 1,600', glob.BloodPool.standing(ana).potatoes == anaP + 4100)
+fireFtbq('#potato_offer_ebp', { player: ana, object: { getMaxProgress: () => 2 } })
+ok('... and Enchanted Baked Potatoes: 2 make 51,200', glob.BloodPool.standing(ana).potatoes == anaP + 55300)
 
 // ----- catch-up -----
 const dee = mk('Dee', 1005.5); dee.status = []; dee.setStatusMessage = () => {}; dee.online = false; players.push(dee)
@@ -631,14 +635,23 @@ replies.length = 0; cmd('potatowar next', cy)
 ok('/potatowar next: catch-up access, and the next nodes with what they need', replies.some(r => /Crafting access: Tier 4 \(catch-up\) of 6 open/.test(flat(r))) &&
   replies.some(r => /Next: The Foundry \(needs Potato Soldier\)/.test(flat(r))), replies.map(flat).join(' | '))
 ok('global.PotatoTree.status: owned, ready and soon', PT().status(cy).owned.indexOf('Seared Smeltery') >= 0 && PT().status(cy).ready.length == 0 && PT().status(cy).soon.some(x => x.name == 'Cobalt Smithing'))
-cmd('potatowar set Cy 400000', admin)
+cmd('potatowar set Cy ' + 400000 * 160, admin)   // Potato Sergeant: after the reveal, 400,000 Enchanted Potatoes' worth
 ok('at Potato Sergeant, nodes up to Tier 6 are ready to buy', ['The Foundry', 'Cobalt Smithing', 'Mob Spawning'].every(n => PT().status(cy).ready.indexOf(n) >= 0), PT().status(cy).ready.join(','))
 cy.inbox.length = 0; dee.inbox.length = 0
 const cT = W.cmds.length
 cmd('bloodpool unlock force', admin); advance(25)
-ok('opening a tier tells each player privately what it means for them', cy.inbox.map(x => flat(x)).some(l => /Tier 7 \(A River\) is open\. Crafting its items at a table needs Potato Lieutenant: 300,000 more potatoes .*catch-up at Tier 9\. Ready in the upgrade tree .*Alloy Smithing, ME Logistics/.test(l)) &&
+ok('opening a tier tells each player privately what it means for them', cy.inbox.map(x => flat(x)).some(l => /Tier 7 \(A River\) is open\. Crafting its items at a table needs Potato Lieutenant: 300,000 Enchanted Potatoes more .*catch-up at Tier 9\. Ready in the upgrade tree .*Alloy Smithing, ME Logistics/.test(l)) &&
   dee.inbox.map(x => flat(x)).some(l => /Tier 7 \(A River\) is open/.test(l)), cy.inbox.map(x => flat(x)).join(' || '))
 ok('... never through tellraw @a (Discord)', !W.cmds.slice(cT).some(x => /^tellraw @a .*Crafting its items/.test(x.c)))
+// Full Measure: at Tier 12 every node is granted, Tier 11's too (catch-up alone would stop at Tier 10)
+const treeBefore = new Map(players.map(p => [p, [...p._stages].filter(x => /^potato_tree_/.test(x))]))
+cmd('bloodpool settier 11', admin); advance(25); cmd('potatotree catchup', admin)
+ok('Tier 11: catch-up stops at Tier 9 (Dragonsteel yes, Quantum Crafting of Tier 11 no)', cy.stages.has(SP('dragonsteel')) && !cy.stages.has(SP('quantum_crafting')),
+  PT().nodes.filter(N => !cy.stages.has(SP(N.id))).map(N => N.id).join(','))
+cmd('bloodpool settier 12', admin); advance(25); cmd('potatotree catchup', admin)
+ok('Tier 12 (Full Measure): every node is granted, Quantum Crafting too', PT().nodes.every(N => cy.stages.has(SP(N.id))) && cy.stages.has(SP('quantum_crafting')),
+  PT().nodes.filter(N => !cy.stages.has(SP(N.id))).map(N => N.id).join(','))
+players.forEach(p => { [...p._stages].filter(x => /^potato_tree_/.test(x)).forEach(x => p._stages.delete(x)); (treeBefore.get(p) || []).forEach(x => p._stages.add(x)) })
 cmd('bloodpool settier 6', admin); advance(25)
 
 // ----- commands -----

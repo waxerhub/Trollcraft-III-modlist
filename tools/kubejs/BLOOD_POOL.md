@@ -5,6 +5,9 @@
 - **Opening a tier:** when the Pool reaches a tier, five players vote to break the Ministry's seal (`/bloodpool vote`), or an op breaks it, and that tier opens for everyone.
 - **Dimensions:** the Nether opens with Tier 3 and the End with Tier 9.
 - **The Potato War:** each player also has a **Potato Standing** (a rank), raised only by potatoes they offer to Techno's war chest. A tier's **crafting-table** recipes need the tier open **and** the crafter's rank at that tier. Machines work for everyone. Some black market items also need a rank (see "The Potato War").
+- **Potatoes pay only part of each tier** (owner decision, 15 November 2026): all of Tiers 1–3, 75% of 4–6, 50% of 7–9 and 25% of 10–12. The rest has to be blood: trolls, coins and bosses (see "Filling the Pool").
+- **The price revealed** (same day): when Tier 5 opens, the Blood God reveals that the Potato War was never about potatoes. From then on the war's numbers for Tiers 6–8 count **Enchanted Potatoes** and for Tiers 9–12 **Enchanted Baked Potatoes**: the same numbers, a far bigger price. The Potato Press and Potato Oven make them (see "The price revealed").
+- **Full Measure** (same day): when Tier 12 opens, every tier's crafting and every upgrade-tree node open for everyone.
 
 See [STORY.md](../../STORY.md). The tier contents come from the progression research, [research/TIER_PROPOSAL.md](../../research/TIER_PROPOSAL.md), which has the reasoning per tier and every bypass that was checked.
 
@@ -20,18 +23,30 @@ See [STORY.md](../../STORY.md). The tier contents come from the progression rese
 | `startup_scripts/nether_portal_whitelist.js` | `kubejs/startup_scripts/` | Stops Nether portals lighting while the Nether is sealed. **Restart** after adding it. For Part II, empty its `ALLOWED_PORTALS` list (its two entries are Part I's event portals) |
 | `server_scripts/economy/trolls.js` | `kubejs/server_scripts/economy/` | Every logged troll fills the Pool |
 | `server_scripts/economy/black_market.js` | (as Part I) | Hush Coins for donations. Its `STANDING_LOCKS` sell some items only to high enough ranks (no effect without the Blood Pool) |
+| `startup_scripts/potato_press.js` | `kubejs/startup_scripts/` on the server **and in the modpack** | Enchanted Potatoes, Enchanted Baked Potatoes, the Potato Press and the Potato Oven (see [POTATO_PRESS.md](POTATO_PRESS.md)). **Restart** after adding it. The server also needs `mixin.perf.faster_capabilities=false` in `config/modernfix-mixins.properties` for hoppers and pipes to reach the machines |
 
-Copy them, restart once (for the startup script), then `/reload` after any later change. The script creates `kubejs/blood_pool_tier.json` by itself (see "Why there's a file").
+Copy them, restart once (for the startup scripts), then `/reload` after any later change. The script creates `kubejs/blood_pool_tier.json` by itself (see "Why there's a file").
 
 ## Filling the Pool
 - **Every troll in the Troll Log** adds its points as Drops: Anonymous Summons 50, Disguised TNT 250, approved reports as set by the admin, and so on. Repeats and revenge are already applied by the Troll Log.
 - **Hush Coins:** `/bloodpool donate <coins>` gives coins from your inventory at **1,000 Drops each**.
-- **The Potato Tithe:** `/bloodpool tithe` gives every potato you carry, or `/bloodpool tithe <potatoes>` gives that many.
-  - **Rate:** **4,000 potatoes = 1,000 Drops** (4 potatoes a Drop, whole Drops only).
-  - **What counts:** raw potatoes, plus potato crates from Quark, Farmer's Delight and Thermal at 9 each. Breaking a crate to make up an amount gives the change back as potatoes. Baked and poisonous potatoes and potato dishes don't count.
+- **The Potato Tithe:** `/bloodpool tithe` gives every potato you carry, or `/bloodpool tithe <n>` gives that many of the tithe's unit.
+  - **Rate:** **4,000 potatoes = 1,000 Drops** (4 potatoes a Drop, whole Drops only). After the price is revealed (Tier 5), the tithe toward Tiers 6–8 takes **4 Enchanted Potatoes** a Drop (640 potatoes' worth), and toward Tiers 9–12 **4 Enchanted Baked Potatoes** a Drop (102,400). `<n>` counts in that unit.
+  - **What counts:** raw potatoes, potato crates from Quark, Farmer's Delight and Thermal at 9 each, Enchanted Potatoes at 160 and Enchanted Baked Potatoes at 25,600. Smaller kinds are taken first. Breaking one to make up an amount gives the change back as Enchanted Potatoes and potatoes. Baked and poisonous potatoes and potato dishes don't count.
+  - **Only the next tier** (owner decision, 15 November 2026): the tithe fills the tier after the open one, never past its threshold ("That fills Tier 5."). Once that tier is full, the tithe is refused until its seal breaks ("Tier 5 (A Spring) is full. Its seal must break before the Pool takes more potatoes.").
+  - **Potatoes' share of a tier** (`POTATO_SHARE`, same decision): potatoes may pay at most this share of a tier's Drops (its threshold minus the last one's). Blood fills the rest: trolls, Hush Coins and bosses add Drops freely, past the share.
+
+    | Tiers | Potatoes may pay | Example |
+    |---|---|---|
+    | 1–3 | all of it | |
+    | 4–6 | 75% | Tier 5 is 120,000 Drops; potatoes may pay 90,000 |
+    | 7–9 | 50% | Tier 8 is 300,000; potatoes may pay 150,000 |
+    | 10–12 | 25% | Tier 12 is 2,000,000; potatoes may pay 500,000 |
+
+    A tithe that would go past the share takes only what fits ("That is all potatoes may pay toward Tier 5; the rest must be blood."), and after that it's refused. `/bloodpool` shows how much potatoes may still pay toward the next tier, and `/bloodpool tiers` each tier's share. Counted per tier from when this went in (`potatoByTier`): potatoes tithed earlier aren't counted against it.
   - **Daily quota:** **30,000 Drops a day, server-wide** (about 120,000 potatoes). A tithe that would go over takes only what fits and says the quota is full; after that the command refuses until the quota reopens.
   - **Reset:** the quota reopens at **4 am Central** (`America/Chicago`, daylight saving included).
-  - **Why the cap:** without it, a bank of Thermal Insolators could reach Tier 12 in about a month. With it the arc is about **11½ weeks if the server farms, about 25 if it doesn't** (the research's §7, rescaled for Tier 12 at 4,400,000).
+  - **Why the cap:** without it, a bank of Thermal Insolators could reach Tier 12 in about a month. With it the arc is about **11½ weeks if the server farms, about 25 if it doesn't** (the research's §7, rescaled for Tier 12 at 4,400,000). Those figures are from before the potato share and the reveal, which slow the late tiers further.
 - **Tithed potatoes never raise anyone's rank** in the Potato War, and offered potatoes never fill the Pool. The two are separate on purpose.
 - **Ops** can `/bloodpool add <drops>` or `/bloodpool set <drops>`.
 - **Credit:** every Drop is credited to whoever gave it (`/bloodpool top`), for Part II titles.
@@ -46,14 +61,14 @@ Copy them, restart once (for the startup script), then `/reload` after any later
 | 2 | A Puddle | 60,000 | The Green Art | Botania, Ars Nouveau, EvilCraft, Hexerei's cauldron; Extra Utilities' spikes and compressed cobblestone, ahead of the rest of the mod at Tier 7 (owner decision, 10 November 2026) |
 | 3 | A Basin | 120,000 | Iron and Oil | Immersive Engineering, steel, Create brass; **the Nether** |
 | 4 | A Font | 200,000 | The First Circuit | Mekanism (2×), Tinkers' Rapier, Create mechanical crafting, TF steeleaf |
-| 5 | A Spring | 320,000 | The Nether Forge | Thermal, Ender IO, the Tinkers foundry and cobalt, netherite, Mekanism 3×, the Infusion Altar, TF knightmetal |
+| 5 | A Spring | 320,000 | The Nether Forge | Thermal, Ender IO, the Tinkers foundry and cobalt, netherite, Mekanism 3×, the Infusion Altar, TF knightmetal; **the price revealed**, and the Potato Press |
 | 6 | A Stream | 480,000 | Terrasteel and Storage | AE2 and addons, Extreme Reactors, Reliquary, Alex's Caves, Ice and Fire, Terrasteel, Mekanism 4×, TF fiery and yeti |
 | 7 | A River | 700,000 | Power and Rails | RFTools, Modular Powersuits, Redstone Arsenal, Blue Power, Extra Utilities, Create trains, Mekanism 5×, TF carminite and arctic |
-| 8 | A Flood | 1,000,000 | The Deep Forge | TAIGA, TC Integrations, Create Big Cannons, Mekanism Tools and Weaponry, Advanced AE, the Tinkers end-game alloys |
+| 8 | A Flood | 1,000,000 | The Deep Forge | TAIGA, TC Integrations, Create Big Cannons, Mekanism Tools and Weaponry, Advanced AE, the Tinkers end-game alloys, the Potato Oven |
 | 9 | A Tide | 1,400,000 | Wither and Star | Draconic Evolution, Gaia, the End tier of Ender IO, dragonsteel; **the End** |
 | 10 | A Sea | 1,900,000 | Fission and Wyvern | RFTools Dimensions, fission, the MekaSuit, Draconic Wyvern, AE2 quantum and spatial |
 | 11 | An Ocean | 2,400,000 | Awakened | Mekanism SPS and antimatter, Draconic Awakened and Chaotic, Advanced AE quantum, Awakened Supremium, the Ender Quarry, the nuke |
-| 12 | Full Measure | 4,400,000 | | No recipes: the last seal, which begins the final act (STORY.md, Act V). Renamed from "The Siege" and raised from 3,000,000 (owner decisions, 13 November 2026) |
+| 12 | Full Measure | 4,400,000 | | No recipes of its own: the last seal, which begins the final act (STORY.md, Act V). Renamed from "The Siege" and raised from 3,000,000 (owner decisions, 13 November 2026). The Blood God's power is full: every tier's crafting and every upgrade-tree node open for everyone (`OPEN_ALL_TIER`, owner decision, 15 November 2026) |
 
 **Unlocking a tier:** the players break the seal by vote (owner decision, 10 November 2026).
 1. **When the Pool reaches a tier,** everyone sees "[BLOOD GOD] The Blood Pool overflows. Tier 3 (A Basin) waits for the Ministry's seal to break." (it goes to Discord too). Nothing opens yet.
@@ -186,10 +201,10 @@ At server start, recipes load **before** the world and its saved data, so the re
 
 Techno's Potato War runs alongside the Pool. **The Pool decides what the server can make; your rank decides what you can make.**
 
-- **Offering:** `/potatowar offer` gives every potato you carry to Techno's war chest, or `/potatowar offer <potatoes>` gives that many.
-  - Crates count as 9, and change from a broken crate comes back as potatoes, as with the tithe.
+- **Offering:** `/potatowar offer` gives every potato you carry to Techno's war chest, or `/potatowar offer <n>` gives that many of the unit your next rank counts in (potatoes, or after the reveal Enchanted or Enchanted Baked Potatoes).
+  - Every kind counts at its worth, as with the tithe: crates 9, Enchanted Potatoes 160, Enchanted Baked Potatoes 25,600. Change comes back as Enchanted Potatoes and potatoes.
   - **Offered potatoes only count toward your rank.** They never fill the Pool, and there's no daily cap.
-  - **Your Standing is the lifetime total you've offered.** It never goes down (an op can change it).
+  - **Your Standing is the lifetime worth you've offered, in potatoes.** It never goes down (an op can change it). After the reveal, `/potatowar` calls it "potatoes' worth" and shows the next rank in its unit: "Potato Sergeant at 400,000 Enchanted Potatoes (393,750 Enchanted Potatoes to go)".
   - **Ranks wait for the Blood Pool** (`RANK_LEAD`, owner decision, 9 November 2026). A rank can be at most one above the Pool's open tier, so rank n needs Tier n−1. Potato Farmer needs none; at Tier 0 it's the highest rank there is.
     - **Potatoes offered past the cap still count.** `/potatowar` says "Potato Lieutenant waits for the Blood Pool to open Tier 6 (your potatoes already cover it)".
     - **When `/bloodpool unlock` opens the tier,** everyone it was holding back gets the rank their potatoes earned, with the usual title and public rank-up line. The quiet `/bloodpool settier` gives the rank silently.
@@ -200,20 +215,22 @@ Techno's Potato War runs alongside the Pool. **The Pool decides what the server 
       - It's a one-time snapshot (`rankFloorSince`): later progress is always capped. An op who lowers someone's potatoes lowers a kept rank too.
 - **Ranks** (`STANDING` and `RANKS` in `blood_pool.js`). Rank n crafts Tier n:
 
-  | Rank | Name | Lifetime potatoes | Crafts |
-  |---|---|---|---|
-  | 0 | Unenlisted | 0 | Nothing in any tier |
-  | 1 | Potato Farmer | 250 | Tier 1 (Create, Mystical Agriculture) |
-  | 2 | Potato Peeler | 1,000 | Tier 2 |
-  | 3 | Potato Recruit | 2,500 | Tier 3 (IE, so the Garden Cloche) |
-  | 4 | Potato Private | 25,000 | Tier 4 |
-  | 5 | Potato Soldier | 50,000 | Tier 5 (Thermal, so the Insolator) |
-  | 6 | Potato Sergeant | 400,000 | Tier 6 |
-  | 7 | Potato Lieutenant | 700,000 | Tier 7 |
-  | 8 | Potato Captain | 1,200,000 | Tier 8 |
-  | 9 | Potato General | 2,000,000 | Tier 9 |
-  | 10 | Potato Warlord | 3,000,000 | Tier 10 |
-  | 11 | Potato Emperor | 4,400,000 | Tier 11 (Tier 12 has no recipes) |
+  | Rank | Name | Lifetime (the number) | Counts, after the reveal | In potatoes, after the reveal | Crafts |
+  |---|---|---|---|---|---|
+  | 0 | Unenlisted | 0 | | | Nothing in any tier |
+  | 1 | Potato Farmer | 250 | potatoes | 250 | Tier 1 (Create, Mystical Agriculture) |
+  | 2 | Potato Peeler | 1,000 | potatoes | 1,000 | Tier 2 |
+  | 3 | Potato Recruit | 2,500 | potatoes | 2,500 | Tier 3 (IE, so the Garden Cloche) |
+  | 4 | Potato Private | 25,000 | potatoes | 25,000 | Tier 4 |
+  | 5 | Potato Soldier | 50,000 | potatoes | 50,000 | Tier 5 (Thermal, so the Insolator) |
+  | 6 | Potato Sergeant | 400,000 | Enchanted Potatoes | 64,000,000 | Tier 6 |
+  | 7 | Potato Lieutenant | 700,000 | Enchanted Potatoes | 112,000,000 | Tier 7 |
+  | 8 | Potato Captain | 1,200,000 | Enchanted Potatoes | 192,000,000 | Tier 8 |
+  | 9 | Potato General | 2,000,000 | Enchanted Baked Potatoes | 51.2 billion | Tier 9 |
+  | 10 | Potato Warlord | 3,000,000 | Enchanted Baked Potatoes | 76.8 billion | Tier 10 |
+  | 11 | Potato Emperor | 4,400,000 | Enchanted Baked Potatoes | 112.6 billion | Tier 11 (Tier 12 has no recipes) |
+
+  Ranks 9–11 are out of reach by design: those tiers come by catch-up, and at Full Measure (Tier 12) to everyone.
 
   Owner decisions, 9 November 2026: ranks 1–3 are the first ladder's (250 to 2,500), cheap so a hand-farm reaches the Garden Cloche. Ranks 4 and 5 are 25,000 and 50,000 (they were 5,000 and 10,000). Ranks 6 and up are 20x the first ladder (they were 20,000 to 220,000), so Potato Sergeant is a big step up from Potato Soldier. Raising the ladder can lower a player's rank: their rank stages follow at `/reload` (players online) or their next login. Tree nodes they bought stay, and catch-up still opens crafting up to Tier T−2.
 
@@ -222,6 +239,24 @@ Techno's Potato War runs alongside the Pool. **The Pool decides what the server 
   - A record from before the peak existed starts at the rank its potatoes buy now, so nobody's rank changed when it was added. Ranks bought under the launch numbers aren't brought back.
   - **Only an op can lower a rank,** with `/potatowar set <player> <potatoes>`, which sets it to what that total buys. `/potatowar add`, offers and tree hand-ins never lower it.
 - **Ranking up:** a title and a sound for the player, and a public line: "Ana has risen to Potato Soldier in Techno's Potato War" (sent to Discord with `TO_DISCORD`; `RANKUP_PUBLIC = false` keeps it quiet).
+
+### The price revealed (Tier 5)
+Owner decisions, 15 November 2026. A big potato farm (tens of thousands an hour) made ranks and the upgrade tree's potato costs meaningless. The fix is a story beat: the numbers stay, and what they count changes.
+- **When Tier 5 opens** (`REVEAL_TIER`), the Blood God speaks, after the reload the tier opening starts (`PENDING_DELAY_TICKS`, 6 seconds, so the tier's own title has played):
+  - a title for everyone: "IT WAS NEVER POTATOES / The price is revealed", with the Elder Guardian's curse sound;
+  - three [BLOOD GOD] lines (`REVEAL_LINES`). They **name the Ministry**: the Blood God's power is all that holds it back, and every seal broken wakes more of it;
+  - a [POTATO WAR] line on the Potato Press.
+
+  It plays once (`pending` in the saved data). The quiet `/bloodpool settier` reveals the price without the lines.
+- **From then on, the same numbers count in `UNITS`:** the ranks, upgrade-tree nodes and tithe of Tiers 6–8 in Enchanted Potatoes (160 potatoes each), of Tiers 9–12 in Enchanted Baked Potatoes (160 Enchanted Potatoes, 25,600 potatoes, each). `/potatowar ranks` shows "6. Potato Sergeant: 400,000 Enchanted Potatoes". Before the reveal everything counts in potatoes. Nothing priced in a unit can be bought before it anyway: ranks wait for the Pool, and nodes need their tier.
+- **Ranks are priced again at the reveal** (`repriceRanks`): a player's kept rank (the peak) can't stay above Potato Soldier unless what they've offered still buys it, or it was kept from before the cap. A farm that offered a million potatoes before Tier 5 had "earned" Potato Lieutenant at the old prices; it now has Potato Soldier, and Potato Sergeant needs 400,000 Enchanted Potatoes. The log names everyone whose peak came down ("Peaks lowered: Ana 7->5").
+- **Everyone gets the stage `potato_war_revealed`** (at the reveal, at login, after `/reload`). The quest book's Tier 6+ nodes wait for it (see POTATO_TREE.md).
+- **The Potato Press** opens at Tier 5 and the **Potato Oven** at Tier 8 (`MACHINE_RECIPES`, in `TIERS`). Their recipes need **no Potato War rank**: a rank priced in Enchanted Potatoes can't wait for the machine that makes them. When Tier 8 opens, a [POTATO WAR] line announces the Oven. While sealed, a machine's recipe isn't added at all (KubeJS's `event.remove` doesn't reach a recipe added in the same event, seen on the test server). The blocks themselves are in `startup_scripts/potato_press.js` ([POTATO_PRESS.md](POTATO_PRESS.md)); without it they get no recipes.
+
+  | Machine | Recipe |
+  |---|---|
+  | Potato Press | 3 potato crates (any of the three) over piston, barrel, piston, over 3 iron ingots |
+  | Potato Oven | 7 Enchanted Potatoes around a blast furnace, with a Potato Press in the bottom middle |
 
 ### What a rank gates
 - **Crafting-table recipes:** every `minecraft:crafting_shaped` and `crafting_shapeless` recipe in an open tier **above catch-up** gets a **result check** for its tier (KubeJS's `modifyResult`). When a player crafts it, the check asks for the KubeJS stage `potato_standing_<tier>`. Players hold the stage for every rank they've reached.
@@ -282,6 +317,7 @@ Techno's Potato War runs alongside the Pool. **The Pool decides what the server 
 - **When stages are given:** on every offer, at login, after `/reload`, when a tier opens, and when an op changes a rank (which also takes away stages above the new rank). KubeJS saves stages with the player.
 - **Every player also gets `blood_pool_tier_<n>`** for each open tier. The upgrade tree's quests check it.
 - **Catch-up** (owner decision): when the Pool opens Tier T, every player can craft Tiers 1..T−2 at a table, whatever their rank (`CATCH_UP_GAP = 2`; 0 = off).
+  - **Full Measure:** at Tier 12 (`OPEN_ALL_TIER`) every tier opens to everyone: all 11 rank stages, no crafting recipe keeps a rank check, and the upgrade tree grants every node. Without it, Tier 11's crafting-table recipes would never open (catch-up stops at Tier 10).
   - The rank's name, rank-ups and the black market still use the real rank.
   - `/potatowar` shows "Crafting access: Tier 3 (catch-up)".
   - The upgrade tree catches its nodes up in the same way.
@@ -321,9 +357,9 @@ floor        5x5 chiseled nether bricks
 
 | Command | Who | |
 |---|---|---|
-| `/bloodpool` | anyone | Drops, the open tier, the next tier and how far off it is (or "ready") |
+| `/bloodpool` | anyone | Drops, the open tier, the next tier and how far off it is (or "ready"), and how much of it potatoes may still pay |
 | `/bloodpool donate <coins>` | players | Give Hush Coins (1,000 Drops each) |
-| `/bloodpool tithe [potatoes]` | players | The Potato Tithe: everything you carry, or that many |
+| `/bloodpool tithe [n]` | players | The Potato Tithe: everything you carry, or that many of the tithe's unit (potatoes, or after the reveal Enchanted / Enchanted Baked Potatoes) |
 | `/bloodpool top` | anyone | The 10 biggest contributors |
 | `/bloodpool tiers` | anyone | Every tier: threshold, what it opens (mods, item count, recipe rules, dimension), OPEN / READY / sealed, and the rank its crafting needs |
 | `/bloodpool check` | anyone | Which tier lets the item in your hand be crafted, and the rank (with yours). For an item in `USE_LOCKS` or `PLACE_LOCKS`, it also says that using or placing one is sealed |
@@ -332,9 +368,9 @@ floor        5x5 chiseled nether bricks
 | `/potatowar next` | players | Your rank, your crafting access, what the full open tier needs, and the tree nodes you can buy now or nearly |
 | `/bloodpool gatecheck` | op | Reads the recipes the game holds now and reports how many of those given a rank check on the last reload really have it, naming any that ignore it or failed to load |
 | `/bloodpool audit` | op | Reloads and writes `kubejs/progression_audit.json`: every crafting-type recipe above catch-up without the rank check, and every recipe still making a sealed item (with whether KubeJS sees it). A summary goes to the log |
-| `/potatowar offer [potatoes]` | players | Offer everything you carry, or that many, to raise your rank |
+| `/potatowar offer [n]` | players | Offer everything you carry, or that many of your next rank's unit, to raise your rank |
 | `/potatowar top` | anyone | The 10 highest ranks |
-| `/potatowar ranks` | anyone | Every rank, its potatoes, the tier it crafts and the Pool tier it needs |
+| `/potatowar ranks` | anyone | Every rank, its number in its unit (potatoes, or after the reveal Enchanted / Enchanted Baked Potatoes), the tier it crafts and the Pool tier it needs |
 | `/potatowar check <player>` | op | A player's potatoes and rank (online, or anyone who has offered) |
 | `/potatowar add <player> <potatoes>`, `/potatowar set <player> <potatoes>` | op | Change a player's Standing; stages follow at once (or at their next login) |
 | `/bloodpool vote` | players | Vote to break the seal on the next tier, once it's ready. The fifth player's vote opens it, as `/bloodpool unlock` does |
@@ -359,8 +395,16 @@ floor        5x5 chiseled nether bricks
 | `POTATO_DROPS_CAP_PER_DAY` | 30000 | The whole server's daily tithe; 0 = no cap |
 | `POTATO_DROPS_CAP_PER_PLAYER` | 0 (off) | Set it (e.g. 4000) if one big farm keeps taking the whole day's quota |
 | `TITHE_ZONE`, `TITHE_RESET_HOUR` | `America/Chicago`, 4 | When the tithe quota reopens |
-| `POTATO_WORTH` | potato 1, the three crates 9 | What the tithe and `/potatowar offer` accept |
-| `STANDING` | 250 … 4,400,000 (11 ranks) | Lifetime potatoes for each rank; rank n crafts Tier n |
+| `POTATO_WORTH` | potato 1, the three crates 9, Enchanted Potato 160, Enchanted Baked Potato 25,600 | What the tithe and `/potatowar offer` accept, and its worth in potatoes |
+| `POTATO_SHARE` | Tiers 1–3: 1, 4–6: 0.75, 7–9: 0.5, 10–12: 0.25 | The share of each tier's Drops potatoes may pay |
+| `REVEAL_TIER` | 5 | The tier whose opening reveals the price |
+| `UNITS` | from Tier 6: Enchanted Potato (160); from Tier 9: Enchanted Baked Potato (25,600) | What the Potato War's numbers count after the reveal, by tier |
+| `REVEAL_STAGE` | `potato_war_revealed` | The stage everyone gets once the price is revealed (the quest book waits for it) |
+| `REVEAL_TITLE`, `REVEAL_LINES`, `REVEAL_WAR_LINE` | see "The price revealed" | What the reveal says |
+| `OVEN_TIER`, `OVEN_WAR_LINE` | 8 | The Potato Oven's tier, and its line when it opens |
+| `OPEN_ALL_TIER` | 12 | Full Measure: every tier's crafting and every tree node open for everyone |
+| `MACHINE_RECIPES` | the Potato Press and Oven | Their recipes, added once their tier is open, with no rank needed |
+| `STANDING` | 250 … 4,400,000 (11 ranks) | The number for each rank (lifetime potatoes, or after the reveal its unit for ranks 6–11); rank n crafts Tier n |
 | `RANK_LEAD` | 1 | A rank can be at most this many above the open Pool tier (rank n needs Tier n − 1). `null` = no cap |
 | `RANKS` | Unenlisted, Potato Farmer … Potato Emperor | The rank names (the first is rank 0) |
 | `STANDING_CRAFTING` | true | Rank gates crafting-table recipes for players and placing autocrafters. false = it only gates the black market |
@@ -395,8 +439,10 @@ floor        5x5 chiseled nether bricks
   - the tithe day and its totals (server-wide and per player);
   - the Potato War: each player's lifetime potatoes offered (`standing`);
   - the votes to break the seal on the next tier (`vote`: the tier and who voted), cleared whenever the tier changes;
-  - the ranks kept from before the Pool cap (`rankFloor`), and when that one-time snapshot was taken (`rankFloorSince`). Don't delete `rankFloorSince` on a live server: the next load would take a new snapshot, keeping everyone's current rank.
-- **The players' KubeJS stages** (`potato_standing_<n>`, `blood_pool_tier_<n>`): saved by KubeJS with each player, and rebuilt from `standing` and the tier at login.
+  - the ranks kept from before the Pool cap (`rankFloor`), and when that one-time snapshot was taken (`rankFloorSince`). Don't delete `rankFloorSince` on a live server: the next load would take a new snapshot, keeping everyone's current rank;
+  - the Drops potatoes have paid toward each tier (`potatoByTier`, for `POTATO_SHARE`);
+  - story lines waiting for the reload a tier opening starts (`pending`: `reveal`, `oven`).
+- **The players' KubeJS stages** (`potato_standing_<n>`, `blood_pool_tier_<n>`, `potato_war_revealed`): saved by KubeJS with each player, and rebuilt from `standing` and the tier at login.
 - **`kubejs/blood_pool_tier.json`:** a copy of the open tier, for the recipe step.
 - **`kubejs/progression_audit.json`:** the last `/bloodpool audit` report.
 - **`persistentData["trollcraft_nether_unlocked"]`:** the Nether portal switch (kept in step by `dimension_gates.js`).
@@ -446,9 +492,26 @@ floor        5x5 chiseled nether bricks
    - **Black market:** at the merchant, an unranked player sees "(needs Potato Farmer)" for Itching Powder and is refused; at Potato Farmer they can buy it.
    - **Catch-up:** set `CATCH_UP_GAP = 2` again and `/reload`. An unranked player can now craft the cogwheel (Tier 1, three tiers behind the Pool), and `/potatowar` says "Crafting access: Tier 3 (catch-up)". The black market still refuses them Itching Powder.
 
+10. **The potato share and the price revealed** (one player with the farm's output; an op):
+    - At Tier 4, `/bloodpool set 200000`. Tithe potatoes: `/bloodpool` shows "Potatoes may pay 90,000 of its 120,000 Drops (n paid)". `/bloodpool set` doesn't reset the share; tithe up to 90,000 Drops' worth and the next tithe is refused with "the rest must be blood". A troll still adds Drops.
+    - `/bloodpool set 320000` then `/bloodpool unlock`: about 6 seconds after the reload, the title "IT WAS NEVER POTATOES", the three Blood God lines naming the Ministry, and the Potato Press line. It doesn't play again after another `/reload`.
+    - `/potatowar ranks` shows ranks 6–8 in Enchanted Potatoes and 9–11 in Enchanted Baked Potatoes. `/potatowar` shows the next rank in its unit.
+    - The Potato Press crafts at a crafting table for a player with no rank. Before Tier 5 it has no recipe in JEI.
+    - Tithe 40 plain potatoes: refused ("takes Enchanted Potatoes in fours"). Tithe 4 Enchanted Potatoes: 1 Drop.
+    - At Tier 8 (`/bloodpool unlock` from 7): the Potato Oven line, and the Oven crafts.
+    - `/bloodpool settier 12`: an unranked player can craft a Tier 11 item at a table, and `/potatotree check <player>` lists every node.
+
 **Testing Tinkers after lowering the tier:** restart the server first, or break and replace the smeltery or foundry controller and the casting tables. Tinkers remembers the last recipe each slot used and keeps reusing it while the same item sits there, even after `/reload` has removed it. So a smeltery that melted raw cobalt at Tier 12 keeps melting it after `settier 0`. This only happens when going **down** (testing). In play the tier only rises, and a locked recipe can't be remembered before it exists.
 
 ## What couldn't be verified for KubeJS 6 on 1.20.1
+**The potato share and the price revealed** (15 November 2026). On the test server, by console:
+- the machine recipes are absent at Tier 2 and the Potato Press's is present at Tier 5 (the Oven's still absent). The first version added them and relied on the seal's removal, which doesn't reach them: both crafted at Tier 2. Fixed;
+- opening Tier 5 with `/bloodpool unlock` logged "The price is revealed" (no peaks to lower) and, after the reload, "The price was revealed to the server";
+- `/potatowar ranks` showed the units, and `/bloodpool` the potato share;
+- FTB Quests loaded all 63 quests, the Enchanted tasks too.
+
+Still to confirm with a player: the title and lines on screen, the tithe and offers taking Enchanted Potatoes (and change), the Press recipe at a crafting table without a rank, and the Oven line at Tier 8. The mock tests cover all of these.
+
 **The use, place and spawn locks** weren't tried in game, because the test server has no player. The mock tests cover:
 - refusing a use in either hand, on a block or on a mob, by mode;
 - open tiers working, and items off the list left alone;

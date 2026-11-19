@@ -195,7 +195,7 @@ Owner decisions 2026-11-13: his purpose, the puppet god, the freely given blood,
 - **It's filled by:**
   - **trolls:** each logged troll adds its value as Drops of Blood (see [Scoring](#scoring));
   - **Hush Coins:** donated at **1,000 Drops each**, a sink for the economy;
-  - **the Potato Tithe:** potatoes spilled into the Pool for the Blood God. **4,000 potatoes = 1,000 Drops**, capped at **30,000 Drops a day** server-wide. The quota reopens at 4 am Central (owner decisions). Tithed potatoes never count toward anyone's Potato War rank;
+  - **the Potato Tithe:** potatoes spilled into the Pool for the Blood God. **4,000 potatoes = 1,000 Drops**, capped at **30,000 Drops a day** server-wide. The quota reopens at 4 am Central (owner decisions). Tithed potatoes never count toward anyone's Potato War rank. **Potatoes pay only part of each tier** (owner decision, 2026-11-15, after a farm made tens of thousands an hour): all of Tiers 1–3, 75% of 4–6, 50% of 7–9 and 25% of 10–12. The rest has to be blood. The tithe fills only the next tier, and after the price is revealed it takes Enchanted Potatoes, then Enchanted Baked Potatoes (below);
   - **boss kills** ✅ (`part2/boss_blood.js`, see [BOSS_BLOOD.md](tools/kubejs/BOSS_BLOOD.md)): Twilight Forest bosses pay by how hard they are, the same ranking as the boss chests in `part2/twilight_bosses.js`: the Naga 200 up to the Snow Queen 1,000. Every kill pays, and the credit is split among the fighters within 64 blocks (owner decisions).
 - **Group unlocks:** when the Pool reaches a milestone, that tier unlocks for everyone. **The players break the seal by vote** (owner decision, 2026-11-10): five different players' `/bloodpool vote` open it (`/bloodpool unvote` takes a vote back while the seal holds), and an op's `/bloodpool unlock` still opens it at once. Everyone who logs on while a tier is ready is told, with the count. Opening includes the `/reload` that brings the tier's recipes back.
 - **A locked tier blocks crafting only** (owner decision): its recipes are removed in every recipe type. Sealed items that players find, loot or trade for work normally. The exception is what players may have brought from Part I, since they kept their inventories (owner decisions, 2026-11-09). 39 items that work by being used (guns, bows, staffs, teleporters, the Raygun) can't be used until their tier opens (`USE_LOCKS` in `blood_pool.js`). The Nuclear Bomb, Tremorzilla Egg and Ender Quarry can't be placed until Tier 11 (`PLACE_LOCKS`), and a dispensed Nuclear Bomb doesn't spawn (`SPAWN_LOCKS`). Gear that's worn or wielded isn't locked yet.
@@ -226,7 +226,7 @@ Owner decisions 2026-11-13: his purpose, the puppet god, the freely given blood,
 
     (Expected times assume the tithe quota is filled daily; trolls and coins alone take about twice as long.)
 
-  - **What each tier unlocks** is decided (BLOOD_POOL.md, from the research). **Tier 12, Full Measure, is the last seal.** It begins the final act (Act V) and unlocks no recipes.
+  - **What each tier unlocks** is decided (BLOOD_POOL.md, from the research). **Tier 12, Full Measure, is the last seal.** It begins the final act (Act V) and unlocks no recipes of its own. **The Blood God's power is full** (owner decision, 2026-11-15): every tier's crafting and every upgrade-tree node open for everyone.
     - **The name** (owner decision 2026-11-13): it was "The Siege". Like the other tiers, it's a measure of water, and it quietly echoes the Ministry's Protocol Full Measure (Deep Record #8).
     - **The quest book** lists it as "The last seal", with no Citadel.
 
@@ -239,6 +239,11 @@ Technoblade's Potato War, revived. **The Pool decides what the server can make; 
   - **Autocrafters** only make what every player can already craft, and setting one up (and using one) takes its node in the upgrade tree.
   - **The black market:** the Hooded Merchant only sells certain items to high enough ranks: pranks from Potato Farmer, the Writ from Potato Recruit, Disguised TNT and the Tracker from Potato Private, up to the War Party contract at Potato Captain. There's no discount (owner decision).
 - **The early ranks are cheap** so a hand farm reaches IE's Garden Cloche (Tier 3), and the Cloche reaches Thermal's Insolator (Tier 5).
+- **The price revealed** ✅ (owner decisions, 2026-11-15; `part2/blood_pool.js`, `startup_scripts/potato_press.js`, see [POTATO_PRESS.md](tools/kubejs/POTATO_PRESS.md)): a Hypixel-style twist that keeps the Potato War meaningful against big farms.
+  - **When Tier 5 opens,** the Blood God reveals that the war was never about potatoes. The potato tree fuels the Blood God's power, and that power is all that holds back **the Ministry**, which grows hungrier with every seal broken. **This names the Ministry to players** (owner decision): the first time Part II does.
+  - **The numbers never change; what they count does.** From then on the ranks, upgrade-tree nodes and tithe of Tiers 6–8 count **Enchanted Potatoes**, and of Tiers 9–12 **Enchanted Baked Potatoes**. Dragonsteel's "500,000" was always 500,000 Enchanted Baked Potatoes. Until the reveal the quest book shows the late numbers without a unit and hides those nodes' details.
+  - **Hypixel's ratios:** the **Potato Press** (craftable from Tier 5) turns 160 potatoes into an Enchanted Potato, and the **Potato Oven** (Tier 8) turns 160 Enchanted Potatoes into an Enchanted Baked Potato (25,600 potatoes). They work with hoppers, pipes and AE2.
+  - **Ranks 9–11 are out of reach by design** (billions of potatoes). Catch-up still brings each tier to everyone two tiers later, and Full Measure opens everything.
 - **The upgrade tree** ✅ (`part2/potato_tree.js` + FTB Quests, see [POTATO_TREE.md](tools/kubejs/POTATO_TREE.md)): Hypixel-style branches on top of the ranks (owner decisions).
   - **The book:** an FTB Quests chapter group, "Techno's Potato War": The Ranks, Tinkers' Smithy, Logistics, Autocrafting and Farms.
   - **Nodes** cost potatoes plus branch items. The potatoes count toward rank.
@@ -420,6 +425,7 @@ Starts at Blood Pool Tier 12. **The twelfth seal isn't the end of Part II; it be
 | The Blood Pool, its tiers and the Potato Tithe; the Nether and End gates; the tank | `part2/blood_pool.js`, `part2/dimension_gates.js`, `part2/blood_tank.js` | Part II's progression: blood breaks the Ministry's seals |
 | Techno's Potato War (Potato Standing) | `part2/blood_pool.js`, `economy/black_market.js` | Each player's rank: what they may craft and buy |
 | The Potato War upgrade tree | `part2/potato_tree.js`, `tools/ftbquests/` (FTB Quests) | Per-player nodes: Tinkers metals, smelteries, autocrafting, logistics, farms; catch-up |
+| The price revealed; the Potato Press and Oven | `part2/blood_pool.js`, `startup_scripts/potato_press.js` (modpack and server) | At Tier 5 the Blood God names the Ministry and the war's numbers turn out to count Enchanted Potatoes; the machines make them |
 | The Purges (engine, kits and vault, the Potato Heist) | `part2/purge.js` | Act IV's weekly Purges; the hidden Tithe for the Harvest reveal |
 
 ## Build order
@@ -429,6 +435,7 @@ Starts at Blood Pool Tier 12. **The twelfth seal isn't the end of Part II; it be
 4. **Part II** (same platform: MC 1.20.1, Forge, KubeJS 6). Scripts go in `part2/`. In order:
    1. ✅ **The Blood Pool and tier locks** (`part2/blood_pool.js`), with the tier contents from the progression research, the Potato Tithe, and the Nether and End gates (`part2/dimension_gates.js`). The tank (`part2/blood_tank.js`).
    1a. ✅ **Techno's Potato War** (in `part2/blood_pool.js`): each player's Potato Standing gates crafting-table recipes, and the black market's `STANDING_LOCKS`.
+   1b. ✅ **The potato share, the price revealed and Full Measure** (`part2/blood_pool.js`, `part2/potato_tree.js`, `startup_scripts/potato_press.js`): potatoes pay only part of each tier, the war's numbers count Enchanted Potatoes from Tier 6, and Tier 12 opens everything. Needs a modpack update and one ModernFix line on the server.
    1b. ✅ **The upgrade tree** (`part2/potato_tree.js`, FTB Quests chapters in `tools/ftbquests/`) and catch-up.
    2. 🔨 **A Part I patch, before the finale is played:** the exodus files also save trial records and what titles need.
    3. 🔨 **Arrival** (`part2/arrival.js`): legacy titles, and trial records as books. No satchel is needed: players keep their whole inventory through edited player files that keep only the inventory and ender chest and place them at the new world's spawn. XP, effects, game mode, respawn points, the recipe book and mods' saved player data reset.

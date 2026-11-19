@@ -9,7 +9,10 @@
 //        (using) them, even when someone else placed them; AE2 terminals need ME Logistics (the wireless crafting
 //        and pattern terminals ME Autocrafting);
 //      * potatoes handed in for a node count toward the player's rank (part2/blood_pool.js);
-//      * catch-up: when the Blood Pool opens Tier T, every node of Tier T-2 and below is completed for everyone;
+//      * the price revealed: a node of Tier 6-8 costs its potato number in Enchanted Potatoes, of Tier 9-12 in
+//        Enchanted Baked Potatoes (part2/blood_pool.js reveals it at Tier 5; the quest book hides those prices until then);
+//      * catch-up: when the Blood Pool opens Tier T, every node of Tier T-2 and below is completed for everyone, and
+//        at Tier 12 (Full Measure) every node;
 //      * parties are switched off (FTB Teams), so every player's quest progress is their own.
 //
 // Needs: part2/blood_pool.js, FTB Quests + FTB Library + FTB Teams + FTB XMod Compat (without them only the locks
@@ -24,7 +27,8 @@
 
 // The nodes. n: a fixed number that makes the quest's id (never reuse or change one; add new nodes with new numbers).
 //   rank: the Potato War rank needed; tier: the Blood Pool tier needed (0 = none); needs: nodes below it.
-//   potatoes + items: the cost (taken by the quest). materials: Tinkers material ids it unlocks; gear: other item
+//   potatoes + items: the cost (taken by the quest; potatoes count in the tier's unit: Enchanted Potatoes from Tier 6,
+//   Enchanted Baked Potatoes from Tier 9, as part2/blood_pool.js's UNITS say). materials: Tinkers material ids it unlocks; gear: other item
 //   ids it unlocks (tools and armour); places: items/blocks it lets you place; parts: the ones among them that are
 //   placed ONTO another block (AE2 parts, Thermal attachments, conduits): those are checked when right-clicked with,
 //   the rest when the block is placed; use: blocks it lets you right-click (defaults to places); wireless: wireless
@@ -411,20 +415,24 @@ function startLoops(server) {
 
 // ===================== FTB QUESTS AND FTB TEAMS =====================
 
-// Potatoes handed in for a node (the item task tagged potato_offer) count toward the player's rank.
+// Potatoes handed in for a node (the item task tagged potato_offer) count toward the player's rank. After the price
+// is revealed (part2/blood_pool.js), the late nodes take Enchanted Potatoes (potato_offer_ep) or Enchanted Baked
+// Potatoes (potato_offer_ebp), which count at their worth in potatoes.
+const OFFER_TAGS = { potato_offer: 1, potato_offer_ep: 160, potato_offer_ebp: 25600 }
+function creditOffer(event, worth) {
+  if (S.forcing) return                       // catch-up and op grants take no potatoes
+  let p = null
+  try { p = event.player } catch (e) { }
+  if (!p) { try { let m = event.onlineMembers; if (m && m.size() > 0) p = m.get(0) } catch (e) { } }
+  let n = 0
+  try { n = Number(event.object.getMaxProgress()) } catch (e) { }
+  const b = BP()
+  if (!p || !b || !(n > 0)) return
+  try { b.creditStanding(p, n * worth) } catch (e) { console.error('[PotatoTree] rank credit: ' + e) }
+}
 if (typeof FTBQuestsEvents != 'undefined') {
   try {
-    FTBQuestsEvents.completed('#potato_offer', event => {
-      if (S.forcing) return                       // catch-up and op grants take no potatoes
-      let p = null
-      try { p = event.player } catch (e) { }
-      if (!p) { try { let m = event.onlineMembers; if (m && m.size() > 0) p = m.get(0) } catch (e) { } }
-      let n = 0
-      try { n = Number(event.object.getMaxProgress()) } catch (e) { }
-      const b = BP()
-      if (!p || !b || !(n > 0)) return
-      try { b.creditStanding(p, n) } catch (e) { console.error('[PotatoTree] rank credit: ' + e) }
-    })
+    Object.keys(OFFER_TAGS).forEach(tag => FTBQuestsEvents.completed('#' + tag, event => creditOffer(event, OFFER_TAGS[tag])))
   } catch (e) { console.error('[PotatoTree] FTB Quests events unavailable (potatoes won\'t count toward rank): ' + e) }
 } else {
   console.warn('[PotatoTree] FTB Quests (with FTB XMod Compat) isn\'t installed: the locks work, the quest book doesn\'t.')
@@ -455,10 +463,12 @@ function revoke(server, p, N) {
 
 // Catch-up: when the Pool is at Tier T, every node of Tier T-gap and below is granted to everyone online (players
 // who were offline are caught up at login). Nodes are granted in list order, so a node's prerequisites come first.
+// At the Pool's open-all tier (Full Measure, part2/blood_pool.js) every node is granted.
 function catchUpPlayer(server, p) {
   const b = BP(), g = gap()
   if (!b || g <= 0) return []
-  const T = Number(b.tier()), limit = T - g
+  const T = Number(b.tier()), all = b.openAllTier != null && T >= Number(b.openAllTier)
+  const limit = all ? 99 : T - g
   if (limit < 1) return []
   const given = []
   NODES.forEach(N => {

@@ -20,7 +20,7 @@
 					type: "gamestage"
 				}
 			]
-			subtitle: "Potato Farmer · Tier 1"
+			subtitle: "Potato Farmer · Tier 1 · 500"
 			tags: ["potato_tree"]
 			tasks: [
 				{
@@ -68,7 +68,7 @@
 					type: "gamestage"
 				}
 			]
-			subtitle: "Potato Peeler · Tier 1"
+			subtitle: "Potato Peeler · Tier 1 · 1,000"
 			tags: ["potato_tree"]
 			tasks: [
 				{
@@ -116,7 +116,7 @@
 					type: "gamestage"
 				}
 			]
-			subtitle: "Potato Recruit · Tier 3"
+			subtitle: "Potato Recruit · Tier 3 · 2,500"
 			tags: ["potato_tree"]
 			tasks: [
 				{
@@ -165,7 +165,7 @@
 					type: "gamestage"
 				}
 			]
-			subtitle: "Potato Soldier · Tier 5"
+			subtitle: "Potato Soldier · Tier 5 · 50,000"
 			tags: ["potato_tree"]
 			tasks: [
 				{
@@ -213,7 +213,7 @@
 					type: "gamestage"
 				}
 			]
-			subtitle: "Potato Soldier · Tier 5"
+			subtitle: "Potato Soldier · Tier 5 · 50,000"
 			tags: ["potato_tree"]
 			tasks: [
 				{

@@ -324,6 +324,10 @@ Owner decisions, 15 November 2026. A big potato farm (tens of thousands an hour)
 - **The Purge's Potato Heist** (`part2/purge.js`, see PURGE.md) moves potatoes between players' totals with `global.BloodPool.takeStanding(uuid, name, n)` and `giveStanding(uuid, name, n)`. These work for offline players too, and `standingOfUuid(uuid)` reads a total.
   - **A loss never lowers a rank:** the highest rank reached is kept, so only progress toward the next rank is lost.
   - **A gain can rank the thief up.**
+- **Story events open tiers** with `global.BloodPool.openTo(n, by)`. The Shrine's Awakening uses it to break the third and fourth seals itself, with no vote (`openTo(4, 'the Shrine')`, see SHRINE.md).
+  - It opens the tier as `/bloodpool unlock` does, announced: the title, the lines, the dimension gates, ranks held back, the tree's catch-up, and the `/reload` for the recipes.
+  - It never lowers the tier, and does nothing if that tier is already open. It returns the tier now open.
+  - The unlock log records who opened it ("the Shrine").
 
 ## Dimensions (`dimension_gates.js`)
 | Dimension | Opens at | How it's held shut before then |

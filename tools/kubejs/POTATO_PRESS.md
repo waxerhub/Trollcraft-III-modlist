@@ -10,14 +10,18 @@ The ratios are Hypixel's (owner decision, 15 November 2026):
 
 | Machine | Takes | Makes | Craftable from |
 |---|---|---|---|
-| Potato Press | 160 potatoes | 1 Enchanted Potato | Tier 5 (the reveal) |
+| Potato Press | 160 potatoes (a potato crate counts as 9) | 1 Enchanted Potato | Tier 5 (the reveal) |
 | Potato Oven | 160 Enchanted Potatoes | 1 Enchanted Baked Potato (25,600 potatoes) | Tier 8 |
 
 **Why a block and not a recipe:** a crafting grid holds 9 items, and Create's basin keeps each item type to one slot of 64 (checked in Create 6.0.8's code), so nothing in the pack takes 160 of one item. The owner chose a block that converts what's put in it, like Hypixel's Super Compactor, over a crafting chain or a new mod.
 
 ## How it works
-- **27 slots.** The top two rows take the machine's input (only potatoes in the Press, only Enchanted Potatoes in the Oven). The bottom row holds what it made.
-- **Every second,** each 160 inputs become one output, while the output row has room. If the output row is full, nothing is used up. A full input row (1,152) makes 7 in a second.
+- **27 slots.** The top two rows take the machine's input (only potatoes and potato crates in the Press, only Enchanted Potatoes in the Oven). The bottom row holds what it made.
+- **Every second,** each 160 inputs become one output, while the output row has room. If the output row is full, nothing is used up. A full input row of potatoes (1,152) makes 7 in a second; of crates, the most a second (`MAX_PER_SECOND`, 8).
+- **Potato crates** (owner decision 2026-11-19), so a farm that packs its potatoes needs no unpacking:
+  - **Which:** Quark's and Farmer's Delight's potato crates, and Thermal's potato block, each worth 9 potatoes. Only those whose mod is installed are accepted.
+  - **The order:** loose potatoes are used before crates.
+  - **The change:** when a crate is worth more than the 160 still needs, what's left over (at most 8 potatoes' worth) is kept in the block as credit and used first for the next one. So 18 crates (162) make 1 and leave 2 in credit. Breaking the block loses its credit.
 - **Players** open it with a right-click, like a chest.
 - **Hoppers, pipes, Create funnels and AE2** put input in through the top and sides, and take output out through the bottom only. So a hopper under a Press takes the Enchanted Potatoes and never the raw potatoes waiting to be pressed. AE2 can autocraft through it with a processing pattern: 160 potatoes in, 1 Enchanted Potato back.
 - **Breaking one** drops it and everything in it.
@@ -51,14 +55,16 @@ The recipes are in `part2/blood_pool.js` (`MACHINE_RECIPES`), sealed with the Bl
 | `RATIO` | 160 | Inputs per output, for both machines |
 | `IN_SLOTS`, `SLOTS` | 18, 27 | The input rows, and the whole box |
 | `MAX_PER_SECOND` | 8 | Outputs one block makes a second at most. A full input makes 7, so it never binds as set |
-| `MACHINES` | the Press and the Oven | Each one's name, input, output and textures |
+| `MACHINES` | the Press and the Oven | Each one's name, inputs and what each is worth (`inputs`), output and textures |
+| `CREDIT_KEY` | `credit` | Where a block keeps the worth left over from a crate, in its data |
 
 Changing the items' or blocks' ids, or adding a machine, needs the modpack updated too.
 
 ## Tests
-`tools/tests/suites/potato_press.test.js` (26 checks):
+`tools/tests/suites/potato_press.test.js` (31 checks):
 - the items and blocks it registers, with their inventory, filter, tick and textures;
 - the conversion: the leftover, the full input, spread-out stacks, a full output row (nothing used), other items left alone, and the Oven not taking plain potatoes;
+- the crates: worth 9, loose potatoes used first, the credit kept and used next time, and a crate whose mod isn't installed not accepted;
 - errors in a tick logged, not thrown;
 - the capability: bottom face output slots, other faces input slots, only on the two blocks;
 - the ModernFix guard: on, unreadable, not installed, and a player's game.
@@ -76,6 +82,7 @@ Changing the items' or blocks' ids, or adding a machine, needs the modpack updat
   - the recipes followed their tiers.
 
 ## What couldn't be verified
+- **The crates** (added 2026-11-19, mock-tested only): a crate from each mod accepted in game, and the credit kept through a restart (it's in the block's saved data).
 - **A player's view:** the blocks' and items' looks, names and glow, opening the box, and taking items out by hand.
 - **Pipes, Create funnels and AE2.** They use the same Forge capability as hoppers, so they should work, but only hoppers were tried.
 - **A Create contraption moving a press.** Its contents should travel with it, but KubeJS block entities on contraptions weren't tried.

@@ -45,7 +45,7 @@ function player(name, x, y, z, op) {
   const slots = []
   for (let i = 0; i < 41; i++) slots.push(stack('minecraft:air', 0))
   const p = { name, op: !!op, x, y, z, msgs: [], level, creative: false, isPlayer: () => true, getGameProfile: () => ({ getName: () => name }),
-    getX: () => p.x, getY: () => p.y, getZ: () => p.z, tell: c => p.msgs.push(textOf(c)),
+    getX: () => p.x, getY: () => p.y, getZ: () => p.z, tell: c => { p.msgs.push(textOf(c)); p.raw.push(c) }, raw: [],
     isCreative: () => p.creative, isSpectator: () => false, isAlive: () => true, getStringUuid: () => name.toLowerCase() + '-uuid',
     hasPermissions: () => p.op, health: 20, fire: 0, setHealth: h => { p.health = h }, getMaxHealth: () => 20, clearFire: () => { p.fire = 0 },
     inventory: { getItem: i => slots[i], setItem: (i, s) => { slots[i] = s }, getContainerSize: () => 41 }, slots,
@@ -127,9 +127,10 @@ function RL(s) { this.s = s }
 // Loads (or reloads) the script, as /reload does: fresh handlers and commands, the same saved data and globals.
 function load() {
   handlers = {}
-  new Function('ServerEvents', 'EntityEvents', 'BlockEvents', 'LevelEvents', 'ItemEvents', 'Java', 'Utils', 'Text', 'console', 'global', src)(
+  new Function('ServerEvents', 'PlayerEvents', 'EntityEvents', 'BlockEvents', 'LevelEvents', 'ItemEvents', 'Java', 'Utils', 'Text', 'console', 'global', src)(
     { loaded: on('loaded'), commandRegistry: h => h({ commands: { literal: node, argument: (n, t) => Object.assign(node(n), { arg: true, type: t }) },
       arguments: { INTEGER: { create: () => 'int', getResult: (ctx, k) => ctx.args[k] }, PLAYER: { create: () => 'player', getResult: (ctx, k) => ctx.args[k] } }, register: t => { roots[t.n] = t; cmdTree = roots.shrine || t } }) },
+    { loggedIn: on('loggedIn') },
     { spawned: on('spawned'), death: on('death') },
     { broken: on('broken'), placed: on('placed'), rightClicked: on('blockRightClicked') },
     { afterExplosion: on('afterExplosion') },
@@ -703,10 +704,13 @@ ok('the reset forgets the rite', RT().state == 'none' && RT().total == 0)
 admin.creative = false
 
 // ---------- Stage 5: the Awakening, the Regalia book, /regalia ----------
-// A stand-in Blood Pool: 66,000 Drops at Tier 2; Tier 3 opens at 120,000.
-const pool = { drops: 66000, tier: 2, adds: [] }
-global.BloodPool = { drops: () => pool.drops, tier: () => pool.tier, tiers: [{ tier: 1, drops: 20000 }, { tier: 2, drops: 60000 }, { tier: 3, drops: 120000 }],
-  addDrops: (n, source, uuid, name) => { pool.drops += n; pool.adds.push({ n, source, uuid, name }) } }
+// A stand-in Blood Pool: 66,000 Drops at Tier 2. The Awakening raises it a quarter of the way from Tier 4 (200,000) to
+// Tier 5 (320,000), 230,000 Drops, and opens the seals up to Tier 4 itself (owner decisions, 2026-11-19: no vote).
+const pool = { drops: 66000, tier: 2, adds: [], opens: [] }
+global.BloodPool = { drops: () => pool.drops, tier: () => pool.tier,
+  tiers: [{ tier: 1, drops: 20000 }, { tier: 2, drops: 60000 }, { tier: 3, drops: 120000 }, { tier: 4, drops: 200000 }, { tier: 5, drops: 320000 }],
+  addDrops: (n, source, uuid, name) => { pool.drops += n; pool.adds.push({ n, source, uuid, name }) },
+  openTo: (n, by) => { pool.opens.push({ n, by }); if (n > pool.tier) pool.tier = n; return pool.tier } }
 const LECTERN = '1007,86,1999'                                   // the corner (979 64 1979) + (28, 22, 20)
 const bookOf = () => worldNbt[LECTERN] || ''
 const awakeTicks = 920
@@ -721,7 +725,8 @@ players.forEach(p => { p.msgs = [] })
 const straggler = mob('minecraft:vindicator', 'MONSTER', 1040.5, 64, 2000.5, { tags: ['shrine_inspector', 'shrine_rite'], named: true }); mobs.push(straggler)
 cmds = []
 r = cmd('awaken force', admin)
-ok('/shrine awaken: the tribute, the words, the book, the Pool and the vote, in about 46 seconds', /The Awakening begins/.test(r[0]) && /Tier 3 \(120,000 Drops\)/.test(r[0]) && /About 46 seconds/.test(r[0]), r[0])
+ok('/shrine awaken: the tribute, the words, the book, then the Pool raised to 230,000 and the seals broken to Tier 4 (no vote), in about 46 seconds', /The Awakening begins/.test(r[0]) &&
+  /the Pool raised to 230,000 Drops and the seals broken up to Tier 4 \(no vote\)/.test(r[0]) && /About 46 seconds/.test(r[0]), r[0])
 advance(2)
 ok('it begins: every Inspector left is taken away', straggler.discarded)
 ok('... those present see "The Shrine awakens" and hear it; someone far away doesn\'t get the title', cmds.some(c => /^title Carol title .*The Shrine awakens/.test(c)) && cmds.some(c => /^title Bob title/.test(c)) && !cmds.some(c => /^title Far title/.test(c)))
@@ -751,12 +756,14 @@ ok('/regalia: the eight relics, none restored yet', /THE REGALIA OF THE BLADE {3
   /The Crown of the Blade {2}0 \/ 1 crown/.test(r[8]), r.slice(0, 3).join(' | '))
 ok('global.Regalia: open, eight relics', global.Regalia.isOpen() && global.Regalia.relics.length == 8 && global.Regalia.progress('war_chest').have == 0)
 advance(120)
-ok('the Blood God: "The third seal is yours to break."', said(carol, /\[BLOOD GOD\] The third seal is yours to break\./))
+ok('the Blood God: "I break the third seal, and the fourth with it. Blood for the Blood God."', said(carol, /\[BLOOD GOD\] I break the third seal, and the fourth with it\. Blood for the Blood God\./))
 advance(40)
-ok('the Pool is topped up to Tier 3\'s 120,000: 54,000 Drops, shared by those present (nobody offered potatoes)', pool.drops == 120000 && pool.adds.length == 2 &&
-  pool.adds.every(a => a.source == 'shrine' && a.n == 27000) && pool.adds.map(a => a.name).sort().join() == 'Bob,Carol', JSON.stringify(pool.adds))
-ok('... and those present are asked to break the third seal, with a [/bloodpool vote] to click', carol.msgs.some(m => /break the third seal together/.test(m)) && !said(far, /break the third seal together/))
-ok('the Awakening is done; status says so, with who was credited', S().awake.state == 'done' && global.Shrine.awakened() && /The Awakening: done\. The Regalia is open; Drops credited: (Carol 27,000, Bob 27,000|Bob 27,000, Carol 27,000)/.test(cmd('status', admin)[8]), cmd('status', admin)[8])
+ok('the Pool is raised to a quarter past Tier 4, 230,000: 164,000 Drops, shared by those present (nobody offered potatoes)', pool.drops == 230000 && pool.adds.length == 2 &&
+  pool.adds.every(a => a.source == 'shrine' && a.n == 82000) && pool.adds.map(a => a.name).sort().join() == 'Bob,Carol', JSON.stringify(pool.adds))
+ok('... and the Shrine breaks the seals itself: Tiers 3 and 4 open, by "the Shrine"', pool.opens.length == 1 && pool.opens[0].n == 4 && pool.opens[0].by == 'the Shrine' &&
+  pool.tier == 4 && logs.some(l => /The Awakening broke the seals: Tier 2 to 4/.test(l)), JSON.stringify(pool.opens))
+ok('... no vote is asked for', !carol.msgs.some(m => /bloodpool vote|break the third seal together/.test(m)))
+ok('the Awakening is done; status says so, with who was credited', S().awake.state == 'done' && global.Shrine.awakened() && /The Awakening: done\. The Regalia is open; Drops credited: (Carol 82,000, Bob 82,000|Bob 82,000, Carol 82,000)/.test(cmd('status', admin)[8]), cmd('status', admin)[8])
 ok('/shrine awaken again: refused', /already awakened/.test(cmd('awaken', admin)[0]))
 // someone takes the book from the lectern
 world[LECTERN] = 'minecraft:lectern[facing=east,has_book=false,powered=false]'; delete worldNbt[LECTERN]
@@ -799,7 +806,7 @@ const saved = JSON.parse(persistent.shrine)
 saved.rite.offered = { 'carol-uuid': { name: 'Carol', n: 30 }, 'bob-uuid': { name: 'Bob', n: 10 } }
 persistent.shrine = JSON.stringify(saved)
 load()
-pool.drops = 70000; pool.adds = []
+pool.drops = 70000; pool.tier = 2; pool.adds = []; pool.opens = []
 far.msgs = []
 cmd('awaken force', admin)
 advance(600)
@@ -807,20 +814,21 @@ load()                                            // a /reload just after the fi
 advance(awakeTicks)
 ok('a /reload mid-Awakening carries on from the next step: nothing said twice', far.msgs.filter(m => /You lit my fires/.test(m)).length == 1 && far.msgs.filter(m => /Eight things were mine/.test(m)).length == 1 &&
   S().awake.state == 'done', far.msgs.length)
-ok('... the potatoes offered decide the shares: Carol 30, Bob 10 of 50,000 Drops', pool.drops == 120000 && pool.adds.find(a => a.name == 'Carol').n == 37500 && pool.adds.find(a => a.name == 'Bob').n == 12500, JSON.stringify(pool.adds))
-// a third night with the Pool already past Tier 3 and open: no Drops, no vote prompt
+ok('... the potatoes offered decide the shares: Carol 30, Bob 10 of 160,000 Drops', pool.drops == 230000 && pool.adds.find(a => a.name == 'Carol').n == 120000 && pool.adds.find(a => a.name == 'Bob').n == 40000, JSON.stringify(pool.adds))
+ok('... and the seals are broken once (the /reload didn\'t open them twice)', pool.opens.length == 1 && pool.tier == 4, JSON.stringify(pool.opens))
+// a third night with the Pool already past 230,000 but Tier 3 still sealed: no Drops, the seals still broken
 // (this night begins with the braziers: the event runs from them to the Awakening's end)
 cmd('reset confirm', admin); advance(40)
 cmd('braziers', admin); advance(2)
 ok('a night begun with /shrine braziers: the event is on', global.Shrine.eventOn())
 cmd('rise force', admin); advance(layerTicks * 66 + 30)
 ok('... still on once the Shrine has risen (and the fires\' stage is done)', global.Shrine.eventOn() && S().fires.state == 'done')
-pool.drops = 130000; pool.tier = 3; pool.adds = []; carol.msgs = []
+pool.drops = 240000; pool.tier = 2; pool.adds = []; pool.opens = []; carol.msgs = []
 cmd('awaken force', admin)
 advance(awakeTicks - 20)
 ok('... and through the Awakening', global.Shrine.eventOn() && S().awake.state == 'running')
 advance(25)
-ok('with the Pool already past Tier 3 and open: no Drops added, no vote asked for', pool.adds.length == 0 && !carol.msgs.some(m => /break the third seal/.test(m)) && S().awake.state == 'done')
+ok('with the Pool already past 230,000: no Drops added, but the seals are still broken to Tier 4', pool.adds.length == 0 && pool.drops == 240000 && pool.tier == 4 && pool.opens.length == 1 && S().awake.state == 'done')
 ok('the Awakening done, the event ends: deaths are deaths again, and the Purge and the arena may run', !global.Shrine.eventOn() && global.Shrine.busy() == '' &&
   (carol.health = 0, !fall(carol, 'mob')) && logs.some(l => /The event is over/.test(l)))
 // and with no Blood Pool at all
@@ -832,6 +840,105 @@ cmd('awaken force', admin); advance(awakeTicks + 5)
 ok('without the Blood Pool script: the Awakening still runs, and the log says no Drops were added', S().awake.state == 'done' && logs.some(l => /No Blood Pool: the Awakening adds no Drops/.test(l)) && /\[BLOOD GOD\]/.test(far.msgs.join('\n')))
 global.BloodPool = keepPool
 cmd('reset confirm', admin); advance(40)
+
+// ---------- the rite begins by itself after the rise (owner decision, 2026-11-19) ----------
+const riseUntilRisen = () => { for (let i = 0; i < 1200 && S().rise.state != 'risen'; i++) advance(1) }
+cmd('braziers', admin); advance(2)
+carol.x = 1010.5; carol.y = 64; carol.z = 2030.5; carol.msgs = []           // she walks from the start to the Shrine
+cmd('rise force', admin); riseUntilRisen()
+ok('during the night\'s event: once risen, the rite is due 8 seconds later, and those near hear something stir', !!S().rise.riteAt && RT().state == 'none' &&
+  said(carol, /Something stirs on the land around the Shrine/))
+advance(150)
+ok('... not before then', RT().state == 'none')
+advance(15)
+ok('... then the Ignition Rite begins by itself', RT().state == 'running' && !S().rise.riteAt && logs.some(l => /The Ignition Rite began by itself, 8 seconds after the rise/.test(l)) &&
+  said(carol, /Take the Potato King's Potatoes from the Inspectors/))
+cmd('reset confirm', admin); advance(40)
+cmd('rise force', admin); riseUntilRisen(); advance(200)
+ok('outside the night\'s event (a rise forced for a test): it never begins by itself', !global.Shrine.eventOn() && RT().state == 'none' && !S().rise.riteAt)
+cmd('reset confirm', admin); advance(40)
+cmd('braziers', admin); advance(2); cmd('rise force', admin); riseUntilRisen()
+r = cmd('stop', admin)
+advance(200)
+ok('/shrine stop while it\'s due: it won\'t begin by itself (/shrine rite still starts it)', /won't begin by itself/.test(r[0]) && RT().state == 'none' && !S().rise.riteAt, r[0])
+cmd('reset confirm', admin); advance(40)
+cmd('braziers', admin); advance(2); cmd('rise force', admin); riseUntilRisen()
+advance(40); load(); advance(140)
+ok('a /reload while it\'s due: it still begins, on time and once', RT().state == 'running' && logs.filter(l => /began by itself/.test(l)).length == 2)
+cmd('reset confirm', admin); advance(40)
+
+// ---------- Stage 0, the Signal, and Stage 1, the Summons (the drafts as approved, 2026-11-19) ----------
+// A player joining: online, and PlayerEvents.loggedIn fires.
+const joins = p => { if (players.indexOf(p) < 0) players.push(p); (handlers.loggedIn || []).forEach(h => h({ player: p })) }
+r = cmd('status', admin)
+ok('status: the Signal not sent, the Summons not given', /The Signal: not sent/.test(r[11]) && /The Summons: not given/.test(r[12]), r.slice(11).join(' | '))
+players.forEach(p => { p.msgs = []; p.raw = [] })
+cmds = []
+r = cmd('signal', admin)
+ok('/shrine signal: to everyone online, each privately', /The Signal went to 5 players, each privately/.test(r[0]) && /next 24 hours/.test(r[0]) &&
+  players.every(p => said(p, /\.\.\.the third seal\.\.\./)), r[0])
+const sig = carol.raw[0] || []
+ok('... the fragments readable (red italic), the rest scrambled (obfuscated)', sig.filter(x => x.obfuscated && x.color == 'dark_red').length == 5 &&
+  sig.filter(x => x.italic && !x.obfuscated).map(x => x.text.trim()).join('|') == '...the third seal...|...three fires...|...gather at the castle...|...tomorrow, when the sun goes down...', JSON.stringify(sig))
+ok('... never with tellraw (Discord would get it), and unsigned', !cmds.some(c => /tellraw/.test(c)) && !said(carol, /BLOOD GOD|Ministry|Shrine/))
+const eve = player('Eve', 0.5, 64, 0.5)
+joins(eve)
+ok('someone joining within 24 hours: not at once...', !said(eve, /the third seal/))
+advance(100)
+ok('... but 5 seconds after they join', said(eve, /\.\.\.the third seal\.\.\./) && S().signal.told['eve-uuid'] == 'Eve')
+eve.msgs = []; bob.msgs = []; joins(eve); joins(bob); advance(100)
+ok('... once only: back again, nothing (nor for anyone who had it when it was sent)', !said(eve, /the third seal/) && !said(bob, /the third seal/))
+r = cmd('status', admin)
+ok('status: when, to how many, and that late arrivals get it', /The Signal: sent 0h ago to 6 players; anyone joining in the next 24h gets it too\./.test(r[11]), r[11])
+T += 25 * 3600000
+const finn = player('Finn', 0.5, 64, 0.5)
+joins(finn); advance(100)
+ok('someone joining after 24 hours: no Signal', !said(finn, /the third seal/) && !S().signal.told['finn-uuid'])
+ok('... and status says when it went', /The Signal: sent 25h ago to 6 players\.$/.test(cmd('status', admin)[11]), cmd('status', admin)[11])
+// the Summons needs all three braziers (it gives their directions)
+const savedShrine = persistent.shrine
+const noBrazier = JSON.parse(savedShrine); noBrazier.braziers[1] = null; persistent.shrine = JSON.stringify(noBrazier); load()
+r = cmd('summons', admin)
+ok('/shrine summons with a brazier not set: refused, says why', /Set the three braziers first/.test(r[0]) && !S().summons.at, r[0])
+persistent.shrine = savedShrine; load()
+players.forEach(p => { p.msgs = [] })
+cmds = []
+r = cmd('summons', admin)
+const gives = cmds.filter(c => /^give \S+ minecraft:written_book\{/.test(c))
+ok('/shrine summons: a book for everyone online; the reply gives the fires', gives.length == 7 && /A Summons went to 7 players/.test(r[0]) &&
+  /the first about 1900 blocks toward the rising sun; the second about 500 blocks toward the setting sun; the third about 400 blocks north-east/.test(r[0]), r[0])
+const summ = gives.find(c => /^give Carol /.test(c)) || ''
+ok('... "A Summons", by the Blood God, 6 pages', /title:'A Summons'/.test(summ) && /author:'The Blood God'/.test(summ) && (summ.match(/'\["",/g) || []).length == 6, summ.slice(0, 120))
+const sPages = (summ.match(/'(\[.*?\])'/g) || []).map(s => JSON.parse(s.slice(1, -1).replace(/\\'/g, "'").replace(/\\\\/g, '\\')))
+const sText = sPages.map(pg => pg.map(x => (typeof x == 'string' ? x : x.text)).join(''))
+ok('... page 1 opens in the Blood God\'s red: "BLOOD FOR THE BLOOD GOD."', sPages.length == 6 && sPages[0][1].color == 'dark_red' && sPages[0][1].bold &&
+  sText[0] == 'BLOOD FOR THE BLOOD GOD.\n\nYou have bled for their seals. Two lie broken. The third still holds.', sText[0])
+ok('... page 3: the three fires, each from the castle as the braziers stand, "the first:" in red italics', sPages[2][2].text == 'the first: ' && sPages[2][2].italic &&
+  sText[2] == 'Three fires wait in three far places:\n\nthe first: about 1900 blocks toward the rising sun\nthe second: about 500 blocks toward the setting sun\nthe third: about 400 blocks north-east', sText[2])
+ok('... the last page: "They want the Pool full. So do I."', sText[5] == 'They want the Pool full.\n\nSo do I.', sText[5])
+// as the Regalia pages: 14 lines a page, about 19 characters a line (14 for page 1's bold capitals)
+const plainLines = t => t.split('\n').reduce((n, para) => n + Math.max(1, Math.ceil(para.length / 19)), 0)
+ok('... every page fits a book page', pageLines(sText[0]) <= 14 && sText.every(t => plainLines(t) <= 14 && t.length < 256), sText.map(plainLines).join(','))
+ok('... and the Ministry isn\'t named', !sText.some(t => /Ministry/.test(t)))
+const gwen = player('Gwen', 0.5, 64, 0.5)
+cmds = []
+joins(gwen); advance(100)
+const gwenBook = cmds.find(c => /^give Gwen /.test(c)) || ''
+ok('someone joining later gets the book 5 seconds in, and is told', !!gwenBook && said(gwen, /A book was left for you: A Summons\./) && S().summons.given['gwen-uuid'] == 'Gwen')
+ok('... the same book as everyone else', gwenBook.replace(/^give Gwen /, '') == summ.replace(/^give Carol /, ''))
+cmds = []; gwen.msgs = []; joins(gwen); advance(100)
+ok('... once only', !cmds.some(c => /^give Gwen/.test(c)) && !said(gwen, /A book was left/))
+ok('status: how many have it, and that late arrivals get it', /The Summons: given to 8 players; late arrivals get it until the Awakening\./.test(cmd('status', admin)[12]), cmd('status', admin)[12])
+const beforeAwake = persistent.shrine
+const awoken = JSON.parse(beforeAwake); awoken.awake.state = 'done'; persistent.shrine = JSON.stringify(awoken); load()
+const hal = player('Hal', 0.5, 64, 0.5)
+cmds = []
+joins(hal); advance(100)
+ok('after the Awakening: no more books', !cmds.some(c => /^give Hal/.test(c)) && !said(hal, /A book was left/) && /The Summons: given to 8 players\.$/.test(cmd('status', admin)[12]), cmd('status', admin)[12])
+persistent.shrine = beforeAwake; load()
+cmd('reset confirm', admin); advance(40)
+ok('/shrine reset confirm forgets the Signal and the Summons', !S().signal.at && !S().summons.at && /The Signal: not sent/.test(cmd('status', admin)[11]) && /The Summons: not given/.test(cmd('status', admin)[12]))
+;[eve, finn, gwen, hal].forEach(p => players.splice(players.indexOf(p), 1))
 // the saved data survives a reload
 load()
 ok('the sites survive a /reload', S().site.x == 1000 && S().braziers[2].z == -300)

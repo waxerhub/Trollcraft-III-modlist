@@ -1,6 +1,6 @@
 # The Shrine Awakens (Part II): spec
 
-🔨 **Signed off (owner decisions 2026-11-14), being built in stages** as `server_scripts/part2/shrine.js`. Once it's built, this file becomes the system's doc: settings, commands, test plan and "what couldn't be verified". Built so far: see [Build progress](#build-progress).
+✅ **All six stages built** (2026-11-19) as `server_scripts/part2/shrine.js`, from the owner's decisions of 2026-11-14 to 11-19. Next: a rehearsal with players on the test server. This file is the system's doc: settings, commands, test plan and "what couldn't be verified". See [Build progress](#build-progress).
 
 The story is in [STORY.md](../../STORY.md), Act I #36. This file says how each stage works in game.
 
@@ -13,9 +13,9 @@ The story is in [STORY.md](../../STORY.md), Act I #36. This file says how each s
   - Technoblade's Shrine rises out of the ground, layer by layer;
   - the server defends it from Inspector waves and feeds it Potato King's Potatoes;
   - the Blood God names the Regalia of the Blade.
-- **How it ends:** the Pool is topped up to Tier 3, and the server breaks the third seal together, which opens the Nether.
+- **How it ends:** the Blood God breaks the third and fourth seals himself, with no vote, which opens the Nether. The Pool is raised to a quarter of the way past Tier 4 (230,000 Drops), credited to those who fed the altar (owner decisions 2026-11-19).
 
-**Each stage is one op command.** Nothing moves on by itself, so the ops set the pace and can wait for stragglers.
+**Each stage is one op command,** except the Ignition Rite, which begins by itself 8 seconds after the Shrine has risen on the night (owner decision 2026-11-19). The ops set the pace and can wait for stragglers.
 
 | Stage | Command | Length | Where |
 |---|---|---|---|
@@ -23,7 +23,7 @@ The story is in [STORY.md](../../STORY.md), Act I #36. This file says how each s
 | 1. The Summons | `/shrine summons` | ~10 min | the castle |
 | 2. The Pilgrimage | `/shrine braziers` | ~30 min | three brazier sites |
 | 3. The Shrine Rises | `/shrine rise` | ~15 min | the Shrine site |
-| 4. The Ignition Rite | `/shrine rite` | ~20 min | the Shrine |
+| 4. The Ignition Rite | begins by itself after the rise (`/shrine rite` by hand) | ~20 min | the Shrine |
 | 5. The Awakening | `/shrine awaken` | ~5 min | the Shrine |
 
 ## Setting up (before the night)
@@ -41,20 +41,25 @@ Or give the coordinates, in the Overworld, which also works from the console: `/
 - **What to pick:** flat, open ground with nothing built on it. The rise clears the whole box above ground before placing each layer.
 - **Rehearse first** on the test server, with `/shrine reset confirm` between runs (see the commands below).
 
-## 0. The Signal (the day before)
-**`/shrine signal`** sends a scrambled, unsigned message to everyone online. Anyone who logs on in the next 24 hours gets it when they join.
-- **How it looks:** red text with obfuscated stretches (`§k`), so only fragments read clearly.
+## 0. The Signal (the day before) ✅ built
+**`/shrine signal`** sends a scrambled, unsigned message to everyone online. Anyone who logs on in the next 24 hours (`SIGNAL_HOURS`) gets it 5 seconds after they join, once each.
+- **How it looks:** dark red obfuscated stretches (shifting glyphs), so only the fragments, in red italics, read clearly.
 - **Discord:** the owner posts the time there separately. The Signal itself is sent to each player, never with `tellraw @a`.
+- **The reply** says how many got it. `/shrine status` says when it went, to how many, and how long late arrivals still get it.
+- **Again:** running it again sends it to everyone online again and starts a fresh 24 hours.
 
-Draft (█ = scrambled):
+The text (█ = scrambled, as approved):
 > ██ █████ ███ ...*the third seal*... ████ ██ █ ...*three fires*... ███████ ...*gather at the castle*... ██ ███ ...*tomorrow, when the sun goes down*... █████
 
-## 1. The Summons (at the castle)
+## 1. The Summons (at the castle) ✅ built
 **`/shrine summons`** gives everyone online the book ***A Summons***, signed *The Blood God*. The Castellan reads it out.
-- **The brazier lines** give each fire's direction and distance from the castle (world spawn), worked out from the brazier sites when the command runs, so they're always right: "*the first:* about 900 blocks toward the rising sun" (owner decision).
-- **Late arrivals** get the book when they join, until the Awakening.
+- **The brazier lines** give each fire's direction and distance from the castle (world spawn), worked out from the brazier sites when the command runs, so they're always right: "*the first:* about 900 blocks toward the rising sun" (owner decision). Each fire has its own line, so the page stays within a book page's 14 lines even with three long directions.
+- **It needs all three braziers set,** and refuses until they are ("Set the three braziers first").
+- **The reply** says how many got a copy and gives the three lines, so the ops can check them.
+- **Late arrivals** get the same book 5 seconds after they join, once each, until the Awakening is done, and are told "A book was left for you: A Summons."
+- **Again:** running it again gives everyone online a fresh copy (say a brazier was moved).
 
-Draft (each `>` block is a page):
+The book (each `>` block is a page):
 > BLOOD FOR THE BLOOD GOD.
 > You have bled for their seals. Two lie broken. The third still holds.
 
@@ -158,7 +163,12 @@ The chunks are force-loaded while it builds, as the Gladiator Arena does, and re
 **The Shrine stays** after the night, as the Shrine for the relic hunt (Act II).
 
 ## 4. The Ignition Rite ✅ built
-**`/shrine rite`**, once the Shrine has risen, starts the waves. **Inspectors close in from the land around the Shrine**, appearing 30–45 blocks from its centre, on the ground.
+**It begins by itself** (owner decision 2026-11-19, after the full run, where the owner expected the Inspectors to come on their own): during the night's event, 8 seconds after the Shrine has risen (`AUTO_RITE_SECONDS`), players near the Shrine are told "Something stirs on the land around the Shrine.", and then the first wave comes.
+- **By hand:** **`/shrine rite`** starts it any time once the Shrine has risen, for instance after a rise forced outside the event, when it doesn't begin by itself.
+- **Holding it:** `/shrine stop` while it's due cancels it ("The rite won't begin by itself. Start it with /shrine rite.").
+- **A `/reload` or restart** while it's due keeps the time, and it begins once.
+
+**Inspectors close in from the land around the Shrine**, appearing 30–45 blocks from its centre, on the ground.
 - **Where exactly:** each one's spot is the top of the ground there, through any leaves to the forest floor. A spot is skipped if it's water or lava, a tree trunk, the steps, or under a hill too high to see over (40 blocks above the site). Twelve spots are tried round its place in the ring (`SPAWN_TRIES`), then twelve anywhere on the ring (a lake filled the whole north side of the test ring), and only then is one placed regardless, with a warning in the log ("No dry ground ..."). The Stage 2 ambushes find their ground the same way.
 - **Who counts as present:** the players in survival or adventure within 64 blocks of the Shrine when the rite starts (at least 1).
 - **What the altar needs:** **8 potatoes per player present.** An op can change it with `/shrine need <n>`.
@@ -222,10 +232,9 @@ At most 12 Inspectors in a wave (`WAVE_MAX`). One in three is a pillager with a 
 - **No credit:** a knockout is no kill for anything else (bounties, the Anamian Axe's Souls, the Maul's Grit and the rest). The script loads early (`// priority: 100`) so it cancels the death before other scripts see it.
 
 ## 5. The Awakening ✅ built
-**`/shrine awaken`**, once the Shrine has risen. It's respectful: no jokes. About 46 seconds, step by step (`AWAKEN_STEPS`); a `/reload` or restart carries on from the next step.
-- **Until the rite is built:** the rite will gate it (the bar full). For now, an op runs it once the Shrine stands.
+**`/shrine awaken`**, once the altar is full (`/shrine awaken force` goes ahead anyway). It's respectful: no jokes. About 46 seconds, step by step (`AWAKEN_STEPS`); a `/reload` or restart carries on from the next step.
 1. **At once:**
-   - **Clean-up:** every Inspector left is removed. (Leftover Potato King's Potatoes will crumble here once the rite exists.)
+   - **Clean-up:** every Inspector left is removed, and leftover Potato King's Potatoes crumble.
    - **The title:** everyone at the Shrine (within 64 blocks) sees "The Shrine awakens" and hears a respawn anchor set.
    - **The tribute:** the Techno Tribute for everyone at the Shrine (`/techno all`), and a server-wide `/superaura @a`.
 2. **The Blood God speaks** once the tribute has played (28 seconds in), in lines to everyone online ([BLOOD GOD], as the Pool's own messages):
@@ -238,15 +247,17 @@ At most 12 Inspectors in a wave (`WAVE_MAX`). One in three is a pillager with a 
    - the book *The Regalia of the Blade* appears on the altar's lectern, with sparkles and a page turning;
    - `/regalia` opens on the eight relics;
    - everyone is told, with a `[/regalia]` to click.
-4. **The third seal** (44 seconds in):
-   > The third seal is yours to break.
-5. **The Pool** (46 seconds in):
-   - **The top-up:** it's raised to **Tier 3's threshold (120,000)**, read from `blood_pool.js`'s tiers: about 54,000 Drops on the night.
-   - **Who's credited:** the Drops go to each player in proportion to the potatoes they offered at the altar. If nobody offered any (as now, before the rite exists), they're shared equally among the players present.
-   - **Already there:** if the Pool is already past the threshold, nothing is added.
-   - **The vote:** while Tier 3 isn't open, the players present are asked to break the seal together, with a `[/bloodpool vote]` to click. The Pool also announces that the tier is ready, as it always does.
-
-   Five votes break the third seal, and **the Nether opens**. With fewer than five players there, an op uses `/bloodpool unlock`.
+4. **The seals** (44 seconds in):
+   > I break the third seal, and the fourth with it. Blood for the Blood God.
+5. **The Pool** (46 seconds in). Owner decisions 2026-11-19: no vote; the Blood God breaks the seals himself.
+   - **The Drops:** the Pool is raised to **a quarter of the way from Tier 4's threshold to Tier 5's** (`POOL_AFTER`). With `blood_pool.js`'s tiers (200,000 and 320,000) that's **230,000 Drops**, about 164,000 added on the night (from 66,000).
+   - **Who's credited:** the Drops go to each player in proportion to the potatoes they offered at the altar. If nobody offered any, they're shared equally among the players present.
+   - **Already there:** if the Pool is already past 230,000, nothing is added.
+   - **The seals:** the Shrine opens every tier up to **Tier 4** itself (`OPEN_TIER`, through `global.BloodPool.openTo(4, 'the Shrine')`), whatever the Pool holds. Tier 3 opens **the Nether**.
+     - The Pool announces it as it does any opening: its title and lines for Tier 4, "A Font", with the Nether's own message, then a `/reload` for the recipes.
+     - The log says "[Shrine] The Awakening broke the seals: Tier 2 to 4".
+     - A tier already open stays as it is: nothing is ever closed.
+     - With an older `blood_pool.js` (no `openTo`), the log warns and the seals stay for a vote or an op.
 
 **The reward is the Drops:** there's no title or keepsake (owner decision).
 
@@ -318,21 +329,21 @@ The deliveries, Shrine raids and rewards are Act II's work and get their own spe
 |---|---|
 | `/shrine status` | The sites, the stage, the braziers, the rite's bar and who offered what |
 | `/shrine site set [x y z]` / `/shrine brazier set <1-3> [x y z]` / `/shrine start set [x y z]` | Set the Shrine's centre, a brazier or the start where you stand, or at those coordinates in the Overworld (the console can too) |
-| `/shrine signal` | Stage 0 |
-| `/shrine summons` | Stage 1: the books |
+| `/shrine signal` | Stage 0: the scrambled message to everyone online, and to anyone who joins in the next 24 hours |
+| `/shrine summons` | Stage 1: the book *A Summons* for everyone online, and for anyone who joins until the Awakening (needs the three braziers set) |
 | `/shrine braziers` | Stage 2: place the braziers, bring everyone to the start, start the event (knockouts for everyone until the Awakening ends) |
 | `/shrine fires light` / `/shrine fires out` | Light all three by hand (the beam goes up), or end a running clock early |
 | `/shrine beam up` / `/shrine beam down` | Raise or lower the beam by hand |
 | `/shrine ambush <player>` | An Inspector ambush on that player and the pilgrims near them |
 | `/shrine rise` / `/shrine rise force` | Stage 3, once the beam is up; `force` raises it anyway |
-| `/shrine rite` / `/shrine need <n>` | Stage 4 (or carry on after `/shrine stop`); change what the altar needs |
+| `/shrine rite` / `/shrine need <n>` | Stage 4 by hand (it begins by itself 8 seconds after the rise, during the event), or carry on after `/shrine stop`; change what the altar needs |
 | `/shrine awaken` / `/shrine awaken force` | Stage 5, once the altar is full; `force` goes ahead anyway |
 | `/shrine book` | Put the Regalia book back on the altar |
 | `/shrine repair` | Put the Shrine back as it was built (every layer placed again; the head with its skin), then the book and any missing steps |
 | `/regalia` | **Anyone:** the eight relics and their progress |
-| `/shrine stop` | Stops whatever is running (waves, clock, rise), removes Inspectors and leaves the rest |
+| `/shrine stop` | Stops whatever is running (waves, clock, rise), removes Inspectors and leaves the rest; a rite due to begin by itself won't |
 | `/shrine clearmobs` | Takes away the monsters in and right around the Shrine (event mobs and named ones stay) |
-| `/shrine reset confirm` | **Test server:** removes the Shrine, the braziers, the beam and the steps, ends the event, and forgets the night (the sites and the start are kept). It needs the word `confirm`, so it can't be run by accident on the live server |
+| `/shrine reset confirm` | **Test server:** removes the Shrine, the braziers, the beam and the steps, ends the event, and forgets the night, the Signal and the Summons included (the sites and the start are kept). It needs the word `confirm`, so it can't be run by accident on the live server |
 
 ## How it stays safe
 - **No overlap:**
@@ -343,7 +354,7 @@ The deliveries, Shrine raids and rewards are Act II's work and get their own spe
   - the Inspectors, the Signal and every message are unsigned;
   - nothing says "Ministry".
 - **The Blood Pool:**
-  - the only Drops added are the Awakening's top-up, through `global.BloodPool.addDrops`;
+  - the only Drops added are the Awakening's, through `global.BloodPool.addDrops`, and the only tiers opened are its seals, through `global.BloodPool.openTo` (which never lowers the tier);
   - the Potato King's Potatoes never reach the Tithe or anyone's Potato Standing.
 - **A reload or restart mid-event:**
   - the stage, the brazier states, the bar and the offerings are saved, and `/shrine status` picks up from there;
@@ -354,7 +365,7 @@ The deliveries, Shrine raids and rewards are Act II's work and get their own spe
 - **Placing structures and force-loading chunks:** the same way as `part2/gladiator_arena.js`.
 - **The Inspectors' fighters:** from `factions/portal_ambush.js`.
 - **The tribute:** `techno_tribute.js` (`/techno all`) and `smite.js` (`/superaura`).
-- **The top-up:** `global.BloodPool.addDrops(n, 'shrine', uuid, name)`.
+- **The Drops and the seals:** `global.BloodPool.addDrops(n, 'shrine', uuid, name)` and `global.BloodPool.openTo(4, 'the Shrine')`.
 
 ## Decided (owner, 2026-11-14)
 1. **The brazier lines:** direction and distance from the castle, filled in automatically.
@@ -364,6 +375,9 @@ The deliveries, Shrine raids and rewards are Act II's work and get their own spe
 5. **The way up to the altar:** barrier steps, marked with dust (after the test rite, where nobody in survival could reach the lectern).
 6. **The rise waits for the beam,** with `force` to skip it.
 7. **The night's event** (2026-11-15): `/shrine braziers` brings everyone to a set start, and knockouts cover everyone until the Awakening ends, waking at the last brazier lit or the start.
+8. **The Awakening's end** (2026-11-19): no vote. The Pool is raised to a quarter of the way past Tier 4 (230,000 Drops), and the Shrine breaks the third and fourth seals itself. The Blood God's last line: "I break the third seal, and the fourth with it. Blood for the Blood God."
+9. **The rite begins by itself** after the rise (2026-11-19).
+10. **The Signal and the Summons** as drafted (2026-11-19).
 
 ## Still open
 - **To tune at the rehearsal:**
@@ -375,7 +389,8 @@ The deliveries, Shrine raids and rewards are Act II's work and get their own spe
 ## Install (what's built so far)
 1. Copy `server_scripts/part2/shrine.js` to `kubejs/server_scripts/part2/`.
 2. Copy the 64 layers, `data/trollcraft/structures/shrine/l_0.nbt` … `l_63.nbt`, to `kubejs/data/trollcraft/structures/shrine/`.
-3. Run a full `/reload` (it adds the `/shrine` command). `/shrine status` should say "The rise: not started" with no warning about missing layers.
+3. Copy `server_scripts/part2/blood_pool.js` from the same update: the Awakening opens the seals through its `openTo`.
+4. Run a full `/reload` (it adds the `/shrine` command). `/shrine status` should say "The rise: not started" with no warning about missing layers, and end with "The Signal: not sent" and "The Summons: not given".
 
 ## How the rise works (built)
 - **The box:** 42 × 43 blocks and 64 tall, centred on the site, from the site's ground level up. `/shrine site set` says its corners.
@@ -469,15 +484,20 @@ The owner ran the whole night from `/shrine braziers` to the Awakening with the 
   - **an Inspector in a lake:** a lake fills the whole north side of the ring, so all twelve nearby tries failed and the fallback put one in the water. Fixed: the whole ring is searched first (the Stage 4 section above), and installed after the run;
   - the altar was full at 8 of 8 during wave 2, and she ran `/shrine awaken`. In 46 seconds it added 54,000 Drops credited to her (66,000 to 120,000), Tier 3 was ready, and the event ended ("deaths are deaths again");
   - afterwards: no Inspectors, boss bars or King's Potatoes left, and the Regalia book on the lectern.
-- **The vote** needs 5 votes, so the seal couldn't be broken with one player.
+- **The vote** needs 5 votes, so the seal couldn't be broken with one player. (The vote has since gone: the Shrine breaks the seals itself, owner decision 2026-11-19.)
 - **The owner asked** whether everyone is told how long the rise takes: only the op's reply says so ("about 29 seconds"); players within 128 blocks get the shaking ground and a title. Left as it is for now.
 
 ## What couldn't be verified yet
+- **Stages 0–1 (built 2026-11-19, mock-tested only):**
+  - how the Signal looks in chat (the obfuscated stretches and the readable fragments);
+  - the Summons as a book in game: that every page fits, and the fires page with the real brazier sites;
+  - the Signal and the Summons reaching a player who joins later (the mock fires the join event).
+- **The rite beginning by itself** 8 seconds after the rise (mock-tested, with `/shrine stop` and a `/reload` while it's due).
+- **The Awakening's new end** (mock-tested): the Pool raised to 230,000 and the seals opened to Tier 4 on a real server, with the Pool's announcement, the Nether opening and the recipe `/reload` that follows.
 - **The night's event:**
   - waking beside a brazier (only the start and the Shrine's edge were seen live; the brazier is mock-tested);
   - the teleport to the start with several players, and with players in another dimension;
-  - the whole-ring search for dry ground in game (the lake case is mock-tested);
-  - the vote with five players.
+  - the whole-ring search for dry ground in game (the lake case is mock-tested).
 - **Stage 4:**
   - the new ground search for Inspectors in game (it's mock-tested, with a hill, a lake, the steps and a canopy; the test rite ran before it);
   - a knockout from a real fight (the one seen was while she was away), and the knockout's new log line;
@@ -487,7 +507,6 @@ The owner ran the whole night from `/shrine braziers` to the Awakening with the 
   - the refusal of a beamless `/shrine rise` in game (`/shrine rise force` was checked to parse).
 - **Stage 5:**
   - the tribute and the Blood God's lines as players see them;
-  - the top-up with a Pool below Tier 3 and five players voting (both are mock-tested);
   - the guard against breaking and building, in game.
 - **Stage 2 with players:**
   - lighting a brazier with flint and steel, a fire charge or a flaming arrow (it was lit with `/setblock`);
@@ -504,7 +523,8 @@ The owner ran the whole night from `/shrine braziers` to the Awakening with the 
 | Stage 3, the rise, with `/shrine stop` and `/shrine reset confirm` | ✅ built, same checks; tried on the test server (see above) |
 | No monsters in the Shrine, and `/shrine clearmobs` | ✅ built, 71 mock checks in all; tried on the test server |
 | Stage 2, the braziers, the beam and the ambushes (the Shrine's own Inspectors) | ✅ built, 112 mock checks in all; tried on the test server (see above) |
-| Stages 0–1, the Signal and the Summons | to do |
+| Stages 0–1, the Signal and the Summons (late arrivals too) | ✅ built 2026-11-19, 24 mock checks; not yet tried in game |
+| The rite beginning by itself after the rise; the Awakening's new end (230,000 Drops, the Shrine opens Tiers 3 and 4, no vote) | ✅ built 2026-11-19, mock checks (the Shrine suite has 256 in all, plus `openTo` in the Blood Pool suite); not yet tried in game |
 | Stage 4, the Ignition Rite (waves, the Senior Inspector, the King's Potatoes, the altar and its light, knockouts) | ✅ built, mock checks plus one in the Blood Pool suite; tried on the test server (see above) |
 | The steps up to the altar, the Inspectors' ground, and the rise waiting for the beam | ✅ built; the steps tried on the test server |
 | The night's event: `/shrine start set`, everyone to the start, knockouts for everyone until the Awakening ends | ✅ built, 224 mock checks in all; the whole night run on the test server (see above) |

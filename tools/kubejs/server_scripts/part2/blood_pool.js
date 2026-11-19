@@ -1659,6 +1659,14 @@ global.BloodPool = {
     console.info('[BloodPool] Potato War: ' + (name || uuid) + ' gained ' + n + ' potatoes (Purge)')
   },
   craftAccess: player => craftAccess(uuidOf(player)),   // the highest tier this player can craft (rank or catch-up)
+  // Opens every tier up to n at once, announced as /bloodpool unlock does (then the reload), with no vote: for story
+  // events (part2/shrine.js's Awakening). Never lowers the tier. Returns the tier now open.
+  openTo: (n, by) => {
+    n = Math.min(TIERS.length, Math.floor(Number(n) || 0))
+    if (!(n > db().tier) || !Utils.server) return db().tier
+    setTier(Utils.server, n, by ? String(by) : 'a story event', true)
+    return db().tier
+  },
   tiers: TIERS,                                        // read-only: the tier lists (tools, the quest generator, the audit)
   useLocks: USE_LOCKS,                                 // read-only: id -> 'use'/'block'/'mob' (the quest generator's client script)
   standingThresholds: STANDING,

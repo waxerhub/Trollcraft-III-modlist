@@ -28,7 +28,8 @@
 //     Deaths in an ambush are ordinary. Ambushers left over are taken away when the rise begins.
 //   - Stage 5, the Awakening (/shrine awaken, once the Shrine has risen): the Techno Tribute and a server-wide
 //     /superaura, the Blood God's words, the Regalia book on the altar's lectern (put back if taken), /regalia opened,
-//     and the Pool topped up to Tier 3, credited by the potatoes offered (or shared by those present), with the vote.
+//     the Pool raised to a quarter past Tier 4 (230,000 Drops), credited by the potatoes offered (or shared by those
+//     present), and the seals broken up to Tier 4 by the Shrine itself, with no vote.
 //     /regalia (anyone) lists the eight relics. The Shrine can't be broken or built on outside creative, nor its altar
 //     even in creative; /shrine repair puts it back as it was built.
 // Still to come: the Signal and the Summons, and the Ignition Rite.
@@ -127,7 +128,38 @@ const ALTAR = { lectern: [28, 22, 20], facing: 'east' }
 const STAIRS = { top: [38, 21], z: [19, 21], below: 12, glowTicks: 20, glowRadius: 48 }
 const LECTERN_CHECK_TICKS = 100
 const PRESENT_RADIUS = 64                 // players this close to the Shrine count as present
-const TOP_UP_TIER = 3                     // the Pool is topped up to this tier's threshold (the Nether's seal)
+// Stage 0, the Signal (/shrine signal, the day before): a scrambled, unsigned message, sent to each player (never
+// tellraw @a, so not to Discord: the owner posts the time there), and to anyone who joins within SIGNAL_HOURS.
+// Parts: [scrambled, text]. A scrambled stretch shows as shifting glyphs, so only its length matters.
+const SIGNAL_HOURS = 24
+const SIGNAL = [
+  [true, 'xq vrtno lam'], [false, ' ...the third seal... '], [true, 'kwtr pe d'], [false, ' ...three fires... '],
+  [true, 'bnaxuoe'], [false, ' ...gather at the castle... '], [true, 'qe wvr'], [false, ' ...tomorrow, when the sun goes down... '],
+  [true, 'mzrta'],
+]
+// Stage 1, the Summons (/shrine summons, at the castle): the book A Summons, signed by the Blood God, for everyone online;
+// anyone who joins later gets it, until the Awakening. Each page is a list of paragraphs; 'BRAZIERS' is the page of
+// the three fires, each with its direction and distance from the castle, worked out when the command runs.
+const SUMMONS = {
+  title: 'A Summons', author: 'The Blood God', braziers: 'Three fires wait in three far places:',
+  pages: [
+    ['BLOOD FOR THE BLOOD GOD.', 'You have bled for their seals. Two lie broken. The third still holds.'],
+    ['Beneath this land sleeps something older than any seal: my Shrine.', 'It will not wake for one of you. It wakes for all of you, or for none.'],
+    'BRAZIERS',
+    ['Light them as one. A fire that burns alone will die within the minute.', 'When all three burn, I will show you where to stand.'],
+    ['Bring your blades. They will come for what is mine.', 'Take back from them what they took from me.'],
+    ['They want the Pool full.', 'So do I.'],
+  ],
+}
+const JOIN_DELAY_TICKS = 100              // after a player joins, before the Signal or the Summons reaches them
+// During the night's event, the Ignition Rite begins by itself this long after the statue has risen (owner decision,
+// 2026-11-19). 0 = an op starts it with /shrine rite. Outside the event (a rise forced for a test) it never starts alone.
+const AUTO_RITE_SECONDS = 8
+// The Awakening's Pool (owner decisions, 2026-11-19): no vote. The Pool is raised to POOL_AFTER (a quarter of the way
+// from Tier 4's threshold to Tier 5's: 230,000 Drops), credited by the potatoes offered at the altar, and the Shrine
+// breaks the seals up to OPEN_TIER itself (the Nether's with them). It never lowers the Pool or closes a tier.
+const POOL_AFTER = { past: 4, fraction: 0.25 }
+const OPEN_TIER = 4
 // The Awakening's steps, in ticks from /shrine awaken: the tribute first (/techno all takes about 25 seconds), then the
 // Blood God's words, the book on the altar, the third seal, and the Pool.
 const AWAKEN_STEPS = [
@@ -135,7 +167,7 @@ const AWAKEN_STEPS = [
   { at: 560, step: 'line', text: 'You lit my fires. You fed my Shrine. You remembered.' },
   { at: 680, step: 'line', text: 'Eight things were mine. They were scattered, stolen, forgotten. Restore them here, and my name returns with them.' },
   { at: 760, step: 'book' },
-  { at: 880, step: 'line', text: 'The third seal is yours to break.' },
+  { at: 880, step: 'line', text: 'I break the third seal, and the fourth with it. Blood for the Blood God.' },
   { at: 920, step: 'pool' },
 ]
 const VOICE_BLOOD = { tag: '[BLOOD GOD]', tagColor: 'dark_red', textColor: 'red' }   // as part2/blood_pool.js has it
@@ -193,6 +225,8 @@ function db() {
   if (!(data.stairs >= 0)) data.stairs = 0                                 // the steps to the altar laid (0: none)
   if (data.start === undefined) data.start = null                          // the start: { dim, x, y, z }
   if (!data.event) data.event = { on: false, at: 0 }                       // the night's event: knockouts for everyone
+  if (!data.signal) data.signal = { at: 0, told: {} }                      // the Signal: when, and who has had it
+  if (!data.summons) data.summons = { at: 0, pages: [], given: {} }        // the Summons: when, its pages, who has a copy
   return data
 }
 function save() {
@@ -546,6 +580,7 @@ function startRise(server, resumed, force) {
       layStairs(server, st)                       // after the box's chunks are let go: the steps force-load their own
       nearby(server, st).forEach(p => narrate(p, 'The last stone settles. Technoblade\'s Shrine stands.', 'gold'))
       console.info('[Shrine] The Shrine has risen at ' + siteText(st))
+      queueAutoRite(server)
       return
     }
     save()
@@ -585,6 +620,8 @@ function resetShrine(server, done) {
   D.regalia = { open: false, progress: {} }
   D.rite = freshRite({})
   D.event = { on: false, at: 0 }
+  D.signal = { at: 0, told: {} }
+  D.summons = { at: 0, pages: [], given: {} }
   if (st) clearStairs(server, st)
   D.stairs = 0
   const forget = () => {
@@ -1237,6 +1274,37 @@ function startRite(server) {
   console.info('[Shrine] The Ignition Rite begins: ' + n + ' present, ' + D.rite.need + ' potatoes needed')
   return ''
 }
+// The rite by itself (AUTO_RITE_SECONDS): queued when the statue has risen during the night's event. The time it's due
+// is saved (rise.riteAt), so a /reload or restart in between still starts it.
+function queueAutoRite(server) {
+  const R = db().rise
+  if (!(AUTO_RITE_SECONDS > 0) || !eventOn() || db().rite.state != 'none' || db().awake.state != 'none') return false
+  R.riteAt = Date.now() + AUTO_RITE_SECONDS * 1000
+  save()
+  nearby(server, R.site).forEach(p => narrate(p, 'Something stirs on the land around the Shrine.', 'dark_red'))
+  scheduleAutoRite(server)
+  return true
+}
+function scheduleAutoRite(server) {
+  const R = db().rise
+  if (!R.riteAt) return
+  const token = (global.__shrineAutoRite = (global.__shrineAutoRite || 0) + 1)
+  const ticks = Math.max(20, Math.round((R.riteAt - Date.now()) / 50))
+  server.scheduleInTicks(ticks, () => {
+    if (token != global.__shrineAutoRite) return
+    const D = db()
+    if (!D.rise.riteAt) return
+    D.rise.riteAt = 0
+    save()
+    if (D.rise.state != 'risen' || D.rite.state != 'none' || D.awake.state != 'none' || !eventOn()) return
+    const why = startRite(server)
+    if (why) {
+      console.warn('[Shrine] The Ignition Rite didn\'t begin by itself: ' + why)
+      players(server).filter(p => { try { return p.hasPermissions(2) } catch (e) { return false } })
+        .forEach(p => narrate(p, '[Shrine] The rite didn\'t begin by itself: ' + why + ' Start it with /shrine rite.', 'red'))
+    } else console.info('[Shrine] The Ignition Rite began by itself, ' + AUTO_RITE_SECONDS + ' seconds after the rise')
+  })
+}
 // /shrine stop during the rite: the waves stop and the Inspectors go; the bar is kept. /shrine rite carries on.
 function pauseRite(server) {
   const R = db().rite
@@ -1337,6 +1405,69 @@ BlockEvents.rightClicked(event => {
   event.cancel()
 })
 
+// ===================== STAGES 0-1: THE SIGNAL AND THE SUMMONS =====================
+
+function signalParts() {
+  return [{ text: '', color: 'dark_red' }].concat(SIGNAL.map(s => s[0] ? { text: s[1], color: 'dark_red', obfuscated: true } : { text: s[1], color: 'red', italic: true }))
+}
+function tellSignal(p) { try { p.tell(comp(signalParts())); return true } catch (e) { return false } }
+function signalOpen() { const S = db().signal; return !!S.at && Date.now() - S.at < SIGNAL_HOURS * 3600000 }
+// Sends the Signal to everyone online; anyone who joins within SIGNAL_HOURS gets it too. Returns how many got it.
+function sendSignal(server) {
+  const told = {}
+  players(server).forEach(p => { if (tellSignal(p)) told[uuidOf(p)] = nameOf(p) })
+  db().signal = { at: Date.now(), told: told }
+  save()
+  console.info('[Shrine] The Signal went to ' + Object.keys(told).length + ' players')
+  return Object.keys(told).length
+}
+// The Summons' pages, as written-book page text. Page 1 opens in the Blood God's red.
+function summonsPages(server) {
+  const page = parts => snbtString(JSON.stringify([''].concat(parts)))
+  return SUMMONS.pages.map((pg, i) => {
+    if (pg == 'BRAZIERS') {
+      let parts = [{ text: SUMMONS.braziers + '\n\n', color: 'black' }]
+      db().braziers.forEach((b, k) => {
+        parts.push({ text: ordinal(k) + ': ', color: 'dark_red', italic: true }, { text: fromCastle(server, b) + (k < BRAZIERS - 1 ? '\n' : ''), color: 'black' })
+      })
+      return page(parts)
+    }
+    return page(pg.map((line, k) => ({ text: line + (k < pg.length - 1 ? '\n\n' : ''), color: i == 0 && k == 0 ? 'dark_red' : 'black', bold: i == 0 && k == 0 })))
+  })
+}
+function summonsNbt(pages) {
+  return '{title:' + snbtString(SUMMONS.title) + ',author:' + snbtString(SUMMONS.author) + ',resolved:1b,pages:[' + pages.join(',') + ']}'
+}
+function giveSummons(server, p) { return !!run(server, 'give ' + nameOf(p) + ' minecraft:written_book' + summonsNbt(db().summons.pages)) }
+function summonsOpen() { return !!db().summons.at && db().awake.state != 'done' }
+// Gives everyone online the Summons. { why } if it can't (the braziers aren't all set), else { n }.
+function sendSummons(server) {
+  const D = db()
+  if (D.braziers.some(b => !b)) return { why: 'Set the three braziers first (/shrine brazier set <1-3>): the book gives their direction and distance from the castle.' }
+  const given = {}
+  D.summons = { at: Date.now(), pages: summonsPages(server), given: given }
+  players(server).forEach(p => { if (giveSummons(server, p)) given[uuidOf(p)] = nameOf(p) })
+  save()
+  console.info('[Shrine] The Summons went to ' + Object.keys(given).length + ' players')
+  return { n: Object.keys(given).length }
+}
+// Late arrivals: the Signal within SIGNAL_HOURS, the Summons until the Awakening. Each player once.
+PlayerEvents.loggedIn(event => {
+  const p = event.player, server = (p && p.server) || Utils.server
+  if (!p || !server) return
+  server.scheduleInTicks(JOIN_DELAY_TICKS, () => {
+    try {
+      let D = db(), u = uuidOf(p)
+      if (signalOpen() && !D.signal.told[u] && tellSignal(p)) { D.signal.told[u] = nameOf(p); save() }
+      if (summonsOpen() && !D.summons.given[u] && giveSummons(server, p)) {
+        D.summons.given[u] = nameOf(p)
+        save()
+        narrate(p, 'A book was left for you: ' + SUMMONS.title + '.', 'dark_red')
+      }
+    } catch (e) { console.error('[Shrine] Join: ' + e) }
+  })
+})
+
 // ===================== STAGE 5: THE AWAKENING =====================
 
 function lecternPos(st) { const c = corner(st); return { x: c.x + ALTAR.lectern[0], y: c.y + ALTAR.lectern[1], z: c.z + ALTAR.lectern[2] } }
@@ -1401,12 +1532,18 @@ function tierThreshold(n) {
     return t ? Number(t.drops) : 0
   } catch (e) { return 0 }
 }
-// Tops the Pool up to Tier TOP_UP_TIER's threshold, credited by the potatoes each player offered at the altar (or, if
-// nobody offered any, shared by those present). Returns { added, shares: [{ name, n }] }.
+// The Drops the Awakening raises the Pool to (POOL_AFTER): 0 if the tiers can't be read.
+function poolTarget() {
+  const a = tierThreshold(POOL_AFTER.past), b = tierThreshold(POOL_AFTER.past + 1)
+  if (!a) return 0
+  return Math.floor(a + Math.max(0, b - a) * POOL_AFTER.fraction)
+}
+// Raises the Pool to poolTarget(), credited by the potatoes each player offered at the altar (or, if nobody offered
+// any, shared by those present). Returns { added, shares: [{ name, n }] }.
 function topUpPool(server, present) {
   const BP = global.BloodPool
   if (!BP || typeof BP.addDrops != 'function') { console.warn('[Shrine] No Blood Pool: the Awakening adds no Drops'); return { added: 0, shares: [] } }
-  const target = tierThreshold(TOP_UP_TIER), need = Math.max(0, target - Number(BP.drops()))
+  const target = poolTarget(), need = Math.max(0, target - Number(BP.drops()))
   if (!(need > 0)) return { added: 0, shares: [] }
   const offered = db().rite.offered || {}
   let shares = Object.keys(offered).filter(u => offered[u].n > 0).map(u => ({ uuid: u, name: offered[u].name, w: offered[u].n }))
@@ -1426,6 +1563,18 @@ function topUpPool(server, present) {
   save()
   console.info('[Shrine] The Awakening added ' + need + ' Drops: ' + shares.map(s => s.name + ' ' + s.n).join(', '))
   return { added: need, shares: shares.map(s => ({ name: s.name, n: s.n })) }
+}
+// The Shrine breaks the seals up to OPEN_TIER: no vote. The Blood Pool opens them as /bloodpool unlock does (its title,
+// line and the Nether's), then reloads. Nothing happens if they're already open.
+function openSeals() {
+  const BP = global.BloodPool
+  if (!BP || typeof BP.openTo != 'function') { console.warn('[Shrine] The Blood Pool can\'t open tiers (an older blood_pool.js?): the seals stay for a vote or an op'); return 0 }
+  let before = 0
+  try { before = Number(BP.tier()) } catch (e) { }
+  if (before >= OPEN_TIER) return before
+  const now = Number(BP.openTo(OPEN_TIER, 'the Shrine'))
+  console.info('[Shrine] The Awakening broke the seals: Tier ' + before + ' to ' + now)
+  return now
 }
 function bloodGod(server, text) {
   players(server).forEach(p => { try { p.tell(comp([{ text: VOICE_BLOOD.tag, color: VOICE_BLOOD.tagColor, bold: true }, { text: ' ' + text, color: VOICE_BLOOD.textColor }])) } catch (e) { } })
@@ -1464,18 +1613,8 @@ function awakenStep(server, s) {
     })
     startLecternWatch(server)
   } else if (s.step == 'pool') {
-    let present = presentAt(server, st)
-    topUpPool(server, present)
-    let open = 0
-    try { open = Number(global.BloodPool.tier()) } catch (e) { }
-    if (open < TOP_UP_TIER) {
-      present.forEach(p => {
-        try {
-          p.tell(comp([{ text: 'Everyone here: break the third seal together. ', color: 'gray', italic: true },
-            { text: '[/bloodpool vote]', color: 'dark_red', bold: true, clickEvent: { action: 'run_command', value: '/bloodpool vote' }, hoverEvent: { action: 'show_text', contents: 'Five voices break it' } }]))
-        } catch (e) { }
-      })
-    }
+    topUpPool(server, presentAt(server, st))
+    openSeals()
   }
 }
 // Runs the Awakening's steps from step `from` (a /reload or restart carries on where it was).
@@ -1597,6 +1736,11 @@ function statusLines(server) {
   else out.push('The Awakening: done. The Regalia is open' + (credited.length ? '; Drops credited: ' + credited.map(c => c.name + ' ' + fmt(c.n)).join(', ') : '') + '.')
   out.push('The start: ' + (D.start ? siteText(D.start) + ' (/shrine braziers brings everyone here)' : 'not set (/shrine start set, where everyone gathers)'))
   out.push(D.event.on ? 'The event: on. Knockouts instead of deaths for everyone, until the Awakening ends.' : 'The event: off (/shrine braziers starts it).')
+  const hours = at => Math.max(0, Math.round((Date.now() - at) / 3600000))
+  out.push(D.signal.at ? 'The Signal: sent ' + hours(D.signal.at) + 'h ago to ' + Object.keys(D.signal.told).length + ' players' +
+    (signalOpen() ? '; anyone joining in the next ' + Math.max(1, SIGNAL_HOURS - hours(D.signal.at)) + 'h gets it too.' : '.') : 'The Signal: not sent (/shrine signal, the day before).')
+  out.push(D.summons.at ? 'The Summons: given to ' + Object.keys(D.summons.given).length + ' players' + (summonsOpen() ? '; late arrivals get it until the Awakening.' : '.') :
+    'The Summons: not given (/shrine summons, at the castle, once the braziers are set).')
   return out
 }
 
@@ -1612,6 +1756,7 @@ function resume(server, restart) {
     startFireWatch(server)
   }
   if (riteOn()) startRiteLoop(server)
+  if (D.rise.riteAt) scheduleAutoRite(server)
   if (D.awake.state == 'running') runAwakening(server, D.awake.step)
   if (D.awake.state != 'none' && D.regalia.open && D.rise.state == 'risen') startLecternWatch(server)
   if (D.rise.state == 'risen' && D.stairs) startStairGlow(server)
@@ -1687,8 +1832,8 @@ ServerEvents.commandRegistry(event => {
   const awakenReply = (ctx, force) => {
     const why = awaken(ctx.source.server, force)
     if (why) return reply(ctx, why, true)
-    return reply(ctx, 'The Awakening begins: the tribute, the Blood God\'s words, the Regalia book on the altar, then the Pool topped up to Tier ' + TOP_UP_TIER +
-      ' (' + fmt(tierThreshold(TOP_UP_TIER)) + ' Drops) and the vote. About ' + Math.round(AWAKEN_STEPS[AWAKEN_STEPS.length - 1].at / 20) + ' seconds.')
+    return reply(ctx, 'The Awakening begins: the tribute, the Blood God\'s words, the Regalia book on the altar, then the Pool raised to ' +
+      fmt(poolTarget()) + ' Drops and the seals broken up to Tier ' + OPEN_TIER + ' (no vote). About ' + Math.round(AWAKEN_STEPS[AWAKEN_STEPS.length - 1].at / 20) + ' seconds.')
   }
   const riseReply = force => ctx => {
     const R = db().rise, resuming = R.state == 'stopped'
@@ -1739,6 +1884,17 @@ ServerEvents.commandRegistry(event => {
     .then(Commands.literal('brazier').then(Commands.literal('set').then(Commands.argument('n', Arguments.INTEGER.create(event)).executes(safe(setBrazier(false)))
       .then(xyz(setBrazier(true))))))
     .then(Commands.literal('rise').executes(safe(riseReply(false))).then(Commands.literal('force').executes(safe(riseReply(true)))))
+    .then(Commands.literal('signal').executes(safe(ctx => {
+      const n = sendSignal(ctx.source.server)
+      return reply(ctx, 'The Signal went to ' + n + ' player' + (n == 1 ? '' : 's') + ', each privately (not to Discord). Anyone who joins in the next ' +
+        SIGNAL_HOURS + ' hours gets it too.')
+    })))
+    .then(Commands.literal('summons').executes(safe(ctx => {
+      const server = ctx.source.server, r = sendSummons(server)
+      if (r.why) return reply(ctx, r.why, true)
+      return reply(ctx, 'A Summons went to ' + r.n + ' player' + (r.n == 1 ? '' : 's') + '. Late arrivals get it when they join, until the Awakening. Its fires: ' +
+        db().braziers.map((b, i) => ordinal(i) + ' ' + fromCastle(server, b)).join('; ') + '.')
+    })))
     .then(Commands.literal('braziers').executes(safe(ctx => {
       const why = placeBraziers(ctx.source.server)
       if (why) return reply(ctx, why, true)
@@ -1811,6 +1967,12 @@ ServerEvents.commandRegistry(event => {
     })))
     .then(Commands.literal('stop').executes(safe(ctx => {
       if (stopRise()) return reply(ctx, 'The rise is paused at layer ' + db().rise.next + '. /shrine rise carries on.')
+      if (db().rise.riteAt) {
+        db().rise.riteAt = 0
+        global.__shrineAutoRite = (global.__shrineAutoRite || 0) + 1
+        save()
+        return reply(ctx, 'The rite won\'t begin by itself. Start it with /shrine rite.')
+      }
       if (pauseRite(ctx.source.server)) return reply(ctx, 'The rite is paused: the waves stop and the Inspectors are gone; the altar keeps its ' + db().rite.total + ' potatoes. /shrine rite carries on.')
       return reply(ctx, 'Nothing is running.', true)
     })))

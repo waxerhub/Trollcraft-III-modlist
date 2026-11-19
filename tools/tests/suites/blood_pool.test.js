@@ -1188,6 +1188,22 @@ ok('the next reload doesn\'t run it again', !W.logs.slice(n0).some(l => /Audit \
   ok('(the test data is put back)', PDB().tier == JSON.parse(saved).tier)
 }
 
+// ---------- openTo: a story event opens tiers with no vote (part2/shrine.js's Awakening) ----------
+{
+  const saved = W.persistent.blood_pool
+  cmd('bloodpool settier 2', admin); advance(25); reload()
+  const c0 = W.cmds.length
+  const now = glob.BloodPool.openTo(4, 'the Shrine')
+  ok('global.BloodPool.openTo(4, "the Shrine") from Tier 2: Tiers 3 and 4 open at once, announced like an unlock', now == 4 && PDB().tier == 4 &&
+    cmdsSince(c0).some(c => /^title @a subtitle .*Tier 4: A Font/.test(c)) && said(c0).some(l => /The seal breaks\. Tier 4 \(A Font\) is open/.test(l)) &&
+    PDB().unlocks.slice(-1)[0].by == 'the Shrine', cmdsSince(c0).join(' | '))
+  advance(25)
+  ok('... then the server reloads, so the recipes come back', cmdsSince(c0).indexOf('reload') >= 0)
+  ok('... it never lowers the tier or opens one twice', glob.BloodPool.openTo(3, 'x') == 4 && glob.BloodPool.openTo(4, 'x') == 4 && PDB().tier == 4 &&
+    PDB().unlocks.slice(-1)[0].by == 'the Shrine')
+  W.persistent.blood_pool = saved; reload()
+}
+
 // The gate check test above logs one error on purpose.
 const stray = errors().filter(l => l.indexOf('Gate check: these recipes ignore their rank check: thermal:machine_frame') < 0)
 ok('no other errors logged in the Potato War tests', stray.length == 0, stray.join(' | '))

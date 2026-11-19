@@ -269,9 +269,9 @@ Technoblade's Potato War, revived. **The Pool decides what the server can make; 
 35. **The Ruins:** the remains of Part I bases are lore sites, with books telling Part I's story. 🔨
 36. **The Shrine Awakens** (the next major event; owner decisions 2026-11-13): one big evening, about 90 minutes, run live by ops.
     - **Where the server is:** Part II, early, at Blood Pool Tier 2 with about 66,000 Drops.
-    - **What it does:** the Blood God reveals Technoblade's Shrine, the relic hunt (Act II) begins, and the Pool reaches its third seal, which opens the Nether.
-    1. **The Signal** (the day before): a scrambled, unsigned broadcast, plus a Discord post with the time. Gather at the castle.
-    2. **The Summons** (about 10 minutes, at the castle): the testimony is the **Blood God's** (owner decision 2026-11-13; it was the scout's). His words come as a book that everyone gets, and the Castellan reads them out. They name **three braziers**, far apart, each by its direction and distance from the castle, filled in automatically (owner decision 2026-11-14). The book ends on the first hint of the two threads: "They want the Pool full. So do I." (kept, same day).
+    - **What it does:** the Blood God reveals Technoblade's Shrine, the relic hunt (Act II) begins, and the Blood God breaks the third and fourth seals himself, which opens the Nether (owner decision 2026-11-19).
+    1. **The Signal** (the day before): a scrambled, unsigned broadcast, plus a Discord post with the time. Gather at the castle. ✅ (`/shrine signal`, built 2026-11-19: to each player, and to anyone joining within 24 hours)
+    2. **The Summons** (about 10 minutes, at the castle): the testimony is the **Blood God's** (owner decision 2026-11-13; it was the scout's). His words come as a book that everyone gets, and the Castellan reads them out. They name **three braziers**, far apart, each by its direction and distance from the castle, filled in automatically (owner decision 2026-11-14). The book ends on the first hint of the two threads: "They want the Pool full. So do I." (kept, same day). ✅ (`/shrine summons`, built 2026-11-19; late arrivals get the book until the Awakening)
     3. **The Pilgrimage: three braziers, three teams** (about 30 minutes).
        - **Lighting them:** the server splits up, and the braziers must all be lit within 60 seconds of each other. Otherwise the lit ones gutter out, and the teams try again.
        - **The beam:** once all three burn, a beacon beam rises at the Shrine site, visible from far off.
@@ -281,6 +281,7 @@ Technoblade's Potato War, revived. **The Pool decides what the server can make; 
        - **It waits for the beam:** an op can't start the rise before the braziers' beam is up, except with `force` (owner decision 2026-11-14).
        - **The way up:** the altar is 22 blocks up, so invisible barrier steps, marked with red dust, climb to it from the east (the owner's idea, 2026-11-14, after nobody in survival could reach the lectern at the test rite).
     5. **The Ignition Rite** (about 20 minutes, at the Shrine).
+       - **It begins by itself** 8 seconds after the Shrine has risen: something stirs on the land around it, and the first wave comes (owner decision 2026-11-19).
        - **The waves:** Inspectors close in on the Shrine from the land around it, escalating from iron-tier to diamond-tier. The last wave brings a **Senior Inspector** mini-boss, who drops the most.
        - **The potatoes:** every Inspector carries **Potato King's Potatoes**, Techno's own potatoes, which the Inspectors had been hoarding.
        - **The offering:** offered at the altar, each potato fills the rite's bar and lights the Shrine stage by stage. It needs **8 potatoes per player present**.
@@ -291,12 +292,12 @@ Technoblade's Potato War, revived. **The Pool decides what the server can make; 
        - **The tribute:** the Techno Tribute and a server-wide `/superaura`.
        - **The Regalia:** the Blood God names the **Regalia of the Blade**, and `/regalia` opens on the eight relics.
        - **The book:** the book *The Regalia of the Blade* appears on the altar's lectern, under Technoblade's head (owner decision 2026-11-13). It has one page per relic: what each honours and what it asks, and a closing page, "When the Crown returns, so does my name." Anyone can read it there; a copy taken is replaced. ✅ (`part2/shrine.js`, built and tried on the test server 2026-11-14, with `/regalia` and the Pool's top-up)
-       - **The Pool:** the rite tops it up to **Tier 3's threshold** (120,000; about 54,000 Drops), credited to each player by the potatoes they offered. Everyone present then breaks the third seal together with `/bloodpool vote`, and **the Nether opens** that night.
+       - **The Pool** (owner decisions 2026-11-19: no vote): it's raised to **a quarter of the way past Tier 4** (230,000; about 164,000 Drops on the night), credited to each player by the potatoes they offered. The Blood God breaks the seals himself: "I break the third seal, and the fourth with it. Blood for the Blood God." Tiers 3 and 4 open, and **the Nether opens** that night. ✅ (built 2026-11-19, not yet tried in game)
     - **The reward is the Drops** (owner decision): no title or keepsake.
     - **The spec** is [SHRINE.md](tools/kubejs/SHRINE.md) (signed off 2026-11-14): every stage's command, the drafts of the Signal, the Summons and the Regalia book, and the build progress.
     - **Still needed:**
       - **From the owner:** the three brazier sites and the Shrine site, and the date (the schematic is in);
-      - **To build:** the Signal and the Summons (Stages 0–1: the broadcast and the Blood God's book with the brazier directions). The braziers and the beam, the rise, the Ignition Rite and the Awakening are built (`part2/shrine.js`).
+      - **To build:** nothing: all six stages are built (`part2/shrine.js`, 2026-11-19). Next is a rehearsal with players on the test server.
 
     🔨
 

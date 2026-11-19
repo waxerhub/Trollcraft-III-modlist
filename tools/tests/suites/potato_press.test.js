@@ -49,7 +49,7 @@ function load(opts) {
   }
   const StartupEvents = { registry: (type, fn) => fn({ create: id => (type == 'item' ? itemBuilder : blockBuilder)(id) }) }
   const ForgeEvents = { onGenericEvent: (ev, gen, fn) => generic.push({ ev, gen, fn }) }
-  const Platform = { isClientEnvironment: () => !!opts.client, isLoaded: id => id == 'modernfix' ? opts.modernfix != null : true }
+  const Platform = { isClientEnvironment: () => !!opts.client, isLoaded: id => id == 'modernfix' ? opts.modernfix != null : (opts.missing || []).indexOf(id) < 0 }
   const ITEM_HANDLER = { name: 'item_handler', equals(x) { return x === ITEM_HANDLER } }
   const DOWN = { name: 'down', equals(x) { return x === DOWN } }, UP = { name: 'up', equals(x) { return x === UP } }
   class InvWrapper { constructor(inv) { this.inv = inv } }
@@ -83,9 +83,13 @@ ok('two items: Enchanted Potato and Enchanted Baked Potato, glowing, on the vani
   ep.set.texture == 'minecraft:item/potato' && ebp.set.texture == 'minecraft:item/baked_potato')
 const press = S.blocks.potato_press, oven = S.blocks.potato_oven
 ok('two blocks: the Potato Press and the Potato Oven', press && oven && press.set.displayName == 'Potato Press' && oven.set.displayName == 'Potato Oven')
-ok('... each a 27-slot box (9 x 3) that only takes its input, opened with a right-click, working every second',
-  press.info.inv.w == 9 && press.info.inv.h == 3 && press.info.inv.filter == 'minecraft:potato' && oven.info.inv.filter == 'kubejs:enchanted_potato' &&
+ok('... each a 27-slot box (9 x 3) that only takes its input (the Press: potatoes and the three potato crates), opened with a right-click, working every second',
+  press.info.inv.w == 9 && press.info.inv.h == 3 &&
+  JSON.stringify(press.info.inv.filter) == JSON.stringify(['minecraft:potato', 'quark:potato_crate', 'farmersdelight:potato_crate', 'thermal:potato_block']) &&
+  JSON.stringify(oven.info.inv.filter) == JSON.stringify(['kubejs:enchanted_potato']) &&
   press.info.opens && oven.info.opens && press.info.tick.interval == 20 && oven.info.tick.interval == 20)
+ok('... a crate from a mod that isn\'t installed isn\'t accepted (here Quark and Thermal are missing)',
+  JSON.stringify(load({ modernfix: false, missing: ['quark', 'thermal'] }).blocks.potato_press.info.inv.filter) == JSON.stringify(['minecraft:potato', 'farmersdelight:potato_crate']))
 ok('... mined with an axe, with barrel and smoker textures', press.set.tagBlock == 'minecraft:mineable/axe' && press.set.textureAll == 'minecraft:block/barrel_side' &&
   press.textures.up == 'minecraft:block/barrel_top' && oven.textures.up == 'minecraft:block/smoker_top')
 
@@ -117,6 +121,27 @@ inv = inventory()
 inv.slots[0] = stack('minecraft:potato', 64); inv.slots[5] = stack('minecraft:dirt', 64); inv.slots[9] = stack('minecraft:potato', 64); inv.slots[17] = stack('minecraft:potato', 40)
 tick(press, inv)
 ok('potatoes spread over the input slots count together (other things are left alone)', total(inv, 'kubejs:enchanted_potato') == 1 && total(inv, 'minecraft:potato') == 8 && inv.slots[5].count == 64)
+// potato crates (9 each): what's left of a crate is kept in the block's data as credit, used first next time
+const data = () => ({ m: {}, getInt(k) { return this.m[k] || 0 }, putInt(k, v) { this.m[k] = v } })
+const crateTick = (inv, d) => press.info.tick.cb({ inventory: inv, data: d })
+inv = inventory(); let d = data()
+inv.slots[0] = stack('quark:potato_crate', 17); inv.slots[1] = stack('minecraft:potato', 7)
+crateTick(inv, d)
+ok('the Press takes crates: 17 crates and 7 potatoes (160) make 1 Enchanted Potato, nothing left', total(inv, 'kubejs:enchanted_potato') == 1 &&
+  total(inv, 'quark:potato_crate') == 0 && total(inv, 'minecraft:potato') == 0 && d.getInt('credit') == 0)
+inv = inventory(); d = data()
+inv.slots[0] = stack('minecraft:potato', 5); inv.slots[1] = stack('farmersdelight:potato_crate', 18)
+crateTick(inv, d)
+ok('... loose potatoes go first, then crates: 5 potatoes and 18 crates make 1, and the 7 left of the last crate become credit',
+  total(inv, 'kubejs:enchanted_potato') == 1 && total(inv, 'minecraft:potato') == 0 && total(inv, 'farmersdelight:potato_crate') == 0 && d.getInt('credit') == 7, JSON.stringify(d.m))
+inv.slots[0] = stack('minecraft:potato', 153)
+crateTick(inv, d)
+ok('... the credit is used first next time: 7 credit and 153 potatoes make another', total(inv, 'kubejs:enchanted_potato') == 2 && total(inv, 'minecraft:potato') == 0 && d.getInt('credit') == 0)
+inv = inventory(); d = data()
+inv.slots[0] = stack('thermal:potato_block', 64); inv.slots[1] = stack('quark:potato_crate', 64)
+crateTick(inv, d)
+ok('... a pile of crates (128, worth 1,152): 7 in a second, the rest stays', total(inv, 'kubejs:enchanted_potato') == 7 &&
+  (total(inv, 'thermal:potato_block') + total(inv, 'quark:potato_crate')) * 9 + d.getInt('credit') == 1152 - 7 * 160, JSON.stringify(d.m))
 inv = inventory()
 inv.slots[0] = stack('kubejs:enchanted_potato', 64); inv.slots[1] = stack('kubejs:enchanted_potato', 64); inv.slots[2] = stack('kubejs:enchanted_potato', 32)
 tick(oven, inv)

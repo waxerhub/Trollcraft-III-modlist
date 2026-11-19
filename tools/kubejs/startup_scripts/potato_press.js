@@ -2,7 +2,7 @@
 //
 // When the Blood Pool opens Tier 5, the Potato War's numbers are revealed to have counted Enchanted Potatoes (Tiers 6-8)
 // and Enchanted Baked Potatoes (Tiers 9-12) all along (part2/blood_pool.js). Hypixel's ratios:
-//   Potato Press: 160 potatoes        -> 1 Enchanted Potato         (craftable from Tier 5)
+//   Potato Press: 160 potatoes        -> 1 Enchanted Potato         (craftable from Tier 5; potato crates count as 9)
 //   Potato Oven:  160 Enchanted Potatoes -> 1 Enchanted Baked Potato (craftable from Tier 8)
 // Each is a 27-slot block: the top two rows take its input, the bottom row holds what it made. Every second, each
 // 160 inputs become one output. Hoppers, pipes, Create funnels and AE2 put input in from the top and sides and take
@@ -21,17 +21,29 @@
 
 // ===================== SETTINGS =====================
 
-const RATIO = 160               // inputs per output (Hypixel's 160 potatoes per Enchanted Potato, 160 per Enchanted Baked)
+const RATIO = 160               // input worth per output (Hypixel's 160 potatoes per Enchanted Potato, 160 per Enchanted Baked)
 const IN_SLOTS = 18             // slots 0-17 take input; 18-26 hold output
 const SLOTS = 27
 const MAX_PER_SECOND = 8        // outputs one block makes per second at most
+// inputs: what each machine takes, and its worth. The Press takes potato crates at 9 (owner decision, 2026-11-19), so
+// a farm that packs its potatoes needs no unpacking; what's left of a crate after a 160 is kept in the block as credit.
 const MACHINES = {
-  potato_press: { name: 'Potato Press', input: 'minecraft:potato', output: 'kubejs:enchanted_potato',
+  potato_press: { name: 'Potato Press', output: 'kubejs:enchanted_potato',
+    inputs: { 'minecraft:potato': 1, 'quark:potato_crate': 9, 'farmersdelight:potato_crate': 9, 'thermal:potato_block': 9 },
     textures: { all: 'minecraft:block/barrel_side', up: 'minecraft:block/barrel_top', down: 'minecraft:block/barrel_bottom' } },
-  potato_oven: { name: 'Potato Oven', input: 'kubejs:enchanted_potato', output: 'kubejs:enchanted_baked_potato',
+  potato_oven: { name: 'Potato Oven', output: 'kubejs:enchanted_baked_potato',
+    inputs: { 'kubejs:enchanted_potato': 1 },
     textures: { all: 'minecraft:block/smoker_front_on', up: 'minecraft:block/smoker_top', down: 'minecraft:block/smoker_bottom' } },
 }
+const CREDIT_KEY = 'credit'     // in the block's data: input worth left over from a crate, used before anything else
 const FASTER_CAPS = 'mixin.perf.faster_capabilities'
+
+// Each machine's inputs from mods that are installed, and their worths smallest first (loose potatoes go before crates).
+Object.keys(MACHINES).forEach(id => {
+  const M = MACHINES[id]
+  M.accepted = Object.keys(M.inputs).filter(i => Platform.isLoaded(i.split(':')[0]))
+  M.worths = M.accepted.map(i => M.inputs[i]).filter((w, k, a) => a.indexOf(w) == k).sort((a, b) => a - b)
+})
 
 // ===================== ITEMS =====================
 
@@ -44,14 +56,18 @@ StartupEvents.registry('item', event => {
 
 // ===================== THE MACHINES =====================
 
-// Turns each RATIO inputs into one output, up to MAX_PER_SECOND, while the output slots have room.
+function creditOf(be) { try { return Number(be.data.getInt(CREDIT_KEY)) || 0 } catch (e) { return 0 } }
+function setCredit(be, n) { try { be.data.putInt(CREDIT_KEY, n) } catch (e) { } }
+// Turns each RATIO of input worth into one output, up to MAX_PER_SECOND, while the output slots have room. The
+// block's credit is used first, then the smallest inputs; what's left of the last one taken becomes the credit.
 function work(be, M) {
   const inv = be.inventory
   if (!inv) return 0
-  let have = 0
+  const credit0 = creditOf(be)
+  let have = credit0, bank = credit0
   for (let i = 0; i < IN_SLOTS; i++) {
-    let s = inv.getStackInSlot(i)
-    if (String(s.id) == M.input) have += s.count
+    let s = inv.getStackInSlot(i), w = M.inputs[String(s.id)]
+    if (w) have += w * s.count
   }
   let made = 0
   while (have >= RATIO && made < MAX_PER_SECOND) {
@@ -62,18 +78,26 @@ function work(be, M) {
     }
     if (slot < 0) break
     let need = RATIO
-    for (let i = 0; i < IN_SLOTS && need > 0; i++) {
-      let s = inv.getStackInSlot(i)
-      if (String(s.id) != M.input) continue
-      let take = Math.min(need, s.count)
-      inv.extractItem(i, take, false)
-      need -= take
+    let fromBank = Math.min(bank, need)
+    bank -= fromBank
+    need -= fromBank
+    for (let k = 0; k < M.worths.length && need > 0; k++) {
+      let w = M.worths[k]
+      for (let i = 0; i < IN_SLOTS && need > 0; i++) {
+        let s = inv.getStackInSlot(i)
+        if (M.inputs[String(s.id)] != w) continue
+        let take = Math.min(s.count, Math.ceil(need / w))
+        inv.extractItem(i, take, false)
+        need -= take * w
+      }
     }
+    if (need < 0) bank += -need
     let o = inv.getStackInSlot(slot)
     inv.setStackInSlot(slot, Item.of(M.output, o.isEmpty() ? 1 : o.count + 1))
     have -= RATIO
     made++
   }
+  if (bank != credit0) setCredit(be, bank)
   if (made) inv.setChanged()
   return made
 }
@@ -84,7 +108,7 @@ StartupEvents.registry('block', event => {
     event.create(id).displayName(M.name).woodSoundType().hardness(2.5).tagBlock('minecraft:mineable/axe')
       .textureAll(M.textures.all).texture('up', M.textures.up).texture('down', M.textures.down)
       .blockEntity(info => {
-        info.inventory(9, 3, M.input)
+        info.inventory(9, 3, M.accepted)
         info.rightClickOpensInventory()
         info.serverTick(20, 0, be => { try { work(be, M) } catch (e) { console.error('[PotatoPress] ' + id + ': ' + e) } })
       })

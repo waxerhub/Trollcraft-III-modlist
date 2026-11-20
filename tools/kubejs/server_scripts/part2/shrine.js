@@ -213,6 +213,8 @@ const KIT = {
   enchant: 'Enchantments:[{id:"minecraft:unbreaking",lvl:10s}]',
   lore: 'Issued for the Shrine Awakens. Taken back at its end.',
 }
+// The backup files: here if that folder exists; KubeJS won't make it, so on the test server they went to
+// kubejs/shrine_vault_<name>_<uuid>.json (the fallback), as the arena's and the Purge's do.
 const VAULT_DIR = 'kubejs/shrine_vaults/'
 const KIT_SWEEP_TICKS = 200               // outside the event, kit items are looked for on players this often
 
@@ -1218,7 +1220,7 @@ function unvault(server, p) {
     V.partial = true
     save()
     backup(V)
-    opsOnline(server).forEach(o => narrate(o, '[Shrine] ' + (bad.length + badWorn.length) + ' of ' + V.name + '\'s items could not be handed back. They are kept in ' + VAULT_DIR + '.', 'red'))
+    opsOnline(server).forEach(o => narrate(o, '[Shrine] ' + (bad.length + badWorn.length) + ' of ' + V.name + '\'s items could not be handed back. They stay held, in the saved data and the backup file (kubejs/shrine_vault_' + V.name + '_' + V.uuid + '.json).', 'red'))
     return false
   }
   V.restored = Date.now()

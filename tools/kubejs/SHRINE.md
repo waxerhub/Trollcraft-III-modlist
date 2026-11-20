@@ -165,7 +165,7 @@ The last page is the first hint of the two threads (kept: owner decision).
 - **Their own belongings are held safe,** as the Gladiator Arena and the Purge do it:
   - **What's held:** every inventory slot, the worn curios, and Tool Belt's belt slot.
   - **How:** each item is saved whole (so a backpack keeps its contents), and every one is checked to rebuild before anything is cleared.
-  - **A backup file:** `kubejs/shrine_vaults/<name>_<uuid>.json` (on the server).
+  - **A backup file:** `kubejs/shrine_vault_<name>_<uuid>.json` on the server. KubeJS won't create the `kubejs/shrine_vaults/` folder the script tries first, so the files land there only if someone makes it (seen at the third run; the arena's and the Purge's do the same). Each file is marked `restored` once handed back.
   - **If something can't be stored safely,** that player fights in their own gear, and is told so. So are the ops.
 - **Handed back:**
   - **When:** when the Awakening ends (or at `/shrine reset confirm`), to the slots they came from. Anyone offline then gets theirs when they next join.
@@ -585,18 +585,34 @@ Reset to the night's start (the Pool back to 66,000, Tier 2), and the contributo
   - a kit that doesn't break;
   - cinematic effects throughout.
 
+### The third run, with the kit, the automatic ending and the effects
+Reset again (66,000, Tier 2, contributors cleared); the two players ran the night in game, the ops' commands from both of them.
+- **The kit:** both were kitted at `/shrine braziers`.
+  - They had no way to light the braziers, so the owner asked for a flint and steel. It was added to the kit, and each was given one mid-run, marked as kit.
+- **The braziers:**
+  - three ambushes of 4 at the start;
+  - about 30 knockouts there before any fire was lit, all woken at the start;
+  - then all three fires and the beam.
+- **The rise and the rite:**
+  - the rise ran with the first version of the effects;
+  - the owner then swapped the Darkness for fire and lightning (Stage 3), which wasn't seen at this run's rise;
+  - the rite began by itself and ran three waves; the altar was full at 24 of 16.
+- **The automatic ending, seen in game:**
+  - the Inspectors vanished, and 13 seconds before the Awakening both were brought to the steps;
+  - the Awakening began by itself, broke the seals from Tier 2 to 4, and added 164,000 Drops credited to nobody;
+  - the event ended, and both players' belongings were handed back (backups marked `restored`: 7 stacks and 13);
+  - it was day again (`time query daytime`: 1000).
+- **Found:** the backup files went to `kubejs/shrine_vault_<name>_<uuid>.json`, not the `shrine_vaults/` folder (KubeJS doesn't make it). The docs and the ops' message now say so.
+
 ## What couldn't be verified yet
-- **The night's kit** (built after the second run, mock-tested only):
+- **The night's kit:**
   - the kit as players see it: Unbreaking X and Sharpness IV, the lore, the armour worn and the shield in the off hand;
-  - the vault with real items: a backpack's contents, worn curios, Tool Belt's belt slot, and the backup file's path on the server;
-  - the hand-back at the Awakening's end, at a join after the night, and after a `/kill` mid-event.
-- **The night ending by itself** (mock-tested only):
-  - the Inspectors vanishing;
-  - everyone brought to the foot of the steps, facing the altar, and held there;
-  - the Awakening beginning by itself, and `/shrine stop` or a `/reload` while it's due.
-- **The effects** (mock-tested only):
-  - **Lightning for show** is made with `level.createEntity('minecraft:lightning_bolt')`, `setVisualOnly(true)`, `moveTo` and `spawn()`. Those names are KubeJS 6's and Minecraft's, and haven't been run in game. If any fails, flashes, sparks and thunder are used instead (never a real bolt).
-  - **The rest, as players see them:** the titles, the raid horn, the fireworks (they burst 2 blocks above the statue's top, far from anyone at the steps), the rise's fire and corner bolts, and the sky's night, storm and day.
+  - the vault with a backpack's contents, worn curios and Tool Belt's belt slot (both players' belongings came back at the third run, but what they carried wasn't checked item by item);
+  - the hand-back at a join after the night, and the fresh kit after a `/kill` mid-event (mock-tested).
+- **The night ending by itself:** what players see while held at the steps, and `/shrine stop` or a `/reload` while it's due (mock-tested; the rest was seen at the third run).
+- **The effects:**
+  - **Lightning for show** is made with `level.createEntity('minecraft:lightning_bolt')`, `setVisualOnly(true)`, `moveTo` and `spawn()` (`createEntity` and `spawn` were confirmed in KubeJS 2001.6.5's jar). The log can't say whether players saw real bolts or the fallback of flashes, sparks and thunder; the players can.
+  - **The rest, as players see them:** the titles, the raid horn, the fireworks (they burst 2 blocks above the statue's top, far from anyone at the steps), the rise's fire and corner bolts, and the storm.
 - **Stages 0–1:** how the Signal looks in chat and the Summons as a book, as players see them. The second run showed a late arrival getting both (the status counted them), but nobody recorded what they saw.
 - **The rite beginning by itself:** `/shrine stop` and a `/reload` while it's due (mock-tested; the start itself was seen at both runs).
 - **The new waves:** two Seniors' bars at once as players see them, and the 30-Inspector limit (mock-tested; the second run had five waves and no overlap reported).

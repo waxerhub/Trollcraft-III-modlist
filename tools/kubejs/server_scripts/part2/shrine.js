@@ -629,8 +629,18 @@ function placeLayer(server, st, n) {
   run(server, 'execute in ' + st.dim + ' run particle minecraft:campfire_cosy_smoke ' + at + ' 9 0.3 9 0.01 30 force')
   run(server, 'execute in ' + st.dim + ' run particle minecraft:large_smoke ' + at + ' 11 0.2 11 0.02 40 force')
   if (n == PEDESTAL_TOP || n == SIZE[1] - 1) run(server, 'execute in ' + st.dim + ' run playsound minecraft:entity.lightning_bolt.thunder weather @a ' + at + ' 10 0.8')
-  // Darkness pulses with the wither's crunch, as the ground shakes; lightning rings the Shrine when the head is placed
-  if (n % 8 == 4) nearby(server, st).forEach(p => run(server, 'effect give ' + nameOf(p) + ' minecraft:darkness 2 0 true'))
+  // Fire and lightning as the ground shakes (owner, 2026-11-19: no Darkness): flames along every layer, lava sparks every
+  // 3rd, and with every wither's crunch a burst of fire and a bolt for show at one of the Shrine's corners, in turn;
+  // lightning rings the Shrine when the head is placed.
+  const corners = [[-3, -3], [SIZE[0] + 2, -3], [SIZE[0] + 2, SIZE[2] + 2], [-3, SIZE[2] + 2]]
+  run(server, 'execute in ' + st.dim + ' run particle minecraft:flame ' + at + ' 10 0.2 10 0.01 40 force')
+  if (n % 3 == 0) run(server, 'execute in ' + st.dim + ' run particle minecraft:lava ' + at + ' 10 0.3 10 0 12 force')
+  if (n % 8 == 4) {
+    let k = corners[Math.floor(n / 8) % 4], x = c.x + k[0], z = c.z + k[1]
+    strike(server, st.dim, x + 0.5, standY(levelByDim(server, st.dim), x, z, st.y), z + 0.5)
+    run(server, 'execute in ' + st.dim + ' run particle minecraft:flame ' + at + ' 12 0.5 12 0.06 250 force')
+    run(server, 'execute in ' + st.dim + ' run playsound minecraft:entity.blaze.shoot block @a ' + at + ' 4 0.5')
+  }
   if (n == SIZE[1] - 1) strikeRing(server, st.dim, mid.x, mid.z, st.y, 28, 6)
   return true
 }

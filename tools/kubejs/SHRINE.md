@@ -189,7 +189,9 @@ The last page is the first hint of the two threads (kept: owner decision).
    - the respawn anchor's charge, the Blood God's power gathering, as it starts, when the pedestal is done (layer 21) and when the head is placed (layer 63), with a thunderclap at the last two;
    - dust and smoke along the layer's edge;
    - **the sky** (2026-11-19, during the event only, since it's the whole Overworld's): night falls and a thunderstorm rolls in as the rise begins. It clears to day when the Awakening ends (or at a reset);
-   - **Darkness** pulses for 2 seconds for the players within 128 blocks with every wither's crunch, as the ground shakes;
+   - **fire as the ground shakes** (the owner swapped out the Darkness pulses at the third run: "I would rather use more particle and sound effects and lightning or fire"):
+     - flames run along every layer, and lava sparks every 3rd;
+     - with every wither's crunch (every 8th layer), fire bursts across the layer with a blaze's roar, and a bolt (only for show) strikes one of the Shrine's corners, 3 blocks out, going round in turn (8 in all);
    - **lightning** rings the Shrine (6 bolts, 28 blocks out) when the head is placed.
 4. **The finish:** the altar's lectern and Technoblade's head (with its skin) are placed exactly as in the schematic.
 5. **The steps up to the altar** (owner decision 2026-11-14, from the owner's idea): the pedestal is 22 blocks high, so the script lays a flight of **barrier blocks**: solid, invisible, and no monster can spawn on them.
@@ -594,7 +596,7 @@ Reset to the night's start (the Pool back to 66,000, Tier 2), and the contributo
   - the Awakening beginning by itself, and `/shrine stop` or a `/reload` while it's due.
 - **The effects** (mock-tested only):
   - **Lightning for show** is made with `level.createEntity('minecraft:lightning_bolt')`, `setVisualOnly(true)`, `moveTo` and `spawn()`. Those names are KubeJS 6's and Minecraft's, and haven't been run in game. If any fails, flashes, sparks and thunder are used instead (never a real bolt).
-  - **The rest, as players see them:** the titles, the raid horn, the fireworks (they burst 2 blocks above the statue's top, far from anyone at the steps), Darkness, and the sky's night, storm and day.
+  - **The rest, as players see them:** the titles, the raid horn, the fireworks (they burst 2 blocks above the statue's top, far from anyone at the steps), the rise's fire and corner bolts, and the sky's night, storm and day.
 - **Stages 0–1:** how the Signal looks in chat and the Summons as a book, as players see them. The second run showed a late arrival getting both (the status counted them), but nobody recorded what they saw.
 - **The rite beginning by itself:** `/shrine stop` and a `/reload` while it's due (mock-tested; the start itself was seen at both runs).
 - **The new waves:** two Seniors' bars at once as players see them, and the 30-Inspector limit (mock-tested; the second run had five waves and no overlap reported).

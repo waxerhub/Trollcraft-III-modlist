@@ -339,9 +339,14 @@ const missing = []
 for (let n = 0; n < 64; n++) if (all.indexOf(n) < 0) missing.push(n)
 ok('every layer 0..63 was placed, and the Shrine has risen', missing.length == 0 && S().rise.state == 'risen' && global.Shrine.risen() && S().rise.next == 64, 'missing ' + missing.join())
 ok('... the head at the top: thunder, and the watchers are told', cmds.some(c => / place template trollcraft:shrine\/l_63 979 127 1979$/.test(c)) && said(carol, /Technoblade's Shrine stands/))
-ok('... the ground shakes: Darkness pulses for those near; lightning for show rings the Shrine as the head is placed',
-  cmds.some(c => c == 'effect give Carol minecraft:darkness 2 0 true') && bolts.length == 6 && bolts.every(b => b.visual && Math.abs(Math.hypot(b.at[0] - 1000.5, b.at[2] - 2000.5) - 28) < 1.5),
+// (owner, 2026-11-19: no Darkness; more fire, sparks and lightning instead)
+const riseCorners = ['976.5,1976.5', '1023.5,1976.5', '1023.5,2024.5', '976.5,2024.5']
+ok('... the ground shakes: flames along the layers, lava sparks, and with every wither\'s crunch a burst of fire and a bolt for show at a corner, in turn; no Darkness',
+  bolts.length == 14 && bolts.slice(0, 8).every((b, i) => b.visual && b.at[0] + ',' + b.at[2] == riseCorners[i % 4] && b.at[1] == 64) &&
+  cmds.some(c => /run particle minecraft:flame [\d.]+ [\d.]+ [\d.]+ 10 0\.2 10 /.test(c)) && cmds.some(c => /run particle minecraft:lava [\d.]+ [\d.]+ [\d.]+ 10 0\.3 10 /.test(c)) &&
+  cmds.some(c => /run particle minecraft:flame [\d.]+ [\d.]+ [\d.]+ 12 0\.5 12 0\.06 250 /.test(c)) && !cmds.some(c => /darkness/.test(c)),
   bolts.map(b => b.at.join(',')).join(' '))
+ok('... and lightning for show rings the Shrine as the head is placed', bolts.slice(8).every(b => b.visual && Math.abs(Math.hypot(b.at[0] - 1000.5, b.at[2] - 2000.5) - 28) < 1.5))
 ok('... outside the night\'s event the sky is left alone (it\'s the whole Overworld\'s)', !cmds.some(c => /^time set|^weather/.test(c)) && !S().event.sky)
 ok('... the forceload is removed', cmds.some(c => c == 'execute in minecraft:overworld run forceload remove 979 1979 1020 2021'))
 ok('... and nothing is waiting to run but the steps\' glow and the kit\'s sweep', queue.length == 2, queue.length)

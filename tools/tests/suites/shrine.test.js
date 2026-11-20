@@ -580,30 +580,41 @@ Math.random = () => 0
 r = cmd('rite', admin)
 Math.random = random
 const colOf = m => Math.floor(m.x) + ',' + m.y + ',' + Math.floor(m.z)
-ok('the Inspectors\' ground: never on the steps, in a hill\'s cave or a lake; under leaves, the forest floor', waveMobs(0).map(colOf).sort().join(' ') == '1002,64,2030 1025,64,1983 973,64,1987',
-  waveMobs(0).map(colOf).join(' '))
+// Every wave is led by a Senior Inspector, the only one carrying potatoes (owner decisions at the rehearsal, 2026-11-19).
+const isSenior = m => m.tags.indexOf('shrine_senior') >= 0
+const ordinary = i => waveMobs(i).filter(m => !isSenior(m))
+const seniorOf = i => waveMobs(i).filter(isSenior)[0]
+const carriesNothing = m => !m.tags.some(t => /^shrine_pot_/.test(t))
+ok('the Inspectors\' ground: never on the steps, in a hill\'s cave or a lake; under leaves, the forest floor', ordinary(0).map(colOf).sort().join(' ') == '1002,64,2030 1025,64,1983 973,64,1987',
+  ordinary(0).map(colOf).join(' '))
 terrain.forEach(k => { delete world[k] })
-ok('/shrine rite: 2 present (the op in creative doesn\'t count), so the altar needs 16 potatoes', /2 present, so the altar needs 16 Potato King's Potatoes/.test(r[0]) && RT().state == 'running' && RT().need == 16, r[0])
-ok('... wave 1: 3 Inspectors (1 per player, at least 3), in iron, seeing 64 blocks, each to drop 2 potatoes', waveMobs(0).length == 3 &&
-  waveMobs(0).every(m => /iron_chestplate/.test(m.nbt) && /generic\.follow_range",Base:64\.0d/.test(m.nbt) && m.tags.indexOf('shrine_pot_2') >= 0 && m.tags.indexOf('shrine_inspector') >= 0))
+ok('/shrine rite: 2 present (the op in creative doesn\'t count), so the altar needs 16 potatoes: at least 2 Senior Inspectors must fall',
+  /2 present, so the altar needs 16 Potato King's Potatoes\. Waves come until it's full, each led by a Senior Inspector who drops 8, so at least 2 must fall\./.test(r[0]) &&
+  RT().state == 'running' && RT().need == 16, r[0])
+ok('... wave 1: 3 Inspectors (1 per player, at least 3), in iron, seeing 64 blocks, carrying no potatoes', ordinary(0).length == 3 &&
+  ordinary(0).every(m => /iron_chestplate/.test(m.nbt) && /generic\.follow_range",Base:64\.0d/.test(m.nbt) && carriesNothing(m) && m.tags.indexOf('shrine_inspector') >= 0))
+ok('... and a Senior Inspector at their head, the only one carrying potatoes (8): 150 health, a netherite axe, named in bold', !!seniorOf(0) &&
+  seniorOf(0).tags.indexOf('shrine_pot_8') >= 0 && /"text":"Senior Inspector","color":"gold","italic":false,"bold":true/.test(seniorOf(0).nbt) && /netherite_axe/.test(seniorOf(0).nbt) && seniorOf(0).health == 150)
+ok('... with Resistance and his own boss bar, "Senior Inspector (wave 1)"', cmds.indexOf('effect give @e[tag=shrine_senior] minecraft:resistance infinite 0 true') >= 0 &&
+  cmds.some(c => /^bossbar add trollcraft:shrine_senior_0 .*Senior Inspector \(wave 1\)/.test(c)) && Object.keys(RT().seniors).join() == '0')
 ok('... on the land around the Shrine, 30 to 45 blocks from its centre', waveMobs(0).every(m => { const d = Math.hypot(m.x - 1000.5, m.z - 2000.5); return d >= 29 && d <= 46 }),
   waveMobs(0).map(m => Math.hypot(m.x - 1000.5, m.z - 2000.5).toFixed(0)).join(','))
-ok('... those present are told what to do; someone far away isn\'t', said(carol, /Take the Potato King's Potatoes from the Inspectors and offer them at the altar: 16 in all/) &&
-  said(bob, /Wave 1 of 4: 3 Inspectors close in on the Shrine/) && !said(far, /Wave 1/))
+ok('... those present are told what to do; someone far away isn\'t', said(carol, /Take the Potato King's Potatoes from the Senior Inspectors and offer them at the altar: 16 in all/) &&
+  said(bob, /Wave 1: 4 Inspectors close in on the Shrine, a Senior Inspector at their head\./) && !said(far, /Wave 1/))
 ok('... the rite\'s boss bar: 0 / 16 potatoes', cmds.some(c => /^bossbar set trollcraft:shrine_rite name .*The Ignition Rite: .*0 \/ 16 potatoes/.test(c)))
 ok('/shrine awaken now: refused, the altar isn\'t full (force goes ahead)', /The altar isn't full yet \(0 of 16 potatoes\)\. \/shrine awaken force goes ahead anyway\./.test(cmd('awaken', admin)[0]))
 ok('global.Shrine.busy(): the Purge and the arena wait', /Ignition Rite is on/.test(global.Shrine.busy()))
-ok('/shrine rite again: already under way', /already under way \(wave 1 of 4\)/.test(cmd('rite', admin)[0]))
+ok('/shrine rite again: already under way', /already under way \(wave 1\)/.test(cmd('rite', admin)[0]))
 advance(20)
 ok('the Inspectors go after the pilgrims at the Shrine (not the op in creative)', waveMobs(0).every(m => m.target === carol || m.target === bob))
-// an Inspector of the rite dies: 2 Potato King's Potatoes
+// an ordinary Inspector of the rite dies: nothing
 cmds = []
-kill(waveMobs(0)[0])
-ok('an Inspector killed drops 2 Potato King\'s Potatoes, marked, named in gold, with a glint', cmds.some(c => /run summon minecraft:item .*Count:2b,tag:\{trollcraft:\{kingspotato:1b\}.*Potato King\\'s Potato.*Enchantments/.test(c)), cmds.filter(c => /summon minecraft:item/.test(c)).join('\n'))
-// the next wave comes when three-quarters of the last are down
-kill(waveMobs(0)[0])
+kill(ordinary(0)[0])
+ok('an ordinary Inspector killed drops no potatoes', !cmds.some(c => /summon minecraft:item/.test(c)), cmds.filter(c => /summon minecraft:item/.test(c)).join('\n'))
+// the next wave comes when three-quarters of the last are down (the Senior counts as one of them)
+kill(ordinary(0)[0])
 advance(20)
-ok('with 2 of 3 down, no new wave yet', RT().wave == 0)
+ok('with 2 of 4 down, no new wave yet', RT().wave == 0)
 // A lake over the whole ring but its south-east corner (on the test server one filled the ring's north side, and an
 // Inspector was put in it): they look all round the ring for dry ground.
 const lake = []
@@ -615,44 +626,64 @@ for (let x = 952; x <= 1049; x++) {
 }
 let seed = 0
 Math.random = () => { seed = (seed + 0.6180339887) % 1; return seed }
-kill(waveMobs(0)[0])
+kill(ordinary(0)[0])
+cmds = []
 advance(20)
 Math.random = random
-ok('with all 3 down: wave 2, 3 Inspectors (1.5 per player), the vindicators with shields', RT().wave == 1 && waveMobs(1).length == 3 &&
-  waveMobs(1).filter(m => m.type == 'minecraft:vindicator').every(m => /minecraft:shield/.test(m.nbt)) && said(carol, /Wave 2 of 4/))
+ok('with 3 of 4 down (the Senior still up): wave 2, 3 Inspectors (1.5 per player), the vindicators with shields, led by its own Senior', RT().wave == 1 && ordinary(1).length == 3 &&
+  ordinary(1).filter(m => m.type == 'minecraft:vindicator').every(m => /minecraft:shield/.test(m.nbt)) && !!seniorOf(1) && said(carol, /Wave 2: 4 Inspectors/))
 ok('... with a lake over all the ring but one corner, every one still lands on dry ground there', waveMobs(1).every(m => m.x > 1002 && m.z > 2002 && m.y == 64) &&
   !logs.some(l => /No dry ground/.test(l)), waveMobs(1).map(m => m.x + ' ' + m.y + ' ' + m.z).join(', '))
+ok('... two Senior Inspectors up at once, each with his own bar; status counts them', !!seniorOf(0) && Object.keys(RT().seniors).sort().join() == '0,1' &&
+  cmds.some(c => /^bossbar add trollcraft:shrine_senior_1 .*Senior Inspector \(wave 2\)/.test(c)) && /The Ignition Rite: wave 2 \(2 Senior Inspectors up\)/.test(cmd('status', admin)[7]), cmd('status', admin)[7])
 lake.forEach(k => { delete world[k] })
 // /shrine stop pauses the rite; /shrine rite brings the wave back
+cmds = []
 r = cmd('stop', admin)
-ok('/shrine stop pauses the rite: the waves stop, the Inspectors go, the altar keeps its count', /The rite is paused/.test(r[0]) && RT().state == 'paused' && riteMobsNow().length == 0 &&
-  cmds.indexOf('bossbar remove trollcraft:shrine_rite') >= 0, r[0])
+ok('/shrine stop pauses the rite: the waves stop, the Inspectors go (Seniors too), every bar goes, the altar keeps its count', /The rite is paused/.test(r[0]) && RT().state == 'paused' &&
+  riteMobsNow().length == 0 && cmds.indexOf('bossbar remove trollcraft:shrine_rite') >= 0 && cmds.indexOf('bossbar remove trollcraft:shrine_senior_0') >= 0 &&
+  cmds.indexOf('bossbar remove trollcraft:shrine_senior_1') >= 0 && Object.keys(RT().seniors).length == 0, r[0])
 ok('... status says so', /The Ignition Rite: paused at wave 2/.test(cmd('status', admin)[7]), cmd('status', admin)[7])
 r = cmd('rite', admin)
-ok('/shrine rite carries on: wave 2 comes again', /wave 2 comes again/.test(r[0]) && RT().state == 'running' && waveMobs(1).length == 3, r[0])
+ok('/shrine rite carries on: wave 2 comes again, with its Senior', /wave 2 comes again/.test(r[0]) && RT().state == 'running' && ordinary(1).length == 3 && !!seniorOf(1) &&
+  Object.keys(RT().seniors).join() == '1', r[0])
 // a wave nobody clears: the next comes after 3 minutes anyway
 seconds(181)
-ok('after 3 minutes, wave 3 comes anyway: in diamond', RT().wave == 2 && waveMobs(2).length == 3 && waveMobs(2).every(m => /diamond_chestplate/.test(m.nbt)))
-waveMobs(1).concat(waveMobs(2)).forEach(m => kill(m))
+ok('after 3 minutes, wave 3 comes anyway: in diamond, with its Senior', RT().wave == 2 && ordinary(2).length == 3 && ordinary(2).every(m => /diamond_chestplate/.test(m.nbt)) && !!seniorOf(2))
+seniorOf(2).health = 70
 cmds = []
 advance(20)
-const senior = () => riteMobsNow().filter(m => m.tags.indexOf('shrine_senior') >= 0)[0]
-ok('wave 4: 3 Inspectors and the Senior Inspector (150 health, netherite axe, named in bold)', RT().wave == 3 && waveMobs(3).length == 4 && !!senior() &&
-  /"text":"Senior Inspector","color":"gold","italic":false,"bold":true/.test(senior().nbt) && /netherite_axe/.test(senior().nbt) && senior().health == 150 && said(carol, /a Senior Inspector at their head/))
-ok('... with Resistance and his own boss bar', cmds.indexOf('effect give @e[tag=shrine_senior] minecraft:resistance infinite 0 true') >= 0 && cmds.some(c => /^bossbar add trollcraft:shrine_senior .*Senior Inspector/.test(c)))
-ok('... the last wave: no more come after it', (advance(20 * 200), RT().wave == 3))
-senior().health = 70
-cmds = []
-advance(20)
-ok('at half health he calls two Inspectors to help, once', riteMobsNow().filter(m => m.tags.indexOf('shrine_senior') < 0 && /diamond/.test(m.nbt)).length == 5 && said(carol, /calls for assistance/) &&
-  cmds.indexOf('bossbar set trollcraft:shrine_senior value 70') >= 0)
+ok('at half health a Senior calls two Inspectors in diamond to help, once', ordinary(2).length == 5 && ordinary(2).every(m => /diamond/.test(m.nbt)) && said(carol, /calls for assistance/) &&
+  cmds.indexOf('bossbar set trollcraft:shrine_senior_2 value 70') >= 0)
 advance(40)
-ok('... only once', riteMobsNow().length == 6)
+ok('... only once', ordinary(2).length == 5)
 cmds = []
-kill(senior())
+kill(ordinary(2)[4])
+ok('... his helpers carry no potatoes either', !cmds.some(c => /summon minecraft:item/.test(c)))
+cmds = []
+players.forEach(p => { p.msgs = [] })
+kill(seniorOf(2))
 advance(20)
-ok('the Senior Inspector falls: 8 potatoes, his bar goes, and those present are told', cmds.some(c => /summon minecraft:item .*Count:8b/.test(c)) && cmds.indexOf('bossbar remove trollcraft:shrine_senior') >= 0 &&
-  said(carol, /The Senior Inspector falls/))
+ok('a Senior Inspector falls: 8 Potato King\'s Potatoes, marked, named in gold, with a glint; his bar goes; those present are told',
+  cmds.some(c => /run summon minecraft:item .*Count:8b,tag:\{trollcraft:\{kingspotato:1b\}.*Potato King\\'s Potato.*Enchantments/.test(c)) &&
+  cmds.indexOf('bossbar remove trollcraft:shrine_senior_2') >= 0 && said(carol, /The Senior Inspector falls/), cmds.filter(c => /summon minecraft:item|shrine_senior/.test(c)).join('\n'))
+ok('... the other Senior still up keeps his bar', Object.keys(RT().seniors).join() == '1' && cmds.indexOf('bossbar remove trollcraft:shrine_senior_1') < 0)
+// past the list of waves: they keep coming, like the last one
+waveMobs(1).concat(waveMobs(2)).forEach(m => kill(m))
+advance(20)
+ok('the next wave once the last is down: wave 4, in diamond with shields', RT().wave == 3 && ordinary(3).length == 3 && ordinary(3).every(m => /diamond_chestplate/.test(m.nbt)) && !!seniorOf(3))
+waveMobs(3).forEach(m => kill(m))
+players.forEach(p => { p.msgs = [] })
+advance(20)
+ok('... and they keep coming past the list until the altar is full: wave 5, like the last, with its Senior', RT().wave == 4 && ordinary(4).length == 3 &&
+  ordinary(4).filter(m => m.type == 'minecraft:vindicator').every(m => /diamond_chestplate/.test(m.nbt) && /minecraft:shield/.test(m.nbt)) && !!seniorOf(4) && said(carol, /Wave 5: 4 Inspectors/))
+// a rite nobody fights: a wave every 3 minutes, until RITE_ALIVE_MAX (30) are up; then they wait
+seconds(60 * 40)
+const capped = RT().wave
+seconds(60 * 10)
+ok('a rite nobody fights: a wave every 3 minutes until 30 Inspectors are up, then no more', riteMobsNow().length >= 30 && riteMobsNow().length < 35 && RT().wave == capped && capped > 4,
+  riteMobsNow().length + ' up, wave ' + (capped + 1))
+riteMobsNow().forEach(m => kill(m))
 // the potatoes: only the altar takes them
 carol.slots[0] = kings(6); carol.slots[5] = kings(2)
 let ce = { player: carol, item: carol.slots[0], cancelled: false, cancel() { ce.cancelled = true; throw EXIT } }
@@ -686,7 +717,8 @@ clickBlock(bob, 1007, 87, 1999)
 ok('Bob offers 10 at the head: 18 of 16, the altar is full', RT().total == 18 && RT().state == 'full' && RT().offered['bob-uuid'].n == 10)
 ok('... the last bands catch: the Shrine burns to its crown', RT().lit == 4 && cmds.some(c => /run setblock \d+ 1[0-2]\d \d+ minecraft:light\[level=15\]$/.test(c)) && said(carol, /The Shrine burns from its feet to its crown/))
 ok('... the op is told: /shrine awaken', said(admin, /The altar is full\. When you're ready: \/shrine awaken/) && !said(carol, /shrine awaken/))
-ok('... the bar says so, and no more waves come', cmds.some(c => /^bossbar set trollcraft:shrine_rite name .*The Shrine burns to its crown/.test(c)) && (advance(20 * 200), RT().wave == 3))
+const wFull = RT().wave
+ok('... the bar says so, and no more waves come', cmds.some(c => /^bossbar set trollcraft:shrine_rite name .*The Shrine burns to its crown/.test(c)) && (advance(20 * 200), RT().wave == wFull))
 ok('status: the altar is full', /The Ignition Rite: the altar is full \(18 of 16\)\. \/shrine awaken\./.test(cmd('status', admin)[7]), cmd('status', admin)[7])
 // the Awakening ends the rite: leftovers crumble, the Inspectors go
 carol.slots[3] = kings(3)
@@ -698,7 +730,7 @@ ok('/shrine awaken (no force needed now): the leftover potatoes crumble, in pock
 ok('... the rite is done: its Inspectors go, its bars go', RT().state == 'done' && riteMobsNow().length == 0 && cmds.indexOf('bossbar remove trollcraft:shrine_rite') >= 0 && !riteOnNow())
 ok('... no knockouts once it\'s done', !dies(carol, 'mob'))
 advance(1000)
-ok('the Awakening finishes after the rite (the shares by potatoes offered are checked with a Pool below)', S().awake.state == 'done' && S().rite.offered['bob-uuid'].n == 10)
+ok('the Awakening finishes after the rite', S().awake.state == 'done' && S().rite.offered['bob-uuid'].n == 10)
 cmd('reset confirm', admin); advance(40)
 ok('the reset forgets the rite', RT().state == 'none' && RT().total == 0)
 admin.creative = false
@@ -858,7 +890,7 @@ advance(150)
 ok('... not before then', RT().state == 'none')
 advance(15)
 ok('... then the Ignition Rite begins by itself', RT().state == 'running' && !S().rise.riteAt && logs.some(l => /The Ignition Rite began by itself, 8 seconds after the rise/.test(l)) &&
-  said(carol, /Take the Potato King's Potatoes from the Inspectors/))
+  said(carol, /Take the Potato King's Potatoes from the Senior Inspectors/))
 cmd('reset confirm', admin); advance(40)
 cmd('rise force', admin); riseUntilRisen(); advance(200)
 ok('outside the night\'s event (a rise forced for a test): it never begins by itself', !global.Shrine.eventOn() && RT().state == 'none' && !S().rise.riteAt)

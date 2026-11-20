@@ -94,25 +94,29 @@ const INSPECTOR = { name: 'Inspector', color: 'gold', armour: 'iron', voice: 'Un
 
 // --- Stage 4: the Ignition Rite ---
 const POTATOES_PER_PLAYER = 8             // the altar needs this many Potato King's Potatoes per player present
-// The waves: per = Inspectors per player present (at least min, at most WAVE_MAX), their armour, shields on the
-// vindicators, and how many potatoes each one drops. The last wave brings the Senior Inspector.
+// The waves (owner decisions at the rehearsal, 2026-11-19): they keep coming until the altar is full, and every one is
+// led by a Senior Inspector, the only one who carries the Potato King's Potatoes (SENIOR.potatoes; the ordinary
+// Inspectors drop nothing). per = ordinary Inspectors per player present (at least min, at most WAVE_MAX), their
+// armour, and shields on the vindicators. Wave n uses WAVES[n], and every wave after the list uses its last entry.
 const WAVES = [
-  { per: 1, min: 3, armour: 'iron', potatoes: 2 },
-  { per: 1.5, min: 3, armour: 'iron', shields: true, potatoes: 2 },
-  { per: 1, min: 3, armour: 'diamond', potatoes: 2 },
-  { per: 1, min: 3, armour: 'diamond', potatoes: 2, senior: true },
+  { per: 1, min: 3, armour: 'iron' },
+  { per: 1.5, min: 3, armour: 'iron', shields: true },
+  { per: 1, min: 3, armour: 'diamond' },
+  { per: 1.5, min: 3, armour: 'diamond', shields: true },
 ]
 const WAVE_MAX = 12
+const RITE_ALIVE_MAX = 30                 // the next wave waits while this many of the rite's Inspectors are still up
 const WAVE_RING = [30, 45]                // they appear this many blocks from the Shrine's centre, on the ground
 const SURFACE_SCAN = [40, 20]             // Inspectors' ground: looked for from 40 above the site's height to 20 below
 const SPAWN_TRIES = 12                    // spots tried for each Inspector (not in water, a cave or a tree) before falling back
 const NEXT_WAVE = { share: 0.75, minutes: 3 }   // the next wave: once this share of the last is down, or after this long
-const SENIOR = { name: 'Senior Inspector', health: 150, potatoes: 8, helpers: 2 }   // helpers: called at half health
+// One leads every wave. potatoes: what he drops (a fixed 8, owner decision); helpers: called at half health, once.
+const SENIOR = { name: 'Senior Inspector', health: 150, potatoes: 8, helpers: 2 }
 const KINGS_POTATO = { name: 'Potato King\'s Potato', lore: 'Technoblade\'s own. Hoarded by the Inspectors.' }
 const BANDS = 4                           // the statue lights up in this many bands, one per quarter of the bar
 const LIGHT_SPACING = 4                   // in a lit band, a light block every this many blocks (where there's air)
 const KNOCKOUT_RESISTANCE_SECONDS = 3     // after a knockout at the Shrine
-const RITE_BOSSBAR = 'trollcraft:shrine_rite', SENIOR_BOSSBAR = 'trollcraft:shrine_senior'
+const RITE_BOSSBAR = 'trollcraft:shrine_rite', SENIOR_BOSSBAR = 'trollcraft:shrine_senior'   // each Senior's bar: SENIOR_BOSSBAR_<wave>
 
 // --- Stage 5: the Awakening ---
 // The altar: the lectern in the statue (Shrine-local offset from the corner, as in technoblade_statue.schem), with
@@ -200,9 +204,9 @@ let data = null
 function freshFires() { return { state: 'none', sites: [], built: [false, false, false], lit: [false, false, false], litAt: [0, 0, 0], ambushed: [false, false, false], firstLitAt: 0 } }
 // D.rite: { state: 'none' | 'running' | 'paused' | 'full' | 'done', offered: uuid -> { name, n } (potatoes offered at the
 // altar), total, need, present (players counted at the start), wave (the last one sent, -1 none), waveAt, waveSize,
-// lit (bands lit), seniorUp, seniorCalled }.
+// lit (bands lit), seniors: wave -> { called } for each wave whose Senior Inspector is up (his bar shows) }.
 function freshRite(offered) {
-  return { state: 'none', offered: offered || {}, total: 0, need: 0, present: 0, wave: -1, waveAt: 0, waveSize: 0, lit: 0, seniorUp: false, seniorCalled: false }
+  return { state: 'none', offered: offered || {}, total: 0, need: 0, present: 0, wave: -1, waveAt: 0, waveSize: 0, lit: 0, seniors: {} }
 }
 function db() {
   if (data) return data
@@ -223,6 +227,7 @@ function db() {
   if (!data.awake) data.awake = { state: 'none', step: 0, added: 0 }      // state: none, running or done; added: the Drops it put in
   if (!data.regalia) data.regalia = { open: false, progress: {} }          // progress: relic id -> { have, by: { uuid: { name, n } } }
   if (!data.rite || !data.rite.state) data.rite = freshRite((data.rite && data.rite.offered) || {})
+  if (!data.rite.seniors) data.rite.seniors = {}                           // saved before every wave had a Senior
   if (!(data.stairs >= 0)) data.stairs = 0                                 // the steps to the altar laid (0: none)
   if (data.start === undefined) data.start = null                          // the start: { dim, x, y, z }
   if (!data.event) data.event = { on: false, at: 0 }                       // the night's event: knockouts for everyone
@@ -1080,34 +1085,36 @@ function riteOn() { const s = db().rite.state; return s == 'running' || s == 'fu
 function waveSize(w, n) { return Math.min(WAVE_MAX, Math.max(w.min, Math.ceil(w.per * n))) }
 function ringSpot(lv, st, rMin, rMax, a) { const m = centreOf(st); return groundSpot(lv, m.x, m.z, st.y, rMin, rMax, a) }
 function riteTold(server, text, color) { presentAt(server, db().rise.site).forEach(p => narrate(p, text, color)) }
+function waveDef(i) { return WAVES[Math.min(i, WAVES.length - 1)] }
+function seniorBar(i) { return SENIOR_BOSSBAR + '_' + i }
+// Wave i: its ordinary Inspectors (they drop nothing) and the Senior Inspector at their head, with his own bar.
 function spawnWave(server, i) {
-  const D = db(), R = D.rite, st = D.rise.site, w = WAVES[i], lv = levelByDim(server, st.dim)
+  const D = db(), R = D.rite, st = D.rise.site, w = waveDef(i), lv = levelByDim(server, st.dim)
   const n = waveSize(w, R.present)
   let made = 0
   for (let k = 0; k < n; k++) {
     let q = ringSpot(lv, st, WAVE_RING[0], WAVE_RING[1], k * 2 * 3.14159265 / n + Math.random() * 0.5)
     if (summonInspector(server, st.dim, q.x, q.y, q.z, k % 3 == 2 ? 'pillager' : 'vindicator', 'shrine_rite',
-      { armour: w.armour, shield: w.shields, tags: ['shrine_wave_' + i, 'shrine_pot_' + w.potatoes] })) made++
+      { armour: w.armour, shield: w.shields, tags: ['shrine_wave_' + i] })) made++
   }
-  if (w.senior) {
-    let q = ringSpot(lv, st, WAVE_RING[0], WAVE_RING[1], Math.random() * 2 * 3.14159265)
-    if (summonInspector(server, st.dim, q.x, q.y, q.z, 'vindicator', 'shrine_rite',
-      { armour: 'diamond', axe: 'minecraft:netherite_axe', name: SENIOR.name, health: SENIOR.health, tags: ['shrine_wave_' + i, 'shrine_senior', 'shrine_pot_' + SENIOR.potatoes] })) {
-      made++
-      R.seniorUp = true
-      run(server, 'effect give @e[tag=shrine_senior] minecraft:resistance infinite 0 true')
-      run(server, 'bossbar add ' + SENIOR_BOSSBAR + ' ' + JSON.stringify({ text: SENIOR.name, color: 'gold', bold: true }))
-      run(server, 'bossbar set ' + SENIOR_BOSSBAR + ' color yellow')
-      run(server, 'bossbar set ' + SENIOR_BOSSBAR + ' max ' + SENIOR.health)
-      run(server, 'bossbar set ' + SENIOR_BOSSBAR + ' value ' + SENIOR.health)
-      run(server, 'bossbar set ' + SENIOR_BOSSBAR + ' players @a')
-    }
+  let q = ringSpot(lv, st, WAVE_RING[0], WAVE_RING[1], Math.random() * 2 * 3.14159265)
+  if (summonInspector(server, st.dim, q.x, q.y, q.z, 'vindicator', 'shrine_rite',
+    { armour: 'diamond', axe: 'minecraft:netherite_axe', name: SENIOR.name, health: SENIOR.health, tags: ['shrine_wave_' + i, 'shrine_senior', 'shrine_pot_' + SENIOR.potatoes] })) {
+    made++
+    R.seniors[i] = { called: false }
+    let bar = seniorBar(i)
+    run(server, 'effect give @e[tag=shrine_senior] minecraft:resistance infinite 0 true')
+    run(server, 'bossbar add ' + bar + ' ' + JSON.stringify({ text: SENIOR.name + ' (wave ' + (i + 1) + ')', color: 'gold', bold: true }))
+    run(server, 'bossbar set ' + bar + ' color yellow')
+    run(server, 'bossbar set ' + bar + ' max ' + SENIOR.health)
+    run(server, 'bossbar set ' + bar + ' value ' + SENIOR.health)
+    run(server, 'bossbar set ' + bar + ' players @a')
   }
   R.wave = i
   R.waveAt = Date.now()
   R.waveSize = made
   save()
-  riteTold(server, 'Wave ' + (i + 1) + ' of ' + WAVES.length + ': ' + made + ' Inspectors close in on the Shrine' + (w.senior ? ', a Senior Inspector at their head.' : '.'), 'gold')
+  riteTold(server, 'Wave ' + (i + 1) + ': ' + made + ' Inspectors close in on the Shrine, a Senior Inspector at their head.', 'gold')
   console.info('[Shrine] Rite wave ' + (i + 1) + ': ' + made + ' Inspectors')
 }
 function riteMobs(server) {
@@ -1120,7 +1127,10 @@ function riteMobs(server) {
     try { return e.isAlive() && !e.isRemoved() } catch (err) { return true }
   })
 }
-function hasTag(e, t) { try { return String(e.getTags()).indexOf(t) >= 0 } catch (err) { return false } }
+// An exact tag (shrine_wave_1 isn't shrine_wave_10). getTags() reads as "[a, b, c]".
+function hasTag(e, t) {
+  try { return String(e.getTags()).replace(/^\[|\]$/g, '').split(', ').indexOf(t) >= 0 } catch (err) { return false }
+}
 function riteBar(server) {
   const R = db().rite
   const name = R.state == 'full' ? [{ text: 'The Shrine burns to its crown', color: 'gold', bold: true }] :
@@ -1132,12 +1142,18 @@ function riteBar(server) {
   run(server, 'bossbar set ' + RITE_BOSSBAR + ' value ' + Math.min(R.need, R.total))
   run(server, 'bossbar set ' + RITE_BOSSBAR + ' players @a')
 }
+// Takes down the rite's bar and every Senior's (the ones up are forgotten: they're taken away with the Inspectors).
 function riteBarsOff(server) {
+  const R = db().rite
   run(server, 'bossbar remove ' + RITE_BOSSBAR)
-  run(server, 'bossbar remove ' + SENIOR_BOSSBAR)
+  run(server, 'bossbar remove ' + SENIOR_BOSSBAR)          // the single bar, from before every wave had a Senior
+  Object.keys(R.seniors || {}).forEach(i => run(server, 'bossbar remove ' + seniorBar(i)))
+  R.seniors = {}
+  save()
 }
-// Once a second during the rite: Inspectors go after the pilgrims at the Shrine, the Senior Inspector's bar and his
-// call for help, and the next wave (once NEXT_WAVE.share of the last is down, or after NEXT_WAVE.minutes).
+// Once a second during the rite: Inspectors go after the pilgrims at the Shrine, each Senior Inspector's bar and his
+// call for help, and the next wave (once NEXT_WAVE.share of the last is down, or after NEXT_WAVE.minutes, while
+// fewer than RITE_ALIVE_MAX are up), until the altar is full.
 function startRiteLoop(server) {
   const token = (global.__shrineRite = (global.__shrineRite || 0) + 1)
   const step = () => {
@@ -1159,31 +1175,33 @@ function riteTick(server) {
     pilgrims.forEach(p => { if (flat(pos(p), q) < flat(pos(best), q)) best = p })
     try { m.setTarget(best) } catch (e) { }
   })
-  // the Senior Inspector
-  const senior = alive.filter(m => hasTag(m, 'shrine_senior'))[0]
-  if (senior) {
+  // the Senior Inspectors, each with his own bar (two can be up at once)
+  Object.keys(R.seniors).forEach(i => {
+    let S = R.seniors[i], senior = alive.filter(m => hasTag(m, 'shrine_senior') && hasTag(m, 'shrine_wave_' + i))[0]
+    if (!senior) {
+      delete R.seniors[i]
+      save()
+      run(server, 'bossbar remove ' + seniorBar(i))
+      riteTold(server, 'The Senior Inspector falls. His clipboard does not.', 'gold')
+      return
+    }
     let hp = SENIOR.health
     try { hp = Number(senior.getHealth()) } catch (e) { }
-    run(server, 'bossbar set ' + SENIOR_BOSSBAR + ' value ' + Math.max(0, Math.round(hp)))
-    if (!R.seniorCalled && hp <= SENIOR.health / 2) {
-      R.seniorCalled = true
+    run(server, 'bossbar set ' + seniorBar(i) + ' value ' + Math.max(0, Math.round(hp)))
+    if (!S.called && hp <= SENIOR.health / 2) {
+      S.called = true
       save()
       let lv = levelByDim(server, st.dim), q = pos(senior)
       for (let k = 0; k < SENIOR.helpers; k++) {
         let a = k * 3.14159265 + Math.random(), x = Math.floor(q.x + Math.cos(a) * 4), z = Math.floor(q.z + Math.sin(a) * 4)
         summonInspector(server, st.dim, x + 0.5, standY(lv, x, z, Math.floor(q.y)), z + 0.5, 'vindicator', 'shrine_rite',
-          { armour: 'diamond', tags: ['shrine_wave_' + R.wave, 'shrine_pot_' + WAVES[WAVES.length - 1].potatoes] })
+          { armour: 'diamond', tags: ['shrine_wave_' + i] })
       }
       riteTold(server, 'The Senior Inspector calls for assistance.', 'gold')
     }
-  } else if (R.seniorUp) {
-    R.seniorUp = false
-    save()
-    run(server, 'bossbar remove ' + SENIOR_BOSSBAR)
-    riteTold(server, 'The Senior Inspector falls. His clipboard does not.', 'gold')
-  }
-  // the next wave
-  if (R.state == 'running' && R.wave < WAVES.length - 1) {
+  })
+  // the next wave, until the altar is full
+  if (R.state == 'running' && alive.length < RITE_ALIVE_MAX) {
     let up = alive.filter(m => hasTag(m, 'shrine_wave_' + R.wave)).length
     if (R.waveSize - up >= R.waveSize * NEXT_WAVE.share || Date.now() - R.waveAt >= NEXT_WAVE.minutes * 60000) spawnWave(server, R.wave + 1)
   }
@@ -1249,7 +1267,7 @@ function startRite(server) {
   const D = db(), R = D.rite
   if (D.rise.state != 'risen') return 'The Shrine hasn\'t risen yet (/shrine rise).'
   if (D.awake.state != 'none') return 'The Shrine has already awakened.'
-  if (R.state == 'running') return 'The rite is already under way (wave ' + (R.wave + 1) + ' of ' + WAVES.length + ').'
+  if (R.state == 'running') return 'The rite is already under way (wave ' + (R.wave + 1) + ').'
   if (R.state == 'full') return 'The altar is already full: /shrine awaken.'
   const why = otherBusy()
   if (why) return why
@@ -1268,7 +1286,7 @@ function startRite(server) {
   D.rite.need = n * POTATOES_PER_PLAYER
   save()
   riteTold(server, 'Figures gather on the land around the Shrine. They are carrying something that is not theirs.', 'dark_red')
-  riteTold(server, 'Take the Potato King\'s Potatoes from the Inspectors and offer them at the altar: ' + D.rite.need + ' in all.', 'gold')
+  riteTold(server, 'Take the Potato King\'s Potatoes from the Senior Inspectors and offer them at the altar: ' + D.rite.need + ' in all.', 'gold')
   spawnWave(server, 0)
   riteBar(server)
   startRiteLoop(server)
@@ -1312,7 +1330,6 @@ function pauseRite(server) {
   if (R.state != 'running') return false
   global.__shrineRite = (global.__shrineRite || 0) + 1
   R.state = 'paused'
-  R.seniorUp = false
   save()
   clearInspectors(server, 'shrine_rite')
   riteBarsOff(server)
@@ -1717,7 +1734,8 @@ function statusLines(server) {
   const RT = D.rite
   if (RT.state == 'none') out.push(D.rise.riteAt ? 'The Ignition Rite: begins by itself in ' + Math.max(0, Math.ceil((D.rise.riteAt - Date.now()) / 1000)) + 's (/shrine stop holds it).' :
     'The Ignition Rite: not yet. During the event it begins by itself ' + AUTO_RITE_SECONDS + ' seconds after the rise; /shrine rite starts it by hand.')
-  else if (RT.state == 'running') out.push('The Ignition Rite: wave ' + (RT.wave + 1) + ' of ' + WAVES.length + '; ' + RT.total + ' of ' + RT.need + ' potatoes offered; ' + RT.lit + ' of ' + BANDS + ' bands lit.')
+  else if (RT.state == 'running') out.push('The Ignition Rite: wave ' + (RT.wave + 1) + ' (' + Object.keys(RT.seniors || {}).length + ' Senior Inspectors up); ' + RT.total + ' of ' + RT.need +
+    ' potatoes offered; ' + RT.lit + ' of ' + BANDS + ' bands lit.')
   else if (RT.state == 'paused') out.push('The Ignition Rite: paused at wave ' + (RT.wave + 1) + '; ' + RT.total + ' of ' + RT.need + ' potatoes (/shrine rite carries on).')
   else if (RT.state == 'full') out.push('The Ignition Rite: the altar is full (' + RT.total + ' of ' + RT.need + '). /shrine awaken.')
   else out.push('The Ignition Rite: done (' + RT.total + ' potatoes offered).')
@@ -1926,7 +1944,8 @@ ServerEvents.commandRegistry(event => {
       const why = startRite(ctx.source.server)
       if (why) return reply(ctx, why, true)
       return reply(ctx, resuming ? 'The rite carries on: wave ' + (db().rite.wave + 1) + ' comes again.' :
-        'The Ignition Rite begins: ' + db().rite.present + ' present, so the altar needs ' + db().rite.need + ' Potato King\'s Potatoes. ' + WAVES.length + ' waves, the last with the Senior Inspector.')
+        'The Ignition Rite begins: ' + db().rite.present + ' present, so the altar needs ' + db().rite.need + ' Potato King\'s Potatoes. Waves come until it\'s full, each led by a Senior Inspector who drops ' +
+        SENIOR.potatoes + ', so at least ' + Math.ceil(db().rite.need / SENIOR.potatoes) + ' must fall.')
     })))
     .then(Commands.literal('need').then(Commands.argument('n', Arguments.INTEGER.create(event)).executes(safe(ctx => {
       const R = db().rite, n = intArg(ctx, 'n')

@@ -282,8 +282,8 @@ Technoblade's Potato War, revived. **The Pool decides what the server can make; 
        - **The way up:** the altar is 22 blocks up, so invisible barrier steps, marked with red dust, climb to it from the east (the owner's idea, 2026-11-14, after nobody in survival could reach the lectern at the test rite).
     5. **The Ignition Rite** (about 20 minutes, at the Shrine).
        - **It begins by itself** 8 seconds after the Shrine has risen: something stirs on the land around it, and the first wave comes (owner decision 2026-11-19).
-       - **The waves:** Inspectors close in on the Shrine from the land around it, escalating from iron-tier to diamond-tier. The last wave brings a **Senior Inspector** mini-boss, who drops the most.
-       - **The potatoes:** every Inspector carries **Potato King's Potatoes**, Techno's own potatoes, which the Inspectors had been hoarding.
+       - **The waves:** Inspectors close in on the Shrine from the land around it, escalating from iron-tier to diamond-tier. Every wave is led by a **Senior Inspector** mini-boss, and the waves keep coming until the altar is full (owner decision 2026-11-19).
+       - **The potatoes:** only the Senior Inspectors carry **Potato King's Potatoes**, 8 each: Techno's own potatoes, which the Inspectors had been hoarding (owner decision 2026-11-19, so they're harder won).
        - **The offering:** offered at the altar, each potato fills the rite's bar and lights the Shrine stage by stage. It needs **8 potatoes per player present**.
        - **Knockouts, not deaths** (owner decision 2026-11-14): like the Gladiator Arena, lethal damage at the Shrine during the rite heals the player and sets them down at its edge. Nothing drops.
        - **The King's Potatoes are only for the altar:** they can't be eaten, planted or tithed, and any left over crumble at the Awakening (owner decision 2026-11-14: no keepsake). The Awakening waits until the altar is full.

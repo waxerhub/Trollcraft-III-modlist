@@ -175,32 +175,35 @@ The chunks are force-loaded while it builds, as the Gladiator Arena does, and re
 - **The rite's boss bar,** for everyone: "The Ignition Rite: 8 / 16 potatoes".
 - **The Purge and the arena wait** while the rite is on (and while the Shrine rises), and the rite won't start while either is on.
 
-**The waves (defaults to tune at the rehearsal, `WAVES`):**
+**The waves** (owner decisions at the rehearsal, 2026-11-19, after the altar filled in under 2 minutes):
+- **They keep coming until the altar is full.** There's no last wave.
+- **Every wave is led by a Senior Inspector,** and only the Seniors carry the Potato King's Potatoes: **8 each**. The ordinary Inspectors and the Seniors' helpers drop nothing.
+- **So the altar needs one Senior to fall for each player present** (8 potatoes per player, 8 per Senior): 2 players, 2 Seniors; 9 players, 9.
 
-| Wave | Inspectors | Gear | Potatoes each |
-|---|---|---|---|
-| 1 | 1 per player present (at least 3) | iron | 2 |
-| 2 | 1½ per player (at least 3) | iron; the vindicators carry shields | 2 |
-| 3 | 1 per player (at least 3) | diamond | 2 |
-| 4 | 1 per player (at least 3), plus the **Senior Inspector** | diamond | 2 (the Senior Inspector: 8) |
+| Wave | Ordinary Inspectors | Gear |
+|---|---|---|
+| 1 | 1 per player present (at least 3) | iron |
+| 2 | 1½ per player (at least 3) | iron; the vindicators carry shields |
+| 3 | 1 per player (at least 3) | diamond |
+| 4 and every wave after | 1½ per player (at least 3) | diamond; the vindicators carry shields |
 
-At most 12 Inspectors in a wave (`WAVE_MAX`). One in three is a pillager with a crossbow; the rest are vindicators with axes.
-- **The next wave** comes once three-quarters of the last one is down, or after 3 minutes (`NEXT_WAVE`).
-- **Enough, just about:** all four waves drop about 9 potatoes per player plus 8, so the server has to clear nearly every wave.
+Each wave also has its Senior Inspector. At most 12 ordinary Inspectors in a wave (`WAVE_MAX`). One in three is a pillager with a crossbow; the rest are vindicators with axes. The list is `WAVES`, and every wave after it uses its last entry.
+- **The next wave** comes once three-quarters of the last one is down (its Senior counts as one of them), or after 3 minutes (`NEXT_WAVE`). So two Seniors can be up at once.
+- **A rite nobody fights** stops growing: no new wave comes while 30 of the rite's Inspectors are up (`RITE_ALIVE_MAX`).
 - **The Inspectors:**
   - vindicators and pillagers named **Inspector** in gold. Their armour protects them, though illagers don't show it;
   - they see players up to 64 blocks away, and once a second any without a target is sent after the nearest pilgrim at the Shrine;
   - they don't despawn, and every one left is removed at the Awakening;
-  - they drop nothing but their potatoes.
-- **The Senior Inspector,** a mini-boss:
-  - 150 health, diamond armour, a netherite axe, Resistance I, and his name in bold;
-  - his own boss bar shows his health;
-  - at half health he calls two Inspectors in diamond to help, once;
-  - when he falls: "The Senior Inspector falls. His clipboard does not."
+  - they drop nothing.
+- **The Senior Inspectors,** mini-bosses, one per wave:
+  - 150 health, diamond armour, a netherite axe, Resistance I, and the name in bold;
+  - each has his own boss bar showing his health, "Senior Inspector (wave 3)", so two up at once show two bars;
+  - at half health each calls two Inspectors in diamond to help, once;
+  - when one falls, he drops 8 Potato King's Potatoes, and those present hear "The Senior Inspector falls. His clipboard does not."
 
 **The Potato King's Potatoes:**
 - **What they are:** potatoes named *Potato King's Potato* in gold, with a glint and the lore "Technoblade's own. Hoarded by the Inspectors."
-  - They're dropped where an Inspector of the rite dies (2 each; the Senior Inspector 8).
+  - They're dropped where a Senior Inspector dies, 8 each (`SENIOR.potatoes`).
   - They're marked (`trollcraft.kingspotato`), so the script knows them.
 - **Only for the altar:**
   - they can't be eaten or planted ("Only the Shrine's altar will take these");
@@ -219,7 +222,7 @@ At most 12 Inspectors in a wave (`WAVE_MAX`). One in three is a pillager with a 
   - Ops are told "/shrine awaken".
 - **The Awakening waits for a full altar:** `/shrine awaken` refuses until then, and `/shrine awaken force` goes ahead anyway.
 
-**Pausing:** `/shrine stop` during the rite stops the waves and takes the Inspectors away; the altar keeps its count. `/shrine rite` carries on, and the wave that was cleared away comes again.
+**Pausing:** `/shrine stop` during the rite stops the waves and takes the Inspectors away; the altar keeps its count. `/shrine rite` carries on, and the wave that was cleared away comes again, with its Senior. A Senior from an earlier wave who was still up is gone with his potatoes.
 
 **Knockouts instead of deaths** (owner decision), like the Gladiator Arena:
 - **When:** lethal damage to a player within 64 blocks of the Shrine, from the start of the rite until the Awakening. (On the night, the event's knockouts cover everyone else too.)
@@ -380,6 +383,7 @@ The deliveries, Shrine raids and rewards are Act II's work and get their own spe
 9. **The rite begins by itself** after the rise (2026-11-19).
 10. **The Signal and the Summons** as drafted (2026-11-19).
 11. **The Awakening's Drops are credited to nobody** (2026-11-19, at the rehearsal): "I would rather this blood not be credited to any player".
+12. **The rite's waves** (2026-11-19, at the rehearsal): "I don't like how easily the event potatoes are dropped". Waves come until the altar is full, each led by a Senior Inspector, and only the Seniors drop the potatoes, a fixed 8 each; the next wave comes as before (three-quarters down, or 3 minutes).
 
 ## Still open
 - **To tune at the rehearsal:**
@@ -497,7 +501,7 @@ The whole night with two players in survival, leelinda and Sipheon, every stage 
 - **Stage 4, beginning by itself:** the rite began 7.9 seconds after the rise ("began by itself"). 2 present, 16 potatoes. Waves 1 to 3 came about 30 seconds apart (3 Inspectors each, the minimum), Sipheon was knocked out four times and leelinda once, waking at the Shrine's edge. The altar was full 1 minute 39 seconds after the rite began, during wave 3.
 - **Stage 5:** the Awakening ran its 46 seconds. The Pool went from 66,000 to 230,000 (164,000 Drops, all credited to leelinda, who offered all 16 potatoes; the owner then decided the Drops go to nobody). The seals broke from Tier 2 to 4 "by the Shrine", the Nether opened, the event ended, and the recipe reload had 0 failures.
 - **Found and fixed the same night:** the Drops were added before the seals broke, so for a moment the Pool saw Tiers 3 and 4 as ready and told everyone to break the third seal with `/bloodpool vote`, just before the Shrine opened both. The seals now break first, then the Drops land (a check in the tests).
-- **To tune** (for the owner): with two players the rite lasted under 2 minutes, not the 20 planned. The waves are at their minimum of 3 Inspectors, and 16 potatoes take 8 kills.
+- **To tune** (for the owner): with two players the rite lasted under 2 minutes, not the 20 planned. The waves are at their minimum of 3 Inspectors, and 16 potatoes take 8 kills. **Changed the same night** (owner decisions): waves until the altar is full, a Senior Inspector leading each, and only the Seniors drop the potatoes, 8 each (Stage 4 above). Not yet run in game.
 
 ## What couldn't be verified yet
 - **Stages 0–1:**
@@ -505,6 +509,7 @@ The whole night with two players in survival, leelinda and Sipheon, every stage 
   - the Signal and the Summons reaching a player who joins later (mock-tested; nobody joined late at the rehearsal).
 - **The rite beginning by itself:** `/shrine stop` and a `/reload` while it's due (mock-tested; the start itself was seen at the rehearsal).
 - **The seals before the Drops** (the rehearsal's fix): mock-tested, not yet run in game.
+- **The new waves** (2026-11-19, mock-tested): a Senior Inspector in every wave, only the Seniors dropping potatoes, two Seniors' bars at once, and waves past the fourth.
 - **The night's event:**
   - waking beside a brazier (only the start and the Shrine's edge were seen live; the brazier is mock-tested);
   - the teleport to the start with several players, and with players in another dimension;

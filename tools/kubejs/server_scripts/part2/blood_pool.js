@@ -1784,7 +1784,19 @@ ServerEvents.commandRegistry(event => {
       reply(ctx, 'The Blood Pool\'s greatest contributors:')
       list.forEach((u, i) => reply(ctx, '  ' + (i + 1) + '. ' + C[u].name + ': ' + fmt(C[u].drops) + ' Drops' + (C[u].coins ? ' (' + C[u].coins + ' coins)' : '')))
       return 1
-    })))
+    }))
+      // Op only, for the test server between rehearsals: empties the contributors list. The Drops, the tiers and the
+      // Potato War stay as they are. Needs the word confirm.
+      .then(Commands.literal('clear').requires(op)
+        .executes(safe(ctx => reply(ctx, 'This empties the contributors list (/bloodpool top) for everyone. The Drops, the tiers and the Potato War stay. ' +
+          'To do it: /bloodpool top clear confirm', true)))
+        .then(Commands.literal('confirm').executes(safe(ctx => {
+          const D = db(), n = Object.keys(D.contributors).length
+          D.contributors = {}
+          save()
+          console.info('[BloodPool] The contributors list was cleared by ' + who(ctx) + ' (' + n + ' players)')
+          return reply(ctx, 'The contributors list is empty (' + n + ' player' + (n == 1 ? '' : 's') + ' cleared). The Drops and the tiers are as they were.')
+        })))))
     .then(Commands.literal('tiers').executes(safe(ctx => {
       const D = db()
       TIERS.forEach(T => reply(ctx, 'Tier ' + T.tier + ' · ' + T.name + ' · ' + fmt(T.drops) + ' Drops · ' + contents(T) + ' · ' +

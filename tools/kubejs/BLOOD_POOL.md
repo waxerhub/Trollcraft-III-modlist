@@ -382,6 +382,7 @@ floor        5x5 chiseled nether bricks
 | `/bloodpool unlock` | op | Open the next tier at once (it must be ready), without waiting for votes; announces and reloads |
 | `/bloodpool unlock force` | op | Open the next tier even if the Pool isn't there |
 | `/bloodpool settier <0-12>` | op | Set the open tier directly, quietly (testing, or undoing a mistake); reloads |
+| `/bloodpool top clear confirm` | op | Empty the contributors list (`/bloodpool top`). The Drops, the tiers and the Potato War stay. For the test server between rehearsals; without `confirm` it only explains |
 | `/bloodpool add <drops>`, `/bloodpool set <drops>` | op | Adjust the Pool |
 | `/dimensiongates` | op | What's open; re-applies the Nether switch |
 | `/bloodtank build <x y z>`, `/bloodtank add <x y z>` | op | Build a tank, or register a hand-built one |

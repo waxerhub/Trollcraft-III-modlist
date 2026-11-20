@@ -1204,6 +1204,24 @@ ok('the next reload doesn\'t run it again', !W.logs.slice(n0).some(l => /Audit \
   W.persistent.blood_pool = saved; reload()
 }
 
+// ---------- /bloodpool top clear confirm: the contributors list emptied, for the test server between rehearsals ----------
+{
+  const saved = W.persistent.blood_pool
+  const before = PDB(), n = Object.keys(before.contributors).length
+  ok('(there are contributors to clear)', n > 0, n)
+  cmd('bloodpool top clear', ana)
+  ok('/bloodpool top clear is op only', lastReply() == 'DENIED')
+  cmd('bloodpool top clear', admin)
+  ok('/bloodpool top clear alone only explains (it needs confirm)', /bloodpool top clear confirm/.test(flat(lastReply())) && Object.keys(PDB().contributors).length == n)
+  cmd('bloodpool top clear confirm', admin)
+  ok('/bloodpool top clear confirm: the list is empty, the Drops and the tier as they were', Object.keys(PDB().contributors).length == 0 &&
+    new RegExp('\\(' + n + ' players? cleared\\)').test(flat(lastReply())) && PDB().drops == before.drops && PDB().tier == before.tier &&
+    JSON.stringify(PDB().standing) == JSON.stringify(before.standing), flat(lastReply()))
+  cmd('bloodpool top', ana)
+  ok('... and /bloodpool top says nobody has given blood yet', /Nobody has given blood yet/.test(flat(lastReply())))
+  W.persistent.blood_pool = saved; reload()
+}
+
 // The gate check test above logs one error on purpose.
 const stray = errors().filter(l => l.indexOf('Gate check: these recipes ignore their rank check: thermal:machine_frame') < 0)
 ok('no other errors logged in the Potato War tests', stray.length == 0, stray.join(' | '))

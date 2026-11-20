@@ -252,7 +252,7 @@ const ambusher = mob('minecraft:vindicator', 'MONSTER', 1005.5, 64, 2005.5, { ta
 chunksAt = tick + 30                                  // the site's chunks take a moment to load
 cmds = []
 r = cmd('rise', admin)
-ok('/shrine rise before the braziers\' beam is up: refused, the braziers come first (force goes ahead)', /The beam isn't up yet/.test(r[0]) && /\/shrine rise force raises it anyway/.test(r[0]) && S().rise.state == 'none' && placed().length == 0, r[0])
+ok('/shrine rise before the Awakening: refused, the Shrine rises last (force goes ahead)', /The Shrine rises last/.test(r[0]) && /\/shrine rise force raises it anyway/.test(r[0]) && S().rise.state == 'none' && placed().length == 0, r[0])
 r = cmd('rise force', admin)
 ok('/shrine rise: 64 layers in about 29 seconds', /64 layers in about 29 seconds\./.test(r[0]) && S().rise.state == 'rising', r[0])
 ok('... the site is force-loaded', cmds.some(c => c == 'execute in minecraft:overworld run forceload add 979 1979 1020 2021'), cmds.join('\n'))
@@ -578,7 +578,9 @@ ok('/shrine braziers while they burn: refused', /already burn/.test(cmd('brazier
 ok('(the Purge, asked why it can\'t start, names the Shrine: the Shrine mustn\'t take that for a Purge running)', /The Shrine Awakens is on/.test(global.Purge.busy()))
 cmds = []
 r = cmd('rise', admin)
-ok('/shrine rise with the beam up and the event on: no force needed, and the Shrine doesn\'t wait on itself', /64 layers in about 29 seconds/.test(r[0]), r[0])
+ok('/shrine rise with the beam up but no Awakening yet: refused (the Shrine rises last)', /The Shrine rises last/.test(r[0]) && S().rise.state == 'none', r[0])
+r = cmd('rise force', admin)
+ok('/shrine rise force during the event: it rises, and the Shrine doesn\'t wait on itself (the Purge names it)', /64 layers in about 29 seconds/.test(r[0]), r[0])
 ok('... during the event the sky turns to night and a storm rolls in', cmds.indexOf('time set midnight') >= 0 && cmds.indexOf('weather thunder 72000') >= 0 && S().event.sky)
 advance(25)
 ok('when the rise begins, the beam comes out and its ground is put back', !S().beam.up && world['1000,62,2000'] == 'minecraft:grass_block' && world['999,61,1999'] == 'minecraft:grass_block')
@@ -636,7 +638,7 @@ const dies = (p, type) => { const ev = { entity: p, server, source: { getMsgId: 
   ;(handlers.death || []).forEach(h => { try { h(ev) } catch (e) { if (e !== EXIT) throw e } }); return ev.cancelled }
 const RT = () => S().rite
 const riteOnNow = () => global.Shrine.riteOn()
-ok('/shrine rite before the Shrine has risen: refused', /hasn't risen yet/.test(cmd('rite', admin)[0]))
+ok('/shrine rite with neither the beam up nor the Shrine risen: refused, the rite is fought around the beam', /The beam isn't up: the rite is fought around it/.test(cmd('rite', admin)[0]), cmd('rite', admin)[0])
 cmd('rise force', admin)
 advance(layerTicks * 66 + 30)
 // at the Shrine: Carol and Bob in survival, the op in creative (not counted); Far is far away
@@ -829,7 +831,7 @@ const LECTERN = '1007,86,1999'                                   // the corner (
 const bookOf = () => worldNbt[LECTERN] || ''
 const awakeTicks = 980                          // the Awakening, to its last step (the end, 3 seconds after his last words)
 ok('/regalia before the Awakening: nothing named yet', /The Blood God has named nothing yet/.test(regalia(carol)[0]))
-ok('/shrine awaken before the Shrine has risen: refused', /hasn't risen yet/.test(cmd('awaken', admin)[0]))
+ok('/shrine awaken before the rite: refused (force goes ahead)', /The Ignition Rite hasn't been held/.test(cmd('awaken', admin)[0]), cmd('awaken', admin)[0])
 cmd('rise force', admin)
 advance(layerTicks * 66 + 30)
 ok('when the Shrine has risen, the altar\'s lectern is left empty (no hollow book)', S().rise.state == 'risen' && world[LECTERN] == 'minecraft:lectern[facing=east,has_book=false,powered=false]', world[LECTERN])
@@ -980,90 +982,136 @@ ok('without the Blood Pool script: the Awakening still runs, and the log says no
 global.BloodPool = keepPool
 cmd('reset confirm', admin); advance(40)
 
-// ---------- the rite begins by itself after the rise (owner decision, 2026-11-19) ----------
+// ---------- the new order (owner decision, 2026-11-19: the Shrine is the climax) ----------
+// The braziers and the beam; the Ignition Rite fought around the beam, beginning by itself once everyone has gathered
+// there, the King's Potatoes offered into the beam's red glass; the Awakening at the beam, beginning by itself once the
+// offering is full; and the Shrine rising last, the night ending when it stands.
 const riseUntilRisen = () => { for (let i = 0; i < 1200 && S().rise.state != 'risen'; i++) advance(1) }
-cmd('braziers', admin); advance(2)
-carol.x = 1010.5; carol.y = 64; carol.z = 2030.5; carol.msgs = []           // she walks from the start to the Shrine
-cmd('rise force', admin); riseUntilRisen()
-ok('during the night\'s event: once risen, the rite is due 8 seconds later, and those near hear something stir', !!S().rise.riteAt && RT().state == 'none' &&
-  said(carol, /Something stirs on the land around the Shrine/))
+const toTheBeam = () => { cmd('braziers', admin); advance(2); cmd('fires light', admin); advance(25) }
+const allAtTheBeam = () => { players.forEach((p, k) => { p.x = 990.5 + k * 8; p.y = 64; p.z = 2030.5 }) }
+const GLASS = [1000, 63, 2000]                                    // the beam's red glass: the site (1000 64 2000), one down
+carol.slots[8] = own('minecraft:compass', 1)
+toTheBeam()
+ok('(the night: the fires lit, the beam up, nothing risen)', S().beam.up && S().rise.state == 'none' && world[GLASS.join(',')] == 'minecraft:red_stained_glass')
+allAtTheBeam(); far.x = 3000.5; far.z = 3000.5
+advance(40)
+ok('the rite waits while a pilgrim is still away from the beam', !S().rise.riteAt && RT().state == 'none')
+far.x = 1000.5; far.z = 2040.5
+players.forEach(p => { p.msgs = [] })
+advance(20)
+ok('everyone gathered at the beam: the rite is due 8 seconds later, and they hear something stir', !!S().rise.riteAt && RT().state == 'none' &&
+  said(carol, /All are gathered\. Something stirs on the land around the beam/))
 ok('... status says when', /The Ignition Rite: begins by itself in [78]s \(\/shrine stop holds it\)/.test(cmd('status', admin)[7]), cmd('status', admin)[7])
 advance(150)
 ok('... not before then', RT().state == 'none')
 advance(15)
-ok('... then the Ignition Rite begins by itself', RT().state == 'running' && !S().rise.riteAt && logs.some(l => /The Ignition Rite began by itself, 8 seconds after the rise/.test(l)) &&
-  said(carol, /Take the Potato King's Potatoes from the Senior Inspectors/))
-cmd('reset confirm', admin); advance(40)
-cmd('rise force', admin); riseUntilRisen(); advance(200)
-ok('outside the night\'s event (a rise forced for a test): it never begins by itself', !global.Shrine.eventOn() && RT().state == 'none' && !S().rise.riteAt)
-cmd('reset confirm', admin); advance(40)
-cmd('braziers', admin); advance(2); cmd('rise force', admin); riseUntilRisen()
-r = cmd('stop', admin)
-advance(200)
-ok('/shrine stop while it\'s due: it won\'t begin by itself (/shrine rite still starts it)', /won't begin by itself/.test(r[0]) && RT().state == 'none' && !S().rise.riteAt, r[0])
-cmd('reset confirm', admin); advance(40)
-cmd('braziers', admin); advance(2); cmd('rise force', admin); riseUntilRisen()
-advance(40); load(); advance(140)
-ok('a /reload while it\'s due: it still begins, on time and once', RT().state == 'running' && logs.filter(l => /began by itself/.test(l)).length == 2)
-cmd('reset confirm', admin); advance(40)
-
-// ---------- the night's end, by itself (owner decision at the rehearsal, 2026-11-19) ----------
-// The altar fills during the event: the Inspectors vanish, everyone is brought to the foot of the steps to watch, and
-// the Awakening begins by itself; when it ends, everyone's belongings come back.
-const toTheAltar = () => {
-  cmd('braziers', admin); advance(2)
-  carol.x = 1010.5; carol.y = 64; carol.z = 2030.5; bob.x = 1030.5; bob.y = 64; bob.z = 2030.5
-  cmd('rise force', admin); riseUntilRisen(); advance(170)
-}
-carol.slots[8] = own('minecraft:compass', 1)
-toTheAltar()
-ok('(the night under way: Carol kitted, her compass held, the rite begun by itself)', RT().state == 'running' && global.Shrine.eventOn() && kitOf(carol).length == 8 &&
-  S().vaults['carol-uuid'].slots.some(s => s.id == 'minecraft:compass'))
+ok('... then the Ignition Rite begins by itself, around the beam, and night and a storm roll in', RT().state == 'running' && !S().rise.riteAt &&
+  logs.some(l => /The Ignition Rite began by itself, 8 seconds after everyone gathered/.test(l)) && said(carol, /Figures gather on the land around the beam/) &&
+  said(carol, /offer them to the beam, at its root: 40 in all/) && S().event.sky && S().rise.state == 'none')
+// the offering: into the beam's red glass
+players.forEach(p => { p.msgs = [] })
+cmds = []
+carol.slots[0] = kings(4)
+clickBlock(carol, GLASS[0], GLASS[1], GLASS[2])
+ok('the King\'s Potatoes go into the beam (its red glass): counted, and those present are told', RT().total == 4 && said(bob, /Carol offers 4 Potato King's Potatoes to the beam\. 4 of 40\./))
+carol.slots[0] = kings(6)
+const bolts1 = bolts.length
+clickBlock(carol, GLASS[0], GLASS[1], GLASS[2])
+ok('... a quarter: the beam surges, a ring of fire round it and a bolt for show into it (no statue to light)', RT().lit == 1 &&
+  cmds.filter(c => /run particle minecraft:flame [\d.]+ 64\.2 [\d.]+ 0\.4 0\.1 0\.4 /.test(c)).length == 16 && bolts.slice(bolts1).some(b => b.at[0] == 1000.5 && b.at[2] == 2000.5) &&
+  !cmds.some(c => /minecraft:light\[level=15\]/.test(c)))
+ok('... status counts the surges', /10 of 40 potatoes offered; 1 of 4 surges of the beam/.test(cmd('status', admin)[7]), cmd('status', admin)[7])
+carol.slots[0] = kings(2)
+carol.msgs = []
+clickBlock(carol, 1003, 64, 2000)
+ok('anywhere else, they\'re refused', RT().total == 10 && said(carol, /Only the beam, where it leaves the ground/))
+ev = { block: { level, x: GLASS[0], y: GLASS[1], z: GLASS[2] }, player: bob, cancelled: false, cancel() { ev.cancelled = true; throw EXIT } }
+;(handlers.broken || []).forEach(h => { try { h(ev) } catch (e) { if (e !== EXIT) throw e } })
+ok('the beam can\'t be broken while it\'s up', ev.cancelled && said(bob, /The beam will not be broken/))
+// the offering filled during the event: the Inspectors vanish, everyone is brought back to watch
 players.forEach(p => { p.msgs = [] })
 cmds = []
 far.spectator = true
 const farAt = [far.x, far.z]
-carol.slots[0] = kings(RT().need)
-clickBlock(carol, 1007, 86, 1999)
-ok('the altar fills during the event: every Inspector vanishes in smoke at once, their bars with them', RT().state == 'full' && riteMobsNow().length == 0 &&
-  !mobs.some(m => !m.discarded && m.tags.indexOf('shrine_inspector') >= 0) && Object.keys(RT().seniors).length == 0 && cmds.some(c => /run particle minecraft:large_smoke /.test(c)) &&
-  said(carol, /The Inspectors crumble to ash/))
-ok('... the op is told it begins by itself in 13 seconds (no /shrine awaken needed)', said(admin, /the Awakening begins by itself in 13 seconds/) && !said(admin, /When you're ready: \/shrine awaken/))
-ok('... status says when', /The Awakening: begins by itself in 1[23]s \(\/shrine stop holds it\)/.test(cmd('status', admin)[8]), cmd('status', admin)[8])
+carol.slots[0] = kings(30)
+clickBlock(carol, GLASS[0], GLASS[1], GLASS[2])
+ok('the offering is full: the beam blazes, every Inspector vanishes, and the op is told the Awakening begins by itself', RT().state == 'full' && riteMobsNow().length == 0 &&
+  said(carol, /The beam blazes\. Beneath it, something enormous stirs\./) && said(carol, /The Inspectors crumble to ash/) && said(admin, /the Awakening begins by itself in 13 seconds/))
 advance(61)
-const x0 = 979 + 38 + S().stairs + 4, watchers = [admin, bob, carol, dave]
-ok('3 seconds later, everyone but spectators is at the foot of the steps, side by side, facing the altar', watchers.every(p => p.x == x0 + 0.5 && p.y == 64) &&
-  new Set(watchers.map(p => p.z)).size == 4 && watchers.every(p => Math.abs(p.z - 1999.5) <= 4) &&
-  cmds.some(c => c.indexOf('run tp Carol ' + (x0 + 0.5) + ' 64 ') > 0 && / facing 1007\.5 87 1999\.5$/.test(c)) && far.x == farAt[0] && far.z == farAt[1] &&
-  said(carol, /drawn to the foot of the steps/), watchers.map(p => p.name + ' ' + p.x + ' ' + p.y + ' ' + p.z).join(', '))
+const x0 = 979 + 38 + 34 + 4, watchers = [admin, bob, carol, dave]
+ok('3 seconds later, everyone but spectators is brought back from the beam: east of the site, beyond where the steps will go, side by side, facing it',
+  watchers.every(p => p.x == x0 + 0.5 && p.y == 64) && new Set(watchers.map(p => p.z)).size == 4 &&
+  cmds.some(c => c.indexOf('run tp Carol ' + (x0 + 0.5) + ' 64 ') > 0 && / facing 1000\.5 84 2000\.5$/.test(c)) && far.x == farAt[0] && far.z == farAt[1] &&
+  said(carol, /drawn back from the beam/), watchers.map(p => p.name + ' ' + p.x + ' ' + p.y + ' ' + p.z).join(', '))
 carol.x += 10
 advance(20)
 ok('... and held there: Carol wanders off and is put back', carol.x == x0 + 0.5, carol.x)
 advance(170)
 ok('... the Awakening not begun yet', S().awake.state == 'none')
 advance(15)
-ok('then the Awakening begins by itself', S().awake.state == 'running' && logs.some(l => /\[Shrine\] The Awakening began by itself/.test(l)) && !S().rise.awakenAt)
-advance(awakeTicks + 30)
-ok('when it ends: the event is over, everyone is let go, the sky clears, and the belongings come back (the kit goes)', S().awake.state == 'done' && !global.Shrine.eventOn() &&
-  Object.keys(S().awake.spots).length == 0 && cmds.indexOf('weather clear') >= 0 && carol.slots[8].id == 'minecraft:compass' && kitOf(carol).length == 0 && kitOf(bob).length == 0 &&
+ok('then the Awakening begins by itself, at the beam (the Shrine not risen)', S().awake.state == 'running' && logs.some(l => /\[Shrine\] The Awakening began by itself/.test(l)) &&
+  !S().rise.awakenAt && S().rise.state == 'none')
+advance(780)
+ok('... the Regalia is named, its book to lie on the Shrine\'s altar once it stands', global.Regalia.isOpen() && said(carol, /\[REGALIA\] The Blood God has named the Regalia of the Blade\. Its book will lie on his Shrine's altar\./))
+advance(awakeTicks - 780 + 30)
+ok('when the Awakening is done, the Shrine rises: the night\'s last act. Everyone is still held, still in the kit, the event still on', S().awake.state == 'done' && S().rise.state == 'rising' &&
+  global.Shrine.eventOn() && Object.keys(S().awake.spots).length == 4 && kitOf(carol).length >= 7 && logs.some(l => /The Shrine rises: the night's last act/.test(l)), S().rise.state)
+ok('... and the beam comes out as it rises', !S().beam.up)
+carol.x += 10
+advance(20)
+ok('... still held while it rises', carol.x == x0 + 0.5)
+cmds = []
+players.forEach(p => { p.msgs = [] })
+riseUntilRisen()
+advance(2)
+ok('the Shrine stands: "TECHNOBLADE\'S SHRINE stands once more", it burns from its feet to its crown, and the Regalia book lies on its altar',
+  S().rise.state == 'risen' && cmds.some(c => /^title Carol title .*TECHNOBLADE'S SHRINE/.test(c)) && cmds.some(c => /run setblock \d+ 1[01]\d \d+ minecraft:light\[level=15\]$/.test(c)) &&
+  world[LECTERN] == 'minecraft:lectern[facing=east,has_book=true,powered=false]' && said(carol, /\[REGALIA\] The Regalia of the Blade lies on the Shrine's altar/) && S().stairs > 0)
+ok('... the night isn\'t over until a moment later', global.Shrine.eventOn() && Object.keys(S().awake.spots).length == 4)
+advance(110)
+ok('then the night is over: the sky clears, everyone is let go, and the belongings come back (the kit goes)', !global.Shrine.eventOn() && Object.keys(S().awake.spots).length == 0 &&
+  cmds.indexOf('weather clear') >= 0 && cmds.indexOf('time set day') >= 0 && carol.slots[8].id == 'minecraft:compass' && kitOf(carol).length == 0 && kitOf(bob).length == 0 &&
   Object.keys(S().vaults).length == 0, Object.keys(S().vaults).join())
 carol.x += 10
 advance(40)
 ok('... and free to move', carol.x == x0 + 10.5)
 far.spectator = false
 cmd('reset confirm', admin); advance(40)
-toTheAltar(); carol.slots[0] = kings(RT().need); clickBlock(carol, 1007, 86, 1999)
+// /shrine stop while the rite is due; outside the event the rite never begins by itself
+toTheBeam(); allAtTheBeam(); advance(20)
+r = cmd('stop', admin)
+advance(200)
+ok('/shrine stop while the rite is due: it won\'t begin by itself (/shrine rite still starts it)', /won't begin by itself/.test(r[0]) && RT().state == 'none' && !S().rise.riteAt, r[0])
+cmd('reset confirm', admin); advance(40)
+cmd('beam up', admin); advance(5); allAtTheBeam(); advance(200)
+ok('outside the night\'s event (the beam raised by hand), the rite never begins by itself', !global.Shrine.eventOn() && S().beam.up && RT().state == 'none' && !S().rise.riteAt)
+cmd('reset confirm', admin); advance(40)
+// a /reload while the rite is due, and while the Awakening is due; a /reload mid-rise after the Awakening
+const ritesBegun = () => logs.filter(l => /The Ignition Rite began by itself/.test(l)).length
+let begun = ritesBegun()
+toTheBeam(); allAtTheBeam(); advance(60); load(); advance(140)
+ok('a /reload while the rite is due: it still begins, on time and once', RT().state == 'running' && ritesBegun() == begun + 1)
+const awakenings = () => logs.filter(l => /\[Shrine\] The Awakening began by itself/.test(l)).length
+begun = awakenings()
+carol.slots[0] = kings(RT().need); clickBlock(carol, GLASS[0], GLASS[1], GLASS[2])
+advance(100); load(); advance(200)
+ok('a /reload while the Awakening is due: it still begins, once', S().awake.state == 'running' && awakenings() == begun + 1)
+advance(awakeTicks + 30); advance(200)
+ok('(the Shrine rising after the Awakening)', S().rise.state == 'rising')
+load()
+riseUntilRisen(); advance(120)
+ok('a /reload mid-rise: it carries on, and the night still ends when the Shrine stands', S().rise.state == 'risen' && !global.Shrine.eventOn() && Object.keys(S().vaults).length == 0 &&
+  Object.keys(S().awake.spots).length == 0)
+// /shrine stop while the Awakening is due: it won't begin, and everyone is let go
+cmd('reset confirm', admin); advance(40)
+toTheBeam(); allAtTheBeam(); advance(200)
+carol.slots[0] = kings(RT().need); clickBlock(carol, GLASS[0], GLASS[1], GLASS[2])
 advance(61)
 r = cmd('stop', admin)
 carol.x += 10
 advance(300)
-ok('/shrine stop while it\'s due: it won\'t begin by itself, and everyone may move again', /The Awakening won't begin by itself, and everyone is free to move/.test(r[0]) &&
+ok('/shrine stop while the Awakening is due: it won\'t begin by itself, and everyone may move again', /The Awakening won't begin by itself, and everyone is free to move/.test(r[0]) &&
   S().awake.state == 'none' && !S().rise.awakenAt && carol.x == x0 + 10.5, r[0])
-cmd('reset confirm', admin); advance(40)
-toTheAltar(); carol.slots[0] = kings(RT().need); clickBlock(carol, 1007, 86, 1999)
-advance(100); load(); advance(200)
-ok('a /reload while it\'s due: it still begins, once', S().awake.state == 'running' && logs.filter(l => /\[Shrine\] The Awakening began by itself/.test(l)).length == 2)
-advance(awakeTicks + 30)
 cmd('reset confirm', admin); advance(40)
 
 // ---------- Stage 0, the Signal, and Stage 1, the Summons (the drafts as approved, 2026-11-19) ----------

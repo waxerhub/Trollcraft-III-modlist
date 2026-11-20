@@ -7,34 +7,36 @@ The story is in [STORY.md](../../STORY.md), Act I #36. This file says how each s
 ## What it is
 **One big evening, about 90 minutes, run live by ops.**
 - **When:** early Part II, with the server at Blood Pool Tier 2 (about 66,000 Drops).
-- **What happens:**
+- **What happens, in order** (owner decision 2026-11-19, at the fourth run: "I want the shrine to be the climax ending instead of in the middle"):
   - the Blood God summons the server;
-  - three teams light three far-apart braziers;
-  - Technoblade's Shrine rises out of the ground, layer by layer;
-  - the server defends it from Inspector waves and feeds it Potato King's Potatoes;
-  - the Blood God names the Regalia of the Blade.
-- **How it ends:** the Blood God breaks the third and fourth seals himself, with no vote, which opens the Nether. The Pool is raised to a quarter of the way past Tier 4 (230,000 Drops), credited to nobody (owner decisions 2026-11-19).
+  - three teams light three far-apart braziers, and a red beam rises over the empty Shrine site;
+  - the server defends the beam from Inspector waves and feeds it Potato King's Potatoes;
+  - the Blood God speaks at the beam, names the Regalia of the Blade, and breaks the third and fourth seals himself, with no vote, which opens the Nether. The Pool is raised to a quarter of the way past Tier 4 (230,000 Drops), credited to nobody;
+  - **last of all, Technoblade's Shrine rises out of the ground,** layer by layer, and the night ends when it stands.
 
-**Each stage is one op command, until the Shrine has risen; from there the night runs itself** (owner decisions 2026-11-19):
-- **The Ignition Rite** begins by itself 8 seconds after the Shrine has risen.
-- **When the altar is full,** the Inspectors vanish and everyone is brought to the foot of the steps. The Awakening then begins by itself.
+**Up to the beam, each stage is one op command; from there the night runs itself** (owner decisions 2026-11-19):
+- **The Ignition Rite** begins by itself once every pilgrim online has gathered at the beam.
+- **When the offering is full,** the Inspectors vanish and everyone is brought back to watch. The Awakening then begins by itself.
+- **When the Awakening ends,** the Shrine rises. When it stands, the night ends.
 
-The ops set the pace up to the rise and can wait for stragglers. `/shrine stop` holds either automatic step.
+The ops set the pace up to the beam and can wait for stragglers. `/shrine stop` holds the rite or the Awakening while it's due.
 
-**The night's kit** (owner decision 2026-11-19): from `/shrine braziers` to the Awakening's end, everyone fights in a kit that won't break, and their own belongings are held safe (below).
+**The night's kit** (owner decision 2026-11-19): from `/shrine braziers` to the night's end, everyone fights in a kit that won't break, and their own belongings are held safe (below).
 
 **Effects** (owner decision 2026-11-19): every stage has its own (each stage below says which).
 - **What they are:** titles, sounds, particles, fireworks, and lightning that can't burn or hurt.
-- **The sky:** during the event it turns to night and storm at the rise, and clears to day at the end.
+- **The sky:** during the event it turns to night and storm when the rite begins, and clears to day when the night ends.
 
-| Stage | Command | Length | Where |
-|---|---|---|---|
-| 0. The Signal | `/shrine signal` | the day before | everywhere |
-| 1. The Summons | `/shrine summons` | ~10 min | the castle |
-| 2. The Pilgrimage | `/shrine braziers` | ~30 min | three brazier sites |
-| 3. The Shrine Rises | `/shrine rise` | ~15 min | the Shrine site |
-| 4. The Ignition Rite | begins by itself after the rise (`/shrine rite` by hand) | ~20 min | the Shrine |
-| 5. The Awakening | begins by itself once the altar is full (`/shrine awaken` by hand) | ~1 min | the foot of the steps |
+The stages keep their numbers from the first plan (Stage 3 is the rise), but they're run in this order:
+
+| Order | Stage | How it starts | Length | Where |
+|---|---|---|---|---|
+| 1 | 0. The Signal | `/shrine signal` | the day before | everywhere |
+| 2 | 1. The Summons | `/shrine summons` | ~10 min | the castle |
+| 3 | 2. The Pilgrimage | `/shrine braziers` | ~30 min | three brazier sites, then the beam |
+| 4 | 4. The Ignition Rite | by itself once everyone is at the beam (`/shrine rite` by hand) | ~20 min | around the beam |
+| 5 | 5. The Awakening | by itself once the offering is full (`/shrine awaken` by hand) | ~1 min | the viewing spots, facing the beam |
+| 6 | 3. The Shrine Rises | by itself once the Awakening ends (`/shrine rise force` by hand) | ~30 s, then the night ends | the viewing spots |
 
 ## Setting up (before the night)
 **Sites are set in game.** An op stands on the spot and runs:
@@ -139,7 +141,7 @@ The last page is the first hint of the two threads (kept: owner decision).
   - Players in creative or spectator are never ambushed.
   - **More by hand:** `/shrine ambush <player>`, whenever the ops want one.
 - **Deaths in an ambush:** none. The night's event is on from `/shrine braziers`, so a lethal hit is a knockout (below).
-- **Leftovers:** any ambushers still alive are taken away when the rise begins.
+- **Leftovers:** any ambushers still alive are taken away when the offering is full (or when the rise begins).
 
 ## The night's event: knockouts for everyone ✅ built
 **Owner decision 2026-11-15**, after an ambush killed the owner on the test server: "once the command /shrine braziers is run consider it an event trigger. all players are teleported and event rules engage until the end".
@@ -177,10 +179,17 @@ The last page is the first hint of the two threads (kept: owner decision).
   - **The catch:** a kit item put in a chest during the event is only taken back once someone carries it.
 - **`/shrine status`** lists whose belongings are held.
 
-## 3. The Shrine Rises
-**`/shrine rise`**, run once the pilgrims have gathered at the beam. The Shrine builds itself from the ground up.
+## 3. The Shrine Rises: the night's last act
+**It rises by itself when the Awakening ends** (owner decision 2026-11-19, at the fourth run: the Shrine is the climax). Everyone watches from the viewing spots, held there, still in the kit; the Shrine builds itself from the ground up over the beam's site.
 
-**It waits for the beam** (owner decision 2026-11-14, so it can't be started out of order by mistake): until the braziers' beam is up, `/shrine rise` refuses and says the braziers come first. `/shrine rise force` raises it anyway (for a rehearsal, or if the braziers go wrong on the night). A rise that was paused carries on without the check.
+**It rises last:** `/shrine rise` refuses until the Awakening is done ("The Shrine rises last"). `/shrine rise force` raises it anyway (a rehearsal, or if it couldn't rise by itself: the log and the ops say why, and the night ends without it). A rise that was paused carries on without the check. (Until 2026-11-19 the rise came before the rite and waited for the beam.)
+
+**When it stands** (`shrineStands`):
+- it burns from its feet to its crown: all four bands of light go in at once (the light blocks the rite used to light band by band);
+- the Regalia book is laid on its altar ("The Regalia of the Blade lies on the Shrine's altar. [/regalia]"), and the steps go up to it;
+- "TECHNOBLADE'S SHRINE, stands once more" fills every screen, with the End portal's sound, a ring of lightning (8 bolts, 26 out), fireworks and soul fire;
+- 5 seconds later (`FINALE_TICKS`) **the night ends:** the sky clears to day, everyone is let go from their spots, deaths are deaths again, and the kit goes as everyone's belongings come back;
+- a `/reload` or restart mid-rise carries on, and the night still ends when it stands (one due in those 5 seconds ends at once).
 
 1. **Clearing the way:** players standing inside the Shrine's footprint are moved to its edge. The beacon comes out and its ground is put back.
 2. **Layer by layer:** for each of the 64 layers, the script clears that slice of the box, then places the layer, from `trollcraft:shrine/l_0` to `l_63`. One layer every **9 ticks** (a setting) takes about **29 seconds** for all 64. It was 4 seconds a layer (4½ minutes) until the owner watched it on the test server and asked for about 30 seconds (2026-11-14).
@@ -205,12 +214,16 @@ The chunks are force-loaded while it builds, as the Gladiator Arena does, and re
 **The Shrine stays** after the night, as the Shrine for the relic hunt (Act II).
 
 ## 4. The Ignition Rite ✅ built
-**It begins by itself** (owner decision 2026-11-19, after the full run, where the owner expected the Inspectors to come on their own): during the night's event, 8 seconds after the Shrine has risen (`AUTO_RITE_SECONDS`), players near the Shrine are told "Something stirs on the land around the Shrine.", and then the first wave comes.
-- **By hand:** **`/shrine rite`** starts it any time once the Shrine has risen, for instance after a rise forced outside the event, when it doesn't begin by itself.
-- **Holding it:** `/shrine stop` while it's due cancels it ("The rite won't begin by itself. Start it with /shrine rite.").
-- **A `/reload` or restart** while it's due keeps the time, and it begins once.
+**It's fought around the beam, before the Shrine has risen** (owner decision 2026-11-19, at the fourth run). The Shrine's site is empty ground under the red beam; the potatoes go into the beam.
 
-**Inspectors close in from the land around the Shrine**, appearing 30–45 blocks from its centre, on the ground.
+**It begins by itself** during the night's event, once the beam is up and **every pilgrim online has gathered at it** (within 64 blocks of the site; checked once a second while the fires burn). They're told "All are gathered. Something stirs on the land around the beam.", and 8 seconds later (`AUTO_RITE_SECONDS`) the first wave comes. Night falls and a storm rolls in as it begins.
+- **Someone still away** (or in another dimension) holds it: an op can start it with **`/shrine rite`** any time once the beam is up.
+- **Holding it:** `/shrine stop` while it's due cancels it, and it isn't queued again until a reset ("The rite won't begin by itself. Start it with /shrine rite.").
+- **A `/reload` or restart** while it's due keeps the time, and it begins once.
+- **Outside the event** (the beam raised by hand with `/shrine beam up`), it never begins by itself.
+- (A Shrine raised first with `/shrine rise force`, as in the earlier rehearsals, works too: the rite is then fought at the Shrine and the potatoes go on its altar.)
+
+**Inspectors close in from the land around the beam**, appearing 30–45 blocks from the site's centre, on the ground.
 - **Where exactly:** each one's spot is the top of the ground there, through any leaves to the forest floor. A spot is skipped if it's water or lava, a tree trunk, the steps, or under a hill too high to see over (40 blocks above the site). Twelve spots are tried round its place in the ring (`SPAWN_TRIES`), then twelve anywhere on the ring (a lake filled the whole north side of the test ring), and only then is one placed regardless, with a warning in the log ("No dry ground ..."). The Stage 2 ambushes find their ground the same way.
 - **Who counts as present:** the players in survival or adventure within 64 blocks of the Shrine when the rite starts (at least 1).
 - **What the altar needs:** **8 potatoes per player present.** An op can change it with `/shrine need <n>`.
@@ -247,31 +260,29 @@ Each wave also has its Senior Inspector. At most 12 ordinary Inspectors in a wav
 - **What they are:** potatoes named *Potato King's Potato* in gold, with a glint and the lore "Technoblade's own. Hoarded by the Inspectors."
   - They're dropped where a Senior Inspector dies, 8 each (`SENIOR.potatoes`).
   - They're marked (`trollcraft.kingspotato`), so the script knows them.
-- **Only for the altar:**
-  - they can't be eaten or planted ("Only the Shrine's altar will take these");
+- **Only for the offering:**
+  - they can't be eaten or planted ("Only the Shrine's altar will take these"), and a right-click on any block but the beam's red glass (or, with a Shrine standing, its altar) is refused;
   - the Blood Pool's tithe and `/potatowar offer` ignore them (`blood_pool.js` skips marked items).
 - **Leftovers** crumble to nothing at the Awakening, in pockets and on the ground. The owner decided there's no keepsake.
 
-**The altar:**
-- **Offering:** right-clicking the lectern or Technoblade's head with the potatoes offers every one the player carries. Each offering is counted for the player who made it (the Awakening's Drops follow these counts), and everyone present is told.
-- **The Shrine lights up stage by stage, from the feet to the head.** At each quarter of the bar:
-  - the next band of the statue lights up (layers 0–15, 16–31, 32–47, 48–63);
-  - invisible light blocks (level 15) go every 4 blocks where there's air, and flames rise along the band.
-
-  The light stays, so the statue glows at night. It also keeps monsters off it.
-- **Full:** "The last band catches. The Shrine burns from its feet to its crown." No more waves come.
-  - **During the event, the night ends by itself** (owner decision 2026-11-19, from "Once the event potatoes are offered at the altar, inspectors should despawn and the players should teleport to in front of the stairs to watch the shrine awaken"):
+**The offering: into the beam** (owner decision 2026-11-19):
+- **Where:** right-click **the beam's red glass**, where it comes out of the ground at the site's centre, with the potatoes: every one the player carries is offered. Each offering is counted for the player who made it, and everyone present is told ("Carol offers 6 Potato King's Potatoes to the beam. 10 of 40.").
+- **The beam can't be broken** while it's up, outside creative ("The beam will not be broken"): its red glass, beacon and iron.
+- **The beam surges at each quarter of the bar:** a ring of fire round it, 3 blocks out at the first quarter and 3 more at each after, lava sparks, a blaze's roar, and a bolt for show into the beam.
+- **(With a Shrine already standing,** from a rise forced first, the offering goes on its altar, the lectern or Technoblade's head, and each quarter lights the next band of the statue, as before.)
+- **Full:** "The beam blazes. Beneath it, something enormous stirs." No more waves come.
+  - **During the event, the night carries on by itself** (owner decision 2026-11-19, from "Once the event potatoes are offered at the altar, inspectors should despawn and the players should teleport to in front of the stairs to watch the shrine awaken"):
     - every Inspector vanishes at once in a puff of smoke, the Seniors' bars with them: "The Inspectors crumble to ash. Nothing stands between you and the Shrine now.";
-    - 3 seconds later (`GATHER_DELAY_TICKS`), everyone online but spectators is brought to **the foot of the steps**, facing the altar: in rows of 7, 2 blocks apart, 4 blocks east of the bottom step (`VIEW`), on the ground. Soul fire rises at the Shrine's corners;
-    - they're **held there** until the Awakening ends: anyone more than 2½ blocks from their spot (`HOLD_RADIUS`) is put back, once a second;
+    - 3 seconds later (`GATHER_DELAY_TICKS`), everyone online but spectators is **brought back from the beam to the viewing spots** ("You are drawn back from the beam. Watch."): east of the site, 4 blocks beyond the furthest the steps can reach (about 55 blocks from the centre, so the whole statue will be in view and nobody stands where a step will be laid), in rows of 7, 2 blocks apart (`VIEW`), on the ground, facing the beam 20 blocks up. Soul fire rises at the site's corners;
+    - they're **held there** until the night ends (through the Awakening and the rise): anyone more than 2½ blocks from their spot (`HOLD_RADIUS`) is put back, once a second;
     - the Awakening **begins by itself** 10 seconds later (`AUTO_AWAKEN_SECONDS`). The ops are told when, and `/shrine status` counts down;
     - `/shrine stop` while it's due holds it and lets everyone move ("Start it with /shrine awaken"). A `/reload` or restart keeps the time.
-  - **Outside the event** (a forced rehearsal), ops are told "/shrine awaken", as before, and the Inspectors stay until the Awakening.
-- **The Awakening waits for a full altar:** `/shrine awaken` refuses until then, and `/shrine awaken force` goes ahead anyway.
+  - **Outside the event** (a forced rehearsal), ops are told "/shrine awaken", and the Inspectors stay until the Awakening.
+- **The Awakening waits for a full offering:** `/shrine awaken` refuses until then, and `/shrine awaken force` goes ahead anyway.
 - **Effects** (2026-11-19):
   - each wave comes with a raid horn and "WAVE 3" on the screens of those present ("A Senior Inspector leads them");
   - a Senior falls in a burst of red dust with a flash;
-  - each band catches with a flash and lava sparks up its height.
+  - each quarter, the beam surges (above).
 
 **Pausing:** `/shrine stop` during the rite stops the waves and takes the Inspectors away; the altar keeps its count. `/shrine rite` carries on, and the wave that was cleared away comes again, with its Senior. A Senior from an earlier wave who was still up is gone with his potatoes.
 
@@ -286,16 +297,16 @@ Each wave also has its Senior Inspector. At most 12 ordinary Inspectors in a wav
 - **No credit:** a knockout is no kill for anything else (bounties, the Anamian Axe's Souls, the Maul's Grit and the rest). The script loads early (`// priority: 100`) so it cancels the death before other scripts see it.
 
 ## 5. The Awakening ✅ built
-**During the event it begins by itself** once the altar is full, with everyone at the foot of the steps (Stage 4). Otherwise **`/shrine awaken`**, once the altar is full (`/shrine awaken force` goes ahead anyway). It's respectful: no jokes. About 49 seconds, step by step (`AWAKEN_STEPS`); a `/reload` or restart carries on from the next step.
+**It's held at the beam, before the Shrine rises** (owner decision 2026-11-19), with everyone watching from the viewing spots. **During the event it begins by itself** once the offering is full (Stage 4). Otherwise **`/shrine awaken`**, once the offering is full (`/shrine awaken force` goes ahead anyway). It's respectful: no jokes. About 49 seconds, step by step (`AWAKEN_STEPS`); a `/reload` or restart carries on from the next step. **When it ends, the Shrine rises** (Stage 3), and the night ends when it stands.
 - **Effects** (2026-11-19):
   - **the Blood God's words** fill everyone's screen a sentence at a time (2 seconds each, `LINE_TICKS`), as well as in chat, each line with red fireworks bursting high over the statue. His very last sentence fills the screen as a title: "BLOOD FOR THE BLOOD GOD.";
   - **while he speaks** (the owner, at the third run: "I need more dramatic effect while the blood god is talking. Fire particles, lightning, heart beats. The works"), with the settings in `SPEAK`:
     - a heartbeat everyone hears (the Warden's) once a second, twice as fast on his last line;
     - a dragon's growl as each line begins, and a blood-red mist around the Shrine with each beat;
-    - with each sentence: a column of fire up the whole statue, lava and soul fire from Technoblade's head, flames at the watchers' feet, and two bolts for show in a ring 34 blocks out;
-  - **when the seals break:** lightning rings the Shrine (8 bolts, 26 blocks out), with more fireworks;
-  - **soul fire** rises at the Shrine's corners as it begins and as the seals break;
-  - **the end** (49 seconds in, 3 seconds after his last words): the storm clears and day comes; everyone is let go from their spots, and their belongings come back (the kit goes).
+    - with each sentence: a column of fire up the beam (where the statue will stand), lava and soul fire raining from 64 blocks up, flames at the watchers' feet, and two bolts for show in a ring 34 blocks out;
+  - **when the seals break:** lightning rings the site (8 bolts, 26 blocks out), with more fireworks;
+  - **soul fire** rises at the site's corners as it begins and as the seals break;
+  - **the end** (49 seconds in, 3 seconds after his last words): the Shrine begins to rise. (With a Shrine already standing, from a rise forced first, the night ends here instead.)
 - **Lightning is only for show:** a bolt made "visual only" can't set fires or hurt anyone. If the game won't make one, flashes, sparks and thunder take its place, never a real bolt.
 1. **At once:**
    - **Clean-up:** every Inspector left is removed, and leftover Potato King's Potatoes crumble.
@@ -308,9 +319,8 @@ Each wave also has its Senior Inspector. At most 12 ordinary Inspectors in a wav
 
    > Eight things were mine. They were scattered, stolen, forgotten. Restore them here, and my name returns with them.
 3. **The Regalia** (38 seconds in):
-   - the book *The Regalia of the Blade* appears on the altar's lectern, with sparkles and a page turning;
-   - `/regalia` opens on the eight relics;
-   - everyone is told, with a `[/regalia]` to click.
+   - `/regalia` opens on the eight relics, and everyone is told, with a `[/regalia]` to click: "The Blood God has named the Regalia of the Blade. Its book will lie on his Shrine's altar.";
+   - the book *The Regalia of the Blade* is laid on the altar's lectern when the Shrine stands, with sparkles and a page turning (at once, if a Shrine already stands).
 4. **The seals** (44 seconds in):
    > I break the third seal, and the fourth with it. Blood for the Blood God.
 5. **The Pool** (46 seconds in). Owner decisions 2026-11-19: no vote; the Blood God breaks the seals himself.
@@ -400,13 +410,13 @@ The deliveries, Shrine raids and rewards are Act II's work and get their own spe
 | `/shrine fires light` / `/shrine fires out` | Light all three by hand (the beam goes up), or end a running clock early |
 | `/shrine beam up` / `/shrine beam down` | Raise or lower the beam by hand |
 | `/shrine ambush <player>` | An Inspector ambush on that player and the pilgrims near them |
-| `/shrine rise` / `/shrine rise force` | Stage 3, once the beam is up; `force` raises it anyway |
-| `/shrine rite` / `/shrine need <n>` | Stage 4 by hand (it begins by itself 8 seconds after the rise, during the event), or carry on after `/shrine stop`; change what the altar needs |
+| `/shrine rise` / `/shrine rise force` | Stage 3, the last act: it rises by itself when the Awakening ends; `/shrine rise` by hand once the Awakening is done, `force` any time |
+| `/shrine rite` / `/shrine need <n>` | Stage 4 by hand, once the beam is up (during the event it begins by itself once everyone has gathered at the beam), or carry on after `/shrine stop`; change what the offering needs |
 | `/shrine awaken` / `/shrine awaken force` | Stage 5 by hand (during the event it begins by itself once the altar is full), once the altar is full; `force` goes ahead anyway |
 | `/shrine book` | Put the Regalia book back on the altar |
 | `/shrine repair` | Put the Shrine back as it was built (every layer placed again; the head with its skin), then the book and any missing steps |
 | `/regalia` | **Anyone:** the eight relics and their progress |
-| `/shrine stop` | Stops whatever is running (waves, clock, rise), removes Inspectors and leaves the rest; a rite or an Awakening due to begin by itself won't (and everyone held at the steps is let go) |
+| `/shrine stop` | Stops whatever is running (waves, clock, rise), removes Inspectors and leaves the rest; a rite or an Awakening due to begin by itself won't (a held rite isn't queued again; everyone held at the viewing spots is let go) |
 | `/shrine clearmobs` | Takes away the monsters in and right around the Shrine (event mobs and named ones stay) |
 | `/shrine reset confirm` | **Test server:** removes the Shrine, the braziers, the beam and the steps, ends the event, clears the sky, hands everyone's belongings back, and forgets the night, the Signal and the Summons included (the sites and the start are kept). It needs the word `confirm`, so it can't be run by accident on the live server |
 
@@ -449,6 +459,8 @@ The deliveries, Shrine raids and rewards are Act II's work and get their own spe
 14. **The night's kit** (2026-11-19): diamond armour, a diamond sword with Sharpness IV, a shield and a flint and steel (added at the third run), all Unbreaking X, plus 16 steak. It's given at `/shrine braziers` and to anyone joining mid-event, and belongings come back when the Awakening ends.
 15. **Cinematic effects** at every stage (2026-11-19): the fires and the beam, the rise (with night and a storm), the rite, and the Awakening.
 16. **Knockouts stay as they are** (2026-11-19), after the second run's loop at the Shrine's edge.
+17. **The Shrine is the climax** (2026-11-19, at the fourth run): "I want the shrine to be the climax ending instead of in the middle". The order is now the braziers and the beam, the Ignition Rite around the beam, the Awakening at the beam, and the Shrine rising last; the night ends when it stands.
+18. **The offering goes into the beam** (2026-11-19): right-click its red glass; each quarter, the beam surges with a ring of fire and a bolt.
 
 ## Still open
 - **To tune at the rehearsal:**
@@ -609,6 +621,11 @@ Reset again (66,000, Tier 2, contributors cleared); the two players ran the nigh
 - **Found:** the backup files went to `kubejs/shrine_vault_<name>_<uuid>.json`, not the `shrine_vaults/` folder (KubeJS doesn't make it). The docs and the ops' message now say so.
 
 ## What couldn't be verified yet
+- **The new order** (mock-tested only):
+  - the rite beginning once everyone is at the beam;
+  - the fight on open ground around the beam, and the offering into its red glass;
+  - the viewing spots on real ground, and whether the whole statue is in view as it rises;
+  - the night ending once the Shrine stands.
 - **The night's kit:**
   - the kit as players see it: Unbreaking X and Sharpness IV, the lore, the armour worn and the shield in the off hand;
   - the vault with a backpack's contents, worn curios and Tool Belt's belt slot (both players' belongings came back at the third run, but what they carried wasn't checked item by item);
@@ -650,7 +667,8 @@ Reset again (66,000, Tier 2, contributors cleared); the two players ran the nigh
 | Stage 2, the braziers, the beam and the ambushes (the Shrine's own Inspectors) | ✅ built, 112 mock checks in all; tried on the test server (see above) |
 | Stages 0–1, the Signal and the Summons (late arrivals too) | ✅ built 2026-11-19, 24 mock checks; run at the rehearsal (see above) |
 | The rite beginning by itself after the rise; the Awakening's new end (230,000 Drops, the Shrine opens Tiers 3 and 4, no vote) | ✅ built 2026-11-19, mock checks plus `openTo` in the Blood Pool suite; run at both rehearsal runs, and the seals now break before the Drops land |
-| The night's kit and vault; the night ending by itself (Inspectors gone, everyone to the steps, the Awakening); the effects | ✅ built 2026-11-19, mock checks (the Shrine suite has 299 in all); not yet tried in game |
+| The night's kit and vault; the night ending by itself (Inspectors gone, everyone to the steps, the Awakening); the effects | ✅ built 2026-11-19, mock checks; the kit and the automatic ending seen at the third run |
+| **The new order** (the rite and the Awakening at the beam, the Shrine rising last as the climax; the offering into the beam; the rite beginning once everyone is at the beam) | ✅ built 2026-11-19, mock checks (the Shrine suite has 318 in all); not yet tried in game |
 | Stage 4, the Ignition Rite (waves, the Senior Inspector, the King's Potatoes, the altar and its light, knockouts) | ✅ built, mock checks plus one in the Blood Pool suite; tried on the test server (see above) |
 | The steps up to the altar, the Inspectors' ground, and the rise waiting for the beam | ✅ built; the steps tried on the test server |
 | The night's event: `/shrine start set`, everyone to the start, knockouts for everyone until the Awakening ends | ✅ built, 224 mock checks in all; the whole night run on the test server (see above) |

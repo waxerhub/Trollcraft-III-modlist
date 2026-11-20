@@ -1,38 +1,26 @@
 // priority: 100
 // (Loads before the other scripts, so a knockout at the Shrine is cancelled before any of their death handlers see it:
 // a knockout is no kill for bounties, Souls, Grit and the rest. The Gladiator Arena does the same.)
-// The Shrine Awakens (Part II, Act I #36): one big evening, run live by ops, in which Technoblade's Shrine rises out of
-// the ground and the Blood God names the Regalia of the Blade. Every stage is one op command (see
-// tools/kubejs/SHRINE.md).
+// The Shrine Awakens (Part II, Act I #36): one big evening, run live by ops, in which the Blood God names the Regalia of
+// the Blade and Technoblade's Shrine rises out of the ground at the very end (see tools/kubejs/SHRINE.md).
 //
-// Built so far:
-//   - The sites, set where an op stands: /shrine site set (the Shrine's centre, at ground level) and
-//     /shrine brazier set <1-3>, or at coordinates in the Overworld (/shrine site set <x> <y> <z>, also from the
-//     console). /shrine status shows them, each brazier's direction and distance from the castle (world spawn), and the
-//     stage.
-//   - Stage 3, the rise (/shrine rise): the Shrine builds itself from the ground up, one layer of the statue every
-//     LAYER_TICKS, from kubejs/data/trollcraft/structures/shrine/l_0 .. l_63. Each layer's slice is cleared first, so
-//     the ground and anything on it give way. Players in the footprint are moved to its edge. Rumbles, dust and smoke at
-//     every layer, and thunder when the pedestal is done and when the head is placed. A /reload or restart carries on
-//     from the last layer. /shrine stop pauses it (/shrine rise carries on).
-//   - /shrine reset confirm (the test server): takes the Shrine down and forgets the night. The sites are kept.
-//   - No monsters spawn in or right around the Shrine once any of it stands (event mobs and named ones are let be);
-//     those already there are taken away as it starts and finishes rising, or with /shrine clearmobs.
-//   - Stage 2, the pilgrimage (/shrine braziers): a brazier (an unlit campfire on a blackstone plinth) at each of the
-//     three sites. The first one lit starts a 60-second clock (a boss bar for everyone); if all three aren't burning
-//     by then, they gutter out and the teams try again. When all three burn they stay lit, and a red beacon beam rises
-//     at the Shrine site (the beacon, its iron and red glass go under the site; what they replace is put back when the
-//     rise begins). The braziers can't be broken outside creative. /shrine fires light|out, /shrine beam up|down.
-//   - The ambushes: the Shrine's own Inspectors (Part II has no portal_ambush.js). The first pilgrim within 200
-//     blocks of a brazier that isn't lit is ambushed there once, with anyone near them; /shrine ambush <player> for more.
-//     Deaths in an ambush are ordinary. Ambushers left over are taken away when the rise begins.
-//   - Stage 5, the Awakening (/shrine awaken, once the Shrine has risen): the Techno Tribute and a server-wide
-//     /superaura, the Blood God's words, the Regalia book on the altar's lectern (put back if taken), /regalia opened,
-//     the seals broken up to Tier 4 by the Shrine itself, with no vote, and the Pool raised to a quarter past Tier 4
-//     (230,000 Drops), credited to nobody.
-//     /regalia (anyone) lists the eight relics. The Shrine can't be broken or built on outside creative, nor its altar
-//     even in creative; /shrine repair puts it back as it was built.
-// Still to come: the Signal and the Summons, and the Ignition Rite.
+// The night, in order (owner decision 2026-11-19: the Shrine is the climax):
+//   0-1. /shrine signal (the day before) and /shrine summons (the Blood God's book, with the three fires).
+//   2. /shrine braziers: everyone to the start, the night's kit, the event on (knockouts instead of deaths). Three
+//      braziers that must all burn within 60 seconds, ambushes on the way; then a red beacon beam over the site.
+//   4. The Ignition Rite, around the beam: it begins by itself once every pilgrim has gathered there (or /shrine rite).
+//      Waves of Inspectors until the offering is full, each led by a Senior Inspector, the only one carrying the Potato
+//      King's Potatoes, which are offered into the beam's red glass; each quarter, the beam surges.
+//   5. The Awakening, at the beam: once the offering is full, the Inspectors vanish, everyone is brought back to watch
+//      (held there), and it begins by itself: the tribute, the Blood God's words (with the works), the Regalia named,
+//      the seals broken up to Tier 4 with no vote, the Pool raised to 230,000 Drops credited to nobody.
+//   3. The rise, last: the Shrine builds itself layer by layer from kubejs/data/trollcraft/structures/shrine/l_0 ..
+//      l_63, fire and lightning as it goes. When it stands it burns from its feet to its crown, the Regalia book lies on
+//      its altar and the steps go up to it; then the night ends: the sky clears to day, everyone is let go, and their
+//      belongings come back.
+// The stages keep their old numbers (3 is the rise) so the docs and the commands still match.
+// Also: the sites (/shrine site set, /shrine brazier set <1-3>, /shrine start set), /shrine status, /shrine stop,
+// /shrine reset confirm (the test server), /regalia, the Shrine's guard and /shrine repair, and no monsters in it.
 //
 // Part II only. Copy to <server>/kubejs/server_scripts/part2/ and the layers to
 // <server>/kubejs/data/trollcraft/structures/shrine/, then /reload.
@@ -156,8 +144,8 @@ const SUMMONS = {
   ],
 }
 const JOIN_DELAY_TICKS = 100              // after a player joins, before the Signal or the Summons reaches them
-// During the night's event, the Ignition Rite begins by itself this long after the statue has risen (owner decision,
-// 2026-11-19). 0 = an op starts it with /shrine rite. Outside the event (a rise forced for a test) it never starts alone.
+// During the night's event, the Ignition Rite begins by itself this long after every pilgrim online has gathered at the
+// beam (owner decisions, 2026-11-19). 0 = an op starts it with /shrine rite. Outside the event it never starts alone.
 const AUTO_RITE_SECONDS = 8
 // The Awakening's Pool (owner decisions, 2026-11-19): no vote. The Pool is raised to POOL_AFTER (a quarter of the way
 // from Tier 4's threshold to Tier 5's: 230,000 Drops), and the Shrine breaks the seals up to OPEN_TIER itself (the
@@ -192,12 +180,15 @@ const RELICS = [
 const BOOK = { title: 'The Regalia of the Blade', author: 'The Blood God', intro: 'Eight things were mine. Restore them at my Shrine, and my name returns with them.' }
 
 // --- The night's end, by itself (owner decision at the rehearsal, 2026-11-19) ---
-// During the event, once the altar is full: the Inspectors vanish, everyone is brought to the foot of the steps, facing
-// the altar, and the Awakening begins this long after. They're held there while it plays (put back if they wander
-// more than HOLD_RADIUS blocks), and let go when it ends.
+// During the event, once the offering is full: the Inspectors vanish, everyone is brought back to the viewing spots
+// (VIEW), facing the beam, and the Awakening begins this long after. They're held there while it plays and while the
+// Shrine rises after it (put back if they wander more than HOLD_RADIUS blocks), and let go when the night ends.
 const AUTO_AWAKEN_SECONDS = 10
+const FINALE_TICKS = 100                  // from the Shrine standing (the night's last act) to the night's end
 const GATHER_DELAY_TICKS = 60             // from the altar filling to everyone being brought to the steps
-const VIEW = { out: 4, row: 7, gap: 2 }   // the viewing spots: this far east of the steps' foot, 7 to a row, 2 apart
+// The viewing spots: this far east of the furthest the steps can reach (about 55 blocks from the centre), 7 to a row,
+// 2 apart, looking at the centre lookUp blocks above the ground.
+const VIEW = { out: 4, row: 7, gap: 2, lookUp: 20 }
 const HOLD_RADIUS = 2.5
 
 // --- The night's kit (owner decisions at the rehearsal, 2026-11-19) ---
@@ -477,6 +468,10 @@ function fromCastle(server, st) {
 
 function corner(st) { return { dim: st.dim, x: st.x - CENTRE[0], y: st.y, z: st.z - CENTRE[1] } }
 function centreOf(st) { return { x: st.x + 0.5, y: st.y, z: st.z + 0.5 } }
+// Where the night is held: where the Shrine stands or rises, or, before it rises (the rite and the Awakening are at the
+// beam, over its site), the site.
+function siteNow() { const D = db(); return D.rise.site || D.site }
+function risen() { return db().rise.state == 'risen' }
 function forceload(server, st, add) {
   const c = corner(st)
   run(server, 'execute in ' + st.dim + ' run forceload ' + (add ? 'add ' : 'remove ') + c.x + ' ' + c.z + ' ' + (c.x + SIZE[0] - 1) + ' ' + (c.z + SIZE[2] - 1))
@@ -671,8 +666,8 @@ function startRise(server, resumed, force) {
   const lv = levelByDim(server, st.dim)
   if (!lv) return 'There is no dimension ' + st.dim + '.'
   if (!layersInstalled(server)) return 'The Shrine\'s layers are missing (kubejs/data/trollcraft/structures/shrine/l_0 .. l_63).'
-  if (!resumed && !force && R.state == 'none' && !D.beam.up) {
-    return 'The beam isn\'t up yet: the braziers come first (/shrine braziers), and the Shrine rises under the beam. /shrine rise force raises it anyway.'
+  if (!resumed && !force && R.state == 'none' && D.awake.state != 'done') {
+    return 'The Shrine rises last (owner, 2026-11-19): after the Ignition Rite at the beam and the Awakening, it rises by itself. /shrine rise force raises it anyway.'
   }
   const first = R.next == 0
   R.state = 'rising'
@@ -718,7 +713,7 @@ function startRise(server, resumed, force) {
       layStairs(server, st)                       // after the box's chunks are let go: the steps force-load their own
       nearby(server, st).forEach(p => narrate(p, 'The last stone settles. Technoblade\'s Shrine stands.', 'gold'))
       console.info('[Shrine] The Shrine has risen at ' + siteText(st))
-      queueAutoRite(server)
+      if (db().awake.state == 'done') shrineStands(server)   // the night's last act: it stands, and the night ends
       return
     }
     save()
@@ -756,6 +751,7 @@ function resetShrine(server, done) {
   riteBarsOff(server)
   crumbleKings(server)
   global.__shrineAutoAwaken = (global.__shrineAutoAwaken || 0) + 1   // an Awakening due to begin by itself won't
+  global.__shrineFinale = (global.__shrineFinale || 0) + 1           // nor the night's end after the Shrine stands
   releaseWatchers()
   skyClear(server)
   D.awake = { state: 'none', step: 0, added: 0, spots: {} }
@@ -1004,6 +1000,7 @@ function fireTick(server) {
     changed = true
   }
   if (F.state == 'placed' || F.state == 'counting') ambushCheck(server)
+  if (F.state == 'lit') gatheredCheck(server)
   if (changed) save()
 }
 function allLit(server) {
@@ -1446,12 +1443,12 @@ function crumbleKings(server) {
 function riteOn() { const s = db().rite.state; return s == 'running' || s == 'full' }
 function waveSize(w, n) { return Math.min(WAVE_MAX, Math.max(w.min, Math.ceil(w.per * n))) }
 function ringSpot(lv, st, rMin, rMax, a) { const m = centreOf(st); return groundSpot(lv, m.x, m.z, st.y, rMin, rMax, a) }
-function riteTold(server, text, color) { presentAt(server, db().rise.site).forEach(p => narrate(p, text, color)) }
+function riteTold(server, text, color) { presentAt(server, siteNow()).forEach(p => narrate(p, text, color)) }
 function waveDef(i) { return WAVES[Math.min(i, WAVES.length - 1)] }
 function seniorBar(i) { return SENIOR_BOSSBAR + '_' + i }
 // Wave i: its ordinary Inspectors (they drop nothing) and the Senior Inspector at their head, with his own bar.
 function spawnWave(server, i) {
-  const D = db(), R = D.rite, st = D.rise.site, w = waveDef(i), lv = levelByDim(server, st.dim)
+  const D = db(), R = D.rite, st = siteNow(), w = waveDef(i), lv = levelByDim(server, st.dim)
   const n = waveSize(w, R.present)
   let made = 0
   for (let k = 0; k < n; k++) {
@@ -1532,7 +1529,7 @@ function startRiteLoop(server) {
   server.scheduleInTicks(20, step)
 }
 function riteTick(server) {
-  const D = db(), R = D.rite, st = D.rise.site
+  const D = db(), R = D.rite, st = siteNow()
   const alive = riteMobs(server)
   const pilgrims = presentAt(server, st).filter(pilgrim)
   alive.forEach(m => {
@@ -1600,32 +1597,54 @@ function lightBand(server, st, k) {
     run(server, 'execute in ' + st.dim + ' run playsound minecraft:entity.blaze.shoot block @a ' + at + ' 4 0.5')
   })
 }
-// Right-clicking the altar (the lectern or Technoblade's head) with Potato King's Potatoes offers every one carried.
+// The beam's red glass, where it comes out of the ground: the offering place before the Shrine rises (owner, 2026-11-19).
+function beamGlass() {
+  const B = db().beam
+  if (!B.up || !B.at) return null
+  return { dim: B.at.dim, x: B.at.x, y: B.at.y - 1, z: B.at.z }
+}
+// The rite's quarter k: on the Shrine, its band k lights up; before it rises, the beam surges: a ring of fire round it,
+// wider each quarter, and a bolt for show into it.
+function riteSurge(server, k) {
+  const st = siteNow()
+  if (risen()) { lightBand(server, st, k); return }
+  const m = centreOf(st), r = 3 + k * 3
+  for (let i = 0; i < 16; i++) {
+    let a = i * 2 * 3.14159265 / 16
+    run(server, 'execute in ' + st.dim + ' run particle minecraft:flame ' + (m.x + Math.cos(a) * r).toFixed(1) + ' ' + (st.y + 0.2) + ' ' + (m.z + Math.sin(a) * r).toFixed(1) + ' 0.4 0.1 0.4 0.02 20 force')
+  }
+  run(server, 'execute in ' + st.dim + ' run particle minecraft:lava ' + m.x + ' ' + (st.y + 1) + ' ' + m.z + ' ' + r + ' 0.2 ' + r + ' 0 40 force')
+  run(server, 'execute in ' + st.dim + ' run playsound minecraft:entity.blaze.shoot block @a ' + m.x + ' ' + st.y + ' ' + m.z + ' 4 0.5')
+  strike(server, st.dim, m.x, st.y, m.z)
+}
+// Right-clicking the offering place (the beam's red glass before the Shrine rises; its altar, the lectern or
+// Technoblade's head, once it stands) with Potato King's Potatoes offers every one carried.
 function offerAt(server, p) {
-  const D = db(), R = D.rite, st = D.rise.site
+  const D = db(), R = D.rite, st = siteNow()
   const n = takeKings(p)
   if (!n) return
   const u = uuidOf(p)
   R.offered[u] = { name: nameOf(p), n: (R.offered[u] ? R.offered[u].n : 0) + n }
   R.total += n
   save()
-  const L = lecternPos(st), at = (L.x + 0.5) + ' ' + (L.y + 1) + ' ' + (L.z + 0.5)
+  const L = risen() ? lecternPos(st) : beamGlass() || { x: st.x, y: st.y - 1, z: st.z }, at = (L.x + 0.5) + ' ' + (L.y + 1) + ' ' + (L.z + 0.5)
   run(server, 'execute in ' + st.dim + ' run particle minecraft:flame ' + at + ' 0.4 0.4 0.4 0.02 40 force')
   run(server, 'execute in ' + st.dim + ' run playsound minecraft:block.respawn_anchor.charge block @a ' + at + ' 2 1.2')
-  riteTold(server, nameOf(p) + ' offers ' + n + ' Potato King\'s Potato' + (n == 1 ? '' : 'es') + ' at the altar. ' + Math.min(R.total, R.need) + ' of ' + R.need + '.', 'gold')
+  riteTold(server, nameOf(p) + ' offers ' + n + ' Potato King\'s Potato' + (n == 1 ? '' : 'es') + (risen() ? ' at the altar. ' : ' to the beam. ') +
+    Math.min(R.total, R.need) + ' of ' + R.need + '.', 'gold')
   const bands = Math.min(BANDS, Math.floor(R.total * BANDS / Math.max(1, R.need)))
-  while (R.lit < bands) { lightBand(server, st, R.lit); R.lit++ }
+  while (R.lit < bands) { riteSurge(server, R.lit); R.lit++ }
   save()
   if (R.total >= R.need && R.state == 'running') riteFull(server)
   else riteBar(server)
 }
 function riteFull(server) {
-  const R = db().rite, st = db().rise.site
+  const R = db().rite
   R.state = 'full'
-  while (R.lit < BANDS) { lightBand(server, st, R.lit); R.lit++ }
+  while (R.lit < BANDS) { riteSurge(server, R.lit); R.lit++ }
   save()
   riteBar(server)
-  riteTold(server, 'The last band catches. The Shrine burns from its feet to its crown.', 'gold')
+  riteTold(server, risen() ? 'The last band catches. The Shrine burns from its feet to its crown.' : 'The beam blazes. Beneath it, something enormous stirs.', 'gold')
   console.info('[Shrine] The altar is full: ' + R.total + ' of ' + R.need)
   if (eventOn() && AUTO_AWAKEN_SECONDS > 0 && db().awake.state == 'none') { queueAutoAwaken(server); return }
   opsOnline(server).forEach(p => narrate(p, 'The altar is full. When you\'re ready: /shrine awaken', 'yellow'))
@@ -1640,7 +1659,7 @@ function queueAutoAwaken(server) {
   D.rise.awakenAt = Date.now() + GATHER_DELAY_TICKS * 50 + AUTO_AWAKEN_SECONDS * 1000
   save()
   riteTold(server, 'The Inspectors crumble to ash. Nothing stands between you and the Shrine now.', 'dark_red')
-  opsOnline(server).forEach(p => narrate(p, '[Shrine] The altar is full: everyone is brought to the steps, and the Awakening begins by itself in ' +
+  opsOnline(server).forEach(p => narrate(p, '[Shrine] The altar is full: everyone is brought to watch, and the Awakening begins by itself in ' +
     (GATHER_DELAY_TICKS / 20 + AUTO_AWAKEN_SECONDS) + ' seconds (/shrine stop holds it).', 'yellow'))
   console.info('[Shrine] The Awakening begins by itself in ' + (GATHER_DELAY_TICKS / 20 + AUTO_AWAKEN_SECONDS) + ' seconds')
   scheduleAutoAwaken(server)
@@ -1683,53 +1702,56 @@ function vanishInspectors(server) {
   })
   seniorBarsOff(server)
 }
-// The viewing spots: in rows of VIEW.row, VIEW.out blocks east of the steps' foot (or of the Shrine's east side), on the
-// ground there.
+// The viewing spots, where everyone watches the Awakening at the beam and then the Shrine rise: in rows of VIEW.row, east
+// of the site, VIEW.out blocks beyond where the steps can reach (so nobody stands where one will be laid, and the whole
+// statue is in view), on the ground there.
 function viewSpots(server, n) {
-  const D = db(), st = D.rise.site, c = corner(st), lv = levelByDim(server, st.dim), steps = D.stairs || 0
-  const x0 = steps ? c.x + STAIRS.top[0] + steps + VIEW.out : c.x + SIZE[0] + VIEW.out
-  const guess = steps ? c.y + STAIRS.top[1] - steps : c.y, zc = c.z + Math.round((STAIRS.z[0] + STAIRS.z[1]) / 2)
+  const st = siteNow(), c = corner(st), lv = levelByDim(server, st.dim)
+  const x0 = c.x + STAIRS.top[0] + stairSpan() + VIEW.out, zc = c.z + Math.round((STAIRS.z[0] + STAIRS.z[1]) / 2)
   const out = []
   for (let k = 0; k < n; k++) {
     let col = k % VIEW.row, row = Math.floor(k / VIEW.row)
     let x = x0 + row * VIEW.gap, z = zc + (col % 2 ? -1 : 1) * Math.ceil(col / 2) * VIEW.gap   // 0, -2, +2, -4 ...
-    out.push({ x: x + 0.5, y: standY(lv, x, z, guess), z: z + 0.5 })
+    out.push({ x: x + 0.5, y: standY(lv, x, z, st.y), z: z + 0.5 })
   }
   return out
 }
-function facingAltar() { const L = lecternPos(db().rise.site); return (L.x + 0.5) + ' ' + (L.y + 1) + ' ' + (L.z + 0.5) }
+// Watchers face the beam (and the Shrine, once it rises), a little above the ground.
+function facingShrine() { const m = centreOf(siteNow()); return m.x + ' ' + (m.y + VIEW.lookUp) + ' ' + m.z }
 function placeWatcher(server, p, q) {
-  run(server, 'execute in ' + db().rise.site.dim + ' run tp ' + nameOf(p) + ' ' + q.x + ' ' + q.y + ' ' + q.z + ' facing ' + facingAltar())
+  run(server, 'execute in ' + siteNow().dim + ' run tp ' + nameOf(p) + ' ' + q.x + ' ' + q.y + ' ' + q.z + ' facing ' + facingShrine())
 }
-// Everyone but spectators to the foot of the steps, facing the altar, to watch; held there until it's over.
+// Everyone but spectators to the viewing spots, facing the beam, to watch the Awakening and the rise; held there until
+// the Shrine stands.
 function gatherToWatch(server) {
-  const D = db(), st = D.rise.site
+  const D = db(), st = siteNow()
   const who = players(server).filter(p => { try { return !p.isSpectator() } catch (e) { return true } })
   const spots = viewSpots(server, who.length)
   D.awake.spots = {}
   who.forEach((p, k) => {
     D.awake.spots[uuidOf(p)] = spots[k]
     placeWatcher(server, p, spots[k])
-    narrate(p, 'You are drawn to the foot of the steps. Watch.', 'dark_red')
+    narrate(p, risen() ? 'You are drawn before the Shrine. Watch.' : 'You are drawn back from the beam. Watch.', 'dark_red')
   })
   save()
   hearAll(server, who, 'minecraft:block.beacon.power_select', 1, 0.5)
   soulColumns(server, st)
   startHold(server)
-  console.info('[Shrine] Everyone brought to the steps to watch: ' + who.length)
+  console.info('[Shrine] Everyone brought to watch: ' + who.length)
 }
-// While the Awakening plays (and in the moments before it), anyone who wanders off their spot is put back.
+// While the Awakening and the rise play (and in the moments before), anyone who wanders off their spot is put back,
+// until releaseWatchers().
 function startHold(server) {
   const token = (global.__shrineHold = (global.__shrineHold || 0) + 1)
   const step = () => {
     if (token != global.__shrineHold) return
     const D = db(), spots = D.awake.spots || {}
-    if (!Object.keys(spots).length || D.awake.state == 'done') return
+    if (!Object.keys(spots).length) return
     players(server).forEach(p => {
       let q = spots[uuidOf(p)]
       if (!q) return
       let at = pos(p)
-      if (dimOf(p) != D.rise.site.dim || flat(at, q) > HOLD_RADIUS || Math.abs(at.y - q.y) > 4) placeWatcher(server, p, q)
+      if (dimOf(p) != siteNow().dim || flat(at, q) > HOLD_RADIUS || Math.abs(at.y - q.y) > 4) placeWatcher(server, p, q)
     })
     server.scheduleInTicks(20, step)
   }
@@ -1744,13 +1766,13 @@ function releaseWatchers() {
 // /shrine rite: the waves begin (or carry on, after /shrine stop). '' or why not.
 function startRite(server) {
   const D = db(), R = D.rite
-  if (D.rise.state != 'risen') return 'The Shrine hasn\'t risen yet (/shrine rise).'
+  if (!risen() && !D.beam.up) return 'The beam isn\'t up: the rite is fought around it (/shrine braziers, then the three fires; or /shrine beam up).'
   if (D.awake.state != 'none') return 'The Shrine has already awakened.'
   if (R.state == 'running') return 'The rite is already under way (wave ' + (R.wave + 1) + ').'
   if (R.state == 'full') return 'The altar is already full: /shrine awaken.'
   const why = otherBusy()
   if (why) return why
-  const st = D.rise.site
+  const st = siteNow()
   if (R.state == 'paused') {
     R.state = 'running'
     save()
@@ -1764,24 +1786,37 @@ function startRite(server) {
   D.rite.present = n
   D.rite.need = n * POTATOES_PER_PLAYER
   save()
-  riteTold(server, 'Figures gather on the land around the Shrine. They are carrying something that is not theirs.', 'dark_red')
-  riteTold(server, 'Take the Potato King\'s Potatoes from the Senior Inspectors and offer them at the altar: ' + D.rite.need + ' in all.', 'gold')
+  skyNight(server)                                // night and a storm roll in (during the event)
+  riteTold(server, 'Figures gather on the land around the ' + (risen() ? 'Shrine' : 'beam') + '. They are carrying something that is not theirs.', 'dark_red')
+  riteTold(server, 'Take the Potato King\'s Potatoes from the Senior Inspectors and offer them ' + (risen() ? 'at the altar' : 'to the beam, at its root') + ': ' +
+    D.rite.need + ' in all.', 'gold')
   spawnWave(server, 0)
   riteBar(server)
   startRiteLoop(server)
   console.info('[Shrine] The Ignition Rite begins: ' + n + ' present, ' + D.rite.need + ' potatoes needed')
   return ''
 }
-// The rite by itself (AUTO_RITE_SECONDS): queued when the statue has risen during the night's event. The time it's due
-// is saved (rise.riteAt), so a /reload or restart in between still starts it.
+// The rite by itself (AUTO_RITE_SECONDS): queued during the night's event once the beam is up and every pilgrim online
+// has gathered at it (within PRESENT_RADIUS of the site). The time it's due is saved (rise.riteAt), so a /reload or
+// restart in between still starts it. An op can start it sooner with /shrine rite.
 function queueAutoRite(server) {
   const R = db().rise
-  if (!(AUTO_RITE_SECONDS > 0) || !eventOn() || db().rite.state != 'none' || db().awake.state != 'none') return false
+  if (!(AUTO_RITE_SECONDS > 0) || !eventOn() || R.riteAt || db().rite.state != 'none' || db().awake.state != 'none') return false
   R.riteAt = Date.now() + AUTO_RITE_SECONDS * 1000
   save()
-  nearby(server, R.site).forEach(p => narrate(p, 'Something stirs on the land around the Shrine.', 'dark_red'))
+  nearby(server, siteNow()).forEach(p => narrate(p, 'All are gathered. Something stirs on the land around the ' + (risen() ? 'Shrine' : 'beam') + '.', 'dark_red'))
+  console.info('[Shrine] Everyone is gathered at the beam: the rite begins by itself in ' + AUTO_RITE_SECONDS + ' seconds')
   scheduleAutoRite(server)
   return true
+}
+// Called once a second while the fires burn: every pilgrim online at the beam? Then the rite is queued.
+function gatheredCheck(server) {
+  const D = db()
+  if (!eventOn() || !D.beam.up || D.rise.riteAt || D.rise.riteHeld || D.rite.state != 'none' || D.awake.state != 'none') return
+  const all = players(server).filter(pilgrim)
+  if (!all.length) return
+  const here = presentAt(server, siteNow()).filter(pilgrim)
+  if (here.length == all.length) queueAutoRite(server)
 }
 function scheduleAutoRite(server) {
   const R = db().rise
@@ -1794,13 +1829,13 @@ function scheduleAutoRite(server) {
     if (!D.rise.riteAt) return
     D.rise.riteAt = 0
     save()
-    if (D.rise.state != 'risen' || D.rite.state != 'none' || D.awake.state != 'none' || !eventOn()) return
+    if ((!risen() && !D.beam.up) || D.rite.state != 'none' || D.awake.state != 'none' || !eventOn()) return
     const why = startRite(server)
     if (why) {
       console.warn('[Shrine] The Ignition Rite didn\'t begin by itself: ' + why)
       players(server).filter(p => { try { return p.hasPermissions(2) } catch (e) { return false } })
         .forEach(p => narrate(p, '[Shrine] The rite didn\'t begin by itself: ' + why + ' Start it with /shrine rite.', 'red'))
-    } else console.info('[Shrine] The Ignition Rite began by itself, ' + AUTO_RITE_SECONDS + ' seconds after the rise')
+    } else console.info('[Shrine] The Ignition Rite began by itself, ' + AUTO_RITE_SECONDS + ' seconds after everyone gathered')
   })
 }
 // /shrine stop during the rite: the waves stop and the Inspectors go; the bar is kept. /shrine rite carries on.
@@ -1822,7 +1857,7 @@ function damageType(source) {
 }
 // Where a player knocked out now wakes ({ shrine }, { brazier } or { start }), or null: no rule covers them.
 function wakeSpot(p) {
-  const D = db(), st = D.rise.site
+  const D = db(), st = siteNow()
   if (riteOn() && st && dimOf(p) == st.dim && flat(pos(p), centreOf(st)) <= PRESENT_RADIUS) return { shrine: st }
   if (!eventOn()) return null
   const b = lastLitBrazier()
@@ -1901,11 +1936,14 @@ BlockEvents.rightClicked(event => {
   if (!isKingsPotato(held)) return
   let hand = ''
   try { hand = String(event.hand) } catch (e) { }
-  const st = db().rise.site
+  const st = siteNow(), glass = beamGlass()
   let atAltar = false
-  try { atAltar = !!st && db().rise.state == 'risen' && dimKey(blk.level) == st.dim && altarAt(st, Number(blk.x), Number(blk.y), Number(blk.z)) } catch (e) { }
+  try {
+    let d = dimKey(blk.level), x = Number(blk.x), y = Number(blk.y), z = Number(blk.z)
+    atAltar = (!!st && risen() && d == st.dim && altarAt(st, x, y, z)) || (!!glass && !risen() && d == glass.dim && x == glass.x && y == glass.y && z == glass.z)
+  } catch (e) { }
   if (atAltar && riteOn() && (!hand || hand.indexOf('MAIN') >= 0)) offerAt(event.server || Utils.server, p)
-  else if (!atAltar) narrate(p, 'Only the Shrine\'s altar will take these.', 'gray')
+  else if (!atAltar) narrate(p, 'Only the beam, where it leaves the ground (or the Shrine\'s altar, once it stands), will take these.', 'gray')
   event.cancel()
 })
 
@@ -2082,7 +2120,7 @@ function bloodGod(server, text) {
 }
 // One step of the Awakening.
 function awakenStep(server, s) {
-  const st = db().rise.site, m = centreOf(st), here = m.x + ' ' + (m.y + 23) + ' ' + m.z
+  const st = siteNow(), m = centreOf(st), here = m.x + ' ' + (m.y + 23) + ' ' + m.z
   if (s.step == 'begin') {
     global.__shrineRite = (global.__shrineRite || 0) + 1         // the rite is over: its waves stop
     if (db().rite.state != 'none') { db().rite.state = 'done'; save() }
@@ -2103,20 +2141,12 @@ function awakenStep(server, s) {
     godSpeaks(server, s)
     redFireworks(server, st, 3)
   } else if (s.step == 'book') {
-    placeBook(server, st)
-    let L = lecternPos(st), at = (L.x + 0.5) + ' ' + (L.y + 1) + ' ' + (L.z + 0.5)
-    run(server, 'execute in ' + st.dim + ' run particle minecraft:enchant ' + at + ' 0.6 0.6 0.6 1 120 force')
-    run(server, 'execute in ' + st.dim + ' run playsound minecraft:block.enchantment_table.use block @a ' + at + ' 2 0.8')
-    run(server, 'execute in ' + st.dim + ' run playsound minecraft:item.book.page_turn block @a ' + at + ' 2 0.8')
+    // The Regalia is named and /regalia opens. Its book goes on the altar: now, if the Shrine stands; when it has
+    // risen, if not (the Shrine rises last).
     db().regalia.open = true
     save()
-    players(server).forEach(p => {
-      try {
-        p.tell(comp([{ text: '[REGALIA] ', color: 'gold', bold: true }, { text: 'The Regalia of the Blade lies on the Shrine\'s altar. ', color: 'yellow' },
-          { text: '[/regalia]', color: 'gold', bold: true, clickEvent: { action: 'run_command', value: '/regalia' }, hoverEvent: { action: 'show_text', contents: 'The eight relics' } }]))
-      } catch (e) { }
-    })
-    startLecternWatch(server)
+    if (risen()) bookOnAltar(server)
+    else regaliaTold(server, 'The Blood God has named the Regalia of the Blade. Its book will lie on his Shrine\'s altar. ')
   } else if (s.step == 'pool') {
     // The seals first, then the Drops: Drops landing on a sealed tier make the Pool announce it ready and call for a
     // vote, a moment before the Shrine opens it anyway (seen at the rehearsal, 2026-11-19).
@@ -2126,6 +2156,58 @@ function awakenStep(server, s) {
     redFireworks(server, st, 9)
     soulColumns(server, st)
   }
+}
+// The Regalia book on the altar's lectern, with sparkles and a page turning; everyone is told, with a [/regalia].
+function bookOnAltar(server) {
+  const st = db().rise.site
+  placeBook(server, st)
+  let L = lecternPos(st), at = (L.x + 0.5) + ' ' + (L.y + 1) + ' ' + (L.z + 0.5)
+  run(server, 'execute in ' + st.dim + ' run particle minecraft:enchant ' + at + ' 0.6 0.6 0.6 1 120 force')
+  run(server, 'execute in ' + st.dim + ' run playsound minecraft:block.enchantment_table.use block @a ' + at + ' 2 0.8')
+  run(server, 'execute in ' + st.dim + ' run playsound minecraft:item.book.page_turn block @a ' + at + ' 2 0.8')
+  regaliaTold(server, 'The Regalia of the Blade lies on the Shrine\'s altar. ')
+  startLecternWatch(server)
+}
+function regaliaTold(server, text) {
+  players(server).forEach(p => {
+    try {
+      p.tell(comp([{ text: '[REGALIA] ', color: 'gold', bold: true }, { text: text, color: 'yellow' },
+        { text: '[/regalia]', color: 'gold', bold: true, clickEvent: { action: 'run_command', value: '/regalia' }, hoverEvent: { action: 'show_text', contents: 'The eight relics' } }]))
+    } catch (e) { }
+  })
+}
+// The night's last act (owner, 2026-11-19: the Shrine is the climax): once the Blood God has spoken at the beam, the
+// Shrine rises over its site, watched from the viewing spots. If it can't (the layers missing, a Purge on), the night
+// ends without it and the ops are told.
+function riseFinale(server) {
+  const why = startRise(server, false, true)
+  if (!why) { console.info('[Shrine] The Shrine rises: the night\'s last act'); return }
+  console.warn('[Shrine] The Shrine couldn\'t rise after the Awakening: ' + why)
+  opsOnline(server).forEach(p => narrate(p, '[Shrine] The Shrine couldn\'t rise: ' + why + ' The night is over; /shrine rise raises it.', 'red'))
+  finishNight(server)
+}
+// The Shrine stands, at the end of the night: it burns from its feet to its crown, the Regalia book goes on its altar,
+// lightning and fireworks; FINALE_TICKS later the night ends.
+function shrineStands(server) {
+  const st = db().rise.site, m = centreOf(st), token = (global.__shrineFinale = (global.__shrineFinale || 0) + 1)
+  for (let k = 0; k < BANDS; k++) lightBand(server, st, k)
+  if (db().regalia.open) bookOnAltar(server)
+  titleTo(server, players(server), { text: 'TECHNOBLADE\'S SHRINE', color: 'dark_red', bold: true }, { text: 'stands once more', color: 'gold' })
+  hearAll(server, players(server), 'minecraft:block.end_portal.spawn', 0.8, 0.7)
+  strikeRing(server, st.dim, m.x, m.z, st.y, 26, 8)
+  redFireworks(server, st, 9)
+  soulColumns(server, st)
+  console.info('[Shrine] The Shrine stands: the night ends in ' + (FINALE_TICKS / 20) + ' seconds')
+  server.scheduleInTicks(FINALE_TICKS, () => { if (token == global.__shrineFinale) finishNight(server) })
+}
+// The night is over: the storm passes and day comes, everyone is let go from their spots, deaths are deaths again, and
+// the kit goes as everyone's belongings come back.
+function finishNight(server) {
+  global.__shrineFinale = (global.__shrineFinale || 0) + 1
+  skyClear(server)
+  releaseWatchers()
+  endEvent()
+  restoreAll(server)
 }
 function sentencesOf(text) { return (String(text).match(/[^.!?]+[.!?]+/g) || [String(text)]).map(x => x.trim()) }
 // The Blood God's words on everyone's screen, a sentence at a time (LINE_TICKS apart), as well as in chat. The very last
@@ -2141,7 +2223,7 @@ function wordsOnScreen(server, s) {
 // The works while he speaks (SPEAK): heartbeats and a blood mist, a growl, and with each sentence fire, lava and
 // lightning. Stops if the Awakening is stopped or reloaded (its token).
 function godSpeaks(server, s) {
-  const st = db().rise.site, m = centreOf(st), c = corner(st), top = c.y + SIZE[1], dim = st.dim, token = global.__shrineAwaken
+  const st = siteNow(), m = centreOf(st), c = corner(st), top = c.y + SIZE[1], dim = st.dim, token = global.__shrineAwaken
   const parts = sentencesOf(s.text), beat = s.last ? SPEAK.lastBeat : SPEAK.beat, beats = []
   const inDim = cmd => run(server, 'execute in ' + dim + ' run ' + cmd)
   const live = () => token == global.__shrineAwaken && db().awake.state == 'running'
@@ -2176,10 +2258,8 @@ function runAwakening(server, from) {
       A.state = 'done'
       save()
       console.info('[Shrine] The Awakening is done')
-      skyClear(server)                            // the storm passes; day comes
-      releaseWatchers()
-      endEvent()
-      restoreAll(server)                          // the kit goes, everyone's belongings come back
+      if (risen()) finishNight(server)            // it already stands (a rehearsal raised it first): the night ends
+      else riseFinale(server)                     // the Shrine rises last; the night ends when it stands
       return
     }
     try { awakenStep(server, AWAKEN_STEPS[i]) } catch (e) { console.error('[Shrine] Awakening, ' + AWAKEN_STEPS[i].step + ': ' + e) }
@@ -2212,7 +2292,7 @@ function repairShrine(server) {
 // /shrine awaken. '' or why not.
 function awaken(server, force) {
   const D = db(), R = D.rite
-  if (D.rise.state != 'risen') return 'The Shrine hasn\'t risen yet (/shrine rise).'
+  if (!siteNow()) return 'Set the Shrine\'s site first: /shrine site set.'
   if (D.awake.state == 'running') return 'The Awakening is already under way.'
   if (D.awake.state == 'done') return 'The Shrine has already awakened. (/shrine reset confirm forgets the night, on the test server.)'
   if (R.state != 'full' && !force) return (R.state == 'none' ? 'The Ignition Rite hasn\'t been held (/shrine rite).' : 'The altar isn\'t full yet (' + R.total + ' of ' + R.need + ' potatoes).') +
@@ -2267,7 +2347,8 @@ function statusLines(server) {
     let b = D.braziers[i]
     out.push('Brazier ' + (i + 1) + ': ' + (b ? siteText(b) + ', ' + fromCastle(server, b) + ' from the castle' : 'not set (/shrine brazier set ' + (i + 1) + ')'))
   }
-  if (R.state == 'none') out.push('The rise: not started (/shrine rise, once the beam is up).' + (layersInstalled(server) ? '' : ' The layers are missing (kubejs/data/trollcraft/structures/shrine/).'))
+  if (R.state == 'none') out.push('The rise: not started (the Shrine rises last, by itself, once the Blood God has spoken at the beam).' +
+    (layersInstalled(server) ? '' : ' The layers are missing (kubejs/data/trollcraft/structures/shrine/).'))
   else if (R.state == 'rising') out.push('The rise: layer ' + R.next + ' of ' + SIZE[1] + ', at ' + siteText(R.site) + '.')
   else if (R.state == 'stopped') out.push('The rise: paused at layer ' + R.next + ' of ' + SIZE[1] + ' (/shrine rise carries on).')
   else out.push('The Shrine has risen, at ' + siteText(R.site) + '. ' + (D.stairs ? D.stairs + ' steps up to the altar.' : 'No steps up to the altar yet (/shrine repair lays them).'))
@@ -2280,9 +2361,9 @@ function statusLines(server) {
   out.push(D.beam.up ? 'The beam: up at ' + siteText(D.beam.at) + '.' : 'The beam: down.')
   const RT = D.rite
   if (RT.state == 'none') out.push(D.rise.riteAt ? 'The Ignition Rite: begins by itself in ' + Math.max(0, Math.ceil((D.rise.riteAt - Date.now()) / 1000)) + 's (/shrine stop holds it).' :
-    'The Ignition Rite: not yet. During the event it begins by itself ' + AUTO_RITE_SECONDS + ' seconds after the rise; /shrine rite starts it by hand.')
+    'The Ignition Rite: not yet. During the event it begins by itself once everyone has gathered at the beam; /shrine rite starts it by hand.')
   else if (RT.state == 'running') out.push('The Ignition Rite: wave ' + (RT.wave + 1) + ' (' + Object.keys(RT.seniors || {}).length + ' Senior Inspectors up); ' + RT.total + ' of ' + RT.need +
-    ' potatoes offered; ' + RT.lit + ' of ' + BANDS + ' bands lit.')
+    ' potatoes offered; ' + RT.lit + ' of ' + BANDS + (risen() ? ' bands lit.' : ' surges of the beam.'))
   else if (RT.state == 'paused') out.push('The Ignition Rite: paused at wave ' + (RT.wave + 1) + '; ' + RT.total + ' of ' + RT.need + ' potatoes (/shrine rite carries on).')
   else if (RT.state == 'full') out.push('The Ignition Rite: the altar is full (' + RT.total + ' of ' + RT.need + '). /shrine awaken.')
   else out.push('The Ignition Rite: done (' + RT.total + ' potatoes offered).')
@@ -2318,10 +2399,11 @@ function resume(server, restart) {
   if (riteOn()) startRiteLoop(server)
   if (D.rise.riteAt) scheduleAutoRite(server)
   if (D.rise.awakenAt) scheduleAutoAwaken(server)
-  if (D.awake.state == 'running') {
-    runAwakening(server, D.awake.step)
-    if (Object.keys(D.awake.spots).length) startHold(server)
-  }
+  if (D.awake.state == 'running') runAwakening(server, D.awake.step)
+  if (Object.keys(D.awake.spots).length) startHold(server)          // still watching (the Awakening, or the rise after it)
+  // the night's end was due (the Shrine stood after the Awakening) when the /reload or restart came: end it now
+  global.__shrineFinale = (global.__shrineFinale || 0) + 1
+  if (D.event.on && D.awake.state == 'done' && D.rise.state == 'risen') finishNight(server)
   startKitSweep(server)
   if (D.awake.state != 'none' && D.regalia.open && D.rise.state == 'risen') startLecternWatch(server)
   if (D.rise.state == 'risen' && D.stairs) startStairGlow(server)
@@ -2368,6 +2450,23 @@ function guardShrine(event) {
 }
 BlockEvents.broken(event => guardShrine(event))
 BlockEvents.placed(event => guardShrine(event))
+// The beam's blocks (the beacon, its iron, the red glass where the potatoes are offered) can't be broken while it's up,
+// outside creative.
+BlockEvents.broken(event => {
+  const B = db().beam, blk = event.block, p = event.player
+  if (!B.up || !B.at || !blk) return
+  let hit = false
+  try {
+    let d = dimKey(blk.level), x = Number(blk.x), y = Number(blk.y), z = Number(blk.z)
+    hit = d == B.at.dim && beamCells(B.at).some(c => c.x == x && c.y == y && c.z == z)
+  } catch (e) { return }
+  if (!hit) return
+  let creative = false
+  try { creative = !!p.isCreative() } catch (e) { }
+  if (creative) return
+  try { narrate(p, 'The beam will not be broken.', 'gray') } catch (e) { }
+  event.cancel()
+})
 LevelEvents.afterExplosion(event => {
   const st = shrineStanding()
   if (!st) return
@@ -2397,8 +2496,9 @@ ServerEvents.commandRegistry(event => {
   const awakenReply = (ctx, force) => {
     const why = awaken(ctx.source.server, force)
     if (why) return reply(ctx, why, true)
-    return reply(ctx, 'The Awakening begins: the tribute, the Blood God\'s words, the Regalia book on the altar, then the seals broken up to Tier ' +
-      OPEN_TIER + ' (no vote) and the Pool raised to ' + fmt(poolTarget()) + ' Drops, credited to nobody. About ' + Math.round(AWAKEN_STEPS[AWAKEN_STEPS.length - 1].at / 20) + ' seconds.')
+    return reply(ctx, 'The Awakening begins: the tribute, the Blood God\'s words, the Regalia named, then the seals broken up to Tier ' +
+      OPEN_TIER + ' (no vote) and the Pool raised to ' + fmt(poolTarget()) + ' Drops, credited to nobody. About ' + Math.round(AWAKEN_STEPS[AWAKEN_STEPS.length - 1].at / 20) + ' seconds' +
+      (risen() ? '.' : '; then the Shrine rises, and the night ends when it stands.'))
   }
   const riseReply = force => ctx => {
     const R = db().rise, resuming = R.state == 'stopped'
@@ -2535,6 +2635,7 @@ ServerEvents.commandRegistry(event => {
       if (stopRise()) return reply(ctx, 'The rise is paused at layer ' + db().rise.next + '. /shrine rise carries on.')
       if (db().rise.riteAt) {
         db().rise.riteAt = 0
+        db().rise.riteHeld = true                 // and it isn't queued again (everyone is still gathered)
         global.__shrineAutoRite = (global.__shrineAutoRite || 0) + 1
         save()
         return reply(ctx, 'The rite won\'t begin by itself. Start it with /shrine rite.')

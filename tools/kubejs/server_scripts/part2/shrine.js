@@ -206,7 +206,8 @@ const HOLD_RADIUS = 2.5
 // kitted when they arrive. Kit items can't leave the event: outside it, any found on a player are taken back.
 // items: [id, count, extra NBT]; armor: head .. feet; gear gets ENCHANT (the food doesn't).
 const KIT = {
-  items: [['minecraft:diamond_sword', 1, 'Enchantments:[{id:"minecraft:sharpness",lvl:4s},{id:"minecraft:unbreaking",lvl:10s}]'], ['minecraft:cooked_beef', 16, '']],
+  items: [['minecraft:diamond_sword', 1, 'Enchantments:[{id:"minecraft:sharpness",lvl:4s},{id:"minecraft:unbreaking",lvl:10s}]'], ['minecraft:cooked_beef', 16, ''],
+    ['minecraft:flint_and_steel', 1, 'Enchantments:[{id:"minecraft:unbreaking",lvl:10s}]']],   // to light the braziers (owner, 2026-11-19)
   armor: ['minecraft:diamond_helmet', 'minecraft:diamond_chestplate', 'minecraft:diamond_leggings', 'minecraft:diamond_boots'],
   offhand: 'minecraft:shield',
   enchant: 'Enchantments:[{id:"minecraft:unbreaking",lvl:10s}]',

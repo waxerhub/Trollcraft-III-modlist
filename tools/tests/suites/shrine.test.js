@@ -449,14 +449,14 @@ ok('/shrine braziers: all three go out, each with its place and direction', B().
 ok('... the event begins: every player online is brought to the start, and told', players.every(p => p.x == 5000.5 && p.y == 64 && p.z == 5000.5 && said(p, /The pilgrimage begins/)) &&
   global.Shrine.eventOn() && /Everyone is at the start \(5000 64 5000\), and the event is on/.test(r[0]), players.map(p => p.name + ' ' + p.x + ' ' + p.z).join(', '))
 ok('... status: the start and the event', /The start: 5000 64 5000/.test(cmd('status', admin)[9]) && /The event: on/.test(cmd('status', admin)[10]), cmd('status', admin).slice(9).join(' | '))
-ok('the night\'s kit: Carol has a diamond sword (Sharpness IV) and 16 steak, diamond armour on, a shield in her off hand, all the gear Unbreaking X',
+ok('the night\'s kit: Carol has a diamond sword (Sharpness IV), 16 steak and a flint and steel, diamond armour on, a shield in her off hand, all the gear Unbreaking X',
   carol.slots[0].id == 'minecraft:diamond_sword' && /sharpness",lvl:4s/.test(carol.slots[0].snbt) && /unbreaking",lvl:10s/.test(carol.slots[0].snbt) &&
-  carol.slots[1].id == 'minecraft:cooked_beef' && carol.slots[1].count == 16 && carol.slots[39].id == 'minecraft:diamond_helmet' && carol.slots[38].id == 'minecraft:diamond_chestplate' &&
+  carol.slots[1].id == 'minecraft:cooked_beef' && carol.slots[1].count == 16 && carol.slots[2].id == 'minecraft:flint_and_steel' && /unbreaking",lvl:10s/.test(carol.slots[2].snbt) && carol.slots[39].id == 'minecraft:diamond_helmet' && carol.slots[38].id == 'minecraft:diamond_chestplate' &&
   carol.slots[37].id == 'minecraft:diamond_leggings' && carol.slots[36].id == 'minecraft:diamond_boots' && carol.slots[40].id == 'minecraft:shield' &&
-  [36, 37, 38, 39, 40].every(i => /unbreaking",lvl:10s/.test(carol.slots[i].snbt)) && kitOf(carol).length == 7 && said(carol, /armed for the night/), carol.slots.filter(s => !s.isEmpty()).map(s => s.id).join())
+  [36, 37, 38, 39, 40].every(i => /unbreaking",lvl:10s/.test(carol.slots[i].snbt)) && kitOf(carol).length == 8 && said(carol, /armed for the night/), carol.slots.filter(s => !s.isEmpty()).map(s => s.id).join())
 ok('... her own things are held, in the saved data and a backup file; nothing is left with her but the kit',
   S().vaults['carol-uuid'].slots.map(s => s.id + '@' + s.slot).sort().join() == 'minecraft:iron_chestplate@38,minecraft:netherite_sword@0,minecraft:oak_log@7' &&
-  !!vaultFiles['kubejs/shrine_vaults/Carol_carol-uuid.json'] && carol.slots.filter(s => !s.isEmpty()).length == 7)
+  !!vaultFiles['kubejs/shrine_vaults/Carol_carol-uuid.json'] && carol.slots.filter(s => !s.isEmpty()).length == 8)
 ok('... the op in creative is left alone: no kit, nothing held', !S().vaults['admin-uuid'] && kitOf(admin).length == 0)
 ok('... an item that can\'t be stored safely: Bob keeps his own gear, and the op is told', !S().vaults['bob-uuid'] && bob.slots[4].id == 'minecraft:bread' && kitOf(bob).length == 0 &&
   said(bob, /you fight in your own gear tonight/) && said(admin, /Bob fights in their own gear/))
@@ -472,7 +472,7 @@ players.splice(players.indexOf(ivy), 1)
 for (let i = 0; i < 41; i++) carol.slots[i] = stack('minecraft:air', 0)
 ;(handlers.respawned || []).forEach(h => h({ player: carol }))
 advance(3)
-ok('/kill still kills, and back from it Carol has the kit again (her own things still held)', carol.slots[0].id == 'minecraft:diamond_sword' && kitOf(carol).length == 7 && !!S().vaults['carol-uuid'])
+ok('/kill still kills, and back from it Carol has the kit again (her own things still held)', carol.slots[0].id == 'minecraft:diamond_sword' && kitOf(carol).length == 8 && !!S().vaults['carol-uuid'])
 ok('... global.Shrine.busy(): the Purge and the arena wait all night, not just for the rite', global.Shrine.busy() == 'the Shrine Awakens is on')
 ok('... their chunks are force-loaded while they\'re watched', [b1, b2, b3].every(b => cmds.indexOf('execute in minecraft:overworld run forceload add ' + (b.x - 1) + ' ' + (b.z - 1) + ' ' + (b.x + 1) + ' ' + (b.z + 1)) >= 0))
 advance(2)
@@ -999,7 +999,7 @@ const toTheAltar = () => {
 }
 carol.slots[8] = own('minecraft:compass', 1)
 toTheAltar()
-ok('(the night under way: Carol kitted, her compass held, the rite begun by itself)', RT().state == 'running' && global.Shrine.eventOn() && kitOf(carol).length == 7 &&
+ok('(the night under way: Carol kitted, her compass held, the rite begun by itself)', RT().state == 'running' && global.Shrine.eventOn() && kitOf(carol).length == 8 &&
   S().vaults['carol-uuid'].slots.some(s => s.id == 'minecraft:compass'))
 players.forEach(p => { p.msgs = [] })
 cmds = []

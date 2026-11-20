@@ -156,7 +156,7 @@ The last page is the first hint of the two threads (kept: owner decision).
 
 ## The night's kit ✅ built
 **Owner decisions at the rehearsal, 2026-11-19:** "my armor and weapons kept breaking during the event, I would like there to be a kit similar to the gladiatorial arena ... When the shrine awakens the player inventories are restored".
-- **The kit** (`KIT`): a diamond sword with Sharpness IV, 16 steak, a full set of diamond armour (worn), and a shield in the off hand.
+- **The kit** (`KIT`): a diamond sword with Sharpness IV, 16 steak, a flint and steel to light the braziers (added at the third run, owner's request), a full set of diamond armour (worn), and a shield in the off hand.
   - **Every piece of gear has Unbreaking X.** The food doesn't need it.
   - **The lore:** each piece is marked as the night's kit (`ShrineKit` in its data, and "Issued for the Shrine Awakens. Taken back at its end.").
 - **Who gets it:** everyone in survival or adventure, when `/shrine braziers` brings them to the start.
@@ -440,7 +440,7 @@ The deliveries, Shrine raids and rewards are Act II's work and get their own spe
 11. **The Awakening's Drops are credited to nobody** (2026-11-19, at the rehearsal): "I would rather this blood not be credited to any player".
 12. **The rite's waves** (2026-11-19, at the rehearsal): "I don't like how easily the event potatoes are dropped". Waves come until the altar is full, each led by a Senior Inspector, and only the Seniors drop the potatoes, a fixed 8 each; the next wave comes as before (three-quarters down, or 3 minutes).
 13. **The night ends by itself** (2026-11-19, after the second run): "I need the event to start automating itself. Once the event potatoes are offered at the altar, inspectors should despawn and the players should teleport to in front of the stairs to watch the shrine awaken."
-14. **The night's kit** (2026-11-19): diamond armour, a diamond sword with Sharpness IV and a shield, all Unbreaking X, plus 16 steak. It's given at `/shrine braziers` and to anyone joining mid-event, and belongings come back when the Awakening ends.
+14. **The night's kit** (2026-11-19): diamond armour, a diamond sword with Sharpness IV, a shield and a flint and steel (added at the third run), all Unbreaking X, plus 16 steak. It's given at `/shrine braziers` and to anyone joining mid-event, and belongings come back when the Awakening ends.
 15. **Cinematic effects** at every stage (2026-11-19): the fires and the beam, the rise (with night and a storm), the rite, and the Awakening.
 16. **Knockouts stay as they are** (2026-11-19), after the second run's loop at the Shrine's edge.
 

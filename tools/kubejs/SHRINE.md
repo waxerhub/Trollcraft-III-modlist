@@ -13,7 +13,7 @@ The story is in [STORY.md](../../STORY.md), Act I #36. This file says how each s
   - Technoblade's Shrine rises out of the ground, layer by layer;
   - the server defends it from Inspector waves and feeds it Potato King's Potatoes;
   - the Blood God names the Regalia of the Blade.
-- **How it ends:** the Blood God breaks the third and fourth seals himself, with no vote, which opens the Nether. The Pool is raised to a quarter of the way past Tier 4 (230,000 Drops), credited to those who fed the altar (owner decisions 2026-11-19).
+- **How it ends:** the Blood God breaks the third and fourth seals himself, with no vote, which opens the Nether. The Pool is raised to a quarter of the way past Tier 4 (230,000 Drops), credited to nobody (owner decisions 2026-11-19).
 
 **Each stage is one op command,** except the Ignition Rite, which begins by itself 8 seconds after the Shrine has risen on the night (owner decision 2026-11-19). The ops set the pace and can wait for stragglers.
 
@@ -251,13 +251,14 @@ At most 12 Inspectors in a wave (`WAVE_MAX`). One in three is a pillager with a 
    > I break the third seal, and the fourth with it. Blood for the Blood God.
 5. **The Pool** (46 seconds in). Owner decisions 2026-11-19: no vote; the Blood God breaks the seals himself.
    - **The Drops:** the Pool is raised to **a quarter of the way from Tier 4's threshold to Tier 5's** (`POOL_AFTER`). With `blood_pool.js`'s tiers (200,000 and 320,000) that's **230,000 Drops**, about 164,000 added on the night (from 66,000).
-   - **Who's credited:** the Drops go to each player in proportion to the potatoes they offered at the altar. If nobody offered any, they're shared equally among the players present.
+   - **Credited to nobody** (owner decision at the rehearsal, 2026-11-19): the Drops count toward the tiers but go on no player's contribution (`/bloodpool top`), as with an op's `/bloodpool add`. The potatoes offered at the altar fill the rite's bar and nothing else.
    - **Already there:** if the Pool is already past 230,000, nothing is added.
    - **The seals:** the Shrine opens every tier up to **Tier 4** itself (`OPEN_TIER`, through `global.BloodPool.openTo(4, 'the Shrine')`), whatever the Pool holds. Tier 3 opens **the Nether**.
      - The Pool announces it as it does any opening: its title and lines for Tier 4, "A Font", with the Nether's own message, then a `/reload` for the recipes.
      - The log says "[Shrine] The Awakening broke the seals: Tier 2 to 4".
      - A tier already open stays as it is: nothing is ever closed.
      - With an older `blood_pool.js` (no `openTo`), the log warns and the seals stay for a vote or an op.
+   - **The order:** the seals break first, then the Drops land. Otherwise the Pool would see the sealed tiers as ready and call for a vote a moment before the Shrine opens them (seen at the rehearsal).
 
 **The reward is the Drops:** there's no title or keepsake (owner decision).
 
@@ -378,6 +379,7 @@ The deliveries, Shrine raids and rewards are Act II's work and get their own spe
 8. **The Awakening's end** (2026-11-19): no vote. The Pool is raised to a quarter of the way past Tier 4 (230,000 Drops), and the Shrine breaks the third and fourth seals itself. The Blood God's last line: "I break the third seal, and the fourth with it. Blood for the Blood God."
 9. **The rite begins by itself** after the rise (2026-11-19).
 10. **The Signal and the Summons** as drafted (2026-11-19).
+11. **The Awakening's Drops are credited to nobody** (2026-11-19, at the rehearsal): "I would rather this blood not be credited to any player".
 
 ## Still open
 - **To tune at the rehearsal:**
@@ -487,13 +489,22 @@ The owner ran the whole night from `/shrine braziers` to the Awakening with the 
 - **The vote** needs 5 votes, so the seal couldn't be broken with one player. (The vote has since gone: the Shrine breaks the seals itself, owner decision 2026-11-19.)
 - **The owner asked** whether everyone is told how long the rise takes: only the op's reply says so ("about 29 seconds"); players within 128 blocks get the shaking ground and a title. Left as it is for now.
 
+## The rehearsal on the test server (2026-11-19)
+The whole night with two players in survival, leelinda and Sipheon, every stage run from the console over RCON. The Shrine was first reset and the Pool put back to Tier 2, 66,000 Drops. The test copy of `blood_pool.js` took 2 votes to break a seal instead of 5.
+- **Stages 0–1:** `/shrine signal` and `/shrine summons` reached both players. All three fires on the Summons' page read "about 11350 blocks toward the rising sun", since the test braziers stand together far from spawn.
+- **Stage 2:** both were brought to the start and the event came on. All three ambushes came at once, 4 Inspectors each (the braziers are 10–25 blocks from the start). leelinda was knocked out four times and woke at the start each time. All three fires burned 47 seconds later, and the beam went up.
+- **Stage 3:** `/shrine rise` under the beam with no `force`. The Shrine stood in 28.5 seconds with 21 steps.
+- **Stage 4, beginning by itself:** the rite began 7.9 seconds after the rise ("began by itself"). 2 present, 16 potatoes. Waves 1 to 3 came about 30 seconds apart (3 Inspectors each, the minimum), Sipheon was knocked out four times and leelinda once, waking at the Shrine's edge. The altar was full 1 minute 39 seconds after the rite began, during wave 3.
+- **Stage 5:** the Awakening ran its 46 seconds. The Pool went from 66,000 to 230,000 (164,000 Drops, all credited to leelinda, who offered all 16 potatoes; the owner then decided the Drops go to nobody). The seals broke from Tier 2 to 4 "by the Shrine", the Nether opened, the event ended, and the recipe reload had 0 failures.
+- **Found and fixed the same night:** the Drops were added before the seals broke, so for a moment the Pool saw Tiers 3 and 4 as ready and told everyone to break the third seal with `/bloodpool vote`, just before the Shrine opened both. The seals now break first, then the Drops land (a check in the tests).
+- **To tune** (for the owner): with two players the rite lasted under 2 minutes, not the 20 planned. The waves are at their minimum of 3 Inspectors, and 16 potatoes take 8 kills.
+
 ## What couldn't be verified yet
-- **Stages 0–1 (built 2026-11-19, mock-tested only):**
-  - how the Signal looks in chat (the obfuscated stretches and the readable fragments);
-  - the Summons as a book in game: that every page fits, and the fires page with the real brazier sites;
-  - the Signal and the Summons reaching a player who joins later (the mock fires the join event).
-- **The rite beginning by itself** 8 seconds after the rise (mock-tested, with `/shrine stop` and a `/reload` while it's due).
-- **The Awakening's new end** (mock-tested): the Pool raised to 230,000 and the seals opened to Tier 4 on a real server, with the Pool's announcement, the Nether opening and the recipe `/reload` that follows.
+- **Stages 0–1:**
+  - how the Signal looks in chat and the Summons as a book, as players see them (the players' view wasn't recorded at the rehearsal);
+  - the Signal and the Summons reaching a player who joins later (mock-tested; nobody joined late at the rehearsal).
+- **The rite beginning by itself:** `/shrine stop` and a `/reload` while it's due (mock-tested; the start itself was seen at the rehearsal).
+- **The seals before the Drops** (the rehearsal's fix): mock-tested, not yet run in game.
 - **The night's event:**
   - waking beside a brazier (only the start and the Shrine's edge were seen live; the brazier is mock-tested);
   - the teleport to the start with several players, and with players in another dimension;
@@ -523,8 +534,8 @@ The owner ran the whole night from `/shrine braziers` to the Awakening with the 
 | Stage 3, the rise, with `/shrine stop` and `/shrine reset confirm` | ✅ built, same checks; tried on the test server (see above) |
 | No monsters in the Shrine, and `/shrine clearmobs` | ✅ built, 71 mock checks in all; tried on the test server |
 | Stage 2, the braziers, the beam and the ambushes (the Shrine's own Inspectors) | ✅ built, 112 mock checks in all; tried on the test server (see above) |
-| Stages 0–1, the Signal and the Summons (late arrivals too) | ✅ built 2026-11-19, 24 mock checks; not yet tried in game |
-| The rite beginning by itself after the rise; the Awakening's new end (230,000 Drops, the Shrine opens Tiers 3 and 4, no vote) | ✅ built 2026-11-19, mock checks (the Shrine suite has 256 in all, plus `openTo` in the Blood Pool suite); not yet tried in game |
+| Stages 0–1, the Signal and the Summons (late arrivals too) | ✅ built 2026-11-19, 24 mock checks; run at the rehearsal (see above) |
+| The rite beginning by itself after the rise; the Awakening's new end (230,000 Drops, the Shrine opens Tiers 3 and 4, no vote) | ✅ built 2026-11-19, mock checks (the Shrine suite has 258 in all, plus `openTo` in the Blood Pool suite); run at the rehearsal, and the seals now break before the Drops land |
 | Stage 4, the Ignition Rite (waves, the Senior Inspector, the King's Potatoes, the altar and its light, knockouts) | ✅ built, mock checks plus one in the Blood Pool suite; tried on the test server (see above) |
 | The steps up to the altar, the Inspectors' ground, and the rise waiting for the beam | ✅ built; the steps tried on the test server |
 | The night's event: `/shrine start set`, everyone to the start, knockouts for everyone until the Awakening ends | ✅ built, 224 mock checks in all; the whole night run on the test server (see above) |

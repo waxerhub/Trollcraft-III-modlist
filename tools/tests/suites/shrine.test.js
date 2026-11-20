@@ -709,7 +709,7 @@ admin.creative = false
 const pool = { drops: 66000, tier: 2, adds: [], opens: [] }
 global.BloodPool = { drops: () => pool.drops, tier: () => pool.tier,
   tiers: [{ tier: 1, drops: 20000 }, { tier: 2, drops: 60000 }, { tier: 3, drops: 120000 }, { tier: 4, drops: 200000 }, { tier: 5, drops: 320000 }],
-  addDrops: (n, source, uuid, name) => { pool.drops += n; pool.adds.push({ n, source, uuid, name }) },
+  addDrops: (n, source, uuid, name) => { pool.drops += n; pool.adds.push({ n, source, uuid, name, tierThen: pool.tier }) },
   openTo: (n, by) => { pool.opens.push({ n, by }); if (n > pool.tier) pool.tier = n; return pool.tier } }
 const LECTERN = '1007,86,1999'                                   // the corner (979 64 1979) + (28, 22, 20)
 const bookOf = () => worldNbt[LECTERN] || ''
@@ -726,7 +726,7 @@ const straggler = mob('minecraft:vindicator', 'MONSTER', 1040.5, 64, 2000.5, { t
 cmds = []
 r = cmd('awaken force', admin)
 ok('/shrine awaken: the tribute, the words, the book, then the Pool raised to 230,000 and the seals broken to Tier 4 (no vote), in about 46 seconds', /The Awakening begins/.test(r[0]) &&
-  /the Pool raised to 230,000 Drops and the seals broken up to Tier 4 \(no vote\)/.test(r[0]) && /About 46 seconds/.test(r[0]), r[0])
+  /the seals broken up to Tier 4 \(no vote\) and the Pool raised to 230,000 Drops, credited to nobody/.test(r[0]) && /About 46 seconds/.test(r[0]), r[0])
 advance(2)
 ok('it begins: every Inspector left is taken away', straggler.discarded)
 ok('... those present see "The Shrine awakens" and hear it; someone far away doesn\'t get the title', cmds.some(c => /^title Carol title .*The Shrine awakens/.test(c)) && cmds.some(c => /^title Bob title/.test(c)) && !cmds.some(c => /^title Far title/.test(c)))
@@ -758,12 +758,15 @@ ok('global.Regalia: open, eight relics', global.Regalia.isOpen() && global.Regal
 advance(120)
 ok('the Blood God: "I break the third seal, and the fourth with it. Blood for the Blood God."', said(carol, /\[BLOOD GOD\] I break the third seal, and the fourth with it\. Blood for the Blood God\./))
 advance(40)
-ok('the Pool is raised to a quarter past Tier 4, 230,000: 164,000 Drops, shared by those present (nobody offered potatoes)', pool.drops == 230000 && pool.adds.length == 2 &&
-  pool.adds.every(a => a.source == 'shrine' && a.n == 82000) && pool.adds.map(a => a.name).sort().join() == 'Bob,Carol', JSON.stringify(pool.adds))
+ok('the Pool is raised to a quarter past Tier 4, 230,000: 164,000 Drops in one, credited to nobody (owner decision at the rehearsal, 2026-11-19)', pool.drops == 230000 &&
+  pool.adds.length == 1 && pool.adds[0].n == 164000 && pool.adds[0].source == 'shrine' && pool.adds[0].uuid === '' && pool.adds[0].name === '' &&
+  logs.some(l => /The Awakening added 164000 Drops, credited to nobody/.test(l)), JSON.stringify(pool.adds))
 ok('... and the Shrine breaks the seals itself: Tiers 3 and 4 open, by "the Shrine"', pool.opens.length == 1 && pool.opens[0].n == 4 && pool.opens[0].by == 'the Shrine' &&
   pool.tier == 4 && logs.some(l => /The Awakening broke the seals: Tier 2 to 4/.test(l)), JSON.stringify(pool.opens))
+ok('... the seals break before the Drops land, so the Pool never calls a vote on a tier about to open (rehearsal, 2026-11-19)', pool.adds.every(a => a.tierThen == 4), JSON.stringify(pool.adds))
 ok('... no vote is asked for', !carol.msgs.some(m => /bloodpool vote|break the third seal together/.test(m)))
-ok('the Awakening is done; status says so, with who was credited', S().awake.state == 'done' && global.Shrine.awakened() && /The Awakening: done\. The Regalia is open; Drops credited: (Carol 82,000, Bob 82,000|Bob 82,000, Carol 82,000)/.test(cmd('status', admin)[8]), cmd('status', admin)[8])
+ok('the Awakening is done; status says so, with the Drops it added', S().awake.state == 'done' && global.Shrine.awakened() &&
+  /The Awakening: done\. The Regalia is open; 164,000 Drops added, credited to nobody\./.test(cmd('status', admin)[8]), cmd('status', admin)[8])
 ok('/shrine awaken again: refused', /already awakened/.test(cmd('awaken', admin)[0]))
 // someone takes the book from the lectern
 world[LECTERN] = 'minecraft:lectern[facing=east,has_book=false,powered=false]'; delete worldNbt[LECTERN]
@@ -798,7 +801,7 @@ ok('/shrine repair places every layer again over the Shrine (nothing cleared), t
   world[LECTERN] == 'minecraft:lectern[facing=east,has_book=true,powered=false]' && /The Regalia of the Blade/.test(bookOf()), r[0])
 ok('... with its chunks loaded for it, and let go after', cmds.indexOf('execute in minecraft:overworld run forceload add 979 1979 1020 2021') >= 0 && cmds.indexOf('execute in minecraft:overworld run forceload remove 979 1979 1020 2021') >= 0)
 
-// a second night (test server): the potatoes offered decide the shares, and a /reload mid-way carries on
+// a second night (test server): whoever offered the potatoes, the Drops go to nobody, and a /reload mid-way carries on
 cmd('reset confirm', admin); advance(40)
 ok('the reset forgets the Awakening and closes the Regalia', S().awake.state == 'none' && !global.Regalia.isOpen() && /named nothing yet/.test(regalia(carol)[0]))
 cmd('rise force', admin); advance(layerTicks * 66 + 30)
@@ -814,7 +817,8 @@ load()                                            // a /reload just after the fi
 advance(awakeTicks)
 ok('a /reload mid-Awakening carries on from the next step: nothing said twice', far.msgs.filter(m => /You lit my fires/.test(m)).length == 1 && far.msgs.filter(m => /Eight things were mine/.test(m)).length == 1 &&
   S().awake.state == 'done', far.msgs.length)
-ok('... the potatoes offered decide the shares: Carol 30, Bob 10 of 160,000 Drops', pool.drops == 230000 && pool.adds.find(a => a.name == 'Carol').n == 120000 && pool.adds.find(a => a.name == 'Bob').n == 40000, JSON.stringify(pool.adds))
+ok('... Carol offered 30 potatoes and Bob 10, and still the 160,000 Drops go to nobody, added once', pool.drops == 230000 && pool.adds.length == 1 && pool.adds[0].n == 160000 &&
+  pool.adds[0].uuid === '' && /160,000 Drops added, credited to nobody/.test(cmd('status', admin)[8]), JSON.stringify(pool.adds))
 ok('... and the seals are broken once (the /reload didn\'t open them twice)', pool.opens.length == 1 && pool.tier == 4, JSON.stringify(pool.opens))
 // a third night with the Pool already past 230,000 but Tier 3 still sealed: no Drops, the seals still broken
 // (this night begins with the braziers: the event runs from them to the Awakening's end)
@@ -828,7 +832,8 @@ cmd('awaken force', admin)
 advance(awakeTicks - 20)
 ok('... and through the Awakening', global.Shrine.eventOn() && S().awake.state == 'running')
 advance(25)
-ok('with the Pool already past 230,000: no Drops added, but the seals are still broken to Tier 4', pool.adds.length == 0 && pool.drops == 240000 && pool.tier == 4 && pool.opens.length == 1 && S().awake.state == 'done')
+ok('with the Pool already past 230,000: no Drops added, but the seals are still broken to Tier 4', pool.adds.length == 0 && pool.drops == 240000 && pool.tier == 4 && pool.opens.length == 1 && S().awake.state == 'done' &&
+  /no Drops added \(the Pool was already there\)/.test(cmd('status', admin)[8]), cmd('status', admin)[8])
 ok('the Awakening done, the event ends: deaths are deaths again, and the Purge and the arena may run', !global.Shrine.eventOn() && global.Shrine.busy() == '' &&
   (carol.health = 0, !fall(carol, 'mob')) && logs.some(l => /The event is over/.test(l)))
 // and with no Blood Pool at all

@@ -28,8 +28,8 @@
 //     Deaths in an ambush are ordinary. Ambushers left over are taken away when the rise begins.
 //   - Stage 5, the Awakening (/shrine awaken, once the Shrine has risen): the Techno Tribute and a server-wide
 //     /superaura, the Blood God's words, the Regalia book on the altar's lectern (put back if taken), /regalia opened,
-//     the Pool raised to a quarter past Tier 4 (230,000 Drops), credited by the potatoes offered (or shared by those
-//     present), and the seals broken up to Tier 4 by the Shrine itself, with no vote.
+//     the seals broken up to Tier 4 by the Shrine itself, with no vote, and the Pool raised to a quarter past Tier 4
+//     (230,000 Drops), credited to nobody.
 //     /regalia (anyone) lists the eight relics. The Shrine can't be broken or built on outside creative, nor its altar
 //     even in creative; /shrine repair puts it back as it was built.
 // Still to come: the Signal and the Summons, and the Ignition Rite.
@@ -156,8 +156,9 @@ const JOIN_DELAY_TICKS = 100              // after a player joins, before the Si
 // 2026-11-19). 0 = an op starts it with /shrine rite. Outside the event (a rise forced for a test) it never starts alone.
 const AUTO_RITE_SECONDS = 8
 // The Awakening's Pool (owner decisions, 2026-11-19): no vote. The Pool is raised to POOL_AFTER (a quarter of the way
-// from Tier 4's threshold to Tier 5's: 230,000 Drops), credited by the potatoes offered at the altar, and the Shrine
-// breaks the seals up to OPEN_TIER itself (the Nether's with them). It never lowers the Pool or closes a tier.
+// from Tier 4's threshold to Tier 5's: 230,000 Drops), and the Shrine breaks the seals up to OPEN_TIER itself (the
+// Nether's with them). It never lowers the Pool or closes a tier. The Drops are the Blood God's own: credited to
+// nobody, like an op's /bloodpool add (owner decision, 2026-11-19, at the rehearsal).
 const POOL_AFTER = { past: 4, fraction: 0.25 }
 const OPEN_TIER = 4
 // The Awakening's steps, in ticks from /shrine awaken: the tribute first (/techno all takes about 25 seconds), then the
@@ -219,7 +220,7 @@ function db() {
   }
   if (!data.fires) data.fires = freshFires()
   if (!data.beam) data.beam = { up: false, at: null, saved: [] }
-  if (!data.awake) data.awake = { state: 'none', step: 0, credited: {} }   // state: none, running or done
+  if (!data.awake) data.awake = { state: 'none', step: 0, added: 0 }      // state: none, running or done; added: the Drops it put in
   if (!data.regalia) data.regalia = { open: false, progress: {} }          // progress: relic id -> { have, by: { uuid: { name, n } } }
   if (!data.rite || !data.rite.state) data.rite = freshRite((data.rite && data.rite.offered) || {})
   if (!(data.stairs >= 0)) data.stairs = 0                                 // the steps to the altar laid (0: none)
@@ -616,7 +617,7 @@ function resetShrine(server, done) {
   clearInspectors(server, 'shrine_inspector')
   riteBarsOff(server)
   crumbleKings(server)
-  D.awake = { state: 'none', step: 0, credited: {} }
+  D.awake = { state: 'none', step: 0, added: 0 }
   D.regalia = { open: false, progress: {} }
   D.rite = freshRite({})
   D.event = { on: false, at: 0 }
@@ -1538,31 +1539,18 @@ function poolTarget() {
   if (!a) return 0
   return Math.floor(a + Math.max(0, b - a) * POOL_AFTER.fraction)
 }
-// Raises the Pool to poolTarget(), credited by the potatoes each player offered at the altar (or, if nobody offered
-// any, shared by those present). Returns { added, shares: [{ name, n }] }.
-function topUpPool(server, present) {
+// Raises the Pool to poolTarget(). The Drops are credited to nobody: they count toward the tiers, but go on no
+// player's contribution (owner decision, 2026-11-19). Returns how many were added.
+function topUpPool() {
   const BP = global.BloodPool
-  if (!BP || typeof BP.addDrops != 'function') { console.warn('[Shrine] No Blood Pool: the Awakening adds no Drops'); return { added: 0, shares: [] } }
-  const target = poolTarget(), need = Math.max(0, target - Number(BP.drops()))
-  if (!(need > 0)) return { added: 0, shares: [] }
-  const offered = db().rite.offered || {}
-  let shares = Object.keys(offered).filter(u => offered[u].n > 0).map(u => ({ uuid: u, name: offered[u].name, w: offered[u].n }))
-  if (!shares.length) shares = present.map(p => ({ uuid: uuidOf(p), name: nameOf(p), w: 1 }))
-  if (!shares.length) { BP.addDrops(need, 'shrine', '', ''); return { added: need, shares: [] } }
-  const W = shares.reduce((a, s) => a + s.w, 0)
-  let given = 0
-  shares.forEach(s => { s.n = Math.floor(need * s.w / W); given += s.n })
-  shares.sort((a, b) => b.w - a.w)
-  shares[0].n += need - given                       // what rounding left over goes to the biggest share
-  const credited = db().awake.credited
-  shares.forEach(s => {
-    if (s.n <= 0) return
-    BP.addDrops(s.n, 'shrine', s.uuid, s.name)
-    credited[s.uuid] = { name: s.name, n: (credited[s.uuid] ? credited[s.uuid].n : 0) + s.n }
-  })
+  if (!BP || typeof BP.addDrops != 'function') { console.warn('[Shrine] No Blood Pool: the Awakening adds no Drops'); return 0 }
+  const need = Math.max(0, poolTarget() - Number(BP.drops()))
+  if (!(need > 0)) return 0
+  BP.addDrops(need, 'shrine', '', '')
+  db().awake.added = (db().awake.added || 0) + need
   save()
-  console.info('[Shrine] The Awakening added ' + need + ' Drops: ' + shares.map(s => s.name + ' ' + s.n).join(', '))
-  return { added: need, shares: shares.map(s => ({ name: s.name, n: s.n })) }
+  console.info('[Shrine] The Awakening added ' + need + ' Drops, credited to nobody')
+  return need
 }
 // The Shrine breaks the seals up to OPEN_TIER: no vote. The Blood Pool opens them as /bloodpool unlock does (its title,
 // line and the Nether's), then reloads. Nothing happens if they're already open.
@@ -1613,8 +1601,10 @@ function awakenStep(server, s) {
     })
     startLecternWatch(server)
   } else if (s.step == 'pool') {
-    topUpPool(server, presentAt(server, st))
+    // The seals first, then the Drops: Drops landing on a sealed tier make the Pool announce it ready and call for a
+    // vote, a moment before the Shrine opens it anyway (seen at the rehearsal, 2026-11-19).
     openSeals()
+    topUpPool()
   }
 }
 // Runs the Awakening's steps from step `from` (a /reload or restart carries on where it was).
@@ -1665,7 +1655,7 @@ function awaken(server, force) {
   if (D.awake.state == 'done') return 'The Shrine has already awakened. (/shrine reset confirm forgets the night, on the test server.)'
   if (R.state != 'full' && !force) return (R.state == 'none' ? 'The Ignition Rite hasn\'t been held (/shrine rite).' : 'The altar isn\'t full yet (' + R.total + ' of ' + R.need + ' potatoes).') +
     ' /shrine awaken force goes ahead anyway.'
-  D.awake = { state: 'running', step: 0, credited: {} }
+  D.awake = { state: 'running', step: 0, added: 0 }
   save()
   console.info('[Shrine] The Awakening begins')
   runAwakening(server, 0)
@@ -1731,10 +1721,10 @@ function statusLines(server) {
   else if (RT.state == 'paused') out.push('The Ignition Rite: paused at wave ' + (RT.wave + 1) + '; ' + RT.total + ' of ' + RT.need + ' potatoes (/shrine rite carries on).')
   else if (RT.state == 'full') out.push('The Ignition Rite: the altar is full (' + RT.total + ' of ' + RT.need + '). /shrine awaken.')
   else out.push('The Ignition Rite: done (' + RT.total + ' potatoes offered).')
-  const A = D.awake, credited = Object.keys(A.credited || {}).map(u => A.credited[u])
+  const A = D.awake
   if (A.state == 'none') out.push('The Awakening: not yet (/shrine awaken, once the Shrine has risen).')
   else if (A.state == 'running') out.push('The Awakening: under way (step ' + A.step + ' of ' + AWAKEN_STEPS.length + ').')
-  else out.push('The Awakening: done. The Regalia is open' + (credited.length ? '; Drops credited: ' + credited.map(c => c.name + ' ' + fmt(c.n)).join(', ') : '') + '.')
+  else out.push('The Awakening: done. The Regalia is open; ' + (A.added > 0 ? fmt(A.added) + ' Drops added, credited to nobody.' : 'no Drops added (the Pool was already there).'))
   out.push('The start: ' + (D.start ? siteText(D.start) + ' (/shrine braziers brings everyone here)' : 'not set (/shrine start set, where everyone gathers)'))
   out.push(D.event.on ? 'The event: on. Knockouts instead of deaths for everyone, until the Awakening ends.' : 'The event: off (/shrine braziers starts it).')
   const hours = at => Math.max(0, Math.round((Date.now() - at) / 3600000))
@@ -1833,8 +1823,8 @@ ServerEvents.commandRegistry(event => {
   const awakenReply = (ctx, force) => {
     const why = awaken(ctx.source.server, force)
     if (why) return reply(ctx, why, true)
-    return reply(ctx, 'The Awakening begins: the tribute, the Blood God\'s words, the Regalia book on the altar, then the Pool raised to ' +
-      fmt(poolTarget()) + ' Drops and the seals broken up to Tier ' + OPEN_TIER + ' (no vote). About ' + Math.round(AWAKEN_STEPS[AWAKEN_STEPS.length - 1].at / 20) + ' seconds.')
+    return reply(ctx, 'The Awakening begins: the tribute, the Blood God\'s words, the Regalia book on the altar, then the seals broken up to Tier ' +
+      OPEN_TIER + ' (no vote) and the Pool raised to ' + fmt(poolTarget()) + ' Drops, credited to nobody. About ' + Math.round(AWAKEN_STEPS[AWAKEN_STEPS.length - 1].at / 20) + ' seconds.')
   }
   const riseReply = force => ctx => {
     const R = db().rise, resuming = R.state == 'stopped'

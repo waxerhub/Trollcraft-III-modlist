@@ -15,7 +15,17 @@ The story is in [STORY.md](../../STORY.md), Act I #36. This file says how each s
   - the Blood God names the Regalia of the Blade.
 - **How it ends:** the Blood God breaks the third and fourth seals himself, with no vote, which opens the Nether. The Pool is raised to a quarter of the way past Tier 4 (230,000 Drops), credited to nobody (owner decisions 2026-11-19).
 
-**Each stage is one op command,** except the Ignition Rite, which begins by itself 8 seconds after the Shrine has risen on the night (owner decision 2026-11-19). The ops set the pace and can wait for stragglers.
+**Each stage is one op command, until the Shrine has risen; from there the night runs itself** (owner decisions 2026-11-19):
+- **The Ignition Rite** begins by itself 8 seconds after the Shrine has risen.
+- **When the altar is full,** the Inspectors vanish and everyone is brought to the foot of the steps. The Awakening then begins by itself.
+
+The ops set the pace up to the rise and can wait for stragglers. `/shrine stop` holds either automatic step.
+
+**The night's kit** (owner decision 2026-11-19): from `/shrine braziers` to the Awakening's end, everyone fights in a kit that won't break, and their own belongings are held safe (below).
+
+**Effects** (owner decision 2026-11-19): every stage has its own (each stage below says which).
+- **What they are:** titles, sounds, particles, fireworks, and lightning that can't burn or hurt.
+- **The sky:** during the event it turns to night and storm at the rise, and clears to day at the end.
 
 | Stage | Command | Length | Where |
 |---|---|---|---|
@@ -24,7 +34,7 @@ The story is in [STORY.md](../../STORY.md), Act I #36. This file says how each s
 | 2. The Pilgrimage | `/shrine braziers` | ~30 min | three brazier sites |
 | 3. The Shrine Rises | `/shrine rise` | ~15 min | the Shrine site |
 | 4. The Ignition Rite | begins by itself after the rise (`/shrine rite` by hand) | ~20 min | the Shrine |
-| 5. The Awakening | `/shrine awaken` | ~5 min | the Shrine |
+| 5. The Awakening | begins by itself once the altar is full (`/shrine awaken` by hand) | ~1 min | the foot of the steps |
 
 ## Setting up (before the night)
 **Sites are set in game.** An op stands on the spot and runs:
@@ -87,6 +97,10 @@ The last page is the first hint of the two threads (kept: owner decision).
 ## 2. The Pilgrimage: three braziers ✅ built
 **`/shrine braziers`** places an unlit brazier at each site and **starts the night's event** (below). It needs all three brazier sites and the start set, and it won't start during a Purge or a Gladiator match.
 - **Everyone to the start:** every player online is teleported to the start and told "The pilgrimage begins. Until the Shrine awakens, falling is not the end: you wake by the last fire lit, or here."
+- **Armed for the night:** everyone in survival is given the night's kit there, and their own belongings are held (see "The night's kit" below).
+- **Effects** (2026-11-19):
+  - each fire that catches sends up a column of flame and signal smoke, with a blaze's roar everyone hears;
+  - when all three burn, lightning strikes each brazier (only for show), and "THREE FIRES BURN" fills every screen ("A red light rises over the Shrine").
 - **The brazier:** a 3 × 3 plinth of polished blackstone bricks on the ground, an unlit campfire on it in the middle, and blackstone walls with chains at the corners (`BRAZIER_PARTS`).
 - **Building them:** each brazier's chunk is force-loaded while the fires are watched, so each is built once its chunk loads, even with nobody near.
 - **Protected:** the braziers can't be broken outside creative ("The brazier will not move").
@@ -140,6 +154,29 @@ The last page is the first hint of the two threads (kept: owner decision).
 - **No overlap:** the Purge and the Gladiator Arena wait for the whole event (`global.Shrine.busy()` says "the Shrine Awakens is on"), and the Shrine won't start a stage during either. The Shrine asks the Purge whether one is running or counting down (`active()`, `pending()`), not `busy()`, which names the Shrine itself as a reason (that made the Shrine wait on itself on the test server).
 - **Without the event** (a rehearsal with `/shrine rise force` and no braziers), only the rite's knockouts at the Shrine apply.
 
+## The night's kit ✅ built
+**Owner decisions at the rehearsal, 2026-11-19:** "my armor and weapons kept breaking during the event, I would like there to be a kit similar to the gladiatorial arena ... When the shrine awakens the player inventories are restored".
+- **The kit** (`KIT`): a diamond sword with Sharpness IV, 16 steak, a full set of diamond armour (worn), and a shield in the off hand.
+  - **Every piece of gear has Unbreaking X.** The food doesn't need it.
+  - **The lore:** each piece is marked as the night's kit (`ShrineKit` in its data, and "Issued for the Shrine Awakens. Taken back at its end.").
+- **Who gets it:** everyone in survival or adventure, when `/shrine braziers` brings them to the start.
+  - **Anyone joining mid-event** gets it when they arrive. Their Summons, if due, is given after the kit, so it stays in their hands.
+  - **Creative and spectators** are left alone.
+- **Their own belongings are held safe,** as the Gladiator Arena and the Purge do it:
+  - **What's held:** every inventory slot, the worn curios, and Tool Belt's belt slot.
+  - **How:** each item is saved whole (so a backpack keeps its contents), and every one is checked to rebuild before anything is cleared.
+  - **A backup file:** `kubejs/shrine_vaults/<name>_<uuid>.json` (on the server).
+  - **If something can't be stored safely,** that player fights in their own gear, and is told so. So are the ops.
+- **Handed back:**
+  - **When:** when the Awakening ends (or at `/shrine reset confirm`), to the slots they came from. Anyone offline then gets theirs when they next join.
+  - **The kit:** it's taken back as well: from the inventory, the curios and the ender chest.
+  - **If something can't be rebuilt,** it stays in the vault and the backup file, and the ops are told.
+- **`/kill` mid-event:** the kit drops as usual; when they respawn, they're given a fresh kit (their belongings are still held).
+- **Kit items can't leave the night:**
+  - **The check:** outside the event, any kit item found on a player is taken back, and they're told. That covers the inventory, curios and ender chest, every 10 seconds (`KIT_SWEEP_TICKS`).
+  - **The catch:** a kit item put in a chest during the event is only taken back once someone carries it.
+- **`/shrine status`** lists whose belongings are held.
+
 ## 3. The Shrine Rises
 **`/shrine rise`**, run once the pilgrims have gathered at the beam. The Shrine builds itself from the ground up.
 
@@ -150,7 +187,10 @@ The last page is the first hint of the two threads (kept: owner decision).
 3. **The show** (sounds chosen by the owner on the test server, 2026-11-14):
    - stone sounds: deepslate set down at every layer, grinding stone every 3rd, and a wither's crunch every 8th;
    - the respawn anchor's charge, the Blood God's power gathering, as it starts, when the pedestal is done (layer 21) and when the head is placed (layer 63), with a thunderclap at the last two;
-   - dust and smoke along the layer's edge.
+   - dust and smoke along the layer's edge;
+   - **the sky** (2026-11-19, during the event only, since it's the whole Overworld's): night falls and a thunderstorm rolls in as the rise begins. It clears to day when the Awakening ends (or at a reset);
+   - **Darkness** pulses for 2 seconds for the players within 128 blocks with every wither's crunch, as the ground shakes;
+   - **lightning** rings the Shrine (6 bolts, 28 blocks out) when the head is placed.
 4. **The finish:** the altar's lectern and Technoblade's head (with its skin) are placed exactly as in the schematic.
 5. **The steps up to the altar** (owner decision 2026-11-14, from the owner's idea): the pedestal is 22 blocks high, so the script lays a flight of **barrier blocks**: solid, invisible, and no monster can spawn on them.
    - **Where:** 3 wide, in the lectern's row, from the platform's edge east of the lectern down toward the rising sun, one block out and one down per step, until it meets the ground (at most 12 below the base). On the test server's ground that was 21 steps.
@@ -217,10 +257,19 @@ Each wave also has its Senior Inspector. At most 12 ordinary Inspectors in a wav
   - invisible light blocks (level 15) go every 4 blocks where there's air, and flames rise along the band.
 
   The light stays, so the statue glows at night. It also keeps monsters off it.
-- **Full:** "The last band catches. The Shrine burns from its feet to its crown."
-  - No more waves come. The Inspectors still about stay until the Awakening.
-  - Ops are told "/shrine awaken".
+- **Full:** "The last band catches. The Shrine burns from its feet to its crown." No more waves come.
+  - **During the event, the night ends by itself** (owner decision 2026-11-19, from "Once the event potatoes are offered at the altar, inspectors should despawn and the players should teleport to in front of the stairs to watch the shrine awaken"):
+    - every Inspector vanishes at once in a puff of smoke, the Seniors' bars with them: "The Inspectors crumble to ash. Nothing stands between you and the Shrine now.";
+    - 3 seconds later (`GATHER_DELAY_TICKS`), everyone online but spectators is brought to **the foot of the steps**, facing the altar: in rows of 7, 2 blocks apart, 4 blocks east of the bottom step (`VIEW`), on the ground. Soul fire rises at the Shrine's corners;
+    - they're **held there** until the Awakening ends: anyone more than 2½ blocks from their spot (`HOLD_RADIUS`) is put back, once a second;
+    - the Awakening **begins by itself** 10 seconds later (`AUTO_AWAKEN_SECONDS`). The ops are told when, and `/shrine status` counts down;
+    - `/shrine stop` while it's due holds it and lets everyone move ("Start it with /shrine awaken"). A `/reload` or restart keeps the time.
+  - **Outside the event** (a forced rehearsal), ops are told "/shrine awaken", as before, and the Inspectors stay until the Awakening.
 - **The Awakening waits for a full altar:** `/shrine awaken` refuses until then, and `/shrine awaken force` goes ahead anyway.
+- **Effects** (2026-11-19):
+  - each wave comes with a raid horn and "WAVE 3" on the screens of those present ("A Senior Inspector leads them");
+  - a Senior falls in a burst of red dust with a flash;
+  - each band catches with a flash and lava sparks up its height.
 
 **Pausing:** `/shrine stop` during the rite stops the waves and takes the Inspectors away; the altar keeps its count. `/shrine rite` carries on, and the wave that was cleared away comes again, with its Senior. A Senior from an earlier wave who was still up is gone with his potatoes.
 
@@ -235,7 +284,13 @@ Each wave also has its Senior Inspector. At most 12 ordinary Inspectors in a wav
 - **No credit:** a knockout is no kill for anything else (bounties, the Anamian Axe's Souls, the Maul's Grit and the rest). The script loads early (`// priority: 100`) so it cancels the death before other scripts see it.
 
 ## 5. The Awakening ✅ built
-**`/shrine awaken`**, once the altar is full (`/shrine awaken force` goes ahead anyway). It's respectful: no jokes. About 46 seconds, step by step (`AWAKEN_STEPS`); a `/reload` or restart carries on from the next step.
+**During the event it begins by itself** once the altar is full, with everyone at the foot of the steps (Stage 4). Otherwise **`/shrine awaken`**, once the altar is full (`/shrine awaken force` goes ahead anyway). It's respectful: no jokes. About 46 seconds, step by step (`AWAKEN_STEPS`); a `/reload` or restart carries on from the next step.
+- **Effects** (2026-11-19):
+  - **the Blood God's words** fill everyone's screen a sentence at a time (2 seconds each, `LINE_TICKS`), as well as in chat, each line with red fireworks bursting high over the statue;
+  - **when the seals break:** lightning rings the Shrine (8 bolts, 26 blocks out), with more fireworks;
+  - **soul fire** rises at the Shrine's corners as it begins and as the seals break;
+  - **the end:** the storm clears and day comes; everyone is let go from their spots, and their belongings come back (the kit goes).
+- **Lightning is only for show:** a bolt made "visual only" can't set fires or hurt anyone. If the game won't make one, flashes, sparks and thunder take its place, never a real bolt.
 1. **At once:**
    - **Clean-up:** every Inspector left is removed, and leftover Potato King's Potatoes crumble.
    - **The title:** everyone at the Shrine (within 64 blocks) sees "The Shrine awakens" and hears a respawn anchor set.
@@ -341,13 +396,13 @@ The deliveries, Shrine raids and rewards are Act II's work and get their own spe
 | `/shrine ambush <player>` | An Inspector ambush on that player and the pilgrims near them |
 | `/shrine rise` / `/shrine rise force` | Stage 3, once the beam is up; `force` raises it anyway |
 | `/shrine rite` / `/shrine need <n>` | Stage 4 by hand (it begins by itself 8 seconds after the rise, during the event), or carry on after `/shrine stop`; change what the altar needs |
-| `/shrine awaken` / `/shrine awaken force` | Stage 5, once the altar is full; `force` goes ahead anyway |
+| `/shrine awaken` / `/shrine awaken force` | Stage 5 by hand (during the event it begins by itself once the altar is full), once the altar is full; `force` goes ahead anyway |
 | `/shrine book` | Put the Regalia book back on the altar |
 | `/shrine repair` | Put the Shrine back as it was built (every layer placed again; the head with its skin), then the book and any missing steps |
 | `/regalia` | **Anyone:** the eight relics and their progress |
-| `/shrine stop` | Stops whatever is running (waves, clock, rise), removes Inspectors and leaves the rest; a rite due to begin by itself won't |
+| `/shrine stop` | Stops whatever is running (waves, clock, rise), removes Inspectors and leaves the rest; a rite or an Awakening due to begin by itself won't (and everyone held at the steps is let go) |
 | `/shrine clearmobs` | Takes away the monsters in and right around the Shrine (event mobs and named ones stay) |
-| `/shrine reset confirm` | **Test server:** removes the Shrine, the braziers, the beam and the steps, ends the event, and forgets the night, the Signal and the Summons included (the sites and the start are kept). It needs the word `confirm`, so it can't be run by accident on the live server |
+| `/shrine reset confirm` | **Test server:** removes the Shrine, the braziers, the beam and the steps, ends the event, clears the sky, hands everyone's belongings back, and forgets the night, the Signal and the Summons included (the sites and the start are kept). It needs the word `confirm`, so it can't be run by accident on the live server |
 
 ## How it stays safe
 - **No overlap:**
@@ -384,6 +439,10 @@ The deliveries, Shrine raids and rewards are Act II's work and get their own spe
 10. **The Signal and the Summons** as drafted (2026-11-19).
 11. **The Awakening's Drops are credited to nobody** (2026-11-19, at the rehearsal): "I would rather this blood not be credited to any player".
 12. **The rite's waves** (2026-11-19, at the rehearsal): "I don't like how easily the event potatoes are dropped". Waves come until the altar is full, each led by a Senior Inspector, and only the Seniors drop the potatoes, a fixed 8 each; the next wave comes as before (three-quarters down, or 3 minutes).
+13. **The night ends by itself** (2026-11-19, after the second run): "I need the event to start automating itself. Once the event potatoes are offered at the altar, inspectors should despawn and the players should teleport to in front of the stairs to watch the shrine awaken."
+14. **The night's kit** (2026-11-19): diamond armour, a diamond sword with Sharpness IV and a shield, all Unbreaking X, plus 16 steak. It's given at `/shrine braziers` and to anyone joining mid-event, and belongings come back when the Awakening ends.
+15. **Cinematic effects** at every stage (2026-11-19): the fires and the beam, the rise (with night and a storm), the rite, and the Awakening.
+16. **Knockouts stay as they are** (2026-11-19), after the second run's loop at the Shrine's edge.
 
 ## Still open
 - **To tune at the rehearsal:**
@@ -501,18 +560,46 @@ The whole night with two players in survival, leelinda and Sipheon, every stage 
 - **Stage 4, beginning by itself:** the rite began 7.9 seconds after the rise ("began by itself"). 2 present, 16 potatoes. Waves 1 to 3 came about 30 seconds apart (3 Inspectors each, the minimum), Sipheon was knocked out four times and leelinda once, waking at the Shrine's edge. The altar was full 1 minute 39 seconds after the rite began, during wave 3.
 - **Stage 5:** the Awakening ran its 46 seconds. The Pool went from 66,000 to 230,000 (164,000 Drops, all credited to leelinda, who offered all 16 potatoes; the owner then decided the Drops go to nobody). The seals broke from Tier 2 to 4 "by the Shrine", the Nether opened, the event ended, and the recipe reload had 0 failures.
 - **Found and fixed the same night:** the Drops were added before the seals broke, so for a moment the Pool saw Tiers 3 and 4 as ready and told everyone to break the third seal with `/bloodpool vote`, just before the Shrine opened both. The seals now break first, then the Drops land (a check in the tests).
-- **To tune** (for the owner): with two players the rite lasted under 2 minutes, not the 20 planned. The waves are at their minimum of 3 Inspectors, and 16 potatoes take 8 kills. **Changed the same night** (owner decisions): waves until the altar is full, a Senior Inspector leading each, and only the Seniors drop the potatoes, 8 each (Stage 4 above). Not yet run in game.
+- **To tune** (for the owner): with two players the rite lasted under 2 minutes, not the 20 planned. The waves are at their minimum of 3 Inspectors, and 16 potatoes take 8 kills. **Changed the same night** (owner decisions): waves until the altar is full, a Senior Inspector leading each, and only the Seniors drop the potatoes, 8 each (Stage 4 above). Run in the second run below.
+
+### The second run, the same night
+Reset to the night's start (the Pool back to 66,000, Tier 2), and the contributors list cleared with the new `/bloodpool top clear confirm`. An op in game ran the rise.
+- **Late arrivals:** the Signal and the Summons went out with one player on; leelinda joined after and got both.
+- **The braziers:**
+  - three ambushes of 4;
+  - five knockouts, one of them waking Sipheon **beside a lit brazier**, the first time that was seen live;
+  - the beam went up.
+- **The new rite:**
+  - it began by itself 8 seconds after the rise;
+  - five waves of 3 Inspectors and a Senior;
+  - the altar was full at 24 of 16, and 32 had been offered by the end.
+- **The Awakening:**
+  - the seals broke from Tier 2 to 4 first, then 164,000 Drops landed credited to nobody, with no "ready" or vote lines this time;
+  - the Pool was at 230,000, `/bloodpool top` was empty, the Nether opened, and the recipe reload was clean;
+  - no script errors all evening.
+- **A knockout loop:** during the rite, leelinda was knocked out about 45 times in 3 minutes (Sipheon 16). She woke at the Shrine's edge with 3 seconds of protection, and the Inspectors there downed her again. The owner decided on no change.
+- **What the owner asked for afterwards,** built the same night:
+  - the night ending by itself once the altar is full;
+  - a kit that doesn't break;
+  - cinematic effects throughout.
 
 ## What couldn't be verified yet
-- **Stages 0–1:**
-  - how the Signal looks in chat and the Summons as a book, as players see them (the players' view wasn't recorded at the rehearsal);
-  - the Signal and the Summons reaching a player who joins later (mock-tested; nobody joined late at the rehearsal).
-- **The rite beginning by itself:** `/shrine stop` and a `/reload` while it's due (mock-tested; the start itself was seen at the rehearsal).
-- **The seals before the Drops** (the rehearsal's fix): mock-tested, not yet run in game.
-- **The new waves** (2026-11-19, mock-tested): a Senior Inspector in every wave, only the Seniors dropping potatoes, two Seniors' bars at once, and waves past the fourth.
+- **The night's kit** (built after the second run, mock-tested only):
+  - the kit as players see it: Unbreaking X and Sharpness IV, the lore, the armour worn and the shield in the off hand;
+  - the vault with real items: a backpack's contents, worn curios, Tool Belt's belt slot, and the backup file's path on the server;
+  - the hand-back at the Awakening's end, at a join after the night, and after a `/kill` mid-event.
+- **The night ending by itself** (mock-tested only):
+  - the Inspectors vanishing;
+  - everyone brought to the foot of the steps, facing the altar, and held there;
+  - the Awakening beginning by itself, and `/shrine stop` or a `/reload` while it's due.
+- **The effects** (mock-tested only):
+  - **Lightning for show** is made with `level.createEntity('minecraft:lightning_bolt')`, `setVisualOnly(true)`, `moveTo` and `spawn()`. Those names are KubeJS 6's and Minecraft's, and haven't been run in game. If any fails, flashes, sparks and thunder are used instead (never a real bolt).
+  - **The rest, as players see them:** the titles, the raid horn, the fireworks (they burst 2 blocks above the statue's top, far from anyone at the steps), Darkness, and the sky's night, storm and day.
+- **Stages 0–1:** how the Signal looks in chat and the Summons as a book, as players see them. The second run showed a late arrival getting both (the status counted them), but nobody recorded what they saw.
+- **The rite beginning by itself:** `/shrine stop` and a `/reload` while it's due (mock-tested; the start itself was seen at both runs).
+- **The new waves:** two Seniors' bars at once as players see them, and the 30-Inspector limit (mock-tested; the second run had five waves and no overlap reported).
 - **The night's event:**
-  - waking beside a brazier (only the start and the Shrine's edge were seen live; the brazier is mock-tested);
-  - the teleport to the start with several players, and with players in another dimension;
+  - the teleport to the start with players in another dimension;
   - the whole-ring search for dry ground in game (the lake case is mock-tested).
 - **Stage 4:**
   - the new ground search for Inspectors in game (it's mock-tested, with a hill, a lake, the steps and a canopy; the test rite ran before it);
@@ -540,7 +627,8 @@ The whole night with two players in survival, leelinda and Sipheon, every stage 
 | No monsters in the Shrine, and `/shrine clearmobs` | ✅ built, 71 mock checks in all; tried on the test server |
 | Stage 2, the braziers, the beam and the ambushes (the Shrine's own Inspectors) | ✅ built, 112 mock checks in all; tried on the test server (see above) |
 | Stages 0–1, the Signal and the Summons (late arrivals too) | ✅ built 2026-11-19, 24 mock checks; run at the rehearsal (see above) |
-| The rite beginning by itself after the rise; the Awakening's new end (230,000 Drops, the Shrine opens Tiers 3 and 4, no vote) | ✅ built 2026-11-19, mock checks (the Shrine suite has 258 in all, plus `openTo` in the Blood Pool suite); run at the rehearsal, and the seals now break before the Drops land |
+| The rite beginning by itself after the rise; the Awakening's new end (230,000 Drops, the Shrine opens Tiers 3 and 4, no vote) | ✅ built 2026-11-19, mock checks plus `openTo` in the Blood Pool suite; run at both rehearsal runs, and the seals now break before the Drops land |
+| The night's kit and vault; the night ending by itself (Inspectors gone, everyone to the steps, the Awakening); the effects | ✅ built 2026-11-19, mock checks (the Shrine suite has 299 in all); not yet tried in game |
 | Stage 4, the Ignition Rite (waves, the Senior Inspector, the King's Potatoes, the altar and its light, knockouts) | ✅ built, mock checks plus one in the Blood Pool suite; tried on the test server (see above) |
 | The steps up to the altar, the Inspectors' ground, and the rise waiting for the beam | ✅ built; the steps tried on the test server |
 | The night's event: `/shrine start set`, everyone to the start, knockouts for everyone until the Awakening ends | ✅ built, 224 mock checks in all; the whole night run on the test server (see above) |

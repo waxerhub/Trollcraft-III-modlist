@@ -190,11 +190,47 @@ const RELICS = [
 ]
 const BOOK = { title: 'The Regalia of the Blade', author: 'The Blood God', intro: 'Eight things were mine. Restore them at my Shrine, and my name returns with them.' }
 
+// --- The night's end, by itself (owner decision at the rehearsal, 2026-11-19) ---
+// During the event, once the altar is full: the Inspectors vanish, everyone is brought to the foot of the steps, facing
+// the altar, and the Awakening begins this long after. They're held there while it plays (put back if they wander
+// more than HOLD_RADIUS blocks), and let go when it ends.
+const AUTO_AWAKEN_SECONDS = 10
+const GATHER_DELAY_TICKS = 60             // from the altar filling to everyone being brought to the steps
+const VIEW = { out: 4, row: 7, gap: 2 }   // the viewing spots: this far east of the steps' foot, 7 to a row, 2 apart
+const HOLD_RADIUS = 2.5
+
+// --- The night's kit (owner decisions at the rehearsal, 2026-11-19) ---
+// From /shrine braziers until the Awakening ends, everyone in survival or adventure fights in this kit, all of it
+// Unbreaking X, and their own belongings are held safe (every slot, worn curios, Tool Belt's belt slot), with a backup
+// file in VAULT_DIR, and handed back when the Awakening ends (or at their next login). Anyone joining mid-event is
+// kitted when they arrive. Kit items can't leave the event: outside it, any found on a player are taken back.
+// items: [id, count, extra NBT]; armor: head .. feet; gear gets ENCHANT (the food doesn't).
+const KIT = {
+  items: [['minecraft:diamond_sword', 1, 'Enchantments:[{id:"minecraft:sharpness",lvl:4s},{id:"minecraft:unbreaking",lvl:10s}]'], ['minecraft:cooked_beef', 16, '']],
+  armor: ['minecraft:diamond_helmet', 'minecraft:diamond_chestplate', 'minecraft:diamond_leggings', 'minecraft:diamond_boots'],
+  offhand: 'minecraft:shield',
+  enchant: 'Enchantments:[{id:"minecraft:unbreaking",lvl:10s}]',
+  lore: 'Issued for the Shrine Awakens. Taken back at its end.',
+}
+const VAULT_DIR = 'kubejs/shrine_vaults/'
+const KIT_SWEEP_TICKS = 200               // outside the event, kit items are looked for on players this often
+
+// --- Effects (owner decisions at the rehearsal, 2026-11-19: the fires and the beam, the rise, the rite, the Awakening) ---
+// The rise turns the sky to night with a thunderstorm (the whole Overworld), and the Awakening's end clears it to day.
+// Lightning here is only for show: a bolt that can't burn or hurt (with flashes and thunder in its place if the game
+// won't make one).
+const SKY = { night: 'time set midnight', storm: 'weather thunder 72000', clear: 'weather clear', day: 'time set day' }
+const TITLE_TIMES = 'times 10 60 20'
+const LINE_TICKS = 40                     // the Blood God's words on screen: one sentence every 2 seconds
+
 // ===================== STATE =====================
 
-let Serializer = null, ResourceLocation = null
+let Serializer = null, ResourceLocation = null, ItemStackClass = null, CuriosApi = null, BeltSlot = null
 try { Serializer = Java.loadClass('net.minecraft.network.chat.Component$Serializer') } catch (e) { }
 try { ResourceLocation = Java.loadClass('net.minecraft.resources.ResourceLocation') } catch (e) { }
+try { ItemStackClass = Java.loadClass('net.minecraft.world.item.ItemStack') } catch (e) { }
+try { CuriosApi = Java.loadClass('top.theillusivec4.curios.api.CuriosApi') } catch (e) { }
+try { BeltSlot = Java.loadClass('dev.gigaherz.toolbelt.slot.BeltExtensionSlot') } catch (e) { }
 let data = null
 // D.site: the Shrine's centre at ground level { dim, x, y, z }. D.braziers: [site or null] x 3. D.rise: { state:
 // 'none' | 'rising' | 'stopped' | 'risen', next: the next layer to place, site: where it's rising }.
@@ -224,10 +260,13 @@ function db() {
   }
   if (!data.fires) data.fires = freshFires()
   if (!data.beam) data.beam = { up: false, at: null, saved: [] }
-  if (!data.awake) data.awake = { state: 'none', step: 0, added: 0 }      // state: none, running or done; added: the Drops it put in
+  if (!data.awake) data.awake = { state: 'none', step: 0, added: 0, spots: {} }   // state: none, running or done; added: the Drops it put in
   if (!data.regalia) data.regalia = { open: false, progress: {} }          // progress: relic id -> { have, by: { uuid: { name, n } } }
   if (!data.rite || !data.rite.state) data.rite = freshRite((data.rite && data.rite.offered) || {})
   if (!data.rite.seniors) data.rite.seniors = {}                           // saved before every wave had a Senior
+  if (!data.vaults) data.vaults = {}                                       // uuid -> a player's belongings held for the night
+  if (!data.kitOut) data.kitOut = false                                    // a kit was ever handed out (the sweep looks for strays)
+  if (!data.awake.spots) data.awake.spots = {}                             // uuid -> { x, y, z } where they watch the Awakening
   if (!(data.stairs >= 0)) data.stairs = 0                                 // the steps to the altar laid (0: none)
   if (data.start === undefined) data.start = null                          // the start: { dim, x, y, z }
   if (!data.event) data.event = { on: false, at: 0 }                       // the night's event: knockouts for everyone
@@ -298,6 +337,77 @@ function flat(a, b) { const dx = a.x - b.x, dz = a.z - b.z; return Math.sqrt(dx 
 function fmt(n) { return String(Math.floor(Number(n) || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, ',') }
 // Everyone online gets the line (player.tell each, never tellraw @a).
 function narrateAll(server, text, color) { players(server).forEach(p => narrate(p, text, color)) }
+function opsOnline(server) { return players(server).filter(p => { try { return !!p.hasPermissions(2) } catch (e) { return false } }) }
+
+// --- Effects (sent per player or played in the world: never through chat) ---
+// A title on each of `who`'s screens: title text (may be ''), subtitle (optional).
+function titleTo(server, who, title, subtitle) {
+  who.forEach(p => {
+    const n = nameOf(p)
+    run(server, 'title ' + n + ' ' + TITLE_TIMES)
+    if (subtitle) run(server, 'title ' + n + ' subtitle ' + JSON.stringify(subtitle))
+    run(server, 'title ' + n + ' title ' + JSON.stringify(title || ''))
+  })
+}
+// A sound each of `who` hears where they stand.
+function hearAll(server, who, sound, vol, pitch) {
+  who.forEach(p => run(server, 'execute as ' + nameOf(p) + ' at @s run playsound ' + sound + ' master @s ~ ~ ~ ' + vol + ' ' + pitch))
+}
+// Lightning for show: a bolt that can't burn or hurt. If the game won't make one, a flash, sparks and thunder instead
+// (never a real bolt: it would set fires and hurt the players nearby).
+function strike(server, dim, x, y, z) {
+  try {
+    let bolt = levelByDim(server, dim).createEntity('minecraft:lightning_bolt')
+    bolt.setVisualOnly(true)
+    bolt.moveTo(x, y, z)
+    bolt.spawn()
+    return true
+  } catch (e) { }
+  run(server, 'execute in ' + dim + ' run particle minecraft:flash ' + x + ' ' + (y + 1) + ' ' + z + ' 0 0 0 0 1 force')
+  run(server, 'execute in ' + dim + ' run particle minecraft:electric_spark ' + x + ' ' + (y + 8) + ' ' + z + ' 0.2 8 0.2 0.1 200 force')
+  run(server, 'execute in ' + dim + ' run playsound minecraft:entity.lightning_bolt.thunder weather @a ' + x + ' ' + y + ' ' + z + ' 8 1')
+  return false
+}
+// Strikes in a ring of `n` around a point, each on the ground there.
+function strikeRing(server, dim, cx, cz, around, r, n) {
+  const lv = levelByDim(server, dim)
+  for (let k = 0; k < n; k++) {
+    let a = k * 2 * 3.14159265 / n, x = Math.floor(cx + Math.cos(a) * r), z = Math.floor(cz + Math.sin(a) * r)
+    strike(server, dim, x + 0.5, standY(lv, x, z, around), z + 0.5)
+  }
+}
+// Red fireworks bursting high over the Shrine, well above anyone standing near it.
+function redFireworks(server, st, n) {
+  const m = centreOf(st), y = st.y + SIZE[1] + 2
+  for (let k = 0; k < n; k++) {
+    let x = m.x + (k % 3 - 1) * 6, z = m.z + (Math.floor(k / 3) % 3 - 1) * 6
+    run(server, 'execute in ' + st.dim + ' run summon minecraft:firework_rocket ' + x + ' ' + y + ' ' + z +
+      ' {LifeTime:' + (20 + k * 4) + ',FireworksItem:{id:"minecraft:firework_rocket",Count:1b,tag:{Fireworks:{Flight:2b,Explosions:[{Type:1b,Flicker:1b,Trail:1b,Colors:[I;16711680,11141120],FadeColors:[I;4456448]}]}}}}')
+  }
+}
+// Soul fire rising at the four corners of the Shrine.
+function soulColumns(server, st) {
+  const c = corner(st)
+  ;[[0, 0], [SIZE[0] - 1, 0], [0, SIZE[2] - 1], [SIZE[0] - 1, SIZE[2] - 1]].forEach(k => {
+    let x = c.x + k[0] + 0.5, z = c.z + k[1] + 0.5
+    run(server, 'execute in ' + st.dim + ' run particle minecraft:soul_fire_flame ' + x + ' ' + (c.y + 16) + ' ' + z + ' 0.3 16 0.3 0.01 300 force')
+  })
+}
+// The sky for the night (during the event only: it's the whole Overworld's): night and a storm, then day.
+function skyNight(server) {
+  if (!eventOn() || db().event.sky) return
+  db().event.sky = true
+  save()
+  run(server, SKY.night)
+  run(server, SKY.storm)
+}
+function skyClear(server) {
+  if (!db().event.sky) return
+  db().event.sky = false
+  save()
+  run(server, SKY.clear)
+  run(server, SKY.day)
+}
 // Players who can be ambushed or count as pilgrims: alive, in survival or adventure.
 function pilgrim(p) {
   try { if (p.isCreative() || p.isSpectator()) return false } catch (e) { }
@@ -518,6 +628,9 @@ function placeLayer(server, st, n) {
   run(server, 'execute in ' + st.dim + ' run particle minecraft:campfire_cosy_smoke ' + at + ' 9 0.3 9 0.01 30 force')
   run(server, 'execute in ' + st.dim + ' run particle minecraft:large_smoke ' + at + ' 11 0.2 11 0.02 40 force')
   if (n == PEDESTAL_TOP || n == SIZE[1] - 1) run(server, 'execute in ' + st.dim + ' run playsound minecraft:entity.lightning_bolt.thunder weather @a ' + at + ' 10 0.8')
+  // Darkness pulses with the wither's crunch, as the ground shakes; lightning rings the Shrine when the head is placed
+  if (n % 8 == 4) nearby(server, st).forEach(p => run(server, 'effect give ' + nameOf(p) + ' minecraft:darkness 2 0 true'))
+  if (n == SIZE[1] - 1) strikeRing(server, st.dim, mid.x, mid.z, st.y, 28, 6)
   return true
 }
 function nearby(server, st) {
@@ -593,6 +706,7 @@ function startRise(server, resumed, force) {
     server.scheduleInTicks(LAYER_TICKS, step)
   }
   if (first && !resumed) {
+    skyNight(server)                                // night and a storm roll in (during the event)
     nearby(server, st).forEach(p => {
       narrate(p, 'The ground beneath the beam begins to shake. Something is coming up.', 'dark_red')
       run(server, 'title ' + nameOf(p) + ' title ' + JSON.stringify({ text: 'The Shrine rises', color: 'dark_red' }))
@@ -622,10 +736,14 @@ function resetShrine(server, done) {
   clearInspectors(server, 'shrine_inspector')
   riteBarsOff(server)
   crumbleKings(server)
-  D.awake = { state: 'none', step: 0, added: 0 }
+  global.__shrineAutoAwaken = (global.__shrineAutoAwaken || 0) + 1   // an Awakening due to begin by itself won't
+  releaseWatchers()
+  skyClear(server)
+  D.awake = { state: 'none', step: 0, added: 0, spots: {} }
   D.regalia = { open: false, progress: {} }
   D.rite = freshRite({})
   D.event = { on: false, at: 0 }
+  restoreAll(server)                                             // the kit goes, belongings come back
   D.signal = { at: 0, told: {} }
   D.summons = { at: 0, pages: [], given: {} }
   if (st) clearStairs(server, st)
@@ -787,12 +905,13 @@ function placeBraziers(server) {
   console.info('[Shrine] The braziers are out; the event is on')
   return ''
 }
-// Every player online goes to the start, wherever they are.
+// Every player online goes to the start, wherever they are, and the pilgrims are armed for the night (the kit).
 function gatherAll(server) {
   const s = db().start
   players(server).forEach(p => {
     run(server, 'execute in ' + s.dim + ' run tp ' + nameOf(p) + ' ' + (s.x + 0.5) + ' ' + s.y + ' ' + (s.z + 0.5))
     narrate(p, 'The pilgrimage begins. Until the Shrine awakens, falling is not the end: you wake by the last fire lit, or here.', 'dark_red')
+    try { kitUp(server, p) } catch (e) { console.error('[Shrine] Kit for ' + nameOf(p) + ': ' + e) }
   })
   console.info('[Shrine] Everyone gathered at the start, ' + siteText(s))
 }
@@ -851,6 +970,10 @@ function fireTick(server) {
       let n = litCount()
       narrateAll(server, n == 1 ? 'Far away, a fire catches. 1 of 3. The others have a minute.' : 'Another fire catches. ' + n + ' of 3.', 'dark_red')
       run(server, 'execute in ' + b.dim + ' run playsound minecraft:item.firecharge.use block @a ' + (b.x + 0.5) + ' ' + (b.y + 1.5) + ' ' + (b.z + 0.5) + ' 2 0.7')
+      // a column of flame and smoke over it, and a roar everyone hears
+      run(server, 'execute in ' + b.dim + ' run particle minecraft:flame ' + (b.x + 0.5) + ' ' + (b.y + 4) + ' ' + (b.z + 0.5) + ' 0.25 3 0.25 0.02 160 force')
+      run(server, 'execute in ' + b.dim + ' run particle minecraft:campfire_signal_smoke ' + (b.x + 0.5) + ' ' + (b.y + 6) + ' ' + (b.z + 0.5) + ' 0.3 4 0.3 0.01 60 force')
+      hearAll(server, players(server), 'minecraft:entity.blaze.shoot', 0.8, 0.5)
     } else if (!lit && F.lit[i]) { F.lit[i] = false; changed = true }    // put out before the others caught
   })
   if (F.state == 'counting') {
@@ -871,6 +994,8 @@ function allLit(server) {
   server.scheduleInTicks(120, () => { if (db().fires.state != 'counting') bossbarOff(server) })
   narrateAll(server, 'Three fires burn as one. Above the land, a red light rises toward the sky.', 'gold')
   players(server).forEach(p => run(server, 'execute as ' + nameOf(p) + ' at @s run playsound minecraft:block.beacon.activate master @s ~ ~ ~ 1 0.8'))
+  db().fires.sites.forEach(b => strike(server, b.dim, b.x + 0.5, b.y + 1, b.z + 0.5))
+  titleTo(server, players(server), { text: 'THREE FIRES BURN', color: 'gold', bold: true }, { text: 'A red light rises over the Shrine', color: 'red' })
   raiseBeam(server)
   console.info('[Shrine] All three fires burn')
 }
@@ -919,6 +1044,224 @@ function resetFires(server) {
   if (F.state != 'none') F.sites.forEach(b => withChunks(server, b.dim, b.x - 1, b.z - 1, b.x + 1, b.z + 1, lv => clearBrazier(server, b)))
   db().fires = freshFires()
   save()
+}
+
+// ===================== THE NIGHT'S KIT AND THE VAULT =====================
+// As in part2/gladiator_arena.js and part2/purge.js: every slot is saved whole (serializeNBT, so items that keep their
+// contents in a Forge capability come back full), every stack is checked to rebuild before anything is cleared, a
+// backup file is kept, and everything is handed back at the end (or at the next login).
+
+function emptyStack() { try { return Item.empty } catch (e) { return Item.of('minecraft:air') } }
+function stackNbt(s) { try { return s.nbt != null ? String(s.nbt) : '' } catch (e) { return '' } }
+function stackFull(s) { try { return String(s.serializeNBT()) } catch (e) { return '' } }
+function savedStack(s, slot) { return { id: String(s.id), count: Number(s.count), nbt: stackNbt(s), full: stackFull(s), slot: slot } }
+function rebuild(r) {
+  if (!r.full) return Item.of(r.id, r.count, r.nbt || null)
+  if (!ItemStackClass || typeof NBT == 'undefined') throw new Error('ItemStack.of is not available')
+  const st = ItemStackClass.of(NBT.toTagCompound(r.full))
+  if (!st || st.isEmpty()) throw new Error('unknown item ' + r.id)
+  return st
+}
+function rebuilds(r) {
+  if (!r.full) return false
+  try {
+    let st = rebuild(r)
+    if (String(st.id) != r.id || Number(st.count) != r.count) return false
+    return !/ForgeCaps/.test(r.full) || /ForgeCaps/.test(stackFull(st))
+  } catch (e) {
+    console.error('[Shrine] Can\'t rebuild ' + r.id + ': ' + e)
+    return false
+  }
+}
+function invSize(p) { try { return Number(p.inventory.getContainerSize()) } catch (e) { return 41 } }
+function clearInventory(p) {
+  try { p.inventory.clearContent(); return } catch (e) { }
+  const n = invSize(p)
+  for (let i = 0; i < n; i++) { try { p.inventory.setItem(i, emptyStack()) } catch (e) { } }
+}
+function isKitItem(s) {
+  try { let t = s.nbt; if (t != null && typeof t.contains == 'function') return !!t.contains('ShrineKit') } catch (e) { }
+  return /ShrineKit:1b/.test(stackNbt(s))
+}
+// The player's worn curios (Curios API) as an item handler: getSlots, getStackInSlot, setStackInSlot. null without.
+function curiosOf(p) {
+  if (!CuriosApi) return null
+  try {
+    let opt = CuriosApi.getCuriosInventory(p).resolve()
+    if (opt.isPresent()) return opt.get().getEquippedCurios()
+  } catch (e) { }
+  try {
+    let opt2 = CuriosApi.getCuriosHelper().getEquippedCurios(p).resolve()
+    if (opt2.isPresent()) return opt2.get()
+  } catch (e) { }
+  return null
+}
+// Tool Belt's own belt slot (separate from Curios): getContents / setContents, or null without the mod.
+function beltSlotOf(p) {
+  if (!BeltSlot) return null
+  try {
+    let opt = BeltSlot.get(p).resolve()
+    if (opt.isPresent()) return opt.get().getBelt()
+  } catch (e) { }
+  return null
+}
+// Kit items can't leave the night: takes any the player carries (inventory, curios, ender chest). Returns how many.
+function stripKit(p) {
+  let n = 0
+  const take = (get, set, size) => {
+    for (let i = 0; i < size; i++) {
+      let s = get(i)
+      if (s && !s.isEmpty() && isKitItem(s)) { set(i, emptyStack()); n++ }
+    }
+  }
+  try { take(i => p.inventory.getItem(i), (i, s) => p.inventory.setItem(i, s), invSize(p)) } catch (e) { }
+  const cur = curiosOf(p)
+  if (cur) { try { take(i => cur.getStackInSlot(i), (i, s) => cur.setStackInSlot(i, s), Number(cur.getSlots())) } catch (e) { } }
+  try {
+    let ec = p.getEnderChestInventory()
+    take(i => ec.getItem(i), (i, s) => ec.setItem(i, s), Number(ec.getContainerSize()))
+  } catch (e) { }
+  return n
+}
+function backup(rec) {
+  const file = rec.name + '_' + rec.uuid + '.json'
+  try { JsonIO.write(VAULT_DIR + file, rec) } catch (e) {
+    try { JsonIO.write('kubejs/shrine_vault_' + file, rec) } catch (e2) { console.warn('[Shrine] Backup file for ' + rec.name + ': ' + e2) }
+  }
+}
+function kitSnbt(extra) {
+  return '{ShrineKit:1b,' + (extra ? extra + ',' : '') + 'display:{Lore:[' + snbtString(JSON.stringify({ text: KIT.lore, color: 'dark_gray', italic: false })) + ']}}'
+}
+// The kit: the sword and the food in the hotbar, the armour worn, the shield in the off hand.
+function giveKit(p) {
+  clearInventory(p)
+  KIT.items.forEach((it, i) => { p.inventory.setItem(i, Item.of(it[0], it[1], kitSnbt(it[2]))) })
+  KIT.armor.forEach((id, i) => { p.inventory.setItem(39 - i, Item.of(id, 1, kitSnbt(KIT.enchant))) })   // 39 head .. 36 feet
+  if (KIT.offhand) p.inventory.setItem(40, Item.of(KIT.offhand, 1, kitSnbt(KIT.enchant)))
+  if (!db().kitOut) { db().kitOut = true; save() }
+}
+// Holds a player's belongings: every slot, the worn curios and Tool Belt's belt slot. '' or why it couldn't (then
+// nothing was touched).
+function vault(p) {
+  const D = db(), u = uuidOf(p)
+  if (D.vaults[u]) return ''
+  const slots = [], worn = [], n = invSize(p), cur = curiosOf(p), beltSlot = beltSlotOf(p)
+  let belt = null
+  if (beltSlot) {
+    let b = beltSlot.getContents()
+    if (b && !b.isEmpty() && !isKitItem(b)) belt = savedStack(b, 0)
+  }
+  for (let i = 0; i < n; i++) {
+    let s = p.inventory.getItem(i)
+    if (s && !s.isEmpty() && !isKitItem(s)) slots.push(savedStack(s, i))
+  }
+  if (cur) {
+    for (let i = 0; i < Number(cur.getSlots()); i++) {
+      let s = cur.getStackInSlot(i)
+      if (s && !s.isEmpty() && !isKitItem(s)) worn.push(savedStack(s, i))
+    }
+  }
+  const bad = slots.concat(worn).concat(belt ? [belt] : []).filter(s => !rebuilds(s))
+  if (bad.length) return bad.length + ' of their items (' + bad[0].id + ') could not be stored safely'
+  const rec = { name: nameOf(p), uuid: u, t: Date.now(), slots: slots, curios: worn, belt: belt }
+  D.vaults[u] = rec
+  if (!save()) { delete D.vaults[u]; return 'their belongings could not be saved' }
+  backup(rec)
+  clearInventory(p)
+  worn.forEach(r => { try { cur.setStackInSlot(r.slot, emptyStack()) } catch (e) { } })
+  if (belt) { try { beltSlot.setContents(emptyStack()) } catch (e) { } }
+  return ''
+}
+// Hands belongings back: the kit goes (inventory, curios, ender chest), then every slot. What can't be rebuilt stays in
+// the vault (and its backup file), and the ops are told.
+function unvault(server, p) {
+  const D = db(), u = uuidOf(p), V = D.vaults[u]
+  if (!V) return true
+  if (!V.partial) clearInventory(p)
+  stripKit(p)
+  const bad = [], badWorn = [], cur = curiosOf(p)
+  V.slots.forEach(s => {
+    try {
+      if (V.partial) p.give(rebuild(s))
+      else p.inventory.setItem(s.slot, rebuild(s))
+    } catch (e) { bad.push(s); console.error('[Shrine] ' + V.name + ' slot ' + s.slot + ' (' + s.id + '): ' + e) }
+  })
+  ;(V.curios || []).forEach(s => {
+    try {
+      let st = rebuild(s)
+      if (cur && !V.partial && cur.getStackInSlot(s.slot).isEmpty()) cur.setStackInSlot(s.slot, st)
+      else p.give(st)                                 // no curio slot free (or no Curios): into the inventory
+    } catch (e) { badWorn.push(s); console.error('[Shrine] ' + V.name + ' curio ' + s.slot + ' (' + s.id + '): ' + e) }
+  })
+  if (V.belt) {
+    try {
+      let st = rebuild(V.belt), bs = beltSlotOf(p)
+      if (bs && !V.partial && bs.getContents().isEmpty()) bs.setContents(st)
+      else p.give(st)
+    } catch (e) { badWorn.push(V.belt); console.error('[Shrine] ' + V.name + ' belt slot (' + V.belt.id + '): ' + e) }
+    V.belt = null
+  }
+  if (bad.length || badWorn.length) {
+    V.curios = badWorn
+    V.slots = bad
+    V.partial = true
+    save()
+    backup(V)
+    opsOnline(server).forEach(o => narrate(o, '[Shrine] ' + (bad.length + badWorn.length) + ' of ' + V.name + '\'s items could not be handed back. They are kept in ' + VAULT_DIR + '.', 'red'))
+    return false
+  }
+  V.restored = Date.now()
+  backup(V)
+  delete D.vaults[u]
+  save()
+  narrate(p, 'The night is over. Your own belongings are back.', 'gold')
+  console.info('[Shrine] ' + V.name + '\'s belongings handed back')
+  return true
+}
+// Arms a pilgrim for the night: their belongings into the vault, the kit on. Creative and spectators are left alone.
+function kitUp(server, p) {
+  if (!pilgrim(p)) return false
+  const D = db(), u = uuidOf(p)
+  if (D.vaults[u]) return true                    // already held (back from a logout, or a second /shrine braziers)
+  const why = vault(p)
+  if (why) {
+    narrate(p, 'Your belongings couldn\'t be held safely (' + why + '), so you fight in your own gear tonight.', 'red')
+    opsOnline(server).forEach(o => narrate(o, '[Shrine] ' + nameOf(p) + ' fights in their own gear: ' + why + '.', 'red'))
+    console.warn('[Shrine] No kit for ' + nameOf(p) + ': ' + why)
+    return false
+  }
+  giveKit(p)
+  narrate(p, 'You are armed for the night: the Shrine\'s kit, which will not break. Your own belongings are safe until the Shrine awakens.', 'gold')
+  console.info('[Shrine] Kit for ' + nameOf(p))
+  return true
+}
+// The night is over (the Awakening's end, or a reset): everyone online gets their belongings back; the kit goes.
+function restoreAll(server) {
+  players(server).forEach(p => {
+    try {
+      if (db().vaults[uuidOf(p)]) unvault(server, p)
+      else stripKit(p)
+    } catch (e) { console.error('[Shrine] Handing back ' + nameOf(p) + '\'s belongings: ' + e) }
+  })
+}
+// Outside the night: belongings still held go back to anyone online, and stray kit items are taken.
+function startKitSweep(server) {
+  const token = (global.__shrineKitSweep = (global.__shrineKitSweep || 0) + 1)
+  const step = () => {
+    if (token != global.__shrineKitSweep) return
+    try { if (!eventOn() && (db().kitOut || Object.keys(db().vaults).length)) sweepKit(server) } catch (e) { console.error('[Shrine] Kit sweep: ' + e) }
+    server.scheduleInTicks(KIT_SWEEP_TICKS, step)
+  }
+  server.scheduleInTicks(KIT_SWEEP_TICKS, step)
+}
+function sweepKit(server) {
+  players(server).forEach(p => {
+    if (db().vaults[uuidOf(p)]) { unvault(server, p); return }
+    let n = stripKit(p)
+    if (!n) return
+    narrate(p, 'The Shrine\'s kit stays with the night: ' + n + ' item' + (n == 1 ? '' : 's') + ' taken back.', 'gray')
+    console.warn('[Shrine] Took ' + n + ' kit items from ' + nameOf(p))
+  })
 }
 
 // ===================== STAGE 2: THE BEAM =====================
@@ -1115,6 +1458,9 @@ function spawnWave(server, i) {
   R.waveSize = made
   save()
   riteTold(server, 'Wave ' + (i + 1) + ': ' + made + ' Inspectors close in on the Shrine, a Senior Inspector at their head.', 'gold')
+  const here = presentAt(server, st)
+  titleTo(server, here, { text: 'WAVE ' + (i + 1), color: 'dark_red', bold: true }, { text: 'A Senior Inspector leads them', color: 'gold' })
+  hearAll(server, here, 'minecraft:event.raid.horn', 1, 1)
   console.info('[Shrine] Rite wave ' + (i + 1) + ': ' + made + ' Inspectors')
 }
 function riteMobs(server) {
@@ -1144,8 +1490,11 @@ function riteBar(server) {
 }
 // Takes down the rite's bar and every Senior's (the ones up are forgotten: they're taken away with the Inspectors).
 function riteBarsOff(server) {
-  const R = db().rite
   run(server, 'bossbar remove ' + RITE_BOSSBAR)
+  seniorBarsOff(server)
+}
+function seniorBarsOff(server) {
+  const R = db().rite
   run(server, 'bossbar remove ' + SENIOR_BOSSBAR)          // the single bar, from before every wave had a Senior
   Object.keys(R.seniors || {}).forEach(i => run(server, 'bossbar remove ' + seniorBar(i)))
   R.seniors = {}
@@ -1226,6 +1575,10 @@ function lightBand(server, st, k) {
     let at = mid.x + ' ' + (c.y + y0 + per / 2) + ' ' + mid.z
     run(server, 'execute in ' + st.dim + ' run particle minecraft:flame ' + at + ' 8 ' + (per / 3) + ' 8 0.03 300 force')
     run(server, 'execute in ' + st.dim + ' run playsound minecraft:item.firecharge.use block @a ' + at + ' 3 0.6')
+    // a flash of flame up the band's height
+    run(server, 'execute in ' + st.dim + ' run particle minecraft:flash ' + at + ' 0 0 0 0 1 force')
+    run(server, 'execute in ' + st.dim + ' run particle minecraft:lava ' + at + ' 10 ' + (per / 2) + ' 10 0 80 force')
+    run(server, 'execute in ' + st.dim + ' run playsound minecraft:entity.blaze.shoot block @a ' + at + ' 4 0.5')
   })
 }
 // Right-clicking the altar (the lectern or Technoblade's head) with Potato King's Potatoes offers every one carried.
@@ -1254,12 +1607,119 @@ function riteFull(server) {
   save()
   riteBar(server)
   riteTold(server, 'The last band catches. The Shrine burns from its feet to its crown.', 'gold')
-  players(server).forEach(p => {
-    let isOp = false
-    try { isOp = !!p.hasPermissions(2) } catch (e) { }
-    if (isOp) narrate(p, 'The altar is full. When you\'re ready: /shrine awaken', 'yellow')
-  })
   console.info('[Shrine] The altar is full: ' + R.total + ' of ' + R.need)
+  if (eventOn() && AUTO_AWAKEN_SECONDS > 0 && db().awake.state == 'none') { queueAutoAwaken(server); return }
+  opsOnline(server).forEach(p => narrate(p, 'The altar is full. When you\'re ready: /shrine awaken', 'yellow'))
+}
+
+// --- The night's end, by itself (during the event) ---
+// The Inspectors vanish, everyone is brought to the foot of the steps (GATHER_DELAY_TICKS later), and the Awakening
+// begins AUTO_AWAKEN_SECONDS after that. When it's due is saved (rise.awakenAt), so a /reload or restart carries on.
+function queueAutoAwaken(server) {
+  const D = db()
+  vanishInspectors(server)
+  D.rise.awakenAt = Date.now() + GATHER_DELAY_TICKS * 50 + AUTO_AWAKEN_SECONDS * 1000
+  save()
+  riteTold(server, 'The Inspectors crumble to ash. Nothing stands between you and the Shrine now.', 'dark_red')
+  opsOnline(server).forEach(p => narrate(p, '[Shrine] The altar is full: everyone is brought to the steps, and the Awakening begins by itself in ' +
+    (GATHER_DELAY_TICKS / 20 + AUTO_AWAKEN_SECONDS) + ' seconds (/shrine stop holds it).', 'yellow'))
+  console.info('[Shrine] The Awakening begins by itself in ' + (GATHER_DELAY_TICKS / 20 + AUTO_AWAKEN_SECONDS) + ' seconds')
+  scheduleAutoAwaken(server)
+}
+function scheduleAutoAwaken(server) {
+  const R = db().rise
+  if (!R.awakenAt) return
+  const token = (global.__shrineAutoAwaken = (global.__shrineAutoAwaken || 0) + 1)
+  if (Object.keys(db().awake.spots).length) startHold(server)
+  else {
+    let gatherIn = Math.max(1, Math.round((R.awakenAt - AUTO_AWAKEN_SECONDS * 1000 - Date.now()) / 50))
+    server.scheduleInTicks(gatherIn, () => { if (token == global.__shrineAutoAwaken && db().rise.awakenAt) gatherToWatch(server) })
+  }
+  server.scheduleInTicks(Math.max(20, Math.round((R.awakenAt - Date.now()) / 50)), () => {
+    if (token != global.__shrineAutoAwaken) return
+    const D = db()
+    if (!D.rise.awakenAt) return
+    D.rise.awakenAt = 0
+    save()
+    if (D.awake.state != 'none') return
+    if (!Object.keys(D.awake.spots).length) gatherToWatch(server)
+    const why = awaken(server, false)
+    if (why) {
+      console.warn('[Shrine] The Awakening didn\'t begin by itself: ' + why)
+      opsOnline(server).forEach(p => narrate(p, '[Shrine] The Awakening didn\'t begin by itself: ' + why, 'red'))
+    } else console.info('[Shrine] The Awakening began by itself')
+  })
+}
+// Every Inspector goes in a puff of smoke, and the Seniors' bars with them.
+function vanishInspectors(server) {
+  let all = []
+  try { all = list(server.entities) } catch (e) { }
+  all.forEach(e => {
+    if (!hasTag(e, 'shrine_inspector')) return
+    try {
+      let q = pos(e)
+      run(server, 'execute in ' + dimOf(e) + ' run particle minecraft:large_smoke ' + q.x + ' ' + (q.y + 1) + ' ' + q.z + ' 0.3 0.6 0.3 0.02 25 force')
+      e.discard()
+    } catch (err) { }
+  })
+  seniorBarsOff(server)
+}
+// The viewing spots: in rows of VIEW.row, VIEW.out blocks east of the steps' foot (or of the Shrine's east side), on the
+// ground there.
+function viewSpots(server, n) {
+  const D = db(), st = D.rise.site, c = corner(st), lv = levelByDim(server, st.dim), steps = D.stairs || 0
+  const x0 = steps ? c.x + STAIRS.top[0] + steps + VIEW.out : c.x + SIZE[0] + VIEW.out
+  const guess = steps ? c.y + STAIRS.top[1] - steps : c.y, zc = c.z + Math.round((STAIRS.z[0] + STAIRS.z[1]) / 2)
+  const out = []
+  for (let k = 0; k < n; k++) {
+    let col = k % VIEW.row, row = Math.floor(k / VIEW.row)
+    let x = x0 + row * VIEW.gap, z = zc + (col % 2 ? -1 : 1) * Math.ceil(col / 2) * VIEW.gap   // 0, -2, +2, -4 ...
+    out.push({ x: x + 0.5, y: standY(lv, x, z, guess), z: z + 0.5 })
+  }
+  return out
+}
+function facingAltar() { const L = lecternPos(db().rise.site); return (L.x + 0.5) + ' ' + (L.y + 1) + ' ' + (L.z + 0.5) }
+function placeWatcher(server, p, q) {
+  run(server, 'execute in ' + db().rise.site.dim + ' run tp ' + nameOf(p) + ' ' + q.x + ' ' + q.y + ' ' + q.z + ' facing ' + facingAltar())
+}
+// Everyone but spectators to the foot of the steps, facing the altar, to watch; held there until it's over.
+function gatherToWatch(server) {
+  const D = db(), st = D.rise.site
+  const who = players(server).filter(p => { try { return !p.isSpectator() } catch (e) { return true } })
+  const spots = viewSpots(server, who.length)
+  D.awake.spots = {}
+  who.forEach((p, k) => {
+    D.awake.spots[uuidOf(p)] = spots[k]
+    placeWatcher(server, p, spots[k])
+    narrate(p, 'You are drawn to the foot of the steps. Watch.', 'dark_red')
+  })
+  save()
+  hearAll(server, who, 'minecraft:block.beacon.power_select', 1, 0.5)
+  soulColumns(server, st)
+  startHold(server)
+  console.info('[Shrine] Everyone brought to the steps to watch: ' + who.length)
+}
+// While the Awakening plays (and in the moments before it), anyone who wanders off their spot is put back.
+function startHold(server) {
+  const token = (global.__shrineHold = (global.__shrineHold || 0) + 1)
+  const step = () => {
+    if (token != global.__shrineHold) return
+    const D = db(), spots = D.awake.spots || {}
+    if (!Object.keys(spots).length || D.awake.state == 'done') return
+    players(server).forEach(p => {
+      let q = spots[uuidOf(p)]
+      if (!q) return
+      let at = pos(p)
+      if (dimOf(p) != D.rise.site.dim || flat(at, q) > HOLD_RADIUS || Math.abs(at.y - q.y) > 4) placeWatcher(server, p, q)
+    })
+    server.scheduleInTicks(20, step)
+  }
+  server.scheduleInTicks(20, step)
+}
+function releaseWatchers() {
+  global.__shrineHold = (global.__shrineHold || 0) + 1
+  db().awake.spots = {}
+  save()
 }
 
 // /shrine rite: the waves begin (or carry on, after /shrine stop). '' or why not.
@@ -1390,11 +1850,18 @@ EntityEvents.death(event => {
     event.cancel()
     return
   }
-  // an Inspector of the rite drops its potatoes
+  // an Inspector of the rite drops its potatoes (only the Seniors carry any); a Senior falls in a burst of red
   let tags = ''
   try { tags = String(e.getTags()) } catch (err) { return }
+  if (tags.indexOf('shrine_rite') < 0) return
+  if (tags.indexOf('shrine_senior') >= 0) {
+    let q = pos(e), at = q.x + ' ' + (q.y + 1) + ' ' + q.z
+    run(server, 'execute in ' + dimOf(e) + ' run particle minecraft:dust 0.8 0 0 2 ' + at + ' 0.6 1 0.6 0 120 force')
+    run(server, 'execute in ' + dimOf(e) + ' run particle minecraft:flash ' + at + ' 0 0 0 0 1 force')
+    run(server, 'execute in ' + dimOf(e) + ' run playsound minecraft:entity.evoker.death hostile @a ' + at + ' 3 0.6')
+  }
   const m = tags.match(/shrine_pot_(\d+)/)
-  if (!m || tags.indexOf('shrine_rite') < 0) return
+  if (!m) return
   dropKings(server, dimOf(e), pos(e), Number(m[1]))
 })
 // Only the altar takes the potatoes: they can't be eaten or planted.
@@ -1476,6 +1943,10 @@ PlayerEvents.loggedIn(event => {
   server.scheduleInTicks(JOIN_DELAY_TICKS, () => {
     try {
       let D = db(), u = uuidOf(p)
+      // the night's kit: anyone joining mid-event is armed (first, so the Summons below stays in their hands); anyone
+      // back after it ended gets their belongings
+      if (eventOn() && !D.vaults[u]) kitUp(server, p)
+      else if (!eventOn() && D.vaults[u]) unvault(server, p)
       if (signalOpen() && !D.signal.told[u] && tellSignal(p)) { D.signal.told[u] = nameOf(p); save() }
       if (summonsOpen() && !D.summons.given[u] && giveSummons(server, p)) {
         D.summons.given[u] = nameOf(p)
@@ -1484,6 +1955,12 @@ PlayerEvents.loggedIn(event => {
       }
     } catch (e) { console.error('[Shrine] Join: ' + e) }
   })
+})
+// /kill still kills during the event (the kit drops): back from it, the kit again (their belongings are still held).
+PlayerEvents.respawned(event => {
+  const p = event.player, server = (p && p.server) || Utils.server
+  if (!p || !server || !eventOn() || !db().vaults[uuidOf(p)]) return
+  server.scheduleInTicks(2, () => { try { if (eventOn() && db().vaults[uuidOf(p)]) giveKit(p) } catch (e) { console.error('[Shrine] Respawn kit: ' + e) } })
 })
 
 // ===================== STAGE 5: THE AWAKENING =====================
@@ -1600,8 +2077,11 @@ function awakenStep(server, s) {
     })
     run(server, 'execute in ' + st.dim + ' positioned ' + m.x + ' ' + m.y + ' ' + m.z + ' run techno all @a[distance=..' + PRESENT_RADIUS + ']')
     run(server, 'superaura @a')
+    soulColumns(server, st)
   } else if (s.step == 'line') {
     bloodGod(server, s.text)
+    wordsOnScreen(server, s.text)
+    redFireworks(server, st, 3)
   } else if (s.step == 'book') {
     placeBook(server, st)
     let L = lecternPos(st), at = (L.x + 0.5) + ' ' + (L.y + 1) + ' ' + (L.z + 0.5)
@@ -1622,7 +2102,15 @@ function awakenStep(server, s) {
     // vote, a moment before the Shrine opens it anyway (seen at the rehearsal, 2026-11-19).
     openSeals()
     topUpPool()
+    strikeRing(server, st.dim, m.x, m.z, st.y, 26, 8)
+    redFireworks(server, st, 9)
+    soulColumns(server, st)
   }
+}
+// The Blood God's words on everyone's screen, a sentence at a time (LINE_TICKS apart), as well as in chat.
+function wordsOnScreen(server, text) {
+  const parts = String(text).match(/[^.!?]+[.!?]+/g) || [String(text)]
+  parts.forEach((s, k) => server.scheduleInTicks(1 + k * LINE_TICKS, () => titleTo(server, players(server), '', { text: s.trim(), color: 'red' })))
 }
 // Runs the Awakening's steps from step `from` (a /reload or restart carries on where it was).
 function runAwakening(server, from) {
@@ -1634,7 +2122,10 @@ function runAwakening(server, from) {
       A.state = 'done'
       save()
       console.info('[Shrine] The Awakening is done')
+      skyClear(server)                            // the storm passes; day comes
+      releaseWatchers()
       endEvent()
+      restoreAll(server)                          // the kit goes, everyone's belongings come back
       return
     }
     try { awakenStep(server, AWAKEN_STEPS[i]) } catch (e) { console.error('[Shrine] Awakening, ' + AWAKEN_STEPS[i].step + ': ' + e) }
@@ -1672,7 +2163,9 @@ function awaken(server, force) {
   if (D.awake.state == 'done') return 'The Shrine has already awakened. (/shrine reset confirm forgets the night, on the test server.)'
   if (R.state != 'full' && !force) return (R.state == 'none' ? 'The Ignition Rite hasn\'t been held (/shrine rite).' : 'The altar isn\'t full yet (' + R.total + ' of ' + R.need + ' potatoes).') +
     ' /shrine awaken force goes ahead anyway.'
-  D.awake = { state: 'running', step: 0, added: 0 }
+  D.rise.awakenAt = 0                             // begun by hand while it was due: it doesn't begin twice
+  global.__shrineAutoAwaken = (global.__shrineAutoAwaken || 0) + 1
+  D.awake = { state: 'running', step: 0, added: 0, spots: D.awake.spots || {} }
   save()
   console.info('[Shrine] The Awakening begins')
   runAwakening(server, 0)
@@ -1740,7 +2233,8 @@ function statusLines(server) {
   else if (RT.state == 'full') out.push('The Ignition Rite: the altar is full (' + RT.total + ' of ' + RT.need + '). /shrine awaken.')
   else out.push('The Ignition Rite: done (' + RT.total + ' potatoes offered).')
   const A = D.awake
-  if (A.state == 'none') out.push('The Awakening: not yet (/shrine awaken, once the Shrine has risen).')
+  if (A.state == 'none' && D.rise.awakenAt) out.push('The Awakening: begins by itself in ' + Math.max(0, Math.ceil((D.rise.awakenAt - Date.now()) / 1000)) + 's (/shrine stop holds it).')
+  else if (A.state == 'none') out.push('The Awakening: not yet. During the event it begins by itself once the altar is full; /shrine awaken by hand.')
   else if (A.state == 'running') out.push('The Awakening: under way (step ' + A.step + ' of ' + AWAKEN_STEPS.length + ').')
   else out.push('The Awakening: done. The Regalia is open; ' + (A.added > 0 ? fmt(A.added) + ' Drops added, credited to nobody.' : 'no Drops added (the Pool was already there).'))
   out.push('The start: ' + (D.start ? siteText(D.start) + ' (/shrine braziers brings everyone here)' : 'not set (/shrine start set, where everyone gathers)'))
@@ -1750,6 +2244,9 @@ function statusLines(server) {
     (signalOpen() ? '; anyone joining in the next ' + Math.max(1, SIGNAL_HOURS - hours(D.signal.at)) + 'h gets it too.' : '.') : 'The Signal: not sent (/shrine signal, the day before).')
   out.push(D.summons.at ? 'The Summons: given to ' + Object.keys(D.summons.given).length + ' players' + (summonsOpen() ? '; late arrivals get it until the Awakening.' : '.') :
     'The Summons: not given (/shrine summons, at the castle, once the braziers are set).')
+  const held = Object.keys(D.vaults).map(u => D.vaults[u].name + (D.vaults[u].partial ? ' (partly)' : ''))
+  out.push(held.length ? 'The kit: belongings held for ' + held.join(', ') + (D.event.on ? ' (handed back when the Awakening ends).' : ' (handed back when they\'re online).') :
+    'The kit: nobody\'s belongings are held (/shrine braziers kits everyone in survival).')
   return out
 }
 
@@ -1766,7 +2263,12 @@ function resume(server, restart) {
   }
   if (riteOn()) startRiteLoop(server)
   if (D.rise.riteAt) scheduleAutoRite(server)
-  if (D.awake.state == 'running') runAwakening(server, D.awake.step)
+  if (D.rise.awakenAt) scheduleAutoAwaken(server)
+  if (D.awake.state == 'running') {
+    runAwakening(server, D.awake.step)
+    if (Object.keys(D.awake.spots).length) startHold(server)
+  }
+  startKitSweep(server)
   if (D.awake.state != 'none' && D.regalia.open && D.rise.state == 'risen') startLecternWatch(server)
   if (D.rise.state == 'risen' && D.stairs) startStairGlow(server)
 }
@@ -1982,6 +2484,12 @@ ServerEvents.commandRegistry(event => {
         global.__shrineAutoRite = (global.__shrineAutoRite || 0) + 1
         save()
         return reply(ctx, 'The rite won\'t begin by itself. Start it with /shrine rite.')
+      }
+      if (db().rise.awakenAt) {
+        db().rise.awakenAt = 0
+        global.__shrineAutoAwaken = (global.__shrineAutoAwaken || 0) + 1
+        releaseWatchers()
+        return reply(ctx, 'The Awakening won\'t begin by itself, and everyone is free to move. Start it with /shrine awaken.')
       }
       if (pauseRite(ctx.source.server)) return reply(ctx, 'The rite is paused: the waves stop and the Inspectors are gone; the altar keeps its ' + db().rite.total + ' potatoes. /shrine rite carries on.')
       return reply(ctx, 'Nothing is running.', true)

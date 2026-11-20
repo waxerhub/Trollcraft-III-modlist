@@ -827,7 +827,7 @@ global.BloodPool = { drops: () => pool.drops, tier: () => pool.tier,
   openTo: (n, by) => { pool.opens.push({ n, by }); if (n > pool.tier) pool.tier = n; return pool.tier } }
 const LECTERN = '1007,86,1999'                                   // the corner (979 64 1979) + (28, 22, 20)
 const bookOf = () => worldNbt[LECTERN] || ''
-const awakeTicks = 920
+const awakeTicks = 980                          // the Awakening, to its last step (the end, 3 seconds after his last words)
 ok('/regalia before the Awakening: nothing named yet', /The Blood God has named nothing yet/.test(regalia(carol)[0]))
 ok('/shrine awaken before the Shrine has risen: refused', /hasn't risen yet/.test(cmd('awaken', admin)[0]))
 cmd('rise force', admin)
@@ -838,9 +838,10 @@ carol.x = 1010.5; carol.z = 2010.5; bob.x = 1030.5; bob.y = 64; bob.z = 2000.5; 
 players.forEach(p => { p.msgs = [] })
 const straggler = mob('minecraft:vindicator', 'MONSTER', 1040.5, 64, 2000.5, { tags: ['shrine_inspector', 'shrine_rite'], named: true }); mobs.push(straggler)
 cmds = []
+const bolts0 = bolts.length
 r = cmd('awaken force', admin)
-ok('/shrine awaken: the tribute, the words, the book, then the Pool raised to 230,000 and the seals broken to Tier 4 (no vote), in about 46 seconds', /The Awakening begins/.test(r[0]) &&
-  /the seals broken up to Tier 4 \(no vote\) and the Pool raised to 230,000 Drops, credited to nobody/.test(r[0]) && /About 46 seconds/.test(r[0]), r[0])
+ok('/shrine awaken: the tribute, the words, the book, then the Pool raised to 230,000 and the seals broken to Tier 4 (no vote), in about 49 seconds', /The Awakening begins/.test(r[0]) &&
+  /the seals broken up to Tier 4 \(no vote\) and the Pool raised to 230,000 Drops, credited to nobody/.test(r[0]) && /About 49 seconds/.test(r[0]), r[0])
 advance(2)
 ok('it begins: every Inspector left is taken away', straggler.discarded)
 ok('... those present see "The Shrine awakens" and hear it; someone far away doesn\'t get the title', cmds.some(c => /^title Carol title .*The Shrine awakens/.test(c)) && cmds.some(c => /^title Bob title/.test(c)) && !cmds.some(c => /^title Far title/.test(c)))
@@ -882,12 +883,24 @@ ok('... and the Shrine breaks the seals itself: Tiers 3 and 4 open, by "the Shri
   pool.tier == 4 && logs.some(l => /The Awakening broke the seals: Tier 2 to 4/.test(l)), JSON.stringify(pool.opens))
 ok('... the seals break before the Drops land, so the Pool never calls a vote on a tier about to open (rehearsal, 2026-11-19)', pool.adds.every(a => a.tierThen == 4), JSON.stringify(pool.adds))
 ok('... no vote is asked for', !carol.msgs.some(m => /bloodpool vote|break the third seal together/.test(m)))
+const ringOf = r => bolts.slice(bolts0).filter(b => b.visual && Math.abs(Math.hypot(b.at[0] - 1000.5, b.at[2] - 2000.5) - r) < 1.5).length
 ok('... as the seals break, lightning for show rings the Shrine (8 bolts), soul fire rises at its corners, and more fireworks',
-  bolts.slice(-8).every(b => b.visual && Math.abs(Math.hypot(b.at[0] - 1000.5, b.at[2] - 2000.5) - 26) < 1.5) &&
-  cmds.some(c => /run particle minecraft:soul_fire_flame /.test(c)) && cmds.filter(c => /summon minecraft:firework_rocket/.test(c)).length >= 15,
-  bolts.slice(-8).map(b => Math.hypot(b.at[0] - 1000.5, b.at[2] - 2000.5).toFixed(1)).join(',') + '; fireworks ' + cmds.filter(c => /firework_rocket/.test(c)).length)
+  ringOf(26) == 8 && cmds.some(c => /run particle minecraft:soul_fire_flame /.test(c)) && cmds.filter(c => /summon minecraft:firework_rocket/.test(c)).length >= 15,
+  ringOf(26) + ' bolts; fireworks ' + cmds.filter(c => /firework_rocket/.test(c)).length)
+ok('... not over yet: a moment for his last words before everyone is let go', S().awake.state == 'running')
+advance(60)
 ok('the Awakening is done; status says so, with the Drops it added', S().awake.state == 'done' && global.Shrine.awakened() &&
   /The Awakening: done\. The Regalia is open; 164,000 Drops added, credited to nobody\./.test(cmd('status', admin)[8]), cmd('status', admin)[8])
+// While he speaks: "Fire particles, lightning, heart beats. The works" (owner, 2026-11-19)
+const heartbeats = cmds.filter(c => /^execute as Far at @s run playsound minecraft:entity\.warden\.heartbeat/.test(c)).length
+ok('while the Blood God speaks: a heartbeat everyone hears, every second (twice as fast on his last line), and a growl as each line begins',
+  heartbeats == 6 + 6 + 8 && cmds.filter(c => /^execute as Far at @s run playsound minecraft:entity\.ender_dragon\.growl/.test(c)).length == 3, heartbeats)
+ok('... a blood mist with each beat; with each sentence, fire up the statue, lava and soul fire from the head',
+  cmds.filter(c => /run particle minecraft:dust 0\.6 0 0 2\.5 /.test(c)).length == 20 && cmds.filter(c => /run particle minecraft:flame 1000\.5 96 2000\.5 5 30 5 /.test(c)).length == 8 &&
+  cmds.filter(c => /run particle minecraft:lava 1000\.5 128 2000\.5 /.test(c)).length == 8 && cmds.some(c => /run particle minecraft:soul_fire_flame 1000\.5 124 2000\.5 3 3 3 /.test(c)))
+ok('... and two bolts for show with each sentence, in a ring beyond the seals\' (16 in all)', ringOf(34) == 16, ringOf(34))
+ok('... his last words fill the screen: "BLOOD FOR THE BLOOD GOD."', cmds.some(c => c == 'title Far title ' + JSON.stringify({ text: 'BLOOD FOR THE BLOOD GOD.', color: 'dark_red', bold: true })) &&
+  cmds.some(c => c == 'title Far subtitle ' + JSON.stringify({ text: 'I break the third seal, and the fourth with it.', color: 'red' })))
 ok('/shrine awaken again: refused', /already awakened/.test(cmd('awaken', admin)[0]))
 // someone takes the book from the lectern
 world[LECTERN] = 'minecraft:lectern[facing=east,has_book=false,powered=false]'; delete worldNbt[LECTERN]

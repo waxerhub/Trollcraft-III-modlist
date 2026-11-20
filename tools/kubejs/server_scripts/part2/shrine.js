@@ -172,8 +172,9 @@ const AWAKEN_STEPS = [
   { at: 560, step: 'line', text: 'You lit my fires. You fed my Shrine. You remembered.' },
   { at: 680, step: 'line', text: 'Eight things were mine. They were scattered, stolen, forgotten. Restore them here, and my name returns with them.' },
   { at: 760, step: 'book' },
-  { at: 880, step: 'line', text: 'I break the third seal, and the fourth with it. Blood for the Blood God.' },
+  { at: 880, step: 'line', text: 'I break the third seal, and the fourth with it. Blood for the Blood God.', last: true },
   { at: 920, step: 'pool' },
+  { at: 980, step: 'end' },                 // a moment for his last words ("BLOOD FOR THE BLOOD GOD.") before everyone is let go
 ]
 const VOICE_BLOOD = { tag: '[BLOOD GOD]', tagColor: 'dark_red', textColor: 'red' }   // as part2/blood_pool.js has it
 // The Regalia of the Blade: the eight relics, in the book's order. need and unit are placeholders until the owner sets
@@ -225,6 +226,11 @@ const KIT_SWEEP_TICKS = 200               // outside the event, kit items are lo
 const SKY = { night: 'time set midnight', storm: 'weather thunder 72000', clear: 'weather clear', day: 'time set day' }
 const TITLE_TIMES = 'times 10 60 20'
 const LINE_TICKS = 40                     // the Blood God's words on screen: one sentence every 2 seconds
+// While the Blood God speaks (owner, 2026-11-19: "Fire particles, lightning, heart beats. The works"): a heartbeat
+// everyone hears (every `beat` ticks, `lastBeat` on his last line), a growl as each line begins, a blood mist with each
+// beat, and with each sentence fire up the statue, lava and soul fire from the head, flame at the watchers' feet, and
+// `bolts` bolts for show in a ring `ring` blocks out (beyond the seals' ring, 26).
+const SPEAK = { beat: 20, lastBeat: 10, bolts: 2, ring: 34 }
 
 // ===================== STATE =====================
 
@@ -2093,7 +2099,8 @@ function awakenStep(server, s) {
     soulColumns(server, st)
   } else if (s.step == 'line') {
     bloodGod(server, s.text)
-    wordsOnScreen(server, s.text)
+    wordsOnScreen(server, s)
+    godSpeaks(server, s)
     redFireworks(server, st, 3)
   } else if (s.step == 'book') {
     placeBook(server, st)
@@ -2120,10 +2127,44 @@ function awakenStep(server, s) {
     soulColumns(server, st)
   }
 }
-// The Blood God's words on everyone's screen, a sentence at a time (LINE_TICKS apart), as well as in chat.
-function wordsOnScreen(server, text) {
-  const parts = String(text).match(/[^.!?]+[.!?]+/g) || [String(text)]
-  parts.forEach((s, k) => server.scheduleInTicks(1 + k * LINE_TICKS, () => titleTo(server, players(server), '', { text: s.trim(), color: 'red' })))
+function sentencesOf(text) { return (String(text).match(/[^.!?]+[.!?]+/g) || [String(text)]).map(x => x.trim()) }
+// The Blood God's words on everyone's screen, a sentence at a time (LINE_TICKS apart), as well as in chat. The very last
+// sentence he speaks fills the screen ("BLOOD FOR THE BLOOD GOD.").
+function wordsOnScreen(server, s) {
+  const parts = sentencesOf(s.text), token = global.__shrineAwaken
+  parts.forEach((p, k) => server.scheduleInTicks(1 + k * LINE_TICKS, () => {
+    if (token != global.__shrineAwaken) return
+    if (s.last && k == parts.length - 1) titleTo(server, players(server), { text: p.toUpperCase(), color: 'dark_red', bold: true }, { text: '' })
+    else titleTo(server, players(server), '', { text: p, color: 'red' })
+  }))
+}
+// The works while he speaks (SPEAK): heartbeats and a blood mist, a growl, and with each sentence fire, lava and
+// lightning. Stops if the Awakening is stopped or reloaded (its token).
+function godSpeaks(server, s) {
+  const st = db().rise.site, m = centreOf(st), c = corner(st), top = c.y + SIZE[1], dim = st.dim, token = global.__shrineAwaken
+  const parts = sentencesOf(s.text), beat = s.last ? SPEAK.lastBeat : SPEAK.beat, beats = []
+  const inDim = cmd => run(server, 'execute in ' + dim + ' run ' + cmd)
+  const live = () => token == global.__shrineAwaken && db().awake.state == 'running'
+  hearAll(server, players(server), 'minecraft:entity.ender_dragon.growl', 0.7, 0.5)
+  for (let t = 0; t < parts.length * LINE_TICKS; t += beat) beats.push(t)
+  beats.forEach(t => server.scheduleInTicks(1 + t, () => {
+    if (!live()) return
+    hearAll(server, players(server), 'minecraft:entity.warden.heartbeat', 1, 0.8)
+    inDim('particle minecraft:dust 0.6 0 0 2.5 ' + m.x + ' ' + (c.y + 24) + ' ' + m.z + ' 14 12 14 0 150 force')
+  }))
+  parts.forEach((p, k) => server.scheduleInTicks(1 + k * LINE_TICKS, () => {
+    if (!live()) return
+    inDim('particle minecraft:flame ' + m.x + ' ' + (c.y + 32) + ' ' + m.z + ' 5 30 5 0.03 600 force')
+    inDim('particle minecraft:lava ' + m.x + ' ' + top + ' ' + m.z + ' 6 2 6 0 60 force')
+    inDim('particle minecraft:soul_fire_flame ' + m.x + ' ' + (top - 4) + ' ' + m.z + ' 3 3 3 0.05 200 force')
+    let spots = db().awake.spots || {}
+    Object.keys(spots).forEach(u => { let q = spots[u]; inDim('particle minecraft:flame ' + q.x + ' ' + (q.y + 0.1) + ' ' + q.z + ' 1.5 0.05 1.5 0.01 25 force') })
+    let lv = levelByDim(server, dim)
+    for (let b = 0; b < SPEAK.bolts; b++) {
+      let a = Math.random() * 2 * 3.14159265, x = Math.floor(m.x + Math.cos(a) * SPEAK.ring), z = Math.floor(m.z + Math.sin(a) * SPEAK.ring)
+      strike(server, dim, x + 0.5, standY(lv, x, z, st.y), z + 0.5)
+    }
+  }))
 }
 // Runs the Awakening's steps from step `from` (a /reload or restart carries on where it was).
 function runAwakening(server, from) {

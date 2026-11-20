@@ -286,12 +286,16 @@ Each wave also has its Senior Inspector. At most 12 ordinary Inspectors in a wav
 - **No credit:** a knockout is no kill for anything else (bounties, the Anamian Axe's Souls, the Maul's Grit and the rest). The script loads early (`// priority: 100`) so it cancels the death before other scripts see it.
 
 ## 5. The Awakening ✅ built
-**During the event it begins by itself** once the altar is full, with everyone at the foot of the steps (Stage 4). Otherwise **`/shrine awaken`**, once the altar is full (`/shrine awaken force` goes ahead anyway). It's respectful: no jokes. About 46 seconds, step by step (`AWAKEN_STEPS`); a `/reload` or restart carries on from the next step.
+**During the event it begins by itself** once the altar is full, with everyone at the foot of the steps (Stage 4). Otherwise **`/shrine awaken`**, once the altar is full (`/shrine awaken force` goes ahead anyway). It's respectful: no jokes. About 49 seconds, step by step (`AWAKEN_STEPS`); a `/reload` or restart carries on from the next step.
 - **Effects** (2026-11-19):
-  - **the Blood God's words** fill everyone's screen a sentence at a time (2 seconds each, `LINE_TICKS`), as well as in chat, each line with red fireworks bursting high over the statue;
+  - **the Blood God's words** fill everyone's screen a sentence at a time (2 seconds each, `LINE_TICKS`), as well as in chat, each line with red fireworks bursting high over the statue. His very last sentence fills the screen as a title: "BLOOD FOR THE BLOOD GOD.";
+  - **while he speaks** (the owner, at the third run: "I need more dramatic effect while the blood god is talking. Fire particles, lightning, heart beats. The works"), with the settings in `SPEAK`:
+    - a heartbeat everyone hears (the Warden's) once a second, twice as fast on his last line;
+    - a dragon's growl as each line begins, and a blood-red mist around the Shrine with each beat;
+    - with each sentence: a column of fire up the whole statue, lava and soul fire from Technoblade's head, flames at the watchers' feet, and two bolts for show in a ring 34 blocks out;
   - **when the seals break:** lightning rings the Shrine (8 bolts, 26 blocks out), with more fireworks;
   - **soul fire** rises at the Shrine's corners as it begins and as the seals break;
-  - **the end:** the storm clears and day comes; everyone is let go from their spots, and their belongings come back (the kit goes).
+  - **the end** (49 seconds in, 3 seconds after his last words): the storm clears and day comes; everyone is let go from their spots, and their belongings come back (the kit goes).
 - **Lightning is only for show:** a bolt made "visual only" can't set fires or hurt anyone. If the game won't make one, flashes, sparks and thunder take its place, never a real bolt.
 1. **At once:**
    - **Clean-up:** every Inspector left is removed, and leftover Potato King's Potatoes crumble.

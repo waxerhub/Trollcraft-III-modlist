@@ -67,7 +67,7 @@ ok('it listens for the back command', commandName == 'back' && typeof commandHan
 const ana = player('Ana', 5)
 ok('/back with 5 coins: let through, 2 taken', back(ana) && ana.coins == 3, ana.coins)
 ok('... and told it was paid', /2 Hush Coins paid for \/back/.test(last(ana)), last(ana))
-advance(100)   // FTB Essentials' warmup: the teleport lands at 5 s
+advance(300)   // FTB Essentials' warmup: the teleport lands at 15 s
 ana.x = 500; ana.z = -300
 advance(80)
 ok('a teleport during the wait: no refund', ana.coins == 3, ana.coins)
@@ -79,17 +79,17 @@ ok('... and told the price', /\/back costs 2 Hush Coins\. You have 1\./.test(las
 const cy = player('Cy', 4)
 ok('Cy pays for /back', back(cy) && cy.coins == 2)
 ok('a second /back while the first is on its way: refused', !back(cy) && cy.coins == 2 && /still on its way/.test(last(cy)), last(cy))
-advance(8 * 20 + 20)
+advance(18 * 20 + 20)   // the 15 s warmup + 3 s
 ok('no teleport (cooldown or nothing to go back to): refunded after the wait', cy.coins == 4 && /your 2 Hush Coins are back/.test(last(cy)), cy.coins + ' / ' + last(cy))
 ok('... and Cy can pay again afterwards', back(cy) && cy.coins == 2)
 // walking about during the wait (warmup broken by moving): still refunded
-for (let i = 0; i < 16; i++) { cy.x += 2; advance(10) }
+for (let i = 0; i < 36; i++) { cy.x += 2; advance(10) }
 advance(40)
 ok('walking during the wait: refunded', cy.coins == 4, cy.coins)
 
 const dee = player('Dee', 2)
 ok('Dee pays the last 2 coins', back(dee) && dee.coins == 0)
-advance(100)
+advance(300)
 dee.dim = 'minecraft:the_nether'
 advance(20)
 ok('a change of dimension counts as the teleport: no refund', dee.coins == 0, dee.coins)
@@ -102,7 +102,7 @@ const eve = player('Eve', 3)
 ok('Eve pays', back(eve) && eve.coins == 1)
 advance(30)
 eve.online = false
-advance(200)
+advance(400)
 ok('logging out while waiting: nothing given yet (Eve is offline)', eve.coins == 1)
 ok('... the refund is saved', JSON.parse(persistent.back_toll || '{}').owed['uuid-Eve'] == 2, persistent.back_toll)
 eve.online = true

@@ -2,14 +2,14 @@
 
 `server_scripts/back_toll.js` makes FTB Essentials' `/back` cost **2 Hush Coins** for players who aren't operators. The coins are destroyed (owner decision). `/back` after a death costs the same as `/back` after a teleport.
 
-FTB Essentials still applies its own 5 s warmup and 30 s cooldown (`tools/serverconfig/ftbessentials.snbt`); the toll comes on top.
+FTB Essentials still applies its own 15 s warmup and 15-minute cooldown (`tools/serverconfig/ftbessentials.snbt`); the toll comes on top.
 
 ## How it works
 1. **A player runs `/back`.**
    - With fewer than 2 coins, it's refused before FTB Essentials sees it: "/back costs 2 Hush Coins. You have 1."
    - Otherwise 2 coins are taken from their inventory, and they're told "2 Hush Coins paid for /back. (Given back if it doesn't happen.)" Then FTB Essentials runs the command as usual.
 2. **The coins come back if no teleport happens.** FTB Essentials can still turn `/back` down after the coins are taken: on cooldown, nothing to go back to, or the warmup broken by moving or being hurt.
-   - For 8 seconds (the warmup + 3 s) the player is looked at every half second.
+   - For 18 seconds (the warmup + 3 s) the player is looked at every half second.
    - A change of dimension, or a jump of more than 32 blocks between two looks, counts as the teleport.
    - If neither happens, the 2 coins are given back: "/back didn't happen: your 2 Hush Coins are back."
    - A `/back` to somewhere within 32 blocks is refunded too (in the player's favour).
@@ -28,7 +28,7 @@ Messages go only to the player (never `tellraw @a`). The server log gets one `[B
 |---|---|---|
 | `PRICE` | 2 | Hush Coins per `/back` |
 | `COMMAND` | `'back'` | The command that's charged |
-| `WARMUP_SECONDS` | 5 | FTB Essentials' `back.warmup`; keep the two in step |
+| `WARMUP_SECONDS` | 15 | FTB Essentials' `back.warmup`; keep the two in step |
 | `CHECK_SECONDS` | warmup + 3 | How long to wait for the teleport before refunding |
 | `SAMPLE_TICKS` | 10 | How often the player is looked at while waiting |
 | `JUMP_BLOCKS` | 32 | A move this far between two looks is the teleport (elytra flight and horses stay under it) |
@@ -40,9 +40,9 @@ Copy `back_toll.js` to `kubejs/server_scripts/` next to `black_market.js` and ru
 
 ## Test plan (a player account and an op)
 1. **Not enough coins:** with 1 Hush Coin, `/back`: refused with the price, nothing taken, no teleport.
-2. **Paid:** with 3 coins and somewhere to go back to, `/back`: 2 coins taken, then the teleport after 5 s, and no refund.
-3. **On cooldown:** `/back` again within 30 s: 2 coins taken, FTB Essentials refuses, and 8 s later the coins come back.
-4. **Warmup broken:** `/back`, then walk away during the 5 s: refunded after 8 s.
+2. **Paid:** with 3 coins and somewhere to go back to, `/back`: 2 coins taken, then the teleport after 15 s, and no refund.
+3. **On cooldown:** `/back` again within 15 minutes: 2 coins taken, FTB Essentials refuses, and 18 s later the coins come back.
+4. **Warmup broken:** `/back`, then walk away during the 15 s: refunded after 18 s.
 5. **Spam:** `/back` twice quickly: the second is refused, and only 2 coins are taken.
 6. **Logout:** `/back`, then disconnect at once: no coins lost. Log back in and they're returned with a message.
 7. **Op:** `/back` as an op: no charge, no message.

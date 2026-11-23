@@ -14,7 +14,7 @@
 
 const PRICE = 2                       // Hush Coins per /back
 const COMMAND = 'back'                // FTB Essentials' command name
-const WARMUP_SECONDS = 5              // FTB Essentials' back.warmup (ftbessentials.snbt)
+const WARMUP_SECONDS = 15             // FTB Essentials' back.warmup (ftbessentials.snbt)
 const CHECK_SECONDS = WARMUP_SECONDS + 3   // how long to wait for the teleport before refunding
 const SAMPLE_TICKS = 10               // how often the player is looked at while waiting
 const JUMP_BLOCKS = 32                // a move this far between two looks is the teleport (elytra and horses stay under it)

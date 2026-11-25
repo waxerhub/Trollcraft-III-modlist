@@ -711,7 +711,7 @@ Unexplored (+ RU Expansion, Farmer's Cutting, mcwregionsunexplored), Integrated 
 Integrated Villages, Integrated Stronghold, Moog's Soaring Structures, Sky Villages, all seven YUNG's
 mods, BiblioCraft, Chisel, Rechiseled (+ AE2, Create), Factory Blocks, all seven Macaw's mods, Fusion,
 Cosmetic Armor Reworked, Simple Hats, Better Combat, Corpse, Baubley Heart Canisters, Elevator Mod, Trash
-Cans, Tesseract, Secret Rooms, Iron Chests, Ender Storage, Chicken Chunks, Tool Belt, Waystones, Gravity
+Cans, Tesseract, Secret Rooms, Iron Chests, Ender Storage, Chicken Chunks (since banned by `chunk_loader_ban.js`), Tool Belt, Waystones, Gravity
 Gun, Walkers, ReMorphed, The Joke Book, Create More: Pipe Bombs, Bells & Whistles, Create Radar, Create
 Aquatic Ambitions, Slice & Dice, and all **64 jars with no `data/` payload** (libraries, performance,
 client QoL — listed in `01_INDEX.md`).

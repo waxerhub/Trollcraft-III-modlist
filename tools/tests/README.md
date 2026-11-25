@@ -55,6 +55,7 @@ Each check prints one line, `ok   <what>` or `FAIL <what>  <detail>`, and each s
 | `give_limits` | `give_limits.js` | Which `/give` commands are refused |
 | `anamian_axe` | `anamian_axe.js` | The Anamian Axe: Souls per source, level-ups (enchantments, lore, netherite), Timber, Cleave, Bloodthirst, Blood Harvest, Judgement, offerings, open for grabs, commands |
 | `back_toll` | `back_toll.js` | `/back` costs 2 Hush Coins: charged, refused, refunded when no teleport happens, refunds owed across a logout |
+| `chunk_loader_ban` | `chunk_loader_ban.js`, `startup_scripts/chunk_loader_ban_hooks.js` | ChickenChunks' loaders: the chunk hook notes only loaders and changes nothing, placed ones replaced with air (no drops) and counted, recipes removed, placing refused, right-click removes, items swept from inventories, containers and the ground, `/loaderban`, one loop after /reload |
 | `protected_areas` | `protected_areas.js` | Only allowed players break, place or right-click in an area; `allowUse` areas (the Castellan's castle) let everyone use doors and buttons but not buckets or fire |
 | `enchanted_porkchop`, `fairy_wings` | those scripts | Their items |
 | `nether_portal_whitelist` | `startup_scripts/nether_portal_whitelist.js` | The Nether unlock |

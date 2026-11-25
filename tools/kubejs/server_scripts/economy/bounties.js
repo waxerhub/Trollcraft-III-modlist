@@ -52,6 +52,8 @@ const LOG_SIZE = 50
 let Serializer = null, StringArg = null
 try { Serializer = Java.loadClass('net.minecraft.network.chat.Component$Serializer') } catch (e) { }
 try { StringArg = Java.loadClass('com.mojang.brigadier.arguments.StringArgumentType') } catch (e) { }
+let FtbTeams = null           // knows everyone who has joined (teamPlayer); null without FTB Teams
+try { FtbTeams = Java.loadClass('dev.ftb.mods.ftbteams.api.FTBTeamsAPI') } catch (e) { }
 
 
 // ===================== HELPERS =====================
@@ -149,8 +151,8 @@ function log(text) {
 
 
 // ===================== PLAYERS THE SERVER KNOWS =====================
-// Offline players can be targeted: everyone seen since this script was installed, faction members, and
-// anyone in the server's profile cache (typed names).
+// Offline players can be targeted: everyone seen since this script was installed, faction members, and (typed names)
+// anyone FTB Teams knows has joined.
 
 function remember(p) {
   const D = db(), u = uuidOf(p), n = nameOf(p)
@@ -169,21 +171,30 @@ function rememberFactionMembers() {
     })
   } catch (e) { }
 }
-// A player by name: online, known, or in the profile cache. { uuid, name } or null.
+// An offline player by name from FTB Teams (if it's installed), which keeps everyone who has joined: { uuid, name } or
+// null. Minecraft's own profile cache isn't asked: its get() also takes a UUID, so the script engine calls the call
+// ambiguous and throws (seen on the test server, 2026-11-25), and for a name it doesn't have it asks Mojang, on the
+// server's own thread, and would find anyone with an account.
+function teamPlayer(name) {
+  if (!FtbTeams) return null
+  const n = String(name).toLowerCase()
+  let hit = null
+  try {
+    FtbTeams.api().getManager().getTeams().forEach(t => {
+      if (hit || !t.isPlayerTeam() || String(t.getPlayerName()).toLowerCase() != n) return
+      hit = { uuid: String(t.getId()).toLowerCase(), name: String(t.getPlayerName()) }
+    })
+  } catch (e) { console.warn('[Bounties] Looking up ' + name + ' in FTB Teams failed: ' + e) }
+  return hit
+}
+// A player by name: online, known, or known to FTB Teams. { uuid, name } or null.
 function resolve(server, name) {
   const p = playerByName(server, name)
   if (p) return { uuid: uuidOf(p), name: nameOf(p) }
   const n = String(name).toLowerCase(), known = db().known
   const hit = Object.keys(known).filter(u => String(known[u]).toLowerCase() == n)[0]
   if (hit) return { uuid: hit, name: known[hit] }
-  try {
-    let opt = server.getProfileCache().get(String(name))
-    if (opt && opt.isPresent()) {
-      let prof = opt.get()
-      return { uuid: String(prof.getId()), name: String(prof.getName()) }
-    }
-  } catch (e) { }
-  return null
+  return teamPlayer(name)
 }
 // Everyone p could put a bounty on: online players first, then known offline ones (by name). [{ uuid, name, online }]
 function targetsFor(p) {

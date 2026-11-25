@@ -136,7 +136,9 @@ function fasterCapsOn() {
 function attachCapabilities() {
   const caps = fasterCapsOn()
   if (caps !== false) {
-    console.error('[PotatoPress] Hoppers and pipes can\'t reach the Potato Press and Oven: ModernFix\'s ' + FASTER_CAPS +
+    // A warning, never an error: KubeJS refuses to start a dedicated server when a startup script has logged any error
+    // (the live server wouldn't start without the ModernFix line, 2026-11-21). The machines still work by hand.
+    console.warn('[PotatoPress] Hoppers and pipes can\'t reach the Potato Press and Oven: ModernFix\'s ' + FASTER_CAPS +
       (caps ? ' is on' : ' may be on') + '. Add "' + FASTER_CAPS + '=false" to config/modernfix-mixins.properties and restart. ' +
       'They still work by hand.')
     return false

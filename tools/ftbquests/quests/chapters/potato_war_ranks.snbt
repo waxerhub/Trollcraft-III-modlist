@@ -105,7 +105,7 @@
 		{
 			dependencies: ["507A700000010069"]
 			description: ["Offer to Techno's war chest with &6/potatowar offer&r, or hand them in for nodes in this book. &6/potatowar ranks&r shows what each rank counts.", "&cNeeds the Blood Pool at Tier 5.&r Until it opens, your rank stops below this one; what you offer still counts, and the rank comes when the tier opens.", "Rank 6 lets you craft Tier 6 (A Stream)'s items at a crafting table, once the Blood Pool opens it.", "&7Catch-up: when the Blood Pool is 2 tiers past Tier 6, you can craft it whatever your rank (this quest then ticks too)."]
-			icon: "minecraft:potato"
+			icon: "kubejs:enchanted_potato"
 			id: "507A70000001006A"
 			subtitle: "Rank 6 · 400,000 · Blood Pool Tier 5"
 			tags: ["potato_rank"]
@@ -124,7 +124,7 @@
 		{
 			dependencies: ["507A70000001006A"]
 			description: ["Offer to Techno's war chest with &6/potatowar offer&r, or hand them in for nodes in this book. &6/potatowar ranks&r shows what each rank counts.", "&cNeeds the Blood Pool at Tier 6.&r Until it opens, your rank stops below this one; what you offer still counts, and the rank comes when the tier opens.", "Rank 7 lets you craft Tier 7 (A River)'s items at a crafting table, once the Blood Pool opens it.", "&7Catch-up: when the Blood Pool is 2 tiers past Tier 7, you can craft it whatever your rank (this quest then ticks too)."]
-			icon: "minecraft:potato"
+			icon: "kubejs:enchanted_potato"
 			id: "507A70000001006B"
 			subtitle: "Rank 7 · 700,000 · Blood Pool Tier 6"
 			tags: ["potato_rank"]
@@ -143,7 +143,7 @@
 		{
 			dependencies: ["507A70000001006B"]
 			description: ["Offer to Techno's war chest with &6/potatowar offer&r, or hand them in for nodes in this book. &6/potatowar ranks&r shows what each rank counts.", "&cNeeds the Blood Pool at Tier 7.&r Until it opens, your rank stops below this one; what you offer still counts, and the rank comes when the tier opens.", "Rank 8 lets you craft Tier 8 (A Flood)'s items at a crafting table, once the Blood Pool opens it.", "&7Catch-up: when the Blood Pool is 2 tiers past Tier 8, you can craft it whatever your rank (this quest then ticks too)."]
-			icon: "minecraft:potato"
+			icon: "kubejs:enchanted_potato"
 			id: "507A70000001006C"
 			subtitle: "Rank 8 · 1,200,000 · Blood Pool Tier 7"
 			tags: ["potato_rank"]
@@ -162,7 +162,7 @@
 		{
 			dependencies: ["507A70000001006C"]
 			description: ["Offer to Techno's war chest with &6/potatowar offer&r, or hand them in for nodes in this book. &6/potatowar ranks&r shows what each rank counts.", "&cNeeds the Blood Pool at Tier 8.&r Until it opens, your rank stops below this one; what you offer still counts, and the rank comes when the tier opens.", "Rank 9 lets you craft Tier 9 (A Tide)'s items at a crafting table, once the Blood Pool opens it.", "&7Catch-up: when the Blood Pool is 2 tiers past Tier 9, you can craft it whatever your rank (this quest then ticks too)."]
-			icon: "minecraft:potato"
+			icon: "kubejs:enchanted_baked_potato"
 			id: "507A70000001006D"
 			subtitle: "Rank 9 · 2,000,000 · Blood Pool Tier 8"
 			tags: ["potato_rank"]
@@ -181,7 +181,7 @@
 		{
 			dependencies: ["507A70000001006D"]
 			description: ["Offer to Techno's war chest with &6/potatowar offer&r, or hand them in for nodes in this book. &6/potatowar ranks&r shows what each rank counts.", "&cNeeds the Blood Pool at Tier 9.&r Until it opens, your rank stops below this one; what you offer still counts, and the rank comes when the tier opens.", "Rank 10 lets you craft Tier 10 (A Sea)'s items at a crafting table, once the Blood Pool opens it.", "&7Catch-up: at Tier 12 (Full Measure), you can craft it whatever your rank (this quest then ticks too)."]
-			icon: "minecraft:potato"
+			icon: "kubejs:enchanted_baked_potato"
 			id: "507A70000001006E"
 			subtitle: "Rank 10 · 3,000,000 · Blood Pool Tier 9"
 			tags: ["potato_rank"]
@@ -200,7 +200,7 @@
 		{
 			dependencies: ["507A70000001006E"]
 			description: ["Offer to Techno's war chest with &6/potatowar offer&r, or hand them in for nodes in this book. &6/potatowar ranks&r shows what each rank counts.", "&cNeeds the Blood Pool at Tier 10.&r Until it opens, your rank stops below this one; what you offer still counts, and the rank comes when the tier opens.", "Rank 11 lets you craft Tier 11 (An Ocean)'s items at a crafting table, once the Blood Pool opens it.", "&7Catch-up: at Tier 12 (Full Measure), you can craft it whatever your rank (this quest then ticks too)."]
-			icon: "minecraft:golden_carrot"
+			icon: "kubejs:enchanted_baked_potato"
 			id: "507A70000001006F"
 			subtitle: "Rank 11 · 4,400,000 · Blood Pool Tier 10"
 			tags: ["potato_rank"]

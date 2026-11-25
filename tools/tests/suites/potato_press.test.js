@@ -175,12 +175,15 @@ ok('other capabilities: none', cap.p({ equals: () => false }, S.DOWN).empty === 
 ok('a block entity whose inventory isn\'t made yet offers nothing (asked again later)', attach('kubejs:potato_press', { inventory: null })[0].p(S.ITEM_HANDLER, S.UP).empty === true)
 
 const on = load({ modernfix: true })
-ok('faster capabilities on: nothing attached (it would crash the server), and the log says what to change', on.generic.length == 0 &&
-  on.logs.some(l => /^E \[PotatoPress\] Hoppers and pipes can't reach .*faster_capabilities is on\. Add "mixin\.perf\.faster_capabilities=false" to config\/modernfix-mixins\.properties/.test(l)))
+ok('faster capabilities on: nothing attached (it would crash the server), and a warning says what to change', on.generic.length == 0 &&
+  on.logs.some(l => /^W \[PotatoPress\] Hoppers and pipes can't reach .*faster_capabilities is on\. Add "mixin\.perf\.faster_capabilities=false" to config\/modernfix-mixins\.properties/.test(l)))
+// (2026-11-21: the live server wouldn't start without the ModernFix line, because KubeJS stops a dedicated server when a
+// startup script logs any error)
+ok('... a warning, never an error: a startup-script error stops a dedicated server from starting', !on.logs.some(l => /^E /.test(l)), on.logs.filter(l => /^E /.test(l)).join(' | '))
 ok('... the machines are still registered (they work by hand)', !!on.blocks.potato_press && !!on.blocks.potato_oven)
 const unknown = load({ modernfix: 'throw' })
 ok('the option can\'t be read: nothing attached either, with a warning and the same advice', unknown.generic.length == 0 &&
-  unknown.logs.some(l => /^W \[PotatoPress\] Could not read ModernFix/.test(l)) && unknown.logs.some(l => /^E .*may be on/.test(l)))
+  unknown.logs.some(l => /^W \[PotatoPress\] Could not read ModernFix/.test(l)) && unknown.logs.some(l => /^W .*may be on/.test(l)) && !unknown.logs.some(l => /^E /.test(l)))
 ok('ModernFix not installed: attached', load({ modernfix: null }).generic.length == 1)
 const client = load({ client: true, modernfix: true })
 ok('on a player\'s game: nothing attached and nothing logged (only the server needs it)', client.generic.length == 0 && client.logs.length == 0 && !!client.blocks.potato_press)

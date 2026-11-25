@@ -95,7 +95,7 @@ Without bounties.js the two buttons aren't shown.
 
 `persistentData["bounties"]`, one JSON string:
 - the bounties (target, pot, each placer's name, amount and time);
-- the players the server knows (for offline targets), filled at login and from the factions' member lists;
+- the players the server knows (for offline targets), filled at login and from the factions' member lists. A typed name can also be anyone FTB Teams knows has joined;
 - refunds waiting for offline placers;
 - rival-bonus cooldowns;
 - the last 50 log lines.
@@ -121,5 +121,5 @@ It survives restarts and `/reload`.
 
 The mock-server test (shared with the black market, 248 checks) covers placing, stacking, every refusal, cancelling from chat and the window, the Wanted list, collecting, the deaths that don't pay, the Pig Escort, the rival bonus and each of its limits, offline targets, the op clear with offline refunds, `/reload`, the black market being closed, and `/bounty toggle`. These parts depend on the real game:
 - `event.source.actual` being the killing player on a player's death (also used by the black market's contracts). Arrows and tridents count as the player who shot them.
-- Offline names through `server.getProfileCache().get(name)`, and player heads showing skins for offline players (`SkullOwner` by name).
+- Player heads showing skins for offline players (`SkullOwner` by name). (Offline names: found on the test server by console, 25 November 2026, with a stranger's name refused. Until then no offline player could be found this way: Minecraft's profile cache, which was asked, throws (the script engine can't choose between its `get(name)` and `get(UUID)`), and the error was hidden.)
 - Brigadier choosing `/bounty list`, `cancel`, `clear`, `toggle` and `log` over a player with that name (a player literally called "list" can still be targeted from the window).

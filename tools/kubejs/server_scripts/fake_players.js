@@ -31,10 +31,11 @@ const POST_TO_DISCORD = true      // post the join/leave through Simple Discord 
 const POST_CHAT_TO_DISCORD = true // post /fakesay lines to Discord's chat channel as that player
 const MAX_CHAT_LENGTH = 256       // the same limit as real chat
 // The Discord wording, matching playerJoined/playerLeft in config/simple-discord-link/simple-discord-link.toml.
+// Part II: neither names the Ministry, which players have not met by name yet (the Tier 5 reveal is the first time).
 // If you change those, change these too. (Scripts can't read that config themselves.)
 // 🩸 is the drop-of-blood emoji and 🌫️ the fog; ** ** makes the name bold.
-const DISCORD_JOINED = '🩸 **%player%** stepped out of the blood. The Ministry has been notified, and does not approve.'
-const DISCORD_LEFT = '🌫️ **%player%** slipped back into the static. The Ministry has lost track of them, again.'
+const DISCORD_JOINED = '🩸 **%player%** stepped out of the blood. Somewhere, someone has made a note of it, and does not approve.'
+const DISCORD_LEFT = '🌫️ **%player%** slipped back into the static. Whoever was watching has lost track of them, again.'
 
 
 // ===================== HELPERS =====================

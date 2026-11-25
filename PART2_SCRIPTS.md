@@ -19,7 +19,7 @@ Part II's premise ([STORY.md](STORY.md)) is that everyone stands under Techno's 
 | `events/blood_portal.js` | ✅ keep | ❌ remove | Part I's escape. `part2/arrival.js` reads its exodus files |
 | `end_lockdown.js` | ✅ keep | ❌ remove | Replaced by `part2/dimension_gates.js` (the End opens at Tier 9) |
 | `events/pig_escort.js` | ✅ keep | 🔧 adapt | **The Swine's Oath relic needs 10 completed Escorts**, so it stays as a repeatable event. Its Nether unlock and the Syndicate-reveal finale **must go**: they flip the same Nether switch `dimension_gates.js` uses, and would open the Nether before Tier 3 |
-| `smite.js`, `fake_players.js` | ✅ keep | ✅ keep | Part II's finale uses `/superaura` and `/fakejoin Technoblade` |
+| `smite.js`, `fake_players.js` | ✅ keep | ✅ keep | Part II's finale uses `/superaura` and `/fakejoin Technoblade`. Its Discord join/leave posts no longer name the Ministry (2026-11-20); set `playerJoined`/`playerLeft` in the server's `config/simple-discord-link/simple-discord-link.toml` to the same wording, since real players' joins use those |
 | `give_limits.js` | ✅ keep | ✅ keep | |
 | `back_toll.js` | ✅ keep | ✅ keep | `/back` costs 2 Hush Coins (needs `black_market.js`) |
 | `anamian_axe.js` | ✅ keep | ✅ keep | The Anamian Axe super weapon (Blood Harvest needs `part2/blood_pool.js`) |

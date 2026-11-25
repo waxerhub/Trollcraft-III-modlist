@@ -34,7 +34,14 @@ const STRUCTURE = 'trollcraft:shrine'     // the statue, one piece per layer: ST
 const SIZE = [42, 64, 43]                 // x, layers, z (Technoblade's statue: technoblade_statue.schem)
 const CENTRE = [21, 21]                   // the site's centre, as an offset from the statue's corner (x, z)
 const PEDESTAL_TOP = 21                   // the pedestal's last layer: thunder when it's placed
-const LAYER_TICKS = 9                     // a layer every 9 ticks: about 29 seconds for the 64 (owner, 2026-11-14)
+const LAYER_TICKS = 14                    // a layer every 14 ticks: about 45 seconds for the 64 (owner, 2026-11-21; it was 9, about 29)
+// The rise's fire (owner, 2026-11-21, at the sixth run: "increase the length of time for the shrine to build to 45 seconds
+// and make more particle effects. the fire columns are very good on the brazier but I think the major climax of the shrine
+// being built would be fantastic"): `count` pillars of fire like the braziers', on a ring `ring` blocks beyond the Shrine's
+// corners, growing with the statue (`above` blocks over the layer being set, at least `min` tall), pulsing every `pulse`
+// ticks. None within `clear` blocks of the viewing platform. When the last layer is set they all roar to full height, a
+// shockwave of fire rolls out from the base, the crown blasts, and they burn on until the night ends.
+const RISE_FIRE = { count: 8, ring: 6, above: 6, min: 10, pulse: 7, clear: 10 }
 const LOAD_WAIT_SECONDS = 90              // how long to wait for the site's chunks to load before pausing the rise
 const CLEAR_SLAB = 18                     // taking it down: fills of 42 x 18 x 43 blocks (fill's limit is 32,768)
 const EDGE_GAP = 3                        // players moved out of the footprint land this far outside its edge
@@ -47,13 +54,42 @@ const BRAZIERS = 3
 const DATA_KEY = 'shrine'
 
 // --- Stage 2: the braziers, the beam and the ambushes ---
-const FIRE_WINDOW_SECONDS = 60            // all three must burn within this long of the first one catching
+const FIRE_WINDOW_SECONDS = 45            // all three must burn within this long of the first one catching (60 until 2026-11-21:
+                                          // "decrease the timer after a fire is lit to 45 seconds instead of 60")
+const FIRE_WINDOW_TEXT = FIRE_WINDOW_SECONDS == 60 ? 'a minute' : FIRE_WINDOW_SECONDS + ' seconds'
 // The night's event (owner, 2026-11-15, after a death to an ambush on the test server): /shrine braziers starts it and
 // teleports every player online to the start (/shrine start set). From then until the Awakening ends, a lethal hit
 // knocks anyone out instead of killing them: they wake beside the last brazier lit that still burns, or at the start if
 // none does (at the Shrine's edge if they're near it during the rite, as before).
 const WAKE_BESIDE_FIRE = 3                // knocked out: woken this many blocks east of the brazier, on the ground
 const FIRE_BOSSBAR = 'trollcraft:shrine_fires'
+// The opening (owner decisions, 2026-11-20: "fires on the horizon" and "an Inspector broadcast", about 30 seconds, nobody
+// held): after /shrine braziers brings everyone to the start, a title, then the three fires flare one after another as
+// seen from the start: a column of fire and signal smoke, thunder from its direction, and a title naming it. A brazier
+// further than `horizon` blocks from the start flares on the horizon toward it (`horizon` blocks out), so it can be seen
+// through the fog; lightning strikes the brazier itself. Then the Inspectors' broadcast cuts in (OPENING_BROADCAST), and
+// "Light the fires" ends it. Times are ticks from the command; /shrine stop cuts it short.
+const OPENING = { title: 20, flares: [80, 180, 280], flareTicks: 60, pulse: 10, broadcast: 380, lineTicks: 50, last: 560, horizon: 96 }
+// After it (owner, 2026-11-21: "the fire pillars should fire every 30 seconds after start so players can track them"):
+// every `every` seconds from /shrine braziers, each brazier not yet lit sends up its pillar again, for `ticks`.
+const FLARE_AGAIN = { every: 30, ticks: 60 }
+// Lighting a brazier (owner, 2026-11-21: "instead of flint and steel lighting them immediately players should have to shift
+// for 2 seconds without taking damage to light them"): a pilgrim within `reach` blocks of an unlit brazier's fire, sneaking
+// for `seconds` without being hurt, lights it. Flint and steel and fire charges are refused at a brazier, and a fire lit
+// any other way (a flaming arrow) is put out. Checked every `check` ticks.
+// (2 seconds at first; at the sixth run's rerun, 2026-11-21, the owner tried 1, then settled on 1.5)
+const KINDLE = { seconds: 1.5, reach: 3, check: 5 }
+const KINDLE_HOW = 'Kneel at a fire to light it: hold sneak beside it for ' + (KINDLE.seconds == 1 ? 'a second' : KINDLE.seconds == 1.5 ? 'a second and a half' : KINDLE.seconds + ' seconds') + ' without being hurt.'
+// Their channel, overheard: scrambled and unsigned, and it never names who they work for. Each line is [scrambled, text]
+// parts, as the Signal's are; a scrambled stretch shows as shifting glyphs.
+const OPENING_BROADCAST = {
+  tag: '[INTERCEPTED]',
+  lines: [
+    [[true, 'kx'], [false, ' ...all units, all units... '], [true, 'vqre'], [false, ' ...an unregistered gathering at the castle... '], [true, 'pw']],
+    [[true, 'zt'], [false, ' ...three fire sites. No fire is to be lit... '], [true, 'mrq']],
+    [[true, 'u'], [false, ' ...Inspectors to every site. Bring them in, and keep the potatoes where they are... '], [true, 'xov']],
+  ],
+}
 // A brazier, built on the ground at its site: a 3 x 3 plinth, the campfire on it in the middle, walls with chains at the
 // corners. [dx, dy, dz, block] from the site (the spot an op stood on).
 const BRAZIER_PARTS = [
@@ -77,6 +113,14 @@ const SKY_CHECK = 96                      // blocks above the site checked for a
 // The ambushes on the way: the first pilgrim within `radius` blocks of a brazier that isn't lit yet is ambushed once,
 // with anyone within `team` blocks of them: base + 1 per pilgrim Inspectors (at most max), ring blocks away.
 const AMBUSH = { radius: 200, team: 32, base: 2, max: 6, ring: [8, 12] }
+// Waves at the braziers (owner decision 2026-11-20, at the fifth run's rerun: "There will be 7 to 8 players on the event at
+// the same time. Make sure to balance it accordingly. Waves should continuously spawn"): while a brazier is unlit, every
+// `every` seconds a group comes at the pilgrims within `radius` blocks of it: base + 1 per pilgrim there (at most max),
+// `ring` blocks from the fire on dry ground, until `alive` of its own are up. Lit, its waves stop; once all three burn,
+// every Inspector left from the brazier stage is driven off, so the rite begins clean at the beam.
+// Made harder before release (owner decision 2026-11-21, "Harder"): every 20 seconds, 3 + 1 per pilgrim, at most 8 a wave and
+// 16 up at each brazier (it was every 30, 2 + 1, 6 and 12).
+const BRAZIER_WAVES = { radius: 40, every: 20, base: 3, max: 8, alive: 16, ring: [6, 12] }
 // The Inspectors (unsigned: never "Ministry"). armour protects them, though illagers don't show it.
 const INSPECTOR = { name: 'Inspector', color: 'gold', armour: 'iron', voice: 'Unregistered pilgrims. Remain where you are.' }
 
@@ -94,12 +138,26 @@ const WAVES = [
 ]
 const WAVE_MAX = 12
 const RITE_ALIVE_MAX = 30                 // the next wave waits while this many of the rite's Inspectors are still up
-const WAVE_RING = [30, 45]                // they appear this many blocks from the Shrine's centre, on the ground
+// Where the waves appear (owner decision 2026-11-20, after Inspectors kept spawning in caves and water on the open
+// ring): around the braziers, BRAZIER_WAVE.ring blocks from each, until half the potatoes are offered (the beam's
+// GLASS_WAVE.fromSurge-th surge); then GLASS_WAVE.ring blocks from the beam's red glass. A brazier further than
+// BRAZIER_WAVE.within from the beam isn't used (its Inspectors, seeing 64 blocks, couldn't find the pilgrims). With
+// none that near, or a Shrine already risen (a forced rehearsal), the waves keep to WAVE_RING.
+const BRAZIER_WAVE = { ring: [3, 7], within: 64 }
+const GLASS_WAVE = { ring: [4, 6], fromSurge: 2 }
+const WAVE_RING = [30, 45]                // otherwise they appear this many blocks from the site's centre, on the ground
 const SURFACE_SCAN = [40, 20]             // Inspectors' ground: looked for from 40 above the site's height to 20 below
+const NEAR_SCAN = [12, 6]                 // ground near a known spot (a brazier, the glass, a Senior): 12 above it to 6 below
 const SPAWN_TRIES = 12                    // spots tried for each Inspector (not in water, a cave or a tree) before falling back
 const NEXT_WAVE = { share: 0.75, minutes: 3 }   // the next wave: once this share of the last is down, or after this long
-// One leads every wave. potatoes: what he drops (a fixed 8, owner decision); helpers: called at half health, once.
-const SENIOR = { name: 'Senior Inspector', health: 150, potatoes: 8, helpers: 2 }
+// Senior Inspectors lead every wave. potatoes: what each drops; helpers: called by each at half health, once.
+// How many lead wave n (owner decision 2026-11-21: "8 waves but instead of each senior inspector dropping 8 make it each
+// drops 2 but add more senior inspectors as the waves increase"): SENIORS_PER_PLAYER[n] x the players present, rounded up,
+// at least 1. The shares add up to POTATOES_PER_PLAYER / SENIOR.potatoes (4), so the offering fills at about the 8th
+// wave whatever the number of players (8 players: 2, 2, 3, 4, 4, 5, 6, 6 Seniors, 32 in all, 64 potatoes). Waves past the
+// list use its last share.
+const SENIOR = { name: 'Senior Inspector', health: 150, potatoes: 2, helpers: 2 }
+const SENIORS_PER_PLAYER = [0.25, 0.25, 0.375, 0.5, 0.5, 0.625, 0.75, 0.75]
 const KINGS_POTATO = { name: 'Potato King\'s Potato', lore: 'Technoblade\'s own. Hoarded by the Inspectors.' }
 const BANDS = 4                           // the statue lights up in this many bands, one per quarter of the bar
 const LIGHT_SPACING = 4                   // in a lit band, a light block every this many blocks (where there's air)
@@ -158,26 +216,27 @@ const OPEN_TIER = 4
 const AWAKEN_STEPS = [
   { at: 0, step: 'begin' },
   { at: 560, step: 'line', text: 'You lit my fires. You fed my Shrine. You remembered.' },
-  { at: 680, step: 'line', text: 'Eight things were mine. They were scattered, stolen, forgotten. Restore them here, and my name returns with them.' },
+  { at: 680, step: 'line', text: 'Eight things were mine. They were scattered, stolen, forgotten. Restore them here, and my name returns with them. With each one returned, I break another seal.' },
   { at: 760, step: 'book' },
   { at: 880, step: 'line', text: 'I break the third seal, and the fourth with it. Blood for the Blood God.', last: true },
-  { at: 920, step: 'pool' },
+  { at: 920, step: 'seals' },               // lightning and fireworks; the seals themselves break when the night ends (breakSeals)
   { at: 980, step: 'end' },                 // a moment for his last words ("BLOOD FOR THE BLOOD GOD.") before everyone is let go
 ]
 const VOICE_BLOOD = { tag: '[BLOOD GOD]', tagColor: 'dark_red', textColor: 'red' }   // as part2/blood_pool.js has it
 // The Regalia of the Blade: the eight relics, in the book's order. need and unit are placeholders until the owner sets
-// them (STORY.md, Act II); the deliveries come with Act II.
+// them (STORY.md, Act II), except the Axe of Peace's cobalt and the Swine's Oath's pig iron (owner decisions
+// 2026-11-20, counted in blocks; ingots count 9 to a block); the deliveries come with Act II.
 const RELICS = [
   { id: 'war_chest', name: 'The War Chest', need: 10000, unit: 'potatoes', honours: 'For the Potato War, which I won.', asks: 'Fill it again: ten thousand potatoes.' },
-  { id: 'axe_of_peace', name: 'The Axe of Peace', need: 1, unit: 'axe', honours: 'I carried it in peace. Mostly.', asks: 'Forge me its equal: a broad axe of manyullyn or hepatizon, made netherite.' },
+  { id: 'axe_of_peace', name: 'The Axe of Peace', need: 1000, unit: 'blocks of cobalt', honours: 'I carried it in peace. Mostly.', asks: 'Bring me the metal to forge its equal: a thousand blocks of cobalt.' },
   { id: 'totem_hoard', name: 'The Totem Hoard', need: 64, unit: 'Totems of Undying', honours: 'I never died. I simply declined to.', asks: 'Bring me sixty-four Totems of Undying.' },
   { id: 'withers_due', name: 'The Wither\'s Due', need: 8, unit: 'Nether Stars', honours: 'I once loosed withers on a nation that wronged me.', asks: 'Bring me eight Nether Stars.' },
   { id: 'chalice', name: 'The Chalice of Blood', need: 1000, unit: 'buckets of blood', honours: 'Blood for the Blood God. It was never a metaphor.', asks: 'Fill it: a thousand buckets of blood.' },
-  { id: 'carls_bridle', name: 'Carl\'s Bridle', need: 1, unit: 'horse', honours: 'For Carl, the finest horse who ever lived.', asks: 'Breed me his equal: swift as wind, and a jump to clear any wall.' },
-  { id: 'swines_oath', name: 'The Swine\'s Oath', need: 10, unit: 'Pig Escorts', honours: 'For the pig who wore the crown.', asks: 'See the pigs safely home, ten times over.' },
+  { id: 'carls_bridle', name: 'Carl\'s Bridle', need: 48, unit: 'pieces of tack', honours: 'For Carl, the finest horse who ever lived.', asks: 'Bring me his tack: thirty-two saddles and sixteen suits of diamond horse armour.' },
+  { id: 'swines_oath', name: 'The Swine\'s Oath', need: 128, unit: 'blocks of pig iron', honours: 'For the pig who wore the crown.', asks: 'Forge me pig iron, iron and blood made one: a hundred and twenty-eight blocks.' },
   { id: 'crown', name: 'The Crown of the Blade', need: 1, unit: 'crown', honours: 'My crown. They wore it. They used it.', asks: 'Last, and hardest: awakened draconium, a dragon\'s heart, a Gaia spirit and a shard of chaos.', after: 'When the Crown returns, so does my name.' },
 ]
-const BOOK = { title: 'The Regalia of the Blade', author: 'The Blood God', intro: 'Eight things were mine. Restore them at my Shrine, and my name returns with them.' }
+const BOOK = { title: 'The Regalia of the Blade', author: 'The Blood God', intro: 'Eight things were mine. Restore them at my Shrine: each one returned breaks another seal, and with the last, my name returns.' }
 
 // --- The night's end, by itself (owner decision at the rehearsal, 2026-11-19) ---
 // During the event, once the offering is full: the Inspectors vanish, everyone is brought back to the viewing spots
@@ -189,6 +248,11 @@ const GATHER_DELAY_TICKS = 60             // from the altar filling to everyone 
 // The viewing spots: this far east of the furthest the steps can reach (about 55 blocks from the centre), 7 to a row,
 // 2 apart, looking at the centre lookUp blocks above the ground.
 const VIEW = { out: 4, row: 7, gap: 2, lookUp: 20 }
+// The viewing platform (owner decision 2026-11-20, at the fifth run, after mobs kept spawning round the owner while
+// held on the ground): /shrine view set lays a size x size floor of barriers just under the spot, with a rail of
+// barriers `rail` high round its edge so nobody steps off. Everyone watches the Awakening and the rise from it, and when
+// the night ends they're set down in front of the lectern (the owner's choice) and the platform is taken away.
+const PLATFORM = { size: 6, rail: 2 }
 const HOLD_RADIUS = 2.5
 
 // --- The night's kit (owner decisions at the rehearsal, 2026-11-19) ---
@@ -198,8 +262,8 @@ const HOLD_RADIUS = 2.5
 // kitted when they arrive. Kit items can't leave the event: outside it, any found on a player are taken back.
 // items: [id, count, extra NBT]; armor: head .. feet; gear gets ENCHANT (the food doesn't).
 const KIT = {
-  items: [['minecraft:diamond_sword', 1, 'Enchantments:[{id:"minecraft:sharpness",lvl:4s},{id:"minecraft:unbreaking",lvl:10s}]'], ['minecraft:cooked_beef', 16, ''],
-    ['minecraft:flint_and_steel', 1, 'Enchantments:[{id:"minecraft:unbreaking",lvl:10s}]']],   // to light the braziers (owner, 2026-11-19)
+  // (no flint and steel since 2026-11-21: the braziers are lit by kneeling at them, KINDLE)
+  items: [['minecraft:diamond_sword', 1, 'Enchantments:[{id:"minecraft:sharpness",lvl:4s},{id:"minecraft:unbreaking",lvl:10s}]'], ['minecraft:cooked_beef', 16, '']],
   armor: ['minecraft:diamond_helmet', 'minecraft:diamond_chestplate', 'minecraft:diamond_leggings', 'minecraft:diamond_boots'],
   offhand: 'minecraft:shield',
   enchant: 'Enchantments:[{id:"minecraft:unbreaking",lvl:10s}]',
@@ -209,6 +273,10 @@ const KIT = {
 // kubejs/shrine_vault_<name>_<uuid>.json (the fallback), as the arena's and the Purge's do.
 const VAULT_DIR = 'kubejs/shrine_vaults/'
 const KIT_SWEEP_TICKS = 200               // outside the event, kit items are looked for on players this often
+// Every KIT_REFRESH_KNOCKOUTS-th knockout of a player during the night's event, their kit is made new (owner, 2026-11-21: "kits
+// need to be refreshed after every 3 knock outs"): the pieces they still carry are replaced by fresh ones where they are, and any
+// lost piece goes back in its own slot (or the first free one). Nothing else they carry is touched.
+const KIT_REFRESH_KNOCKOUTS = 3
 
 // --- Effects (owner decisions at the rehearsal, 2026-11-19: the fires and the beam, the rise, the rite, the Awakening) ---
 // The rise turns the sky to night with a thunderstorm (the whole Overworld), and the Awakening's end clears it to day.
@@ -237,12 +305,13 @@ let data = null
 // D.fires: { state: 'none' | 'placed' | 'counting' | 'lit' | 'done', sites: the braziers as built, built, lit and
 // ambushed: [bool] x 3, firstLitAt: ms }. D.beam: { up, at: the site, saved: [{ x, y, z, state }] it replaced }.
 // The loops' tokens are on global, so a /reload stops the old ones.
-function freshFires() { return { state: 'none', sites: [], built: [false, false, false], lit: [false, false, false], litAt: [0, 0, 0], ambushed: [false, false, false], firstLitAt: 0 } }
+function freshFires() { return { state: 'none', sites: [], built: [false, false, false], lit: [false, false, false], litAt: [0, 0, 0], ambushed: [false, false, false], firstLitAt: 0, waveAt: [0, 0, 0], flaredAt: 0, kindled: [false, false, false] } }
 // D.rite: { state: 'none' | 'running' | 'paused' | 'full' | 'done', offered: uuid -> { name, n } (potatoes offered at the
 // altar), total, need, present (players counted at the start), wave (the last one sent, -1 none), waveAt, waveSize,
-// lit (bands lit), seniors: wave -> { called } for each wave whose Senior Inspector is up (his bar shows) }.
+// lit (bands lit), seniors: wave -> { n, down: { k: true }, called: { k: true } } for each wave with a Senior Inspector up (its
+// bar shows); n Seniors led it, k = 0 .. n-1, each tagged shrine_sid_<wave>_<k> }.
 function freshRite(offered) {
-  return { state: 'none', offered: offered || {}, total: 0, need: 0, present: 0, wave: -1, waveAt: 0, waveSize: 0, lit: 0, seniors: {} }
+  return { state: 'none', offered: offered || {}, total: 0, need: 0, present: 0, wave: -1, waveAt: 0, waveSize: 0, lit: 0, seniors: {}, serial: 0 }
 }
 function db() {
   if (data) return data
@@ -260,15 +329,20 @@ function db() {
   }
   if (!data.fires) data.fires = freshFires()
   if (!data.beam) data.beam = { up: false, at: null, saved: [] }
-  if (!data.awake) data.awake = { state: 'none', step: 0, added: 0, spots: {} }   // state: none, running or done; added: the Drops it put in
+  if (!data.awake) data.awake = { state: 'none', step: 0, added: 0, pooled: false, spots: {} }   // state: none, running or done; added: the Drops it put in; pooled: its seals broken (at the night's end)
+  // saved before the seals waited for the night's end (2026-11-20): an Awakening done then broke them as it ran
+  if (data.awake.pooled === undefined) data.awake.pooled = data.awake.state == 'done'
   if (!data.regalia) data.regalia = { open: false, progress: {} }          // progress: relic id -> { have, by: { uuid: { name, n } } }
   if (!data.rite || !data.rite.state) data.rite = freshRite((data.rite && data.rite.offered) || {})
   if (!data.rite.seniors) data.rite.seniors = {}                           // saved before every wave had a Senior
+  if (!data.rite.serial) data.rite.serial = data.rite.state == 'none' ? 0 : Date.now()   // which rite its Inspectors belong to (strayInspector)
   if (!data.vaults) data.vaults = {}                                       // uuid -> a player's belongings held for the night
   if (!data.kitOut) data.kitOut = false                                    // a kit was ever handed out (the sweep looks for strays)
   if (!data.awake.spots) data.awake.spots = {}                             // uuid -> { x, y, z } where they watch the Awakening
   if (!(data.stairs >= 0)) data.stairs = 0                                 // the steps to the altar laid (0: none)
   if (data.start === undefined) data.start = null                          // the start: { dim, x, y, z }
+  if (data.view === undefined) data.view = null                            // where everyone watches (/shrine view set): { dim, x, y, z }; null: picked by itself
+  if (!data.platformUp) data.platformUp = false                            // the viewing platform's barriers are in place
   if (!data.event) data.event = { on: false, at: 0 }                       // the night's event: knockouts for everyone
   if (!data.signal) data.signal = { at: 0, told: {} }                      // the Signal: when, and who has had it
   if (!data.summons) data.summons = { at: 0, pages: [], given: {} }        // the Summons: when, its pages, who has a copy
@@ -498,29 +572,40 @@ function inFootprint(st, d, q) {
 }
 function isOpen(id) { return /(^|:)(cave_|void_)?air$/.test(String(id)) }
 function isStep(id) { return /(^|:)barrier$/.test(String(id)) }   // the steps up to the altar: not ground to land on
-// Somewhere to stand in the column at x, z: the top of the ground near the site's height (two open blocks over a solid
-// one). Falls back to the site's own height.
+// Ground that is water or holds it (a lake or river, kelp or seagrass up to the surface, a lily pad on it, anything
+// waterlogged), or lava: no good to stand on. Inspectors kept landing in water on the test server (2026-11-20): only
+// plain water was refused, and kelp or seagrass reaching the surface passed for ground.
+function wetGround(lv, x, y, z, id) {
+  if (/(^|:)(water|lava|bubble_column|kelp|kelp_plant|seagrass|tall_seagrass|lily_pad|sea_pickle|frogspawn)$|coral/.test(String(id))) return true
+  try { return !lv.getBlock(x, y, z).blockState.fluidState.isEmpty() } catch (e) { return false }
+}
+// Somewhere to stand in the column at x, z: the top of the ground near the site's height (two open blocks over a solid,
+// dry one). Falls back to the site's own height.
 function standY(lv, x, z, around) {
   if (!lv) return around
   for (let y = around + 20; y >= around - 20; y--) {
     let below = '', feet = '', head = ''
     try { below = lv.getBlock(x, y - 1, z).id; feet = lv.getBlock(x, y, z).id; head = lv.getBlock(x, y + 1, z).id } catch (e) { return around }
-    if (!isOpen(below) && !isStep(below) && isOpen(feet) && isOpen(head)) return y
+    if (!isOpen(below) && !isStep(below) && isOpen(feet) && isOpen(head) && !wetGround(lv, x, y - 1, z, below)) return y
   }
   return around
 }
-// Ground for an Inspector in the column at x, z: coming down from SURFACE_SCAN[0] above `around`, the first block that
-// isn't air, through any leaves (onto the forest floor). Null where it's no good: the column starts inside a hill (the
-// old way found a cave under it: an Inspector spawned underground on the test server), the ground is water or lava (one
-// landed in a lake), a tree trunk or the Shrine's steps, or there's nothing within SURFACE_SCAN[1] below.
-function groundAt(lv, x, z, around) {
+// What hangs over the ground rather than being it: leaves, vines and the like, looked through on the way down.
+function overhead(id) { return /leaves$|(^|:)(vine|glow_lichen|cobweb|hanging_roots|spore_blossom|(cave|weeping|twisting)_vines(_plant)?)$/.test(String(id)) }
+// Ground for an Inspector in the column at x, z: coming down from scan[0] above `around` (SURFACE_SCAN unless given),
+// the first block that isn't air, through any leaves (onto the forest floor). Null where it's no good: the column starts
+// inside a hill (the old way found a cave under it: an Inspector spawned underground on the test server), the ground is
+// wet (wetGround: one landed in a lake), a tree trunk or the Shrine's steps, or there's nothing within scan[1] below (a
+// narrower scan, NEAR_SCAN, keeps spots near a known one out of ravines and cave mouths).
+function groundAt(lv, x, z, around, scan) {
+  const sc = scan || SURFACE_SCAN
   if (!lv) return null
   try {
-    if (!isOpen(lv.getBlock(x, around + SURFACE_SCAN[0], z).id)) return null
-    for (let y = around + SURFACE_SCAN[0]; y > around - SURFACE_SCAN[1]; y--) {
+    if (!isOpen(lv.getBlock(x, around + sc[0], z).id)) return null
+    for (let y = around + sc[0]; y > around - sc[1]; y--) {
       let below = String(lv.getBlock(x, y - 1, z).id)
-      if (isOpen(below) || /leaves$/.test(below)) continue
-      if (/(^|:)(water|lava|bubble_column|barrier|light)$|_(log|stem|wood|hyphae)$/.test(below)) return null
+      if (isOpen(below) || overhead(below)) continue
+      if (wetGround(lv, x, y - 1, z, below) || /(^|:)(barrier|light)$|_(log|stem|wood|hyphae)$/.test(below)) return null
       return y
     }
   } catch (e) { }
@@ -529,14 +614,14 @@ function groundAt(lv, x, z, around) {
 // A spot on the ground rMin..rMax blocks from (cx, cz), about angle a: SPAWN_TRIES spots are tried round it, then as many
 // again anywhere on the ring (on the test server a lake filled the whole north side of the rite's ring, and with only
 // the nearby tries an Inspector was put in it). Only then the first spot's standY as before, with a warning.
-function groundSpot(lv, cx, cz, around, rMin, rMax, a) {
+function groundSpot(lv, cx, cz, around, rMin, rMax, a, scan) {
   let first = null
   for (let t = 0; t < SPAWN_TRIES * 2; t++) {
     let ang = t == 0 ? a : t < SPAWN_TRIES ? a + (Math.random() - 0.5) * 1.2 : Math.random() * 2 * 3.14159265
     let r = rMin + Math.random() * (rMax - rMin)
     let x = Math.floor(cx + Math.cos(ang) * r), z = Math.floor(cz + Math.sin(ang) * r)
     if (!first) first = { x: x, z: z }
-    let y = groundAt(lv, x, z, around)
+    let y = groundAt(lv, x, z, around, scan)
     if (y !== null) return { x: x + 0.5, y: y, z: z + 0.5 }
   }
   console.warn('[Shrine] No dry ground ' + rMin + ' to ' + rMax + ' blocks from ' + Math.floor(cx) + ' ' + Math.floor(cz) + '; one placed at ' + first.x + ' ' + first.z + ' anyway')
@@ -607,8 +692,17 @@ function sweepMonsters(server, st) {
   return n
 }
 EntityEvents.spawned(event => {
-  const st = shrineStanding(), e = event.entity
-  if (!st || !e || !unwanted(st, e)) return
+  const e = event.entity
+  if (!e) return
+  if (strayInspector(e)) {
+    // taken away as it loads, before it can fight or drop anything (and discarded next tick, should the cancel not hold for
+    // an entity loaded from its chunk)
+    console.info('[Shrine] A stray Inspector from an earlier night, taken away as its chunk loaded')
+    try { (event.server || Utils.server).scheduleInTicks(1, () => { try { e.discard() } catch (err) { } }) } catch (err) { }
+    event.cancel()
+  }
+  const st = shrineStanding()
+  if (!st || !unwanted(st, e)) return
   event.cancel()
 })
 
@@ -645,7 +739,69 @@ function placeLayer(server, st, n) {
     run(server, 'execute in ' + st.dim + ' run playsound minecraft:entity.blaze.shoot block @a ' + at + ' 4 0.5')
   }
   if (n == SIZE[1] - 1) strikeRing(server, st.dim, mid.x, mid.z, st.y, 28, 6)
+  // the pillars of fire round it, growing with it (RISE_FIRE), and the climax with the last stone
+  riseFire(server, st, n)
+  if (n == SIZE[1] - 1) riseCrescendo(server, st)
   return true
+}
+
+// --- The rise's fire (RISE_FIRE) ---
+// Where the pillars stand: on a ring RISE_FIRE.ring blocks beyond the Shrine's corners, on the ground there, none within
+// RISE_FIRE.clear blocks of the viewing platform. Worked out once for each site and platform.
+let pillarCache = null
+function risePillars(server, st) {
+  const v = db().view, key = st.dim + ' ' + st.x + ' ' + st.y + ' ' + st.z + ' ' + (v ? v.x + ' ' + v.z : '')
+  if (pillarCache && pillarCache.key == key) return pillarCache.spots
+  const m = centreOf(st), lv = levelByDim(server, st.dim), spots = []
+  const r = Math.sqrt(SIZE[0] * SIZE[0] + SIZE[2] * SIZE[2]) / 2 + RISE_FIRE.ring
+  for (let k = 0; k < RISE_FIRE.count; k++) {
+    let a = (k + 0.5) * 2 * 3.14159265 / RISE_FIRE.count, x = Math.floor(m.x + Math.cos(a) * r), z = Math.floor(m.z + Math.sin(a) * r)
+    if (v && v.dim == st.dim && flat({ x: x + 0.5, z: z + 0.5 }, { x: v.x + 0.5, z: v.z + 0.5 }) < RISE_FIRE.clear + PLATFORM.size / 2) continue
+    spots.push({ x: x + 0.5, y: standY(lv, x, z, st.y), z: z + 0.5 })
+  }
+  pillarCache = { key: key, spots: spots }
+  return spots
+}
+// One pillar h blocks tall at spot s: fire, orange sparks, lava at its foot and smoke at its head; `big` doubles it and
+// adds blasts up its length.
+function risePillar(server, dim, s, h, big) {
+  const inDim = c => run(server, 'execute in ' + dim + ' run ' + c), mid = s.y + h / 2, spread = Math.round(h * 10 / 3) / 10, k = big ? 2 : 1
+  inDim('particle minecraft:flame ' + s.x + ' ' + mid + ' ' + s.z + ' 0.5 ' + spread + ' 0.5 0.02 ' + Math.round((40 + h * 2) * k) + ' force')
+  inDim('particle minecraft:dust 1 0.35 0 4 ' + s.x + ' ' + mid + ' ' + s.z + ' 0.6 ' + spread + ' 0.6 0 ' + Math.round((20 + h) * k) + ' force')
+  inDim('particle minecraft:lava ' + s.x + ' ' + (s.y + 1) + ' ' + s.z + ' 0.6 0.4 0.6 0 ' + (6 * k) + ' force')
+  inDim('particle minecraft:campfire_signal_smoke ' + s.x + ' ' + (s.y + h) + ' ' + s.z + ' 0.5 1 0.5 0.02 ' + (5 * k) + ' force')
+  if (big) inDim('particle minecraft:explosion ' + s.x + ' ' + mid + ' ' + s.z + ' 0.5 ' + spread + ' 0.5 0 12 force')
+}
+// With layer n set: every pillar burns RISE_FIRE.above blocks over it (at least RISE_FIRE.min), pulsing every
+// RISE_FIRE.pulse ticks until the next layer.
+function riseFire(server, st, n) {
+  const h = Math.max(RISE_FIRE.min, n + 1 + RISE_FIRE.above), spots = risePillars(server, st), token = global.__shrineRise, at = []
+  for (let t = 0; t < LAYER_TICKS; t += RISE_FIRE.pulse) at.push(t)
+  at.forEach(t => {
+    if (!t) { spots.forEach(s => risePillar(server, st.dim, s, h, false)); return }
+    server.scheduleInTicks(t, () => { if (token == global.__shrineRise && db().rise.state == 'rising') spots.forEach(s => risePillar(server, st.dim, s, h, false)) })
+  })
+}
+// The last stone: every pillar roars to full height, blasts at the crown, a shockwave of fire rolls out along the ground
+// from the base in five rings, and the pillars burn on at full height until the night ends (FINALE_TICKS).
+function riseCrescendo(server, st) {
+  const m = centreOf(st), top = st.y + SIZE[1], full = SIZE[1] + RISE_FIRE.above, spots = risePillars(server, st), token = global.__shrineRise
+  const inDim = c => run(server, 'execute in ' + st.dim + ' run ' + c), base = Math.max(SIZE[0], SIZE[2]) / 2 + 2, pulses = [], rings = [0, 1, 2, 3, 4], points = []
+  spots.forEach(s => risePillar(server, st.dim, s, full, true))
+  inDim('particle minecraft:explosion_emitter ' + m.x + ' ' + (top + 2) + ' ' + m.z + ' 3 1 3 0 4 force')
+  inDim('particle minecraft:flash ' + m.x + ' ' + (top + 2) + ' ' + m.z + ' 0 0 0 0 1 force')
+  inDim('playsound minecraft:entity.generic.explode block @a ' + m.x + ' ' + top + ' ' + m.z + ' 8 0.6')
+  hearAll(server, nearby(server, st), 'minecraft:entity.blaze.shoot', 1, 0.4)
+  for (let k = 0; k < 40; k++) points.push(k * 2 * 3.14159265 / 40)
+  rings.forEach(i => server.scheduleInTicks(1 + i * 2, () => {
+    const r = base + i * 4
+    points.forEach(a => inDim('particle minecraft:flame ' + (m.x + Math.cos(a) * r).toFixed(1) + ' ' + (st.y + 1) + ' ' + (m.z + Math.sin(a) * r).toFixed(1) + ' 0.4 0.2 0.4 0.03 6 force'))
+  }))
+  for (let t = RISE_FIRE.pulse; t <= FINALE_TICKS; t += RISE_FIRE.pulse) pulses.push(t)
+  pulses.forEach(t => server.scheduleInTicks(t, () => {
+    if (token == global.__shrineRise && db().rise.state == 'risen') spots.forEach(s => risePillar(server, st.dim, s, full, false))
+  }))
+  console.info('[Shrine] The rise\'s climax: ' + spots.length + ' pillars of fire')
 }
 function nearby(server, st) {
   const m = centreOf(st)
@@ -752,9 +908,10 @@ function resetShrine(server, done) {
   crumbleKings(server)
   global.__shrineAutoAwaken = (global.__shrineAutoAwaken || 0) + 1   // an Awakening due to begin by itself won't
   global.__shrineFinale = (global.__shrineFinale || 0) + 1           // nor the night's end after the Shrine stands
+  downFromPlatform(server, true)                 // anyone on the viewing platform, to the start
   releaseWatchers()
   skyClear(server)
-  D.awake = { state: 'none', step: 0, added: 0, spots: {} }
+  D.awake = { state: 'none', step: 0, added: 0, pooled: false, spots: {} }
   D.regalia = { open: false, progress: {} }
   D.rite = freshRite({})
   D.event = { on: false, at: 0 }
@@ -891,6 +1048,106 @@ function setFire(server, b, lit) {
   const f = firePos(b)
   run(server, 'execute in ' + b.dim + ' run setblock ' + f.x + ' ' + f.y + ' ' + f.z + ' minecraft:campfire[lit=' + (lit ? 'true' : 'false') + ',signal_fire=false]')
 }
+// The braziers' coordinates in chat (owner, 2026-11-21: "in case the fires are out of view distance"): each fire, where
+// it is, and how far and which way from `from`; a lit one says so. Then how to light them. To each player (never tellraw).
+function tellFireCoords(p, from) {
+  const F = db().fires
+  narrate(p, 'The three fires wait at:', 'gold')
+  F.sites.forEach((b, i) => {
+    const dx = b.x + 0.5 - from.x, dz = b.z + 0.5 - from.z, name = ordinal(i)
+    try {
+      p.tell(comp([{ text: '  ' + name.charAt(0).toUpperCase() + name.slice(1) + ' fire: ', color: 'gold' }, { text: siteText(b), color: 'yellow' },
+        { text: F.lit[i] ? ' (burning)' : ' (' + distanceText(Math.sqrt(dx * dx + dz * dz)) + ' ' + directionText(dx, dz) + ')', color: 'gray' }]))
+    } catch (e) { }
+  })
+  narrate(p, KINDLE_HOW + ' All three must burn within ' + FIRE_WINDOW_TEXT + ' of the first.', 'gray')
+}
+// Every FLARE_AGAIN.every seconds while the fires are out: each one not yet lit sends up its pillar again.
+function flareUnlit(server) {
+  const F = db().fires, token = global.__shrineFires, pulses = []
+  for (let t = 0; t < FLARE_AGAIN.ticks; t += OPENING.pulse) pulses.push(t)
+  F.sites.forEach((b, i) => {
+    if (F.lit[i]) return
+    const at = { x: b.x + 0.5, y: b.y + 1, z: b.z + 0.5 }
+    run(server, 'execute in ' + b.dim + ' run playsound minecraft:entity.blaze.shoot block @a ' + at.x + ' ' + at.y + ' ' + at.z + ' 4 0.5')
+    pulses.forEach(t => server.scheduleInTicks(t + 1, () => {
+      const G = db().fires
+      if (token == global.__shrineFires && !G.lit[i] && (G.state == 'placed' || G.state == 'counting')) firePillar(server, b.dim, at)
+    }))
+  })
+}
+// --- Kindling (KINDLE): sneaking beside an unlit fire, unhurt, for KINDLE.seconds lights it ---
+function crouching(p) {
+  try { return !!p.isCrouching() } catch (e) { }
+  try { return !!p.isShiftKeyDown() } catch (e) { }
+  return false
+}
+// Health and absorption together, so a blow the absorption hearts take still counts as being hurt.
+function vitality(p) {
+  let hp = 0
+  try { hp = Number(p.getHealth()) } catch (e) { }
+  try { hp += Number(p.getAbsorptionAmount()) || 0 } catch (e) { }
+  return hp
+}
+function hurtJustNow(p) { try { return Number(p.hurtTime) > 0 } catch (e) { return false } }
+// The unlit brazier whose fire p is within KINDLE.reach of, or -1.
+function kindleSpot(p) {
+  const F = db().fires, q = pos(p), d = dimOf(p)
+  let at = -1
+  F.sites.forEach((b, i) => {
+    if (at < 0 && !F.lit[i] && b.dim == d && Math.abs(q.x - (b.x + 0.5)) <= KINDLE.reach && Math.abs(q.z - (b.z + 0.5)) <= KINDLE.reach && Math.abs(q.y - (b.y + 1)) <= 3) at = i
+  })
+  return at
+}
+function actionBar(server, p, parts) { run(server, 'title ' + nameOf(p) + ' actionbar ' + JSON.stringify(parts)) }
+function barOf(n) { let s = ''; for (let k = 0; k < n; k++) s += '|'; return s }
+// Every KINDLE.check ticks while the fires are out: each pilgrim at an unlit fire, sneaking, kindles it; a blow starts
+// them over. Progress shows on their action bar, with sparks and a crackle at the fire.
+function kindleTick(server) {
+  const F = db().fires, need = KINDLE.seconds * 20
+  if (F.state != 'placed' && F.state != 'counting') { global.__shrineKindle = {}; return }
+  const K = global.__shrineKindle || (global.__shrineKindle = {})
+  players(server).forEach(p => {
+    const u = uuidOf(p), i = pilgrim(p) ? kindleSpot(p) : -1
+    if (i < 0) { delete K[u]; return }
+    const b = F.sites[i], hp = vitality(p), name = ordinal(i)
+    if (!crouching(p)) {
+      delete K[u]
+      actionBar(server, p, [{ text: 'Hold sneak to kindle ' + name + ' fire', color: 'gold' }])
+      return
+    }
+    let k = K[u]
+    if (!k || k.i != i) k = K[u] = { i: i, ticks: 0, hp: hp }
+    else if (hp < k.hp - 0.01 || hurtJustNow(p)) {
+      K[u] = { i: i, ticks: 0, hp: hp }
+      actionBar(server, p, [{ text: 'Struck! The kindling scatters. Start again.', color: 'red' }])
+      return
+    } else { k.ticks += KINDLE.check; k.hp = hp }
+    const f = firePos(b)
+    run(server, 'execute in ' + b.dim + ' run particle minecraft:flame ' + (f.x + 0.5) + ' ' + (f.y + 0.3) + ' ' + (f.z + 0.5) + ' 0.2 0.1 0.2 0.01 ' + (2 + Math.floor(k.ticks / 5)) + ' force')
+    if (k.ticks >= need) {
+      kindle(server, i, p)
+      return
+    }
+    const done = Math.round(10 * k.ticks / need)
+    actionBar(server, p, [{ text: 'Kindling ' + name + ' fire  ', color: 'gold' }, { text: barOf(done), color: 'red' }, { text: barOf(10 - done), color: 'dark_gray' }])
+    if (k.ticks % 10 == 0) run(server, 'execute in ' + b.dim + ' run playsound minecraft:block.campfire.crackle block @a ' + (f.x + 0.5) + ' ' + f.y + ' ' + (f.z + 0.5) + ' 1.5 1')
+  })
+}
+// Brazier i is kindled (by p, or by an op): the fire is set, and the next fire check counts it as caught.
+function kindle(server, i, p) {
+  const F = db().fires, b = F.sites[i]
+  if (!F.kindled) F.kindled = [false, false, false]
+  F.kindled[i] = true
+  save()
+  setFire(server, b, true)
+  const K = global.__shrineKindle || {}
+  Object.keys(K).forEach(u => { if (K[u].i == i) delete K[u] })
+  if (p) {
+    actionBar(server, p, [{ text: 'The fire takes.', color: 'gold', bold: true }])
+    console.info('[Shrine] ' + nameOf(p) + ' kindled brazier ' + (i + 1))
+  }
+}
 // The braziers' blocks, so they can't be broken (outside creative).
 function brazierAt(d, x, y, z) {
   const F = db().fires
@@ -912,13 +1169,92 @@ function placeBraziers(server) {
   D.fires = freshFires()
   D.fires.state = 'placed'
   D.fires.sites = D.braziers.map(b => ({ dim: b.dim, x: b.x, y: b.y, z: b.z }))
+  D.fires.flaredAt = Date.now()                 // the pillars go up again FLARE_AGAIN.every seconds from now
   if (!D.event.on) D.event = { on: true, at: Date.now() }
   save()
   D.fires.sites.forEach(b => brazierForceload(server, b, true))   // kept loaded while the fires are watched
   gatherAll(server)
   startFireWatch(server)
+  startOpening(server)
   console.info('[Shrine] The braziers are out; the event is on')
   return ''
+}
+// The opening (OPENING): about 30 seconds of show at the start. Nobody is held. It stops if /shrine stop cuts it short,
+// if the fires are reset, or with a /reload (its steps are scheduled, not saved: the night goes on without the rest).
+function startOpening(server) {
+  const token = (global.__shrineOpening = (global.__shrineOpening || 0) + 1)
+  global.__shrineOpeningOn = true
+  global.__shrineOpeningUntil = Date.now() + OPENING.last * 50     // a /reload drops its steps: the hold ends anyway
+  const at = (t, fn) => server.scheduleInTicks(t, () => {
+    if (!openingLive(token)) return
+    try { fn() } catch (e) { console.error('[Shrine] Opening: ' + e) }
+  })
+  at(OPENING.title, () => {
+    titleTo(server, players(server), { text: 'THE PILGRIMAGE', color: 'dark_red', bold: true }, { text: 'Three fires must burn as one', color: 'red' })
+    hearAll(server, players(server), 'minecraft:block.bell.use', 1, 0.5)
+    hearAll(server, players(server), 'minecraft:block.bell.resonate', 1, 0.6)
+  })
+  OPENING.flares.forEach((t, k) => at(t, () => openingFlare(server, k, token)))
+  OPENING_BROADCAST.lines.forEach((line, k) => at(OPENING.broadcast + k * OPENING.lineTicks, () => {
+    hearAll(server, players(server), 'minecraft:block.sculk_sensor.clicking', 1, 0.6)
+    hearAll(server, players(server), 'minecraft:block.note_block.bit', 0.6, 0.5)
+    players(server).forEach(p => { try { p.tell(comp(broadcastParts(line))) } catch (e) { } })
+  }))
+  at(OPENING.last, () => {
+    global.__shrineOpeningOn = false
+    titleTo(server, players(server), { text: 'Light the fires', color: 'gold', bold: true }, { text: 'before they put them out', color: 'red' })
+    hearAll(server, players(server), 'minecraft:entity.blaze.shoot', 1, 0.5)
+    console.info('[Shrine] The opening is over')
+  })
+  console.info('[Shrine] The opening begins')
+}
+// The opening is playing: the Inspectors wait for it (no ambush, no brazier wave).
+function openingOn() { return !!global.__shrineOpeningOn && Date.now() < (global.__shrineOpeningUntil || 0) }
+// The opening carries on while it's this one and the fires wait to be lit (all three lit ends it).
+function openingLive(token) { const s = db().fires.state; return token == global.__shrineOpening && (s == 'placed' || s == 'counting') }
+// Cuts the opening short (/shrine stop, a reset, all three fires lit). True if it was running.
+function stopOpening() {
+  const was = !!global.__shrineOpeningOn
+  global.__shrineOpening = (global.__shrineOpening || 0) + 1
+  global.__shrineOpeningOn = false
+  return was
+}
+function broadcastParts(line) {
+  return [{ text: OPENING_BROADCAST.tag, color: 'dark_gray', bold: true }].concat(line.map(s => s[0] ? { text: s[1], color: 'dark_aqua', obfuscated: true } : { text: s[1], color: 'gray', italic: true }))
+}
+// Where brazier `b` is shown from the start: the brazier itself, or `horizon` blocks toward it, on the ground there.
+function horizonSpot(server, s, b) {
+  const dx = b.x + 0.5 - (s.x + 0.5), dz = b.z + 0.5 - (s.z + 0.5), d = Math.sqrt(dx * dx + dz * dz)
+  if (b.dim != s.dim || d <= OPENING.horizon) return { x: b.x + 0.5, y: b.y + 1, z: b.z + 0.5, d: d, dx: dx, dz: dz }
+  const f = OPENING.horizon / d, x = s.x + 0.5 + dx * f, z = s.z + 0.5 + dz * f
+  return { x: x, y: standY(levelByDim(server, s.dim), Math.floor(x), Math.floor(z), s.y), z: z, d: d, dx: dx, dz: dz }
+}
+// A pillar of fire and signal smoke at `at`, seen from far (force).
+function firePillar(server, dim, at) {
+  const inDim = c => run(server, 'execute in ' + dim + ' run ' + c)
+  inDim('particle minecraft:flame ' + at.x + ' ' + (at.y + 12) + ' ' + at.z + ' 0.4 10 0.4 0.02 120 force')
+  inDim('particle minecraft:dust 1 0.35 0 4 ' + at.x + ' ' + (at.y + 14) + ' ' + at.z + ' 0.5 12 0.5 0 60 force')
+  inDim('particle minecraft:lava ' + at.x + ' ' + (at.y + 1) + ' ' + at.z + ' 0.6 0.4 0.6 0 12 force')
+  inDim('particle minecraft:campfire_signal_smoke ' + at.x + ' ' + (at.y + 4) + ' ' + at.z + ' 0.6 2 0.6 0.02 20 force')
+}
+// Brazier k flares in the opening: its name on screen, lightning on the brazier, thunder from its direction for each
+// player, and a pillar of fire where it can be seen from the start (and at the brazier, for anyone there).
+function openingFlare(server, k, token) {
+  const s = db().start, b = db().fires.sites[k]
+  if (!s || !b) return
+  const spot = horizonSpot(server, s, b), far = spot.x != b.x + 0.5 || spot.z != b.z + 0.5
+  const name = ordinal(k)
+  titleTo(server, players(server), { text: name.charAt(0).toUpperCase() + name.slice(1) + ' fire', color: 'gold' }, { text: distanceText(spot.d) + ' ' + directionText(spot.dx, spot.dz), color: 'red' })
+  strike(server, b.dim, b.x + 0.5, b.y + 1, b.z + 0.5)
+  players(server).forEach(p => run(server, 'execute as ' + nameOf(p) + ' at @s facing ' + (b.x + 0.5) + ' ' + (b.y + 1) + ' ' + (b.z + 0.5) +
+    ' run playsound minecraft:entity.lightning_bolt.thunder master @s ^ ^ ^16 3 0.8'))
+  const pulses = []
+  for (let t = 0; t < OPENING.flareTicks; t += OPENING.pulse) pulses.push(t)
+  pulses.forEach(t => server.scheduleInTicks(t + 1, () => {
+    if (!openingLive(token)) return
+    firePillar(server, b.dim, spot)
+    if (far) firePillar(server, b.dim, { x: b.x + 0.5, y: b.y + 1, z: b.z + 0.5 })
+  }))
 }
 // Every player online goes to the start, wherever they are, and the pilgrims are armed for the night (the kit).
 function gatherAll(server) {
@@ -926,6 +1262,7 @@ function gatherAll(server) {
   players(server).forEach(p => {
     run(server, 'execute in ' + s.dim + ' run tp ' + nameOf(p) + ' ' + (s.x + 0.5) + ' ' + s.y + ' ' + (s.z + 0.5))
     narrate(p, 'The pilgrimage begins. Until the Shrine awakens, falling is not the end: you wake by the last fire lit, or here.', 'dark_red')
+    tellFireCoords(p, { x: s.x + 0.5, z: s.z + 0.5 })
     try { kitUp(server, p) } catch (e) { console.error('[Shrine] Kit for ' + nameOf(p) + ': ' + e) }
   })
   console.info('[Shrine] Everyone gathered at the start, ' + siteText(s))
@@ -966,6 +1303,13 @@ function startFireWatch(server) {
     server.scheduleInTicks(20, step)
   }
   server.scheduleInTicks(1, step)
+  // kindling is checked more often (KINDLE.check), so KINDLE.seconds of sneaking is that long
+  const kindleStep = () => {
+    if (token != global.__shrineFires || !firesActive()) return
+    try { kindleTick(server) } catch (e) { console.error('[Shrine] Kindling: ' + e) }
+    server.scheduleInTicks(KINDLE.check, kindleStep)
+  }
+  server.scheduleInTicks(KINDLE.check, kindleStep)
 }
 function fireTick(server) {
   const F = db().fires, now = Date.now()
@@ -977,19 +1321,25 @@ function fireTick(server) {
     let lit = fireLit(lv, b)
     if (lit === null) { setFire(server, b, F.state == 'lit'); return }   // broken or replaced: put back
     if (F.state == 'lit') { if (!lit) setFire(server, b, true); return }  // they burn for the rest of the night
+    if (lit && !F.lit[i] && !(F.kindled && F.kindled[i])) {
+      // lit some other way than kneeling (a flaming arrow, say): put out, and those near told how (KINDLE)
+      setFire(server, b, false)
+      players(server).filter(p => dimOf(p) == b.dim && flat(pos(p), b) <= 16).forEach(p => narrate(p, 'The fire won\'t take from that. ' + KINDLE_HOW, 'gold'))
+      return
+    }
     if (lit && !F.lit[i]) {
       F.lit[i] = true
       if (F.litAt) F.litAt[i] = now
       changed = true
       if (F.state == 'placed') { F.state = 'counting'; F.firstLitAt = now }
       let n = litCount()
-      narrateAll(server, n == 1 ? 'Far away, a fire catches. 1 of 3. The others have a minute.' : 'Another fire catches. ' + n + ' of 3.', 'dark_red')
+      narrateAll(server, n == 1 ? 'Far away, a fire catches. 1 of 3. The others have ' + FIRE_WINDOW_TEXT + '.' : 'Another fire catches. ' + n + ' of 3.', 'dark_red')
       run(server, 'execute in ' + b.dim + ' run playsound minecraft:item.firecharge.use block @a ' + (b.x + 0.5) + ' ' + (b.y + 1.5) + ' ' + (b.z + 0.5) + ' 2 0.7')
       // a column of flame and smoke over it, and a roar everyone hears
       run(server, 'execute in ' + b.dim + ' run particle minecraft:flame ' + (b.x + 0.5) + ' ' + (b.y + 4) + ' ' + (b.z + 0.5) + ' 0.25 3 0.25 0.02 160 force')
       run(server, 'execute in ' + b.dim + ' run particle minecraft:campfire_signal_smoke ' + (b.x + 0.5) + ' ' + (b.y + 6) + ' ' + (b.z + 0.5) + ' 0.3 4 0.3 0.01 60 force')
       hearAll(server, players(server), 'minecraft:entity.blaze.shoot', 0.8, 0.5)
-    } else if (!lit && F.lit[i]) { F.lit[i] = false; changed = true }    // put out before the others caught
+    } else if (!lit && F.lit[i]) { F.lit[i] = false; if (F.kindled) F.kindled[i] = false; changed = true }    // put out before the others caught
   })
   if (F.state == 'counting') {
     let left = FIRE_WINDOW_SECONDS - (now - F.firstLitAt) / 1000
@@ -999,12 +1349,20 @@ function fireTick(server) {
     else bossbar(server, [{ text: 'The fires: ' + litCount() + ' / 3', color: 'red' }, { text: '   ' + clock(left), color: 'gray' }], left)
     changed = true
   }
-  if (F.state == 'placed' || F.state == 'counting') ambushCheck(server)
+  // no ambush or brazier wave while the opening plays (seen on the test server, 2026-11-21: with the start near the braziers,
+  // 21 Inspectors came at second 0 and knocked the player out 3 seconds into it)
+  if ((F.state == 'placed' || F.state == 'counting') && !openingOn()) { ambushCheck(server); if (eventOn()) brazierWaves(server) }
+  if ((F.state == 'placed' || F.state == 'counting') && !openingOn() && now - (F.flaredAt || 0) >= FLARE_AGAIN.every * 1000) {
+    F.flaredAt = now
+    changed = true
+    flareUnlit(server)
+  }
   if (F.state == 'lit') gatheredCheck(server)
   if (changed) save()
 }
 function allLit(server) {
   db().fires.state = 'lit'
+  stopOpening()
   save()
   bossbar(server, { text: 'Three fires burn as one', color: 'gold' }, FIRE_WINDOW_SECONDS, 'yellow')
   server.scheduleInTicks(120, () => { if (db().fires.state != 'counting') bossbarOff(server) })
@@ -1013,6 +1371,8 @@ function allLit(server) {
   db().fires.sites.forEach(b => strike(server, b.dim, b.x + 0.5, b.y + 1, b.z + 0.5))
   titleTo(server, players(server), { text: 'THREE FIRES BURN', color: 'gold', bold: true }, { text: 'A red light rises over the Shrine', color: 'red' })
   raiseBeam(server)
+  // the brazier stage's Inspectors are driven off by the fires: the rite begins clean at the beam (BRAZIER_WAVES)
+  if (clearInspectors(server, 'shrine_ambush') > 0) narrateAll(server, 'The Inspectors fall back from the fires.', 'gray')
   console.info('[Shrine] All three fires burn')
 }
 function gutter(server) {
@@ -1027,6 +1387,7 @@ function gutter(server) {
   F.lit = [false, false, false]
   F.state = 'placed'
   F.firstLitAt = 0
+  F.kindled = [false, false, false]
   save()
   bossbarOff(server)
   narrateAll(server, 'The fires gutter out. They must burn together.', 'dark_red')
@@ -1036,6 +1397,7 @@ function gutter(server) {
 function lightAll(server) {
   const F = db().fires
   if (F.state != 'placed' && F.state != 'counting') return false
+  F.kindled = [true, true, true]
   F.sites.forEach(b => setFire(server, b, true))
   F.lit = [true, true, true]
   allLit(server)
@@ -1046,6 +1408,7 @@ function endFires(server) {
   const F = db().fires
   if (!firesActive()) return
   global.__shrineFires = (global.__shrineFires || 0) + 1
+  stopOpening()
   F.sites.forEach(b => brazierForceload(server, b, false))
   F.state = 'done'
   save()
@@ -1055,6 +1418,7 @@ function endFires(server) {
 function resetFires(server) {
   const F = db().fires
   global.__shrineFires = (global.__shrineFires || 0) + 1
+  stopOpening()
   bossbarOff(server)
   clearInspectors(server, 'shrine_ambush')
   if (F.state != 'none') F.sites.forEach(b => withChunks(server, b.dim, b.x - 1, b.z - 1, b.x + 1, b.z + 1, lv => clearBrazier(server, b)))
@@ -1149,6 +1513,36 @@ function kitSnbt(extra) {
   return '{ShrineKit:1b,' + (extra ? extra + ',' : '') + 'display:{Lore:[' + snbtString(JSON.stringify({ text: KIT.lore, color: 'dark_gray', italic: false })) + ']}}'
 }
 // The kit: the sword and the food in the hotbar, the armour worn, the shield in the off hand.
+// The kit made new (KIT_REFRESH_KNOCKOUTS): fresh copies over the kit pieces p still carries (a spare one is taken away),
+// and the lost ones back, each in its own slot if that's free, else the first free slot, else handed over. Everything
+// else p carries stays where it is (the King's potatoes most of all). Returns how many pieces were lost and put back.
+function refreshKit(p) {
+  const want = [], placed = {}, slots = []
+  KIT.items.forEach((it, i) => want.push({ id: it[0], n: it[1], snbt: kitSnbt(it[2]), home: i }))
+  KIT.armor.forEach((id, i) => want.push({ id: id, n: 1, snbt: kitSnbt(KIT.enchant), home: 39 - i }))
+  if (KIT.offhand) want.push({ id: KIT.offhand, n: 1, snbt: kitSnbt(KIT.enchant), home: 40 })
+  for (let i = 0; i < invSize(p); i++) slots.push(i)
+  slots.forEach(i => {
+    const s = p.inventory.getItem(i)
+    if (!s || s.isEmpty() || !isKitItem(s)) return
+    let k = -1
+    want.forEach((w, j) => { if (k < 0 && !placed[j] && String(s.id) == w.id) k = j })
+    if (k < 0) { p.inventory.setItem(i, emptyStack()); return }
+    placed[k] = true
+    p.inventory.setItem(i, Item.of(want[k].id, want[k].n, want[k].snbt))
+  })
+  let lost = 0
+  want.forEach((w, j) => {
+    if (placed[j]) return
+    lost++
+    const home = p.inventory.getItem(w.home)
+    let at = (!home || home.isEmpty()) ? w.home : -1
+    for (let i = 0; i < 36 && at < 0; i++) { let s = p.inventory.getItem(i); if (!s || s.isEmpty()) at = i }
+    if (at >= 0) p.inventory.setItem(at, Item.of(w.id, w.n, w.snbt))
+    else { try { p.give(Item.of(w.id, w.n, w.snbt)) } catch (e) { } }
+  })
+  return lost
+}
 function giveKit(p) {
   clearInventory(p)
   KIT.items.forEach((it, i) => { p.inventory.setItem(i, Item.of(it[0], it[1], kitSnbt(it[2]))) })
@@ -1235,12 +1629,14 @@ function unvault(server, p) {
   return true
 }
 // Arms a pilgrim for the night: their belongings into the vault, the kit on. Creative and spectators are left alone.
+const kitRefused = {}                             // uuid -> true: their belongings couldn't be held (told once, not at every sweep)
 function kitUp(server, p) {
   if (!pilgrim(p)) return false
   const D = db(), u = uuidOf(p)
   if (D.vaults[u]) return true                    // already held (back from a logout, or a second /shrine braziers)
   const why = vault(p)
   if (why) {
+    kitRefused[u] = true
     narrate(p, 'Your belongings couldn\'t be held safely (' + why + '), so you fight in your own gear tonight.', 'red')
     opsOnline(server).forEach(o => narrate(o, '[Shrine] ' + nameOf(p) + ' fights in their own gear: ' + why + '.', 'red'))
     console.warn('[Shrine] No kit for ' + nameOf(p) + ': ' + why)
@@ -1260,15 +1656,26 @@ function restoreAll(server) {
     } catch (e) { console.error('[Shrine] Handing back ' + nameOf(p) + '\'s belongings: ' + e) }
   })
 }
-// Outside the night: belongings still held go back to anyone online, and stray kit items are taken.
+// Every KIT_SWEEP_TICKS. During the night: anyone in survival who hasn't had the kit gets it (someone in creative at
+// /shrine braziers who switched afterwards had none, and was knocked out over and over at the fifth run, 2026-11-20).
+// Outside it: belongings still held go back to anyone online, and stray kit items are taken.
 function startKitSweep(server) {
   const token = (global.__shrineKitSweep = (global.__shrineKitSweep || 0) + 1)
   const step = () => {
     if (token != global.__shrineKitSweep) return
-    try { if (!eventOn() && (db().kitOut || Object.keys(db().vaults).length)) sweepKit(server) } catch (e) { console.error('[Shrine] Kit sweep: ' + e) }
+    try {
+      if (eventOn()) kitLatecomers(server)
+      else if (db().kitOut || Object.keys(db().vaults).length) sweepKit(server)
+    } catch (e) { console.error('[Shrine] Kit sweep: ' + e) }
     server.scheduleInTicks(KIT_SWEEP_TICKS, step)
   }
   server.scheduleInTicks(KIT_SWEEP_TICKS, step)
+}
+function kitLatecomers(server) {
+  players(server).forEach(p => {
+    let u = uuidOf(p)
+    if (pilgrim(p) && !db().vaults[u] && !kitRefused[u]) kitUp(server, p)
+  })
 }
 function sweepKit(server) {
   players(server).forEach(p => {
@@ -1343,13 +1750,34 @@ function inspectorNbt(kind, tag, opts) {
   const armour = ['boots', 'leggings', 'chestplate', 'helmet'].map(s => '{id:"minecraft:' + metal + '_' + s + '",Count:1b}')
   const main = kind == 'pillager' ? '{id:"minecraft:crossbow",Count:1b}' : '{id:"' + (opts.axe || 'minecraft:' + metal + '_axe') + '",Count:1b}'
   const off = opts.shield && kind != 'pillager' ? '{id:"minecraft:shield",Count:1b}' : '{}'
-  const tags = ['shrine_inspector', tag].concat(opts.tags || [])
+  const tags = ['shrine_inspector', tag].concat(belongsTo(tag) ? [belongsTo(tag)] : []).concat(opts.tags || [])
   const attrs = ['{Name:"minecraft:generic.follow_range",Base:64.0d}'].concat(opts.health ? ['{Name:"minecraft:generic.max_health",Base:' + opts.health + '.0d}'] : [])
   return '{PersistenceRequired:1b,CanPickUpLoot:0b,CanJoinRaid:0b,PatrolLeader:0b,Patrolling:0b,DeathLootTable:"minecraft:empty"' +
     ',Tags:[' + tags.map(t => '"' + t + '"').join(',') + ']' +
     ',CustomName:' + snbtString(JSON.stringify({ text: opts.name || INSPECTOR.name, color: INSPECTOR.color, italic: false, bold: !!opts.name })) + ',CustomNameVisible:1b' +
     ',HandItems:[' + main + ',' + off + '],HandDropChances:[0f,0f],ArmorItems:[' + armour.join(',') + '],ArmorDropChances:[0f,0f,0f,0f]' +
     ',Attributes:[' + attrs.join(',') + ']' + (opts.health ? ',Health:' + opts.health + 'f' : '') + '}'
+}
+// The night or rite an Inspector belongs to, as a tag: the rite's for its waves, the night's event's for an ambush.
+function belongsTo(tag) {
+  const D = db()
+  if (tag == 'shrine_rite') return 'shrine_rs_' + (D.rite.serial || 0)
+  if (tag == 'shrine_ambush') return 'shrine_ev_' + (D.event.at || 0)
+  return null
+}
+// An Inspector from another rite or night: it wandered out of the loaded chunks, so the reset, the stop or the full
+// offering that took the rest couldn't see it, and its chunk has just loaded. On the test server (2026-11-20) 16 of the
+// fourth run's Inspectors, five Seniors and their potatoes among them, were found in a lake 100 blocks off, a reset and
+// a day later. A rite's Inspector belongs only while that rite is running.
+function strayInspector(e) {
+  let type = ''
+  try { type = String(e.getType()) } catch (err) { return false }
+  if (type != 'minecraft:vindicator' && type != 'minecraft:pillager') return false
+  if (!hasTag(e, 'shrine_inspector')) return false
+  const D = db()
+  if (hasTag(e, 'shrine_rite')) return !(D.rite.state == 'running' && hasTag(e, belongsTo('shrine_rite')))
+  if (hasTag(e, 'shrine_ambush')) return !hasTag(e, belongsTo('shrine_ambush'))
+  return false
 }
 function summonInspector(server, dim, x, y, z, kind, tag, opts) {
   return !!run(server, 'execute in ' + dim + ' run summon minecraft:' + kind + ' ' + x + ' ' + y + ' ' + z + ' ' + inspectorNbt(kind, tag, opts))
@@ -1362,7 +1790,8 @@ function ambush(server, p) {
   const n = Math.min(AMBUSH.max, AMBUSH.base + team.length)
   let made = 0
   for (let i = 0; i < n; i++) {
-    let s = groundSpot(lv, q.x, q.z, Math.floor(q.y), AMBUSH.ring[0], AMBUSH.ring[1], i * 2 * 3.14159265 / n + Math.random() * 0.6)
+    // near the player's height (NEAR_SCAN): at the fifth run one stood stuck on a spot 26 blocks above a brazier
+    let s = groundSpot(lv, q.x, q.z, Math.floor(q.y), AMBUSH.ring[0], AMBUSH.ring[1], i * 2 * 3.14159265 / n + Math.random() * 0.6, NEAR_SCAN)
     if (summonInspector(server, d, s.x, s.y, s.z, i % 2 == 0 ? 'vindicator' : 'pillager', 'shrine_ambush')) made++
   }
   team.forEach(o => {
@@ -1371,6 +1800,32 @@ function ambush(server, p) {
   })
   console.info('[Shrine] Ambush on ' + team.map(nameOf).join(', ') + ': ' + made + ' Inspectors')
   return made
+}
+// Waves at each unlit brazier with pilgrims near it (BRAZIER_WAVES), during the night's event.
+function brazierWaves(server) {
+  const F = db().fires, now = Date.now()
+  if (!F.waveAt) F.waveAt = [0, 0, 0]
+  F.sites.forEach((b, i) => {
+    if (F.lit[i]) return
+    let near = players(server).filter(p => pilgrim(p) && dimOf(p) == b.dim && flat(pos(p), b) <= BRAZIER_WAVES.radius)
+    if (!near.length || (F.waveAt[i] && now - F.waveAt[i] < BRAZIER_WAVES.every * 1000)) return
+    F.waveAt[i] = now
+    save()
+    let up = 0
+    try { up = list(server.entities).filter(e => hasTag(e, 'shrine_brazier_' + i) && !e.isRemoved()).length } catch (e) { }
+    let n = Math.min(BRAZIER_WAVES.max, BRAZIER_WAVES.base + near.length, BRAZIER_WAVES.alive - up)
+    if (n <= 0) return
+    let lv = levelByDim(server, b.dim), made = 0, at = []
+    for (let k = 0; k < n; k++) {
+      let q = groundSpot(lv, b.x + 0.5, b.z + 0.5, b.y, BRAZIER_WAVES.ring[0], BRAZIER_WAVES.ring[1], k * 2 * 3.14159265 / n + Math.random() * 0.6, NEAR_SCAN)
+      if (summonInspector(server, b.dim, q.x, q.y, q.z, k % 2 == 0 ? 'vindicator' : 'pillager', 'shrine_ambush', { tags: ['shrine_brazier_' + i] })) {
+        made++
+        at.push(Math.floor(q.x) + ' ' + q.y + ' ' + Math.floor(q.z))
+      }
+    }
+    near.forEach(p => narrate(p, 'More Inspectors close in on the fire.', 'gray'))
+    console.info('[Shrine] Brazier ' + (i + 1) + ' wave: ' + made + ' Inspectors for ' + near.length + ' near (' + at.join('; ') + ')')
+  })
 }
 // The automatic ambush, once per brazier: the nearest pilgrim within AMBUSH.radius of a brazier that isn't lit.
 function ambushCheck(server) {
@@ -1446,38 +1901,87 @@ function ringSpot(lv, st, rMin, rMax, a) { const m = centreOf(st); return ground
 function riteTold(server, text, color) { presentAt(server, siteNow()).forEach(p => narrate(p, text, color)) }
 function waveDef(i) { return WAVES[Math.min(i, WAVES.length - 1)] }
 function seniorBar(i) { return SENIOR_BOSSBAR + '_' + i }
+function seniorTag(i, k) { return 'shrine_sid_' + i + '_' + k }
+// How many Senior Inspectors lead wave i with `present` players (SENIORS_PER_PLAYER), at least 1.
+function seniorsFor(i, present) {
+  const share = SENIORS_PER_PLAYER[Math.min(i, SENIORS_PER_PLAYER.length - 1)]
+  return Math.max(1, Math.ceil(share * Math.max(1, present) - 1e-9))
+}
+// Wave i's bar: "Senior Inspector (wave 1)" for one, "Senior Inspectors (wave 6): 4 of 5 standing" for more.
+function seniorBarName(i, up, n) {
+  return n > 1 ? { text: SENIOR.name + 's (wave ' + (i + 1) + '): ' + up + ' of ' + n + ' standing', color: 'gold', bold: true } :
+    { text: SENIOR.name + ' (wave ' + (i + 1) + ')', color: 'gold', bold: true }
+}
+// The Senior Inspectors still up, over every wave.
+function seniorsUp() {
+  const R = db().rite
+  let up = 0
+  Object.keys(R.seniors || {}).forEach(i => { let S = R.seniors[i]; up += (S.n || 1) - Object.keys(S.down || {}).length })
+  return up
+}
 // Wave i: its ordinary Inspectors (they drop nothing) and the Senior Inspector at their head, with his own bar.
+// Where the next wave comes from (BRAZIER_WAVE, GLASS_WAVE): { where: 'braziers' | 'glass' | 'ring', braziers, glass }.
+function wavesFrom(st) {
+  const R = db().rite
+  if (risen()) return { where: 'ring', braziers: [] }
+  if (R.lit >= GLASS_WAVE.fromSurge) {
+    let g = beamGlass()
+    return { where: 'glass', braziers: [], glass: g && g.dim == st.dim ? g : { x: st.x, y: st.y - 1, z: st.z } }
+  }
+  const m = centreOf(st)
+  const near = (db().braziers || []).filter(b => b && b.dim == st.dim && flat(b, m) <= BRAZIER_WAVE.within)
+  return near.length ? { where: 'braziers', braziers: near } : { where: 'ring', braziers: [] }
+}
+// The ground for Inspector k of n in a wave coming from `from` (wavesFrom): the braziers take them in turn.
+function waveSpot(lv, st, from, k, n) {
+  const a = k * 2 * 3.14159265 / Math.max(1, n) + Math.random() * 0.5
+  if (from.where == 'braziers') {
+    let b = from.braziers[k % from.braziers.length]
+    return groundSpot(lv, b.x + 0.5, b.z + 0.5, b.y, BRAZIER_WAVE.ring[0], BRAZIER_WAVE.ring[1], Math.random() * 2 * 3.14159265, NEAR_SCAN)
+  }
+  if (from.where == 'glass') return groundSpot(lv, from.glass.x + 0.5, from.glass.z + 0.5, from.glass.y + 1, GLASS_WAVE.ring[0], GLASS_WAVE.ring[1], a, NEAR_SCAN)
+  return ringSpot(lv, st, WAVE_RING[0], WAVE_RING[1], a)
+}
 function spawnWave(server, i) {
   const D = db(), R = D.rite, st = siteNow(), w = waveDef(i), lv = levelByDim(server, st.dim)
-  const n = waveSize(w, R.present)
+  const n = waveSize(w, R.present), from = wavesFrom(st), at = []        // at: where each landed, for the log
   let made = 0
   for (let k = 0; k < n; k++) {
-    let q = ringSpot(lv, st, WAVE_RING[0], WAVE_RING[1], k * 2 * 3.14159265 / n + Math.random() * 0.5)
+    let q = waveSpot(lv, st, from, k, n)
     if (summonInspector(server, st.dim, q.x, q.y, q.z, k % 3 == 2 ? 'pillager' : 'vindicator', 'shrine_rite',
-      { armour: w.armour, shield: w.shields, tags: ['shrine_wave_' + i] })) made++
+      { armour: w.armour, shield: w.shields, tags: ['shrine_wave_' + i] })) { made++; at.push(Math.floor(q.x) + ' ' + q.y + ' ' + Math.floor(q.z)) }
   }
-  let q = ringSpot(lv, st, WAVE_RING[0], WAVE_RING[1], Math.random() * 2 * 3.14159265)
-  if (summonInspector(server, st.dim, q.x, q.y, q.z, 'vindicator', 'shrine_rite',
-    { armour: 'diamond', axe: 'minecraft:netherite_axe', name: SENIOR.name, health: SENIOR.health, tags: ['shrine_wave_' + i, 'shrine_senior', 'shrine_pot_' + SENIOR.potatoes] })) {
-    made++
-    R.seniors[i] = { called: false }
+  // the Senior Inspectors at their head (seniorsFor), each tagged with his place in the wave
+  const ns = seniorsFor(i, R.present), off = Math.floor(Math.random() * 3), down = {}
+  let led = 0
+  for (let k = 0; k < ns; k++) {
+    let q = waveSpot(lv, st, from, k + off, Math.max(3, ns))
+    at.push('Senior ' + Math.floor(q.x) + ' ' + q.y + ' ' + Math.floor(q.z))
+    if (summonInspector(server, st.dim, q.x, q.y, q.z, 'vindicator', 'shrine_rite',
+      { armour: 'diamond', axe: 'minecraft:netherite_axe', name: SENIOR.name, health: SENIOR.health, tags: ['shrine_wave_' + i, 'shrine_senior', seniorTag(i, k), 'shrine_pot_' + SENIOR.potatoes] })) { made++; led++ }
+    else down[k] = true                       // never stood: not counted as falling
+  }
+  if (led) {
+    R.seniors[i] = { n: ns, down: down, called: {} }
     let bar = seniorBar(i)
     run(server, 'effect give @e[tag=shrine_senior] minecraft:resistance infinite 0 true')
-    run(server, 'bossbar add ' + bar + ' ' + JSON.stringify({ text: SENIOR.name + ' (wave ' + (i + 1) + ')', color: 'gold', bold: true }))
+    run(server, 'bossbar add ' + bar + ' ' + JSON.stringify(seniorBarName(i, led, ns)))
     run(server, 'bossbar set ' + bar + ' color yellow')
-    run(server, 'bossbar set ' + bar + ' max ' + SENIOR.health)
-    run(server, 'bossbar set ' + bar + ' value ' + SENIOR.health)
+    run(server, 'bossbar set ' + bar + ' max ' + (SENIOR.health * ns))
+    run(server, 'bossbar set ' + bar + ' value ' + (SENIOR.health * led))
     run(server, 'bossbar set ' + bar + ' players @a')
   }
   R.wave = i
   R.waveAt = Date.now()
   R.waveSize = made
   save()
-  riteTold(server, 'Wave ' + (i + 1) + ': ' + made + ' Inspectors close in on the Shrine, a Senior Inspector at their head.', 'gold')
+  const how = from.where == 'braziers' ? 'come from the braziers' : from.where == 'glass' ? 'rise around the beam' : risen() ? 'close in on the Shrine' : 'close in on the beam'
+  riteTold(server, 'Wave ' + (i + 1) + ': ' + made + ' Inspectors ' + how + ', ' + (led > 1 ? led + ' Senior Inspectors' : 'a Senior Inspector') + ' at their head.', 'gold')
   const here = presentAt(server, st)
-  titleTo(server, here, { text: 'WAVE ' + (i + 1), color: 'dark_red', bold: true }, { text: 'A Senior Inspector leads them', color: 'gold' })
+  titleTo(server, here, { text: 'WAVE ' + (i + 1), color: 'dark_red', bold: true }, { text: led > 1 ? led + ' Senior Inspectors lead them' : 'A Senior Inspector leads them', color: 'gold' })
   hearAll(server, here, 'minecraft:event.raid.horn', 1, 1)
-  console.info('[Shrine] Rite wave ' + (i + 1) + ': ' + made + ' Inspectors')
+  console.info('[Shrine] Rite wave ' + (i + 1) + ': ' + made + ' Inspectors, ' + (from.where == 'braziers' ? 'from the braziers' : from.where == 'glass' ? 'round the red glass' : 'on the ring') +
+    ' (' + at.join('; ') + ')')
 }
 function riteMobs(server) {
   let all = []
@@ -1530,8 +2034,13 @@ function startRiteLoop(server) {
 }
 function riteTick(server) {
   const D = db(), R = D.rite, st = siteNow()
+  const present = presentAt(server, st), pilgrims = present.filter(pilgrim)
+  // Nobody at the site (everyone gone, or the server restarted mid-rite): the rite waits. Its Inspectors then sit in
+  // chunks nobody has loaded, out of the script's sight, so counting them would read every wave as beaten and spawn wave
+  // after wave into the dark (seen on the test server, 2026-11-20: 49 waves, 147 Inspectors, nobody online). Any player
+  // keeps the chunks loaded, an op in creative too.
+  if (!present.length) { riteBar(server); return }
   const alive = riteMobs(server)
-  const pilgrims = presentAt(server, st).filter(pilgrim)
   alive.forEach(m => {
     let t = null
     try { t = m.getTarget() } catch (e) { }
@@ -1540,30 +2049,48 @@ function riteTick(server) {
     pilgrims.forEach(p => { if (flat(pos(p), q) < flat(pos(best), q)) best = p })
     try { m.setTarget(best) } catch (e) { }
   })
-  // the Senior Inspectors, each with his own bar (two can be up at once)
+  // the Senior Inspectors: one bar per wave, their health together (two waves' can be up at once)
   Object.keys(R.seniors).forEach(i => {
-    let S = R.seniors[i], senior = alive.filter(m => hasTag(m, 'shrine_senior') && hasTag(m, 'shrine_wave_' + i))[0]
-    if (!senior) {
+    const S = R.seniors[i], n = S.n || 1, ks = []
+    if (!S.down) S.down = {}
+    if (!S.called || typeof S.called != 'object') S.called = S.called ? { 0: true } : {}   // saved before several led a wave
+    for (let k = 0; k < n; k++) { if (!S.down[k]) ks.push(k) }
+    let hpAll = 0, up = 0
+    ks.forEach(k => {
+      let senior = alive.filter(m => hasTag(m, 'shrine_senior') && hasTag(m, 'shrine_wave_' + i) && (!S.n || hasTag(m, seniorTag(i, k))))[0]
+      if (!senior) {
+        S.down[k] = true
+        save()
+        let left = n - Object.keys(S.down).length
+        riteTold(server, n > 1 ? 'A Senior Inspector falls. His clipboard does not.' +
+          (left == 1 ? ' One more of wave ' + (Number(i) + 1) + ' still stands.' : left ? ' ' + left + ' more of wave ' + (Number(i) + 1) + ' still stand.' : '') :
+          'The Senior Inspector falls. His clipboard does not.', 'gold')
+        return
+      }
+      let hp = SENIOR.health
+      try { hp = Number(senior.getHealth()) } catch (e) { }
+      hpAll += Math.max(0, hp)
+      up++
+      if (!S.called[k] && hp <= SENIOR.health / 2) {
+        S.called[k] = true
+        save()
+        let lv = levelByDim(server, st.dim), q = pos(senior)
+        for (let h = 0; h < SENIOR.helpers; h++) {
+          // on dry ground 2 to 5 blocks from him (the old standY could put them on water or down a cave)
+          let s = groundSpot(lv, q.x, q.z, Math.floor(q.y), 2, 5, h * 3.14159265 + Math.random(), NEAR_SCAN)
+          summonInspector(server, st.dim, s.x, s.y, s.z, 'vindicator', 'shrine_rite', { armour: 'diamond', tags: ['shrine_wave_' + i] })
+        }
+        riteTold(server, 'A Senior Inspector calls for assistance.', 'gold')
+      }
+    })
+    if (!up) {
       delete R.seniors[i]
       save()
       run(server, 'bossbar remove ' + seniorBar(i))
-      riteTold(server, 'The Senior Inspector falls. His clipboard does not.', 'gold')
       return
     }
-    let hp = SENIOR.health
-    try { hp = Number(senior.getHealth()) } catch (e) { }
-    run(server, 'bossbar set ' + seniorBar(i) + ' value ' + Math.max(0, Math.round(hp)))
-    if (!S.called && hp <= SENIOR.health / 2) {
-      S.called = true
-      save()
-      let lv = levelByDim(server, st.dim), q = pos(senior)
-      for (let k = 0; k < SENIOR.helpers; k++) {
-        let a = k * 3.14159265 + Math.random(), x = Math.floor(q.x + Math.cos(a) * 4), z = Math.floor(q.z + Math.sin(a) * 4)
-        summonInspector(server, st.dim, x + 0.5, standY(lv, x, z, Math.floor(q.y)), z + 0.5, 'vindicator', 'shrine_rite',
-          { armour: 'diamond', tags: ['shrine_wave_' + i] })
-      }
-      riteTold(server, 'The Senior Inspector calls for assistance.', 'gold')
-    }
+    if (n > 1) run(server, 'bossbar set ' + seniorBar(i) + ' name ' + JSON.stringify(seniorBarName(Number(i), up, n)))
+    run(server, 'bossbar set ' + seniorBar(i) + ' value ' + Math.round(hpAll))
   })
   // the next wave, until the altar is full
   if (R.state == 'running' && alive.length < RITE_ALIVE_MAX) {
@@ -1632,9 +2159,12 @@ function offerAt(server, p) {
   run(server, 'execute in ' + st.dim + ' run playsound minecraft:block.respawn_anchor.charge block @a ' + at + ' 2 1.2')
   riteTold(server, nameOf(p) + ' offers ' + n + ' Potato King\'s Potato' + (n == 1 ? '' : 'es') + (risen() ? ' at the altar. ' : ' to the beam. ') +
     Math.min(R.total, R.need) + ' of ' + R.need + '.', 'gold')
-  const bands = Math.min(BANDS, Math.floor(R.total * BANDS / Math.max(1, R.need)))
+  const bands = Math.min(BANDS, Math.floor(R.total * BANDS / Math.max(1, R.need))), wasLit = R.lit
   while (R.lit < bands) { riteSurge(server, R.lit); R.lit++ }
   save()
+  // half the offering: from now on the waves rise around the beam's red glass instead of the braziers (GLASS_WAVE)
+  if (wasLit < GLASS_WAVE.fromSurge && R.lit >= GLASS_WAVE.fromSurge && R.total < R.need && !risen())
+    riteTold(server, 'Half the offering burns in the beam. The Inspectors come for it now: the next waves rise around the beam itself.', 'gold')
   if (R.total >= R.need && R.state == 'running') riteFull(server)
   else riteBar(server)
 }
@@ -1705,16 +2235,81 @@ function vanishInspectors(server) {
 // The viewing spots, where everyone watches the Awakening at the beam and then the Shrine rise: in rows of VIEW.row, east
 // of the site, VIEW.out blocks beyond where the steps can reach (so nobody stands where one will be laid, and the whole
 // statue is in view), on the ground there.
+// Where n watchers stand. On the viewing platform, if the owner has set one (/shrine view set): the first on the owner's
+// spot, the rest on the cells nearest it. Otherwise east of the steps, VIEW.out beyond them, VIEW.row to a row, VIEW.gap
+// apart, on the ground through any leaves and vines (at the fifth run, 2026-11-20, the spot picked by itself was on top
+// of a tree, vines between the owner and the Shrine).
 function viewSpots(server, n) {
-  const st = siteNow(), c = corner(st), lv = levelByDim(server, st.dim)
+  const D = db(), st = siteNow()
+  if (D.view && D.view.dim == st.dim) return platformSpots(D.view, n)
+  const c = corner(st), lv = levelByDim(server, st.dim), out = []
   const x0 = c.x + STAIRS.top[0] + stairSpan() + VIEW.out, zc = c.z + Math.round((STAIRS.z[0] + STAIRS.z[1]) / 2)
-  const out = []
   for (let k = 0; k < n; k++) {
     let col = k % VIEW.row, row = Math.floor(k / VIEW.row)
     let x = x0 + row * VIEW.gap, z = zc + (col % 2 ? -1 : 1) * Math.ceil(col / 2) * VIEW.gap   // 0, -2, +2, -4 ...
-    out.push({ x: x + 0.5, y: standY(lv, x, z, st.y), z: z + 0.5 })
+    let g = groundAt(lv, x, z, st.y, NEAR_SCAN)
+    out.push({ x: x + 0.5, y: g === null ? standY(lv, x, z, st.y) : g, z: z + 0.5 })
   }
   return out
+}
+// --- The viewing platform (PLATFORM) ---
+// Its floor (x0..x1, z0..z1, one below the spot) and the rail round it (one block further out, rail high from the spot).
+function platformBox(v) {
+  const h = Math.floor(PLATFORM.size / 2) - 1, x0 = v.x - h, z0 = v.z - h
+  return { x0: x0, z0: z0, x1: x0 + PLATFORM.size - 1, z1: z0 + PLATFORM.size - 1, y: v.y - 1, top: v.y + PLATFORM.rail - 1 }
+}
+function buildPlatform(server, v) {
+  const b = platformBox(v), at = 'execute in ' + v.dim + ' run fill '
+  const fill = (a, c) => run(server, at + a + ' ' + c + ' minecraft:barrier replace air')
+  fill(b.x0 + ' ' + b.y + ' ' + b.z0, b.x1 + ' ' + b.y + ' ' + b.z1)                                   // the floor
+  fill((b.x0 - 1) + ' ' + v.y + ' ' + (b.z0 - 1), (b.x1 + 1) + ' ' + b.top + ' ' + (b.z0 - 1))         // the rail
+  fill((b.x0 - 1) + ' ' + v.y + ' ' + (b.z1 + 1), (b.x1 + 1) + ' ' + b.top + ' ' + (b.z1 + 1))
+  fill((b.x0 - 1) + ' ' + v.y + ' ' + (b.z0 - 1), (b.x0 - 1) + ' ' + b.top + ' ' + (b.z1 + 1))
+  fill((b.x1 + 1) + ' ' + v.y + ' ' + (b.z0 - 1), (b.x1 + 1) + ' ' + b.top + ' ' + (b.z1 + 1))
+  db().platformUp = true
+  save()
+}
+function removePlatform(server, v) {
+  const b = platformBox(v)
+  run(server, 'execute in ' + v.dim + ' run fill ' + (b.x0 - 1) + ' ' + b.y + ' ' + (b.z0 - 1) + ' ' + (b.x1 + 1) + ' ' + b.top + ' ' + (b.z1 + 1) + ' minecraft:air replace minecraft:barrier')
+  db().platformUp = false
+  save()
+}
+function onPlatform(p, v) {
+  if (!v || dimOf(p) != v.dim) return false
+  const b = platformBox(v), q = pos(p)
+  return q.x >= b.x0 - 1 && q.x < b.x1 + 2 && q.z >= b.z0 - 1 && q.z < b.z1 + 2 && q.y >= b.y - 2 && q.y <= b.top + 3
+}
+// The cells, nearest the owner's spot first, one watcher to each (round again past size x size).
+function platformSpots(v, n) {
+  const b = platformBox(v), cells = [], out = []
+  for (let x = b.x0; x <= b.x1; x++) for (let z = b.z0; z <= b.z1; z++) cells.push({ x: x + 0.5, y: v.y, z: z + 0.5, d: Math.abs(x - v.x) + Math.abs(z - v.z) })
+  cells.sort((a, c) => a.d - c.d)
+  for (let k = 0; k < n; k++) out.push({ x: cells[k % cells.length].x, y: v.y, z: cells[k % cells.length].z })
+  return out
+}
+// Where watchers come down from the platform: in front of the lectern, facing it, if the Shrine stands (the owner's
+// choice, 2026-11-20); at the start if not, or if asked (a reset, which takes the Shrine away). Null: nowhere.
+function landing(toStart) {
+  const D = db()
+  if (!toStart && risen() && D.rise.site) {
+    let st = D.rise.site, L = lecternPos(st)
+    return { dim: st.dim, x: L.x + 1, y: L.y, z: L.z, face: L }                    // the lectern faces east (ALTAR.facing)
+  }
+  return D.start ? { dim: D.start.dim, x: D.start.x, y: D.start.y, z: D.start.z } : null
+}
+function setDown(server, p, to) {
+  run(server, 'execute in ' + to.dim + ' run tp ' + nameOf(p) + ' ' + (to.x + 0.5) + ' ' + to.y + ' ' + (to.z + 0.5) +
+    (to.face ? ' facing ' + (to.face.x + 0.5) + ' ' + (to.face.y + 1) + ' ' + (to.face.z + 0.5) : ''))
+}
+// Everyone on the platform is set down (landing()), then it's taken away. With nowhere to set them down it stays.
+function downFromPlatform(server, toStart) {
+  const D = db(), v = D.view
+  if (!v || !D.platformUp) return
+  const to = landing(toStart)
+  if (!to) { console.warn('[Shrine] Nowhere to set the watchers down: the viewing platform stays (/shrine start set)'); return }
+  players(server).forEach(p => { if (onPlatform(p, v)) setDown(server, p, to) })
+  removePlatform(server, v)
 }
 // Watchers face the beam (and the Shrine, once it rises), a little above the ground.
 function facingShrine() { const m = centreOf(siteNow()); return m.x + ' ' + (m.y + VIEW.lookUp) + ' ' + m.z }
@@ -1726,7 +2321,8 @@ function placeWatcher(server, p, q) {
 function gatherToWatch(server) {
   const D = db(), st = siteNow()
   const who = players(server).filter(p => { try { return !p.isSpectator() } catch (e) { return true } })
-  const spots = viewSpots(server, who.length)
+  const spots = viewSpots(server, who.length), sky = D.view && D.view.dim == st.dim ? D.view : null
+  if (sky) buildPlatform(server, sky)            // again a moment after the teleport, should its chunks have been away
   D.awake.spots = {}
   who.forEach((p, k) => {
     D.awake.spots[uuidOf(p)] = spots[k]
@@ -1734,6 +2330,7 @@ function gatherToWatch(server) {
     narrate(p, risen() ? 'You are drawn before the Shrine. Watch.' : 'You are drawn back from the beam. Watch.', 'dark_red')
   })
   save()
+  if (sky) server.scheduleInTicks(2, () => buildPlatform(server, sky))
   hearAll(server, who, 'minecraft:block.beacon.power_select', 1, 0.5)
   soulColumns(server, st)
   startHold(server)
@@ -1783,11 +2380,13 @@ function startRite(server) {
   const n = Math.max(1, presentAt(server, st).filter(pilgrim).length)
   D.rite = freshRite({})
   D.rite.state = 'running'
+  D.rite.serial = Date.now()
   D.rite.present = n
   D.rite.need = n * POTATOES_PER_PLAYER
   save()
   skyNight(server)                                // night and a storm roll in (during the event)
-  riteTold(server, 'Figures gather on the land around the ' + (risen() ? 'Shrine' : 'beam') + '. They are carrying something that is not theirs.', 'dark_red')
+  riteTold(server, (wavesFrom(st).where == 'braziers' ? 'Figures gather by the braziers' : 'Figures gather on the land around the ' + (risen() ? 'Shrine' : 'beam')) +
+    '. They are carrying something that is not theirs.', 'dark_red')
   riteTold(server, 'Take the Potato King\'s Potatoes from the Senior Inspectors and offer them ' + (risen() ? 'at the altar' : 'to the beam, at its root') + ': ' +
     D.rite.need + ' in all.', 'gold')
   spawnWave(server, 0)
@@ -1890,6 +2489,20 @@ function knockout(server, p, why, to) {
   }
   run(server, 'effect give ' + n + ' minecraft:resistance ' + KNOCKOUT_RESISTANCE_SECONDS + ' 4 true')
   console.info('[Shrine] Knockout: ' + n + (why ? ' (' + why + ')' : '') + ', woken at ' + where)
+  // every KIT_REFRESH_KNOCKOUTS-th knockout in the night's event, a kitted player's kit is made new
+  const D = db(), u = uuidOf(p)
+  if (D.event.on && D.vaults[u]) {
+    if (!D.event.kos) D.event.kos = {}
+    D.event.kos[u] = (D.event.kos[u] || 0) + 1
+    save()
+    if (D.event.kos[u] % KIT_REFRESH_KNOCKOUTS == 0) {
+      let lost = 0
+      try { lost = refreshKit(p) } catch (e) { console.error('[Shrine] Kit refresh for ' + n + ': ' + e) }
+      narrate(p, 'Your kit is made new: whole again, and the steak restocked' + (lost ? ', with what you lost' : '') + '.', 'gold')
+      run(server, 'execute as ' + n + ' at @s run playsound minecraft:item.armor.equip_diamond master @s ~ ~ ~ 1 1')
+      console.info('[Shrine] Kit made new for ' + n + ' (knockout ' + D.event.kos[u] + (lost ? ', ' + lost + ' pieces put back' : '') + ')')
+    }
+  }
 }
 EntityEvents.death(event => {
   const e = event.entity, server = event.server || Utils.server
@@ -2004,6 +2617,10 @@ PlayerEvents.loggedIn(event => {
       // back after it ended gets their belongings
       if (eventOn() && !D.vaults[u]) kitUp(server, p)
       else if (!eventOn() && D.vaults[u]) unvault(server, p)
+      // the fires still out: where they are
+      if (eventOn() && (D.fires.state == 'placed' || D.fires.state == 'counting')) tellFireCoords(p, pos(p))
+      // offline when the night ended, still where the viewing platform was: set down as the others were
+      if (!eventOn() && D.view && !D.platformUp && onPlatform(p, D.view)) { let to = landing(false); if (to) setDown(server, p, to) }
       if (signalOpen() && !D.signal.told[u] && tellSignal(p)) { D.signal.told[u] = nameOf(p); save() }
       if (summonsOpen() && !D.summons.given[u] && giveSummons(server, p)) {
         D.summons.given[u] = nameOf(p)
@@ -2147,11 +2764,8 @@ function awakenStep(server, s) {
     save()
     if (risen()) bookOnAltar(server)
     else regaliaTold(server, 'The Blood God has named the Regalia of the Blade. Its book will lie on his Shrine\'s altar. ')
-  } else if (s.step == 'pool') {
-    // The seals first, then the Drops: Drops landing on a sealed tier make the Pool announce it ready and call for a
-    // vote, a moment before the Shrine opens it anyway (seen at the rehearsal, 2026-11-19).
-    openSeals()
-    topUpPool()
+  } else if (s.step == 'seals') {
+    // the seals crack: the Pool itself waits for the night's end (breakSeals), since its reload stalls the server
     strikeRing(server, st.dim, m.x, m.z, st.y, 26, 8)
     redFireworks(server, st, 9)
     soulColumns(server, st)
@@ -2205,9 +2819,26 @@ function shrineStands(server) {
 function finishNight(server) {
   global.__shrineFinale = (global.__shrineFinale || 0) + 1
   skyClear(server)
+  downFromPlatform(server)                        // in front of the lectern, then the platform goes
   releaseWatchers()
   endEvent()
   restoreAll(server)
+  breakSeals(server)
+}
+// The seals the Blood God broke in his words, and the Pool raised to a quarter past Tier 4: once the Awakening is done,
+// when the night ends, after the Shrine stands (owner decision at the fifth run, 2026-11-20: "the blood pool increase
+// needs to happen after the whole shrine is completely built, the reload skips the best part of the shrine being
+// built"). Opening a tier reloads the server, which stalled it for 5.6 seconds; the rise that followed then caught up
+// all at once. Once a night (awake.pooled).
+function breakSeals(server) {
+  const A = db().awake
+  if (A.state != 'done' || A.pooled) return
+  A.pooled = true
+  save()
+  // The seals first, then the Drops: Drops landing on a sealed tier make the Pool announce it ready and call for a
+  // vote, a moment before the Shrine opens it anyway (seen at the rehearsal, 2026-11-19).
+  openSeals()
+  topUpPool()
 }
 function sentencesOf(text) { return (String(text).match(/[^.!?]+[.!?]+/g) || [String(text)]).map(x => x.trim()) }
 // The Blood God's words on everyone's screen, a sentence at a time (LINE_TICKS apart), as well as in chat. The very last
@@ -2299,7 +2930,7 @@ function awaken(server, force) {
     ' /shrine awaken force goes ahead anyway.'
   D.rise.awakenAt = 0                             // begun by hand while it was due: it doesn't begin twice
   global.__shrineAutoAwaken = (global.__shrineAutoAwaken || 0) + 1
-  D.awake = { state: 'running', step: 0, added: 0, spots: D.awake.spots || {} }
+  D.awake = { state: 'running', step: 0, added: 0, pooled: false, spots: D.awake.spots || {} }
   save()
   console.info('[Shrine] The Awakening begins')
   runAwakening(server, 0)
@@ -2312,18 +2943,214 @@ function relicProgress(id) { const P = db().regalia.progress[id]; return P ? P :
 function regaliaLines() {
   const R = db().regalia
   if (!R.open) return null
-  const restored = RELICS.filter(r => relicProgress(r.id).have >= r.need).length
-  const lines = [[{ text: 'THE REGALIA OF THE BLADE', color: 'dark_red', bold: true }, { text: '   restored at the Shrine: ' + restored + ' of ' + RELICS.length, color: 'gray' }]]
+  const count = RELICS.filter(r => restored(r)).length
+  const lines = [[{ text: 'THE REGALIA OF THE BLADE', color: 'dark_red', bold: true }, { text: '   restored at the Shrine: ' + count + ' of ' + RELICS.length, color: 'gray' }]]
   RELICS.forEach(r => {
-    let P = relicProgress(r.id), done = P.have >= r.need
-    let by = Object.keys(P.by).map(u => P.by[u]).sort((a, b) => b.n - a.n).slice(0, 3).map(x => x.name + ' ' + x.n)
+    let P = relicProgress(r.id), done = restored(r)
+    let by = Object.keys(P.by).map(u => P.by[u]).sort((a, b) => b.n - a.n).slice(0, 3).map(x => x.name + ' ' + fmt(shown(r, x.n)))
     lines.push([{ text: (done ? ' ✔ ' : ' • '), color: done ? 'green' : 'dark_red' },
       { text: r.name, color: done ? 'green' : 'gold', hoverEvent: { action: 'show_text', contents: r.honours + '\n' + r.asks } },
-      { text: '  ' + fmt(Math.min(P.have, r.need)) + ' / ' + fmt(r.need) + ' ' + r.unit + (by.length ? ' (' + by.join(', ') + ')' : ''), color: 'gray' }])
+      { text: '  ' + amountText(r, ' / ') + (by.length ? ' (' + by.join(', ') + ')' : ''), color: 'gray' }])
   })
-  lines.push([{ text: 'Read them on the Shrine\'s altar. Hover over a relic for what it asks.', color: 'dark_gray', italic: true }])
+  lines.push([{ text: 'Bring them to the Shrine\'s altar: each one restored breaks another seal (' + restoredForSeals() + ' of ' + SEAL_RELICS + '). Hover over a relic for what it asks.', color: 'dark_gray', italic: true }])
   return lines
 }
+
+// ===================== ACT II: THE REGALIA RESTORED AT THE ALTAR =====================
+
+// Relics break the seals (owner decisions 2026-11-20, STORY.md #37). Right-clicking the Shrine's altar (the lectern or
+// Technoblade's head) holding what a relic asks gives the whole stack (only what the relic still needs). Each relic
+// keeps its tally in base units: `per` of them make one of its `need` (9 ingots to a block, 1,000 mB to a bucket).
+// Carl's Bridle is two things, each filled on its own (`parts`); the Crown waits for the final act.
+const DELIVER = {
+  war_chest: { items: { 'minecraft:potato': 1, 'quark:potato_crate': 9, 'farmersdelight:potato_crate': 9, 'thermal:potato_block': 9 } },
+  axe_of_peace: { per: 9, base: 'cobalt ingots', tags: { 'forge:ingots/cobalt': 1, 'forge:storage_blocks/cobalt': 9 } },
+  totem_hoard: { items: { 'minecraft:totem_of_undying': 1 } },
+  withers_due: { items: { 'minecraft:nether_star': 1 } },
+  chalice: { per: 1000, base: 'mB of blood', fluid: 'evilcraft:blood', bucket: 'evilcraft:bucket_blood' },
+  // owner decision 2026-11-20 (it was a near-perfect bred horse): neither can be crafted in this pack
+  carls_bridle: { parts: { 'minecraft:saddle': { need: 32, name: 'saddles' }, 'minecraft:diamond_horse_armor': { need: 16, name: 'diamond horse armour' } } },
+  swines_oath: { per: 9, base: 'pig iron ingots', tags: { 'forge:ingots/pig_iron': 1, 'forge:storage_blocks/pig_iron': 9 } },
+}
+// Each relic restored brings Inspectors down on the Shrine (STORY.md #38): `delay` seconds later, `per` Inspector for
+// each player within 64 blocks (at least min, at most max), in that armour, on the rite's old ring round the Shrine.
+const RELIC_RAID = { delay: 10, per: 1, min: 3, max: 10, armour: 'diamond', shields: true }
+const SEAL_RELICS = 7                     // the relics that break seals: every one but the Crown (the final act's)
+
+let FluidCaps = null, FluidAction = null, FluidRegistry = null
+try { FluidCaps = Java.loadClass('net.minecraftforge.common.capabilities.ForgeCapabilities') } catch (e) { }
+try { FluidAction = Java.loadClass('net.minecraftforge.fluids.capability.IFluidHandler$FluidAction') } catch (e) { }
+try { FluidRegistry = Java.loadClass('net.minecraftforge.registries.ForgeRegistries').FLUIDS } catch (e) { }
+
+function relicDef(id) { return RELICS.filter(r => r.id == id)[0] }
+function perOf(r) { return (DELIVER[r.id] && DELIVER[r.id].per) || 1 }
+function targetOf(r) { return r.need * perOf(r) }                      // the tally that restores it, in base units
+function restored(r) { return relicProgress(r.id).have >= targetOf(r) }
+function restoredForSeals() { return RELICS.filter(r => r.id != 'crown' && restored(r)).length }
+function shown(r, n) { return Math.floor(Number(n) / perOf(r)) }       // base units to the relic's own (blocks, buckets)
+function itemId(s) { try { return String(s.id) } catch (e) { return '' } }
+function itemHasTag(s, tag) { try { return !!s.hasTag(tag) } catch (e) { return false } }
+// Which relic the held item is for, and what one of it is worth: { r, worth } (worth 0: a fluid, drained below), or null.
+function relicFor(s) {
+  if (!s || s.isEmpty() || isKingsPotato(s)) return null
+  const id = itemId(s)
+  let found = null
+  Object.keys(DELIVER).forEach(k => {
+    if (found) return
+    let d = DELIVER[k]
+    if (d.items && d.items[id]) found = { r: relicDef(k), worth: d.items[id] }
+    else if (d.tags) Object.keys(d.tags).forEach(t => { if (!found && itemHasTag(s, t)) found = { r: relicDef(k), worth: d.tags[t] } })
+    else if (d.parts && d.parts[id]) found = { r: relicDef(k), worth: 1, part: id }
+    else if (d.fluid && (id == d.bucket || bloodIn(s, d.fluid) > 0)) found = { r: relicDef(k), worth: 0 }
+  })
+  return found
+}
+// The blood in a held container, in mB (0 if none, or it can't be read).
+function bloodIn(s, fluid) {
+  if (!FluidCaps || !FluidAction || !FluidRegistry) return 0
+  try {
+    let h = s.copy()
+    h.setCount(1)
+    let cap = h.getCapability(FluidCaps.FLUID_HANDLER_ITEM).orElse(null)
+    if (!cap) return 0
+    let sim = cap.drain(2147483647, FluidAction.SIMULATE)
+    if (!sim || sim.isEmpty() || String(FluidRegistry.getKey(sim.getFluid())) != fluid) return 0
+    return Number(sim.getAmount())
+  } catch (e) { return 0 }
+}
+// Drains up to max mB of blood from one held container: { mb, back } (back: the container, emptied, for their hand).
+// A plain bucket of blood when the container can't be read: its 1,000 mB, and an empty bucket back.
+function drainBlood(s, d, max) {
+  if (FluidCaps && FluidAction && FluidRegistry) {
+    try {
+      let one = s.copy()
+      one.setCount(1)
+      let cap = one.getCapability(FluidCaps.FLUID_HANDLER_ITEM).orElse(null)
+      if (cap) {
+        let sim = cap.drain(max, FluidAction.SIMULATE)
+        if (sim && !sim.isEmpty() && String(FluidRegistry.getKey(sim.getFluid())) == d.fluid) {
+          let got = cap.drain(Number(sim.getAmount()), FluidAction.EXECUTE)
+          return { mb: Number(got.getAmount()), back: cap.getContainer() }
+        }
+      }
+    } catch (e) { console.warn('[Shrine] Reading the blood in ' + itemId(s) + ': ' + e) }
+  }
+  if (itemId(s) == d.bucket && max >= 1000) return { mb: 1000, back: Item.of('minecraft:bucket') }
+  return null
+}
+function relicTally(r, p, n, part) {
+  const R = db().regalia, u = uuidOf(p)
+  if (!R.progress[r.id]) R.progress[r.id] = { have: 0, by: {} }
+  const P = R.progress[r.id]
+  P.have += n
+  if (part) { if (!P.parts) P.parts = {}; P.parts[part] = (P.parts[part] || 0) + n }
+  P.by[u] = { name: nameOf(p), n: (P.by[u] ? P.by[u].n : 0) + n }
+  save()
+}
+// A delivery: what's held goes toward its relic (the stack, or the container's blood), up to what the relic still needs.
+// What a relic has, in words: "64 of 1,000 blocks of cobalt", or each part's ("saddles 12 of 32, diamond horse armour 3 of 16").
+function amountText(r, sep) {
+  const d = DELIVER[r.id] || {}, P = relicProgress(r.id)
+  if (d.parts) return Object.keys(d.parts).map(k => d.parts[k].name + ' ' + fmt(Math.min((P.parts || {})[k] || 0, d.parts[k].need)) + sep + fmt(d.parts[k].need)).join(', ')
+  return fmt(Math.min(shown(r, P.have), r.need)) + sep + fmt(r.need) + ' ' + r.unit
+}
+// The same relic's things elsewhere in the inventory (not the worn armour or the off hand): totems and saddles don't stack.
+function carried(p, held, f) {
+  const out = []
+  for (let i = 0; i < 36; i++) {
+    let s = null
+    try { s = p.inventory.getItem(i) } catch (e) { continue }
+    if (!s || s === held || s.isEmpty()) continue
+    let g = relicFor(s)
+    if (g && g.r.id == f.r.id && g.part == f.part && g.worth > 0) out.push(s)
+  }
+  return out
+}
+function deliver(server, p, held, f) {
+  const r = f.r, d = DELIVER[r.id], P0 = relicProgress(r.id), before = P0.have
+  const left = f.part ? d.parts[f.part].need - ((P0.parts || {})[f.part] || 0) : targetOf(r) - before
+  if (before >= targetOf(r)) { narrate(p, r.name + ' is already restored.', 'gray'); return }
+  if (left <= 0) { narrate(p, r.name + ' has all the ' + d.parts[f.part].name + ' it needs.', 'gray'); return }
+  let added = 0
+  if (d.fluid) {
+    let got = drainBlood(held, d, left)
+    if (!got || !got.mb) { narrate(p, 'The Chalice takes blood: a bucket, or a tank with blood in it.', 'gray'); return }
+    added = Math.min(got.mb, left)
+    try { held.shrink(1) } catch (e) { }
+    try { p.give(got.back) } catch (e) { }
+  } else {
+    // the held stack first, then the same relic's things anywhere else in the inventory, up to what it still needs
+    let stacks = [held].concat(carried(p, held, f))
+    stacks.forEach(s => {
+      let g = s === held ? f : relicFor(s)
+      if (!g || added >= left) return
+      let take = Math.min(s.getCount(), Math.ceil((left - added) / g.worth))
+      s.shrink(take)
+      added = Math.min(left, added + take * g.worth)
+    })
+  }
+  relicTally(r, p, added, f.part)
+  const have = before + added, L = lecternPos(db().rise.site), at = (L.x + 0.5) + ' ' + (L.y + 1) + ' ' + (L.z + 0.5), dim = db().rise.site.dim
+  run(server, 'execute in ' + dim + ' run particle minecraft:enchant ' + at + ' 0.5 0.5 0.5 1 60 force')
+  run(server, 'execute in ' + dim + ' run playsound minecraft:block.respawn_anchor.charge block @a ' + at + ' 1.5 1.4')
+  const gave = f.part ? fmt(added) + ' ' + d.parts[f.part].name : added % perOf(r) == 0 ? fmt(added / perOf(r)) + ' ' + r.unit : fmt(added) + ' ' + d.base
+  narrate(p, 'You give ' + gave + ' to ' + r.name + ': ' + amountText(r, ' of ') + '.', 'gold')
+  console.info('[Shrine] ' + nameOf(p) + ' gave ' + added + ' to ' + r.id + ' (' + have + ' of ' + targetOf(r) + ')')
+  // every quarter, everyone is told; the last one restores it
+  const q0 = Math.floor(before * 4 / targetOf(r)), q1 = Math.floor(have * 4 / targetOf(r))
+  if (have >= targetOf(r)) restoreRelic(server, r)
+  else if (q1 > q0) regaliaTold(server, r.name + ' is ' + ['', 'a quarter', 'half', 'three quarters'][q1] + ' restored: ' + amountText(r, ' of ') + '. ')
+}
+// A relic restored: the Blood God speaks, the Shrine flares, and Inspectors come for it (RELIC_RAID). The Blood Pool
+// hears of it: a seal waiting on relics may break now.
+function restoreRelic(server, r) {
+  const R = db().regalia, st = db().rise.site, m = centreOf(st), n = restoredForSeals()
+  if (!R.restoredAt) R.restoredAt = {}
+  R.restoredAt[r.id] = Date.now()
+  save()
+  titleTo(server, players(server), { text: r.name.toUpperCase(), color: 'gold', bold: true }, { text: 'is restored', color: 'red' })
+  hearAll(server, players(server), 'minecraft:ui.toast.challenge_complete', 1, 0.8)
+  strikeRing(server, st.dim, m.x, m.z, st.y, 26, 8)
+  redFireworks(server, st, 6)
+  soulColumns(server, st)
+  bloodGod(server, r.name + ' is mine again.' + (r.id != 'crown' ? ' Another seal will break for you.' : ''))
+  regaliaTold(server, r.name + ' is restored: ' + n + ' of ' + SEAL_RELICS + ' relics for the seals. ')
+  console.info('[Shrine] ' + r.id + ' restored (' + n + ' of ' + SEAL_RELICS + ' for the seals)')
+  const BP = global.BloodPool
+  if (BP && typeof BP.relicsChanged == 'function') { try { BP.relicsChanged(server) } catch (e) { console.error('[Shrine] Telling the Blood Pool: ' + e) } }
+  if (RELIC_RAID.min > 0) server.scheduleInTicks(RELIC_RAID.delay * 20, () => { try { relicRaid(server, r) } catch (e) { console.error('[Shrine] Relic raid: ' + e) } })
+}
+function relicRaid(server, r) {
+  const st = shrineStanding()
+  if (!st) return
+  const lv = levelByDim(server, st.dim), here = presentAt(server, st).filter(pilgrim)
+  const n = Math.max(RELIC_RAID.min, Math.min(RELIC_RAID.max, here.length * RELIC_RAID.per))
+  let made = 0
+  for (let k = 0; k < n; k++) {
+    let q = ringSpot(lv, st, WAVE_RING[0], WAVE_RING[1], k * 2 * 3.14159265 / n + Math.random() * 0.5)
+    if (summonInspector(server, st.dim, q.x, q.y, q.z, k % 3 == 2 ? 'pillager' : 'vindicator', 'shrine_raid', { armour: RELIC_RAID.armour, shield: RELIC_RAID.shields })) made++
+  }
+  here.forEach(p => narrate(p, 'Inspectors close in on the Shrine. They want ' + r.name + '.', 'gold'))
+  titleTo(server, here, '', { text: 'Inspectors close in on the Shrine', color: 'gold' })
+  hearAll(server, here, 'minecraft:event.raid.horn', 1, 1)
+  console.info('[Shrine] Relic raid for ' + r.id + ': ' + made + ' Inspectors')
+}
+BlockEvents.rightClicked(event => {
+  const p = event.player, blk = event.block, st = risen() ? db().rise.site : null
+  if (!p || !st || !db().regalia.open) return
+  let hand = ''
+  try { hand = String(event.hand) } catch (e) { }
+  if (hand && hand.indexOf('MAIN') < 0) return
+  let at = false
+  try { at = dimKey(blk.level) == st.dim && altarAt(st, Number(blk.x), Number(blk.y), Number(blk.z)) } catch (e) { }
+  if (!at) return
+  let held = null
+  try { held = p.mainHandItem } catch (e) { return }
+  const f = relicFor(held)
+  if (!f) return                                  // anything else: the lectern's book reads as usual
+  deliver(event.server || Utils.server, p, held, f)
+  event.cancel()
+})
 
 // What else is on that the Shrine mustn't overlap: a Purge or a Gladiator match. '' if nothing.
 // A Purge running or counting down, or a Gladiator match. Not global.Purge.busy(): that says why a Purge can't start,
@@ -2362,7 +3189,7 @@ function statusLines(server) {
   const RT = D.rite
   if (RT.state == 'none') out.push(D.rise.riteAt ? 'The Ignition Rite: begins by itself in ' + Math.max(0, Math.ceil((D.rise.riteAt - Date.now()) / 1000)) + 's (/shrine stop holds it).' :
     'The Ignition Rite: not yet. During the event it begins by itself once everyone has gathered at the beam; /shrine rite starts it by hand.')
-  else if (RT.state == 'running') out.push('The Ignition Rite: wave ' + (RT.wave + 1) + ' (' + Object.keys(RT.seniors || {}).length + ' Senior Inspectors up); ' + RT.total + ' of ' + RT.need +
+  else if (RT.state == 'running') out.push('The Ignition Rite: wave ' + (RT.wave + 1) + ' (' + seniorsUp() + ' Senior Inspectors up); ' + RT.total + ' of ' + RT.need +
     ' potatoes offered; ' + RT.lit + ' of ' + BANDS + (risen() ? ' bands lit.' : ' surges of the beam.'))
   else if (RT.state == 'paused') out.push('The Ignition Rite: paused at wave ' + (RT.wave + 1) + '; ' + RT.total + ' of ' + RT.need + ' potatoes (/shrine rite carries on).')
   else if (RT.state == 'full') out.push('The Ignition Rite: the altar is full (' + RT.total + ' of ' + RT.need + '). /shrine awaken.')
@@ -2371,6 +3198,7 @@ function statusLines(server) {
   if (A.state == 'none' && D.rise.awakenAt) out.push('The Awakening: begins by itself in ' + Math.max(0, Math.ceil((D.rise.awakenAt - Date.now()) / 1000)) + 's (/shrine stop holds it).')
   else if (A.state == 'none') out.push('The Awakening: not yet. During the event it begins by itself once the altar is full; /shrine awaken by hand.')
   else if (A.state == 'running') out.push('The Awakening: under way (step ' + A.step + ' of ' + AWAKEN_STEPS.length + ').')
+  else if (!A.pooled) out.push('The Awakening: done. The Regalia is open; the seals break and the Pool rises when the night ends.')
   else out.push('The Awakening: done. The Regalia is open; ' + (A.added > 0 ? fmt(A.added) + ' Drops added, credited to nobody.' : 'no Drops added (the Pool was already there).'))
   out.push('The start: ' + (D.start ? siteText(D.start) + ' (/shrine braziers brings everyone here)' : 'not set (/shrine start set, where everyone gathers)'))
   out.push(D.event.on ? 'The event: on. Knockouts instead of deaths for everyone, until the Awakening ends.' : 'The event: off (/shrine braziers starts it).')
@@ -2382,6 +3210,8 @@ function statusLines(server) {
   const held = Object.keys(D.vaults).map(u => D.vaults[u].name + (D.vaults[u].partial ? ' (partly)' : ''))
   out.push(held.length ? 'The kit: belongings held for ' + held.join(', ') + (D.event.on ? ' (handed back when the Awakening ends).' : ' (handed back when they\'re online).') :
     'The kit: nobody\'s belongings are held (/shrine braziers kits everyone in survival).')
+  out.push('The viewing spot: ' + (D.view ? 'a platform in the sky at ' + siteText(D.view) + (D.platformUp ? '' : ', laid again for the next night') + ' (/shrine view set moves it)' :
+    'picked by itself, on the ground east of the steps (/shrine view set, flying where everyone should watch, lays a platform in the sky)'))
   return out
 }
 
@@ -2423,6 +3253,19 @@ BlockEvents.broken(event => {
   try { creative = !!event.player.isCreative() } catch (e) { }
   if (creative) return
   try { narrate(event.player, 'The brazier will not move.', 'gray') } catch (e) { }
+  event.cancel()
+})
+// Flint and steel and fire charges don't light a brazier while the fires wait (KINDLE): kneeling does.
+BlockEvents.rightClicked(event => {
+  const F = db().fires
+  if (F.state != 'placed' && F.state != 'counting') return
+  const blk = event.block
+  let d = '', held = ''
+  try { d = dimKey(blk.level) } catch (e) { return }
+  if (!brazierAt(d, Number(blk.x), Number(blk.y), Number(blk.z))) return
+  try { held = String(event.item.id) } catch (e) { }
+  if (!/^minecraft:(flint_and_steel|fire_charge)$/.test(held)) return
+  try { narrate(event.player, 'The fire won\'t take from that. ' + KINDLE_HOW, 'gold') } catch (e) { }
   event.cancel()
 })
 
@@ -2496,9 +3339,9 @@ ServerEvents.commandRegistry(event => {
   const awakenReply = (ctx, force) => {
     const why = awaken(ctx.source.server, force)
     if (why) return reply(ctx, why, true)
-    return reply(ctx, 'The Awakening begins: the tribute, the Blood God\'s words, the Regalia named, then the seals broken up to Tier ' +
-      OPEN_TIER + ' (no vote) and the Pool raised to ' + fmt(poolTarget()) + ' Drops, credited to nobody. About ' + Math.round(AWAKEN_STEPS[AWAKEN_STEPS.length - 1].at / 20) + ' seconds' +
-      (risen() ? '.' : '; then the Shrine rises, and the night ends when it stands.'))
+    return reply(ctx, 'The Awakening begins: the tribute, the Blood God\'s words and the Regalia named, about ' + Math.round(AWAKEN_STEPS[AWAKEN_STEPS.length - 1].at / 20) + ' seconds' +
+      (risen() ? '' : '; then the Shrine rises, and the night ends when it stands') + '. When the night ends, the seals break up to Tier ' + OPEN_TIER +
+      ' (no vote) and the Pool is raised to ' + fmt(poolTarget()) + ' Drops, credited to nobody.')
   }
   const riseReply = force => ctx => {
     const R = db().rise, resuming = R.state == 'stopped'
@@ -2528,6 +3371,22 @@ ServerEvents.commandRegistry(event => {
     save()
     return reply(ctx, 'The start is ' + (given ? 'there' : 'here') + ', at ' + siteText(st) + ': /shrine braziers brings every player here, and anyone knocked out before a brazier burns wakes here.')
   }
+  const setView = given => ctx => {
+    const q = spotOf(ctx, given), st = db().site
+    if (!q) return reply(ctx, 'Run this as a player, flying where everyone should watch the Shrine rise, or give its coordinates: /shrine view set <x> <y> <z>.', true)
+    const b = platformBox(q), corners = [[b.x0 - 1, b.z0 - 1], [b.x1 + 1, b.z0 - 1], [b.x0 - 1, b.z1 + 1], [b.x1 + 1, b.z1 + 1]]
+    if (st && corners.some(c => inFootprint(st, q.dim, { x: c[0], y: Math.min(Math.max(q.y, st.y), st.y + SIZE[1]), z: c[1] })))
+      return reply(ctx, 'That\'s over the Shrine\'s footprint: it would rise into the platform. Pick a spot clear of it.', true)
+    const D = db()
+    if (D.view && D.platformUp && eventOn() && Object.keys(D.awake.spots).length) return reply(ctx, 'Everyone is watching from the platform now: move it once the night is over.', true)
+    if (D.view && D.platformUp) removePlatform(ctx.source.server, D.view)
+    D.view = q
+    save()
+    buildPlatform(ctx.source.server, q)
+    const away = st && st.dim == q.dim ? ', ' + Math.round(flat(q, centreOf(st))) + ' blocks from the Shrine\'s centre' : ''
+    return reply(ctx, 'The viewing platform is built ' + (given ? 'there' : 'under you') + ', at ' + siteText(q) + away + ': a ' + PLATFORM.size + ' x ' + PLATFORM.size +
+      ' floor of barriers with an invisible rail round it. Everyone is brought onto it to watch the Awakening and the rise, and set down in front of the lectern when the night ends.')
+  }
   const setBrazier = given => ctx => {
     const st = spotOf(ctx, given)
     if (!st) return reply(ctx, 'Run this as a player, standing where the brazier should go, or give its coordinates: /shrine brazier set <1-3> <x> <y> <z>.', true)
@@ -2546,6 +3405,7 @@ ServerEvents.commandRegistry(event => {
     })))
     .then(Commands.literal('site').then(Commands.literal('set').executes(safe(setSite(false))).then(xyz(setSite(true)))))
     .then(Commands.literal('start').then(Commands.literal('set').executes(safe(setStart(false))).then(xyz(setStart(true)))))
+    .then(Commands.literal('view').then(Commands.literal('set').executes(safe(setView(false))).then(xyz(setView(true)))))
     .then(Commands.literal('brazier').then(Commands.literal('set').then(Commands.argument('n', Arguments.INTEGER.create(event)).executes(safe(setBrazier(false)))
       .then(xyz(setBrazier(true))))))
     .then(Commands.literal('rise').executes(safe(riseReply(false))).then(Commands.literal('force').executes(safe(riseReply(true)))))
@@ -2565,7 +3425,7 @@ ServerEvents.commandRegistry(event => {
       if (why) return reply(ctx, why, true)
       const server = ctx.source.server
       return reply(ctx, 'The braziers are going out: ' + db().fires.sites.map((b, i) => (i + 1) + ' at ' + siteText(b) + ' (' + fromCastle(server, b) + ')').join('; ') +
-        '. They must all burn within ' + FIRE_WINDOW_SECONDS + ' seconds of the first. Each team is ambushed once on the way. Everyone is at the start (' + siteText(db().start) +
+        '. They must all burn within ' + FIRE_WINDOW_SECONDS + ' seconds of the first. Each team is ambushed once on the way, and Inspectors keep coming at anyone near a brazier until it burns. Everyone is at the start (' + siteText(db().start) +
         '), and the event is on: knockouts instead of deaths, for everyone, until the Awakening ends.')
     })))
     .then(Commands.literal('fires')
@@ -2600,8 +3460,8 @@ ServerEvents.commandRegistry(event => {
       const why = startRite(ctx.source.server)
       if (why) return reply(ctx, why, true)
       return reply(ctx, resuming ? 'The rite carries on: wave ' + (db().rite.wave + 1) + ' comes again.' :
-        'The Ignition Rite begins: ' + db().rite.present + ' present, so the altar needs ' + db().rite.need + ' Potato King\'s Potatoes. Waves come until it\'s full, each led by a Senior Inspector who drops ' +
-        SENIOR.potatoes + ', so at least ' + Math.ceil(db().rite.need / SENIOR.potatoes) + ' must fall.')
+        'The Ignition Rite begins: ' + db().rite.present + ' present, so the altar needs ' + db().rite.need + ' Potato King\'s Potatoes. Waves come until it\'s full, led by Senior Inspectors who drop ' +
+        SENIOR.potatoes + ' each, more of them with every wave, so at least ' + Math.ceil(db().rite.need / SENIOR.potatoes) + ' must fall.')
     })))
     .then(Commands.literal('need').then(Commands.argument('n', Arguments.INTEGER.create(event)).executes(safe(ctx => {
       const R = db().rite, n = intArg(ctx, 'n')
@@ -2632,6 +3492,7 @@ ServerEvents.commandRegistry(event => {
       return reply(ctx, n ? 'Took away ' + n + ' monster' + (n == 1 ? '' : 's') + ' from the Shrine. (Event mobs and named ones stay.)' : 'No monsters in the Shrine.')
     })))
     .then(Commands.literal('stop').executes(safe(ctx => {
+      const cut = stopOpening()               // the opening, cut short whatever else is running
       if (stopRise()) return reply(ctx, 'The rise is paused at layer ' + db().rise.next + '. /shrine rise carries on.')
       if (db().rise.riteAt) {
         db().rise.riteAt = 0
@@ -2643,10 +3504,12 @@ ServerEvents.commandRegistry(event => {
       if (db().rise.awakenAt) {
         db().rise.awakenAt = 0
         global.__shrineAutoAwaken = (global.__shrineAutoAwaken || 0) + 1
+        downFromPlatform(ctx.source.server)
         releaseWatchers()
         return reply(ctx, 'The Awakening won\'t begin by itself, and everyone is free to move. Start it with /shrine awaken.')
       }
       if (pauseRite(ctx.source.server)) return reply(ctx, 'The rite is paused: the waves stop and the Inspectors are gone; the altar keeps its ' + db().rite.total + ' potatoes. /shrine rite carries on.')
+      if (cut) return reply(ctx, 'The opening is cut short. The braziers are out and the night goes on.')
       return reply(ctx, 'Nothing is running.', true)
     })))
     .then(Commands.literal('reset').executes(safe(ctx => reply(ctx, 'This takes the Shrine down and forgets the night (the sites are kept). For the test server. To do it: /shrine reset confirm', true)))
@@ -2680,6 +3543,8 @@ global.Shrine = {
   site: () => db().site,
   risen: () => db().rise.state == 'risen',
   fires: () => db().fires.state,                     // none, placed, counting, lit or done
+  // Lights brazier i (0-2) as if someone knelt at it (KINDLE), for other scripts and the tests. False if the fires aren't out.
+  kindle: i => { const s = db().fires.state; if ((s != 'placed' && s != 'counting') || !db().fires.sites[i]) return false; kindle(Utils.server, i, null); return true },
   beamUp: () => !!db().beam.up,
   awakened: () => db().awake.state == 'done',
   fromCastle: st => fromCastle(Utils.server, st),
@@ -2689,6 +3554,10 @@ global.Regalia = {
   isOpen: () => !!db().regalia.open,
   relics: RELICS,
   progress: id => JSON.parse(JSON.stringify(relicProgress(String(id)))),
+  isRestored: id => { const r = relicDef(String(id)); return !!r && restored(r) },
+  // how many of the seven seal relics (all but the Crown) are restored: part2/blood_pool.js's seals wait on it
+  restoredForSeals: () => restoredForSeals(),
+  sealRelics: SEAL_RELICS,
 }
 
 })()

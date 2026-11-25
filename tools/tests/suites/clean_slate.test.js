@@ -155,7 +155,7 @@ const server = {
   get tickCount() { return W.tick },
   getLevel: d => levels[String(d)] || null,
   getPlayerList: () => ({ getPlayer: u => players.find(p => p.online && p.uuid == u) || null }),
-  getProfileCache: () => ({ get: n => { const p = players.find(x => x.name.toLowerCase() == String(n).toLowerCase()); return { isPresent: () => !!p, get: () => ({ getId: () => p.uuid, getName: () => p.name }) } } }),
+  getProfileCache: () => ({ get: () => { throw new Error('The choice of Java method GameProfileCache.get is ambiguous') } }),   // as on a real server (2026-11-25)
   persistentData: { getString: k => W.persistent[k] || '', putString: (k, v) => { W.persistent[k] = String(v) } },
   scheduleInTicks: (n, f) => W.q.push([W.tick + n, f]),
   runCommandSilent(c) {

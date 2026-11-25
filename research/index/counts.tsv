@@ -1,0 +1,208 @@
+jar	namespaces	recipes	tags	loot_tables	advancements	other_data
+accessories-neoforge-1.0.0-beta.48+1.20.1	accessories	0	7	0	0	20
+addonslib-forge-1.20.1-1.11	addonslib,forge	0	0	0	0	2
+AdLods-1.20.1-8.1.12.0-build.2294	adlods,forge	0	11	0	0	8
+AdvancedAE-1.3.6-1.20.1	advanced_ae,ae2,c,curios,forge,minecraft	99	26	16	65	2
+ae2ct-1.20.1-1.1.1		0	0	0	0	0
+ae2insertexportcard-1.20.1-1.3.0	ae2insertexportcard	2	0	0	0	0
+ae2wtlib-15.3.3-forge	ae2wtlib,curios	11	1	0	10	0
+AEAdditions-1.20.1-5.1.1	ae2additions	111	0	0	59	0
+AgriCraft-forge-1.20.1-4.0.6	agricraft,botania,c,forge,minecraft	19	54	0	18	108
+agricreatecompat-1.20.1-1.0.0		0	0	0	0	0
+alexscaves-2.0.2	alexscaves,create,forge,minecraft	467	213	407	146	295
+alexsdelight-1.5	alexsdelight,alexsmobs	40	2	2	0	0
+alexsmobs-1.22.9	alexsmobs,domesticationinnovation,forge,minecraft	84	256	139	106	16
+almostunified-forge-1.20.1-0.11.0		0	0	0	0	0
+appleskin-forge-mc1.20.1-2.5.1		0	0	0	0	0
+applied-botanics-forge-1.5.2	appbot,minecraft	12	2	1	12	0
+Applied-Mekanistics-1.4.3	appmek	11	1	0	11	0
+appliedcooking-4.0.0	appliedcooking,minecraft	1	1	1	0	1
+appliedenergistics2-forge-15.4.11	ae2,forge,minecraft	487	67	104	408	5
+architectury-9.2.14-forge	architectury	0	0	0	0	1
+ars_nouveau-1.20.1-4.12.7-all	ars_nouveau,carryon,curios,forge,malum,minecraft,nyfsquiver	635	160	174	314	54
+balm-forge-1.20.1-7.3.44	balm	0	31	0	0	1
+baubley-heart-canisters-1.20.1-1.2.0	bhc,curios,forge	30	3	0	0	0
+bellsandwhistles-0.4.5-1.20.x-Create6.0+	bellsandwhistles,minecraft	53	2	36	0	0
+bettercombat-forge-1.9.0+1.20.1	bettercombat,minecraft	0	0	0	0	39
+BetterCompatibilityChecker-forge-4.0.8+mc1.20.1		0	0	0	0	0
+betterfpsdist-1.20.1-6.0		0	0	0	0	0
+bfendcities-1.0		0	0	0	0	0
+BHStats_Forge_1.20+		0	0	0	0	0
+bibliocraft-1.20.1-1.3.1	bibliocraft,minecraft	1490	66	947	0	2435
+bluepower-1.20.1-0.10.323-alpha-universal	bluepower,forge,minecraft	300	61	25	4	55
+Bookshelf-Forge-1.20.1-20.2.15	bookshelf,forge	0	31	0	0	2
+Botania-1.20.1-456-FORGE	botania,buzzier_bees,c,curios,forge,minecraft,quark	1302	293	827	857	100
+BrandonsCore-1.20.1-3.2.1.302-universal		0	0	0	0	0
+bygonenether-1.3.2-1.20.x	bygonenether,create,forge,minecraft,quark	58	20	29	9	84
+caelus-forge-3.2.0+1.20.1	forge	0	1	0	0	0
+ChanceCubes-1.20.1-5.0.2.489	chancecubes,minecraft	6	3	1	0	98
+ChickenChunks-1.20.1-2.10.0.100-universal	chickenchunks,minecraft	2	1	2	0	0
+chisel-forge-2.0.0+mc1.20.1	c,chisel,minecraft	1	6	1293	0	2
+Chunky-1.3.146		0	0	0	0	0
+citadel-2.6.3-1.20.1	citadel	0	0	1	0	1
+cloth-config-11.1.136-forge		0	0	0	0	0
+Clumps-forge-1.20.1-12.0.0.4		0	0	0	0	0
+cmpackagepipebomb-forge-2.1.0	cmpackagepipebomb	3	0	0	0	0
+CodeChickenLib-1.20.1-4.4.0.528-universal	codechickenlib,forge	0	34	0	0	1
+cofh_core-1.20.1-11.0.2.56	cofh_core,forge	1	19	1	0	5
+configured-forge-1.20.1-2.2.3		0	0	0	0	0
+connectivity-1.20.1-7.7		0	0	0	0	0
+cookingforblockheads-forge-1.20.1-16.0.15	cookingforblockheads,create,forge,inspirations,minecraft	53	9	45	0	16
+corpse-forge-1.20.1-1.0.23		0	0	0	0	0
+cosmeticarmorreworked-1.20.1-v1a		0	0	0	0	0
+craftedcore-5.8.2		0	0	0	0	0
+craftingtweaks-forge-1.20.1-18.2.9		0	0	0	0	0
+CraterLib-Forge-1.20-3.1.3		0	0	0	0	0
+create-1.20.1-6.0.8	create,curios,forge,minecraft,quark	1766	173	640	1118	106
+createaddition-1.20.1-1.3.3	create,createaddition,forge,minecraft	135	40	15	0	6
+createappliedkinetics-1.5.1-1.20.1	ae2,createappliedkinetics	18	0	2	0	0
+createbigcannons-5.11.4-mc.1.20.1-forge	c,copycats,create,createbigcannons,curios,example_createbigcannons,forge,framedblocks,minecraft,ritchiesprojectilelib	150	103	163	72	485
+createdeco-2.0.3-1.20.1-forge	create,createdeco,minecraft	1731	47	397	1717	0
+create_aquatic_ambitions-1.20.1-6.0.8-2.0.2	c,create,create_aquatic_ambitions,forge,minecraft	85	32	3	12	61
+create_radar-0.4.6+mc1.20.1	create_radar,forge,minecraft	21	5	15	0	0
+create_sabers-1.20.1+2.0.3	create_sabers,dynamiclights,minecraft	10	3	0	0	10
+CreativeCore_FORGE_v2.12.40_mc1.20.1		0	0	0	0	0
+cryonicconfig-forge-1.0.0+mc1.20.1		0	0	0	0	0
+Cucumber-1.20.1-7.0.16	cucumber	0	2	0	0	0
+cupboard-1.20.1-4.2		0	0	0	0	0
+curios-forge-5.14.1+1.20.1	curios	0	0	0	0	10
+CyclopsCore-1.20.1-1.22.3	cyclopscore	0	0	0	0	2
+Draconic-Evolution-1.20.1-3.1.2.621-universal	curios,draconicevolution,forge,minecraft	179	56	51	0	38
+dragonfight-1.20.1-5.0		0	0	0	0	0
+elevatorid-1.20.1-1.9.1-forge	elevatorid	32	2	16	0	0
+elytraslot-forge-6.4.4+1.20.1	curios,elytraslot	0	2	0	0	1
+EnderIO-1.20.1-6.2.18-beta-all	enderio,forge,minecraft	1163	152	809	930	85
+EnderStorage-1.20.1-2.11.0.188-universal	enderstorage,minecraft	6	1	0	0	0
+EvilCraft-1.20.1-1.3.3	c,curios,evilcraft,evilcraftcompat,forge,minecraft	184	51	51	12	34
+extrautilitiesreborn-1.0.1-forge-1.20.1	c,extrautilitiesreborn,minecraft,neoforge	150	53	122	75	3
+ExtremeReactors2-1.20.1-2.0.97	bigreactors,forge,minecraft,thermal	175	76	88	111	13
+factory_blocks-forge-1.4.0+mc1.20.1	factory_blocks,minecraft	3	5	49	0	0
+farmers-cutting-regions-unexplored-1.20.1-1.1b-forge	fcru	195	0	0	0	0
+FarmersDelight-1.20.1-1.3.4	create,createaddition,farmersdelight,forge,minecraft,origins,sereneseasons,tconstruct	333	162	112	218	83
+FastLeafDecay-32		0	0	0	0	0
+ferritecore-6.0.1-forge		0	0	0	0	0
+ForgeEndertech-1.20.1-11.1.11.1-build.2351		0	0	0	0	0
+fragmentum-5.3.0+1.20.1-forge		0	0	0	0	0
+ftb-essentials-forge-2001.2.4	ftbessentials	0	2	0	0	0
+ftb-library-forge-2001.2.13		0	0	0	0	0
+ftb-ranks-forge-2001.1.7		0	0	0	0	0
+fusion-1.3.16-forge-mc1.20.1		0	0	0	0	0
+geckolib-forge-1.20.1-4.8.4		0	0	0	0	0
+gml-4.0.11-all		0	0	0	0	0
+gravitygunforge-1.20.1-1.0.0	gravitygun	2	0	0	0	0
+guideme-20.1.15		0	0	0	0	0
+hexerei-0.4.2.3	curios,forge,hexerei,identity,minecraft	1271	78	194	1090	494
+iceandfire-2.1.13-1.20.1-beta-5	forge,iceandfire,minecraft	413	128	173	362	98
+idas_forge-1.13.0+1.20.1	idas,integrated_api,minecraft	1	121	166	23	606
+ImmersiveEngineering-1.20.1-10.2.0-183	chiselsandbits,curios,forge,immersiveengineering,minecraft,tconstruct	1109	280	307	625	114
+integrated_api-forge-1.20.1-1.9.1	integrated_api	0	51	0	0	0
+integrated_stronghold-1.1.2+1.20.1-forge	integrated_api,integrated_stronghold,minecraft	1	5	20	1	133
+integrated_villages-1.3.2+1.20.1-forge	create,integrated_api,integrated_villages,minecraft	0	67	153	13	1222
+inventoryessentials-forge-1.20.1-8.2.19		0	0	0	0	0
+inzhefopcore-1.0.0-forge-1.20.1		0	0	0	0	0
+ironchest-1.20.1-14.4.4	ironchest,minecraft	22	4	14	22	0
+Jade-1.20.1-Forge-11.13.3		0	0	0	0	0
+JadeAddons-1.20.1-Forge-5.5.1		0	0	0	0	0
+jei-1.20.1-forge-15.62.0.219		0	0	0	0	0
+journeymap-forge-1.20.1-6.0.7		0	0	0	0	0
+JustEnoughMekanismMultiblocks-1.20.1-4.27		0	0	0	0	0
+JustEnoughResources-1.20.1-1.4.0.247		0	0	0	0	0
+kotlinforforge-4.12.0-all		0	0	0	0	0
+kubejs-forge-2001.6.5-build.26	kubejs	0	0	0	0	2
+lootintegrations-1.20.1-4.7	lootintegrations	0	1	7	0	43
+lootintegrations_moog-2.2	lootintegrations	0	0	0	0	6
+Mantle-1.20.1-1.11.104	mantle	0	5	0	0	20
+mcjtylib-1.20-8.0.8		0	0	0	0	0
+mcw-bridges-3.1.2-mc1.20.1forge	mcwbridges,minecraft	256	19	145	146	0
+mcw-doors-1.1.5-mc1.20.1forge	mcwdoors,minecraft	257	33	239	12	0
+mcw-mcwfences-1.2.1-mc1.20.1forge	diagonalfences,mcwfences,minecraft	222	28	180	21	1
+mcw-mcwstairs-1.0.2-mc1.20.1forge	mcwstairs,minecraft	224	10	196	23	0
+mcw-mcwwindows-2.4.2-mc1.20.1forge	forge,mcwwindows,minecraft	317	20	310	32	0
+mcw-roofs-2.3.2-mc1.20.1forge	mcwroofs,minecraft	607	4	605	42	0
+mcw-trapdoors-1.1.5-mc1.20.1forge	mcwtrpdoors,minecraft	191	22	179	180	0
+mcwregionsunexplored-1.20.1-1.6	mcwbridges,mcwdoors,mcwfences,mcwfurnitures,mcwpaths,mcwregionsunexplored,mcwstairs,mcwtrpdoors,mcwwindows,minecraft	3481	112	0	3481	0
+Measurements-forge-1.20.1-2.0.1	measurements	1	0	0	0	0
+Mekanism-1.20.1-10.4.16.80	create,forge,mekanism,minecraft,per-viam-invenire	4223	264	180	93	99
+mekanismcurios-1.20.1-1.2.1	curios,mekanismcurios	0	2	0	0	3
+MekanismGenerators-1.20.1-10.4.16.80	create,forge,mekanism,mekanismgenerators,minecraft	35	15	24	4	0
+MekanismTools-1.20.1-10.4.16.80	forge,mekanismtools,minecraft	87	95	0	6	0
+mekanism_weaponry-1.1.3	c,mekanism_weaponry,minecraft	26	2	1	0	3
+mezz_config-1.20.1-forge-0.6.8		0	0	0	0	0
+modernfix-forge-5.27.88+mc1.20.1		0	0	0	0	0
+ModularPowersuits-Forge-1.20.1-2.3.13	minecraft,powersuits	57	1	1	0	17
+MoogsSoaringStructures-universal-1.20-2.2.0	mss	0	15	22	0	396
+MoogsStructureLib-forge-1.20-3.4.2	moogs_structures	0	0	0	0	6
+moonlight-1.20-2.16.36-forge	minecraft,moonlight	0	0	0	0	25
+mowziesmobs-1.8.2	c,forge,minecraft,mowziesmobs	12	56	26	16	166
+MRU-1.0.4+1.20.1+forge		0	0	0	0	0
+MysticalAgriculture-1.20.1-7.0.24	forge,minecraft,mysticalagriculture	1167	139	70	0	10
+Nether Ores Plus+ 1.0.0 - 1.20.1	minecraft,netheroresplus	7	1	22	0	60
+netherportalfix-forge-1.20-13.0.1		0	0	0	0	0
+NoChatReports-FORGE-1.20.1-v2.2.3		0	0	0	0	0
+Numina-Forge-1.20.1-2.3.13	forge,minecraft,numina	23	4	1	0	1
+pamhc2foodcore-1.20.4-1.0.5	forge,minecraft,pamhc2foodcore	199	196	0	18	0
+pamhc2foodextended-1.20.4-1.0.1	forge,pamhc2foodextended	887	393	0	0	0
+Patchouli-1.20.1-85-FORGE	minecraft	0	2	0	0	0
+player-animation-lib-forge-1.0.2-rc1+1.20		0	0	0	0	0
+polyeng-forge-0.1.1-1.20.1		0	0	0	0	0
+polymorph-forge-0.49.11+1.20.1		0	0	0	0	0
+Quark-4.0-462	forge,lootr,minecraft,quark	1602	255	835	29	54
+Quark_Recipes_Unexplored_1.20.1(ver.1.0)	quark_recipes_unexplored	2	1	0	0	0
+rechiseled-1.2.6-forge-mc1.20.1	minecraft,rechiseled	1	271	3627	1	44
+rechiseledae2-forge-1.20-1.20.1-1.2.0	minecraft,rechiseledae2	0	2	0	0	2
+rechiseledcreate-1.1.1-forge-mc1.20	minecraft,rechiseled,rechiseledcreate	1	2	242	1	25
+redstone_arsenal-1.20.1-8.0.1.24	minecraft,redstone_arsenal	36	4	3	0	2
+RegionsUnexploredForge-0.5.6+1.20.1	forge,minecraft,regions_unexplored	656	321	790	671	725
+reliquary-1.20.1-2.0.65.1565	curios,forge,minecraft,reliquary	226	6	70	66	33
+remorphed-4.2		0	0	0	0	0
+resourcefulconfig-forge-1.20.1-2.1.3		0	0	0	0	0
+rftoolsbase-1.20-5.0.7	forge,minecraft,rftoolsbase	12	9	5	12	14
+rftoolsbuilder-1.20-6.0.10	forge,minecraft,rftoolsbuilder	42	2	22	40	1
+rftoolsdim-1.20-11.0.11	forge,minecraft,rftoolsdim	56	2	22	56	41
+rftoolsutility-1.20-6.0.7	minecraft,rftoolsutility	137	6	27	67	0
+rhino-forge-2001.2.3-build.10		0	0	0	0	0
+ritchiesprojectilelib-2.1.1-mc.1.20.1-forge		0	0	0	0	0
+RUExpansion-1.0.1+1.20.1	minecraft,ru_expansion	0	0	0	0	154
+sebastrnlib-4.0.0	sebastrnlib	1	0	0	0	1
+SecretRooms-1.20.1-Unofficial-20260510	secretroomsmod	26	4	21	26	0
+SimpleDiscordLink-Universal-3.4.5		0	0	0	0	0
+simplehats-forge-1.20.1-0.4.0a	accessories,simplehats	13	2	0	0	1
+SkyVillages-1.0.4-1.19.2-1.20.1-forge-release	skyvillages	0	1	12	0	29
+sliceanddice-forge-3.6.0	create,forge,minecraft,sliceanddice	8	9	3	3	0
+spark-1.10.53-forge		0	0	0	0	0
+stalapi-1.20.1+1.0.4		0	0	0	0	0
+supermartijn642configlib-1.1.8-forge-mc1.20		0	0	0	0	0
+supermartijn642corelib-1.1.25-forge-mc1.20.1	minecraft	0	7	0	0	0
+supplementaries-1.20-3.1.44-forge	create,curios,farmersdelight,forge,minecraft,neapolitan,quark,sereneseasons,supplementaries,trinkets	306	224	178	182	346
+suppsquared-1.20-1.1.29	farmersdelight,minecraft,supplementaries,suppsquared	39	15	51	0	0
+taiga-1.20.1-forge-2.0.0-port.5	forge,minecraft,taiga	789	311	56	0	123
+TCIntegrations-1.20.1-2.0.26.0	forge,minecraft,tcintegrations,tconstruct	288	62	1	4	65
+TConstruct-1.20.1-3.11.2.166	c,ceramics,forge,headlight,mantle,minecraft,parry,tconstruct,twilightforest	2950	802	342	411	873
+TerraBlender-forge-1.20.1-3.0.1.10	terrablender	0	2	0	0	1
+tesseract-1.0.39-forge-mc1.20.1	minecraft,tesseract	1	1	1	1	0
+thejokebook-0.1.0-1.20.1		0	0	0	0	0
+thermal_dynamics-1.20.1-11.0.1.23	ae2,minecraft,thermal	8	6	4	0	0
+thermal_expansion-1.20.1-11.0.1.29	minecraft,thermal	499	7	22	0	0
+thermal_foundation-1.20.1-11.0.6.70	forge,minecraft,thermal	269	163	54	0	34
+thermal_innovation-1.20.1-11.0.1.23	curios,minecraft,thermal	7	4	0	0	0
+thermal_integration-1.20.1-11.0.1.27	forge,minecraft,thermal	487	27	2	0	0
+TinkersLevellingAddon-1.20.1-1.4.3	tconstruct,tinkerslevellingaddon	2	0	0	0	1
+tinker_rapier-1.0.1-1.20.1 (1)	minecraft,tconstruct,tinker_rapier	13	17	0	0	6
+ToolBelt-1.20.1-1.20.03	curios,toolbelt	11	1	0	11	0
+trashcans-1.1.1a-forge-mc1.20.4	minecraft,trashcans	4	1	4	6	0
+twilightforest-1.20.1-4.3.2508-universal	aether,alexscaves,ars_nouveau,artifacts,createaddition,curios,farmersdelight,forge,immersiveengineering,minecraft,randomium,twilightforest	444	282	532	321	468
+voicechat-forge-1.20.1-2.6.22		0	0	0	0	0
+walkers-5.8.13	walkers,wenxin	0	0	0	0	57
+waystones-forge-1.20.1-14.1.21	minecraft,repurposed_structures,waystones	34	23	25	0	55
+worldedit-mod-7.2.15		0	0	0	0	0
+YungsApi-1.20-Forge-4.0.6		0	0	0	0	0
+YungsBetterDesertTemples-1.20-Forge-3.0.3	betterdeserttemples	0	3	10	3	228
+YungsBetterEndIsland-1.20-Forge-2.0.6	betterendisland,minecraft	0	2	0	0	41
+YungsBetterJungleTemples-1.20-Forge-2.0.5	betterjungletemples,morevillagers	0	4	3	0	148
+YungsBetterMineshafts-1.20-Forge-4.0.4	bettermineshafts,minecraft,morevillagers	0	16	0	0	14
+YungsBetterNetherFortresses-1.20-Forge-2.0.6	betterfortresses,minecraft,morevillagers	0	4	9	1	187
+YungsBetterOceanMonuments-1.20-Forge-3.0.4	betteroceanmonuments,minecraft	0	3	1	0	75
+YungsBridges-1.20-Forge-4.0.3	yungsbridges	0	5	0	0	39
+YungsExtras-1.20-Forge-4.0.3	yungsextras	0	3	3	0	189
+ZeroCore2-1.20.1-2.1.48		0	0	0	0	0
+Zeta-1.0-31	zeta	0	0	0	0	1

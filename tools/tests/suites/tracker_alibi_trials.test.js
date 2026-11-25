@@ -141,7 +141,7 @@ const server = {
   get tickCount() { return W.tick },
   getLevel: d => levels[String(d)] || null,
   getPlayerList: () => ({ getPlayer: u => players.find(p => p.online && p.uuid == u) || null }),
-  getProfileCache: () => ({ get: n => { const p = players.find(x => x.name.toLowerCase() == String(n).toLowerCase()); return { isPresent: () => !!p, get: () => ({ getId: () => p.uuid, getName: () => p.name }) } } }),
+  getProfileCache: () => ({ get: () => { throw new Error('The choice of Java method GameProfileCache.get is ambiguous') } }),   // as on a real server (2026-11-25)
   persistentData: { getString: k => W.persistent[k] || '', putString: (k, v) => { W.persistent[k] = String(v) } },
   scheduleInTicks: (n, f) => W.q.push([W.tick + n, f]),
   runCommandSilent(c) {
@@ -195,6 +195,8 @@ const Java = { loadClass: n => ({
   'net.minecraft.world.level.Level$ExplosionInteraction': { NONE: 'NONE', TNT: 'TNT' },
   'net.minecraft.nbt.StringTag': { valueOf: s => s },
   'com.mojang.brigadier.arguments.StringArgumentType': { word: () => 'word', greedyString: () => 'greedy', getString: (ctx, n) => ctx.args[n] },
+  // FTB Teams' list of everyone who has joined: personal teams (their id is the player's UUID) and parties.
+  'dev.ftb.mods.ftbteams.api.FTBTeamsAPI': { api: () => ({ getManager: () => ({ getTeams: () => { if (W.teamsError) throw new Error('not ready'); return W.teams || [] } }) }) },
 })[n] || (() => { throw new Error('no class ' + n) })() }
 const mkText = t => ({ text: String(t), append(o) { this.text += o.text; return this } })
 const Text = { red: mkText, gold: mkText, yellow: mkText, of: mkText, lightPurple: mkText }
@@ -618,6 +620,15 @@ cmd('bm hand add 10', admin)
 ok('... and it can\'t be put up for sale with /bm hand add', /declarations can't be sold this way/.test(dReply()), dReply())
 setReal(admin, admin.selected, EMPTY())
 delete glob.Purge
+
+// ----- offline players by name (2026-11-25: the profile cache's lookup throws on a real server) -----
+const person = (name, id) => ({ isPlayerTeam: () => true, getPlayerName: () => name, getId: () => id })
+const party = name => ({ isPlayerTeam: () => false, getPlayerName: () => { throw new Error('a party has no player') }, getId: () => 'party-1' })
+W.teams = [party('The Crew'), person('Zed', 'ZED-1111')]
+cmd('charges Zed', dave); ok('/charges finds someone offline whom only FTB Teams knows', /Zed stands accused of nothing/.test(ftext(dave) + tReply()), ftext(dave) + tReply())
+dave.inbox = []; cmd('record zed', dave); ok('... and /record, whatever the capitals', /Zed has a clean record/.test(ftext(dave) + tReply()), ftext(dave) + tReply())
+cmd('charges Notch', dave); ok('... but not a stranger', /Nobody has heard of Notch/.test(tReply()), tReply())
+W.teams = []
 
 // ----- /reload keeps everything -----
 const before = W.persistent.trials

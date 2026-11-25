@@ -38,8 +38,12 @@ const jlist = arr => ({ size: () => arr.length, get: i => arr[i], iterator() { l
 function textOf(c) { return Array.isArray(c) ? c.map(x => (typeof x == 'string' ? x : x.text || '')).join('') : String(c) }
 // Item stacks: an id, a count, (for the King's Potatoes) a marked tag, or (the night's kit, a player's belongings)
 // SNBT, as KubeJS gives them; serializeNBT saves them whole, as the vault does.
+// The tags the relics look for (as KubeJS's item.hasTag)
+const ITEM_TAGS = { 'tconstruct:cobalt_ingot': ['forge:ingots/cobalt'], 'tconstruct:cobalt_block': ['forge:storage_blocks/cobalt'],
+  'tconstruct:pig_iron_ingot': ['forge:ingots/pig_iron'], 'tconstruct:pig_iron_block': ['forge:storage_blocks/pig_iron'] }
 function stack(id, count, marked, snbt) {
   const s = { id, count, marked: !!marked, snbt: snbt || null, isEmpty: () => s.count <= 0 || s.id == 'minecraft:air', getCount: () => s.count, shrink: n => { s.count = Math.max(0, s.count - n) },
+    hasTag: t => (ITEM_TAGS[s.id] || []).indexOf(String(t)) >= 0,
     get nbt() { return s.marked ? { contains: k => k == 'trollcraft', getCompound: () => ({ contains: k => k == 'kingspotato' }) } : s.snbt },
     serializeNBT() { return JSON.stringify({ id: s.id, Count: s.count, marked: s.marked, tag: s.snbt }) } }
   return s
@@ -58,7 +62,7 @@ function player(name, x, y, z, op) {
   const p = { name, op: !!op, x, y, z, msgs: [], level, creative: false, spectator: false, isPlayer: () => true, getGameProfile: () => ({ getName: () => name }),
     getX: () => p.x, getY: () => p.y, getZ: () => p.z, tell: c => { p.msgs.push(textOf(c)); p.raw.push(c) }, raw: [],
     isCreative: () => p.creative, isSpectator: () => p.spectator, isAlive: () => true, getStringUuid: () => name.toLowerCase() + '-uuid',
-    hasPermissions: () => p.op, health: 20, fire: 0, setHealth: h => { p.health = h }, getMaxHealth: () => 20, clearFire: () => { p.fire = 0 },
+    hasPermissions: () => p.op, health: 20, fire: 0, crouch: false, isCrouching: () => p.crouch, getHealth: () => p.health, hurtTime: 0, setHealth: h => { p.health = h }, getMaxHealth: () => 20, clearFire: () => { p.fire = 0 },
     inventory: { getItem: i => slots[i], setItem: (i, s) => { slots[i] = s }, getContainerSize: () => 41 }, slots, ender,
     getEnderChestInventory: () => ({ getItem: i => ender[i], setItem: (i, s) => { ender[i] = s }, getContainerSize: () => 27 }),
     give: s => { const i = slots.findIndex(x => x.isEmpty()); if (i >= 0) slots[i] = s },
@@ -115,6 +119,12 @@ const server = {
     if ((m = c.match(/run fill (-?\d+) (-?\d+) (-?\d+) (-?\d+) (-?\d+) (-?\d+) minecraft:air(?: replace (\S+))?$/))) {
       const b = m.slice(1, 7).map(Number), only = m[7]
       Object.keys(world).forEach(k => { const q = k.split(',').map(Number); if (q[0] >= b[0] && q[0] <= b[3] && q[1] >= b[1] && q[1] <= b[4] && q[2] >= b[2] && q[2] <= b[5] && (!only || world[k] == only)) delete world[k] })
+      return 1
+    }
+    // /fill ... <block> replace air: that block wherever it's open (the viewing platform's barriers)
+    if ((m = c.match(/run fill (-?\d+) (-?\d+) (-?\d+) (-?\d+) (-?\d+) (-?\d+) (\S+) replace air$/))) {
+      const b = m.slice(1, 7).map(Number)
+      for (let x = b[0]; x <= b[3]; x++) for (let y = b[1]; y <= b[4]; y++) for (let z = b[2]; z <= b[5]; z++) if (blockAt(x, y, z).id == 'minecraft:air') world[x + ',' + y + ',' + z] = m[7]
       return 1
     }
     // A summoned mob joins the world (and goes through EntityEvents.spawned), named and tagged as its NBT says.
@@ -184,7 +194,7 @@ function regalia(as) {
 const S = () => global.Shrine.state()
 const said = (p, re) => p.msgs.some(m => re.test(m))
 const placed = () => cmds.filter(c => /run place template trollcraft:shrine\/l_\d+ /.test(c)).map(c => +c.match(/l_(\d+) /)[1])
-const layerTicks = 9
+const layerTicks = Number(src.match(/const LAYER_TICKS = (\d+)/)[1])   // 14 since 2026-11-21 (a 45-second rise)
 
 const admin = player('Admin', 1000.5, 64, 2000.5, true)
 const bob = player('Bob', 1000.5, 64, 2000.5)          // standing right where the Shrine will rise
@@ -254,7 +264,7 @@ cmds = []
 r = cmd('rise', admin)
 ok('/shrine rise before the Awakening: refused, the Shrine rises last (force goes ahead)', /The Shrine rises last/.test(r[0]) && /\/shrine rise force raises it anyway/.test(r[0]) && S().rise.state == 'none' && placed().length == 0, r[0])
 r = cmd('rise force', admin)
-ok('/shrine rise: 64 layers in about 29 seconds', /64 layers in about 29 seconds\./.test(r[0]) && S().rise.state == 'rising', r[0])
+ok('/shrine rise: 64 layers in about 45 seconds', /64 layers in about 45 seconds\./.test(r[0]) && S().rise.state == 'rising', r[0])
 ok('... the site is force-loaded', cmds.some(c => c == 'execute in minecraft:overworld run forceload add 979 1979 1020 2021'), cmds.join('\n'))
 ok('... nearby players are told and get the title; someone far away isn\'t', said(carol, /ground beneath the beam begins to shake/) && cmds.some(c => /^title Carol title .*The Shrine rises/.test(c)) && !said(far, /shake/))
 ok('global.Shrine.busy() while it rises', global.Shrine.busy() == 'the Shrine is rising')
@@ -281,7 +291,7 @@ ok('... with the stone sounds, the anchor\'s charge as it starts, dust and smoke
   cmds.some(c => /playsound minecraft:block\.grindstone\.use block @a 1000\.5 64\.5/.test(c)) && cmds.some(c => /playsound minecraft:block\.respawn_anchor\.charge block @a 1000\.5 64\.5/.test(c)) &&
   cmds.some(c => /particle minecraft:large_smoke/.test(c)))
 advance(layerTicks)
-ok('the next layer comes 9 ticks later, one block up', placed().join() == '0,1' && cmds.some(c => / place template trollcraft:shrine\/l_1 979 65 1979$/.test(c)))
+ok('the next layer comes 14 ticks later (LAYER_TICKS: a 45-second rise), one block up', placed().join() == '0,1' && cmds.some(c => / place template trollcraft:shrine\/l_1 979 65 1979$/.test(c)))
 bob.x = 1000.5; bob.y = 66; bob.z = 1985.5                       // walks back in
 advance(layerTicks)
 ok('walking back in gets you moved out again (nearest edge: the north side)', bob.z == 1976.5 && bob.x == 1000.5, [bob.x, bob.y, bob.z].join(' '))
@@ -292,6 +302,21 @@ ok('... the anchor\'s charge there too, and the wither\'s crunch at layers 4, 12
   [68.5, 76.5, 84.5].every(y => cmds.some(c => new RegExp('entity\\.wither\\.break_block hostile @a 1000\\.5 ' + String(y).replace('.', '\\.') + ' ').test(c))))
 ok('... and never the Warden\'s dig (it sounded like squishing)', !cmds.some(c => /warden/.test(c)))
 ok('status: rising, layer 22 of 64', /layer 22 of 64/.test(cmd('status', admin)[4]))
+// the pillars of fire round it, growing with it (owner, 2026-11-21: a 45-second rise, and "the major climax of the shrine
+// being built would be fantastic")
+const pillarsSeen = (from) => {
+  const by = {}
+  cmds.slice(from || 0).forEach(c => {
+    const m = c.match(/^execute in minecraft:overworld run particle minecraft:flame (\S+) (\S+) (\S+) 0\.5 (\S+) 0\.5 0\.02 /)
+    if (m) { const k = m[1] + ' ' + m[3]; (by[k] = by[k] || []).push({ mid: Number(m[2]), spread: Number(m[4]) }) }
+  })
+  return by
+}
+const pil = pillarsSeen(), pilSpots = Object.keys(pil)
+ok('the rise: pillars of fire on a ring beyond its corners, each growing with the statue', pilSpots.length == 8 &&
+  pilSpots.every(k => { const xz = k.split(' ').map(Number), d = Math.hypot(xz[0] - 1000.5, xz[1] - 2000.5); return d > 34 && d < 38 }) &&
+  pilSpots.every(k => pil[k][pil[k].length - 1].mid > pil[k][0].mid + 5 && pil[k][pil[k].length - 1].spread > pil[k][0].spread), pilSpots.join(' | '))
+ok('... pulsing twice a layer (every 7 ticks)', pilSpots.every(k => pil[k].length >= 40), pilSpots.map(k => pil[k].length).join())
 
 // pause and carry on
 r = cmd('stop', admin)
@@ -339,6 +364,14 @@ const missing = []
 for (let n = 0; n < 64; n++) if (all.indexOf(n) < 0) missing.push(n)
 ok('every layer 0..63 was placed, and the Shrine has risen', missing.length == 0 && S().rise.state == 'risen' && global.Shrine.risen() && S().rise.next == 64, 'missing ' + missing.join())
 ok('... the head at the top: thunder, and the watchers are told', cmds.some(c => / place template trollcraft:shrine\/l_63 979 127 1979$/.test(c)) && said(carol, /Technoblade's Shrine stands/))
+const lastLayerAt = cmds.findIndex(c => / place template trollcraft:shrine\/l_63 /.test(c)), afterLast = cmds.slice(lastLayerAt)
+ok('the last stone, the climax: every pillar roars to full height with blasts up it, the crown blasts, and a shockwave of fire rolls out from the base in rings',
+  logs.some(l => /\[Shrine\] The rise's climax: 8 pillars of fire/.test(l)) && afterLast.filter(c => /particle minecraft:explosion [\d.]+ 99 [\d.]+ 0\.5 23\.3 0\.5 0 12 force/.test(c)).length == 8 &&
+  afterLast.some(c => /particle minecraft:explosion_emitter 1000\.5 130 2000\.5 /.test(c)) && afterLast.some(c => /playsound minecraft:entity\.generic\.explode block @a 1000\.5 128 2000\.5 8 0\.6/.test(c)) &&
+  [23.5, 27.5, 31.5, 35.5, 39.5].every(r => afterLast.some(c => c.indexOf('particle minecraft:flame ' + (1000.5 + r).toFixed(1) + ' 65 2000.5 0.4 0.2 0.4 0.03 6') >= 0)))
+const fullAfter = pillarsSeen(lastLayerAt)
+ok('... and the pillars burn on at full height after it (until the night ends)', Object.keys(fullAfter).length == 8 && Object.keys(fullAfter).every(k => fullAfter[k].filter(q => q.mid == 99).length >= 3),
+  Object.keys(fullAfter).map(k => fullAfter[k].length).join())
 // (owner, 2026-11-19: no Darkness; more fire, sparks and lightning instead)
 const riseCorners = ['976.5,1976.5', '1023.5,1976.5', '1023.5,2024.5', '976.5,2024.5']
 ok('... the ground shakes: flames along the layers, lava sparks, and with every wither\'s crunch a burst of fire and a bolt for show at a corner, in turn; no Darkness',
@@ -425,7 +458,9 @@ ok('a reset with nothing built: nothing to take down', /Nothing was built/.test(
 const B = () => S().fires
 const fireKey = b => b.x + ',' + (b.y + 1) + ',' + b.z
 const fireOf = b => world[fireKey(b)] || ''
-const lightFire = b => { world[fireKey(b)] = 'minecraft:campfire[lit=true,signal_fire=false]' }
+// lit as if someone knelt at it (since 2026-11-21 a brazier lights only that way: KINDLE); litByOther is any other way
+const lightFire = b => global.Shrine.kindle(S().braziers.findIndex(x => x.x == b.x && x.z == b.z))
+const litByOther = b => { world[fireKey(b)] = 'minecraft:campfire[lit=true,signal_fire=false]' }
 const douse = b => { world[fireKey(b)] = 'minecraft:campfire[lit=false,signal_fire=false]' }
 const [b1, b2, b3] = S().braziers
 const inspectors = () => mobs.filter(m => !m.discarded && m.tags.indexOf('shrine_ambush') >= 0)
@@ -450,18 +485,18 @@ bob.slots[3] = unsavable; bob.slots[4] = own('minecraft:bread', 5)
 cmds = []
 r = cmd('braziers', admin)
 ok('/shrine braziers: all three go out, each with its place and direction', B().state == 'placed' && /1 at 1900 70 0 \(about 1900 blocks toward the rising sun\)/.test(r[0]) &&
-  /within 60 seconds/.test(r[0]), r[0])
+  /within 45 seconds/.test(r[0]), r[0])
 ok('... the event begins: every player online is brought to the start, and told', players.every(p => p.x == 5000.5 && p.y == 64 && p.z == 5000.5 && said(p, /The pilgrimage begins/)) &&
   global.Shrine.eventOn() && /Everyone is at the start \(5000 64 5000\), and the event is on/.test(r[0]), players.map(p => p.name + ' ' + p.x + ' ' + p.z).join(', '))
 ok('... status: the start and the event', /The start: 5000 64 5000/.test(cmd('status', admin)[9]) && /The event: on/.test(cmd('status', admin)[10]), cmd('status', admin).slice(9).join(' | '))
-ok('the night\'s kit: Carol has a diamond sword (Sharpness IV), 16 steak and a flint and steel, diamond armour on, a shield in her off hand, all the gear Unbreaking X',
+ok('the night\'s kit: Carol has a diamond sword (Sharpness IV) and 16 steak (no flint and steel since the braziers are lit by kneeling), diamond armour on, a shield in her off hand, all the gear Unbreaking X',
   carol.slots[0].id == 'minecraft:diamond_sword' && /sharpness",lvl:4s/.test(carol.slots[0].snbt) && /unbreaking",lvl:10s/.test(carol.slots[0].snbt) &&
-  carol.slots[1].id == 'minecraft:cooked_beef' && carol.slots[1].count == 16 && carol.slots[2].id == 'minecraft:flint_and_steel' && /unbreaking",lvl:10s/.test(carol.slots[2].snbt) && carol.slots[39].id == 'minecraft:diamond_helmet' && carol.slots[38].id == 'minecraft:diamond_chestplate' &&
+  carol.slots[1].id == 'minecraft:cooked_beef' && carol.slots[1].count == 16 && carol.slots[2].isEmpty() && carol.slots[39].id == 'minecraft:diamond_helmet' && carol.slots[38].id == 'minecraft:diamond_chestplate' &&
   carol.slots[37].id == 'minecraft:diamond_leggings' && carol.slots[36].id == 'minecraft:diamond_boots' && carol.slots[40].id == 'minecraft:shield' &&
-  [36, 37, 38, 39, 40].every(i => /unbreaking",lvl:10s/.test(carol.slots[i].snbt)) && kitOf(carol).length == 8 && said(carol, /armed for the night/), carol.slots.filter(s => !s.isEmpty()).map(s => s.id).join())
+  [36, 37, 38, 39, 40].every(i => /unbreaking",lvl:10s/.test(carol.slots[i].snbt)) && kitOf(carol).length == 7 && said(carol, /armed for the night/), carol.slots.filter(s => !s.isEmpty()).map(s => s.id).join())
 ok('... her own things are held, in the saved data and a backup file; nothing is left with her but the kit',
   S().vaults['carol-uuid'].slots.map(s => s.id + '@' + s.slot).sort().join() == 'minecraft:iron_chestplate@38,minecraft:netherite_sword@0,minecraft:oak_log@7' &&
-  !!vaultFiles['kubejs/shrine_vaults/Carol_carol-uuid.json'] && carol.slots.filter(s => !s.isEmpty()).length == 8)
+  !!vaultFiles['kubejs/shrine_vaults/Carol_carol-uuid.json'] && carol.slots.filter(s => !s.isEmpty()).length == 7)
 ok('... the op in creative is left alone: no kit, nothing held', !S().vaults['admin-uuid'] && kitOf(admin).length == 0)
 ok('... an item that can\'t be stored safely: Bob keeps his own gear, and the op is told', !S().vaults['bob-uuid'] && bob.slots[4].id == 'minecraft:bread' && kitOf(bob).length == 0 &&
   said(bob, /you fight in your own gear tonight/) && said(admin, /Bob fights in their own gear/))
@@ -473,11 +508,55 @@ ivy.slots[2] = own('minecraft:diamond', 9)
 advance(100)
 ok('someone joining mid-event is armed when they arrive, their own things held', ivy.slots[0].id == 'minecraft:diamond_sword' && S().vaults['ivy-uuid'].slots[0].id == 'minecraft:diamond')
 players.splice(players.indexOf(ivy), 1)
+// Jay is in creative when he joins (no kit), then switches to survival: the next sweep arms him. At the fifth run
+// (2026-11-20) the owner, in creative at /shrine braziers, never got the kit and was knocked out over and over.
+const jay = player('Jay', 0.5, 64, 0.5)
+jay.creative = true
+jay.slots[3] = own('minecraft:emerald', 5)
+;(handlers.loggedIn || []).forEach(h => h({ player: jay }))
+advance(100)
+ok('someone in creative mid-event isn\'t armed, nothing held', kitOf(jay).length == 0 && !S().vaults['jay-uuid'])
+const bobRefusals = () => bob.msgs.filter(m => /fight in your own gear/.test(m)).length, bobBefore = bobRefusals()
+jay.creative = false
+advance(200)
+ok('... switching to survival, he\'s armed at the next sweep (every 10 seconds), his own things held', kitOf(jay).length == 7 && said(jay, /armed for the night/) &&
+  S().vaults['jay-uuid'].slots.some(s => s.id == 'minecraft:emerald'))
+advance(400)
+ok('... and Bob, whose things couldn\'t be held, isn\'t told again at every sweep', bobRefusals() == bobBefore, bobRefusals() + ' vs ' + bobBefore)
+players.splice(players.indexOf(jay), 1)
+// the opening (owner decisions 2026-11-20: fires on the horizon and an Inspector broadcast, about 30 seconds, nobody held),
+// all 800 ticks of it played by now
+const titleCmds = cmds.filter(c => /^title Carol (title|subtitle) /.test(c))
+ok('the opening: "THE PILGRIMAGE" on everyone\'s screen, with a bell', titleCmds.some(c => /title Carol title .*THE PILGRIMAGE/.test(c)) &&
+  titleCmds.some(c => /Three fires must burn as one/.test(c)) && cmds.some(c => /^execute as Carol at @s run playsound minecraft:block\.bell\.use/.test(c)), titleCmds.slice(0, 4).join(' | '))
+ok('... then each fire by name, with its distance and direction from the start', ['The first fire', 'The second fire', 'The third fire'].every(n => titleCmds.some(c => c.indexOf(n) >= 0)) &&
+  titleCmds.filter(c => /subtitle .*about \d+ blocks (north|south|toward|north-|south-)/.test(c)).length >= 3, titleCmds.join(' | '))
+ok('... lightning on each brazier, only for show', [b1, b2, b3].every(b => bolts.some(x => x.visual && x.at[0] == b.x + 0.5 && x.at[2] == b.z + 0.5)))
+ok('... thunder from each fire\'s direction, for each player', [b1, b2, b3].every(b => cmds.indexOf('execute as Carol at @s facing ' + (b.x + 0.5) + ' ' + (b.y + 1) + ' ' + (b.z + 0.5) +
+  ' run playsound minecraft:entity.lightning_bolt.thunder master @s ^ ^ ^16 3 0.8') >= 0))
+const pillars = cmds.map(c => c.match(/^execute in minecraft:overworld run particle minecraft:flame (\S+) (\S+) (\S+) 0\.4 10 0\.4/)).filter(m => m).map(m => ({ x: Number(m[1]), z: Number(m[3]) }))
+const fromStart = q => Math.sqrt(Math.pow(q.x - 5000.5, 2) + Math.pow(q.z - 5000.5, 2))
+ok('... the fires are thousands of blocks away, so each flares on the horizon toward it, 96 blocks out, and over the brazier itself',
+  [b1, b2, b3].every(b => pillars.some(q => Math.abs(fromStart(q) - 96) < 0.01 && Math.abs(Math.atan2(q.x - 5000.5, q.z - 5000.5) - Math.atan2(b.x - 5000, b.z - 5000)) < 0.01) &&
+    pillars.some(q => q.x == b.x + 0.5 && q.z == b.z + 0.5)), pillars.length + ' pillars')
+const heard = carol.msgs.filter(m => /^\[INTERCEPTED\]/.test(m))
+ok('... then the Inspectors\' channel, overheard: three scrambled lines to each player', heard.length == 3 && /unregistered gathering at the castle/.test(heard[0]) &&
+  /No fire is to be lit/.test(heard[1]) && /Inspectors to every site/.test(heard[2]) && carol.raw.some(c => JSON.stringify(c).indexOf('"obfuscated":true') >= 0), heard.join(' | '))
+ok('... never through tellraw (Discord), and nobody is told the Ministry\'s name', !cmds.some(c => /^tellraw @a/.test(c)) && !players.some(p => p.msgs.some(m => /Ministry/i.test(m))))
+ok('at the start each player gets the fires\' coordinates, how far and which way, and how to light them (owner, 2026-11-21: "in case the fires are out of view distance")',
+  said(carol, /^The three fires wait at:$/) && carol.msgs.some(m => /^  The first fire: 1900 70 0 \(about \d+ blocks (north|south|toward)/.test(m)) &&
+  carol.msgs.some(m => /^  The third fire: /.test(m)) && said(carol, /Kneel at a fire to light it: hold sneak beside it for a second and a half without being hurt. All three must burn within 45 seconds/),
+  carol.msgs.filter(m => /fire/.test(m)).join(' | '))
+ok('... and Ivy, joining while they\'re out, gets them too', said(ivy, /^The three fires wait at:$/) && ivy.msgs.some(m => /^  The second fire: /.test(m)))
+ok('the fires flare again every 30 seconds after the start (the first time at 30 seconds, after the opening)', [b1, b2, b3].every(b =>
+  cmds.indexOf('execute in minecraft:overworld run playsound minecraft:entity.blaze.shoot block @a ' + (b.x + 0.5) + ' ' + (b.y + 1) + ' ' + (b.z + 0.5) + ' 4 0.5') >= 0))
+ok('... and "Light the fires" ends it',titleCmds.some(c => /title Carol title .*Light the fires/.test(c)) && logs.some(l => /The opening is over/.test(l)))
+ok('... nobody was held: /shrine stop after it has nothing of the opening to cut', !/opening/.test(cmd('stop', admin)[0]))
 // Carol is /kill'ed (the kit drops) and respawns
 for (let i = 0; i < 41; i++) carol.slots[i] = stack('minecraft:air', 0)
 ;(handlers.respawned || []).forEach(h => h({ player: carol }))
 advance(3)
-ok('/kill still kills, and back from it Carol has the kit again (her own things still held)', carol.slots[0].id == 'minecraft:diamond_sword' && kitOf(carol).length == 8 && !!S().vaults['carol-uuid'])
+ok('/kill still kills, and back from it Carol has the kit again (her own things still held)', carol.slots[0].id == 'minecraft:diamond_sword' && kitOf(carol).length == 7 && !!S().vaults['carol-uuid'])
 ok('... global.Shrine.busy(): the Purge and the arena wait all night, not just for the rite', global.Shrine.busy() == 'the Shrine Awakens is on')
 ok('... their chunks are force-loaded while they\'re watched', [b1, b2, b3].every(b => cmds.indexOf('execute in minecraft:overworld run forceload add ' + (b.x - 1) + ' ' + (b.z - 1) + ' ' + (b.x + 1) + ' ' + (b.z + 1)) >= 0))
 advance(2)
@@ -523,28 +602,110 @@ ok('the event on: Bob, killed by an ambush, is knocked out instead; with no fire
   cmds.indexOf('effect clear Bob') >= 0 && cmds.indexOf('effect clear Bob') < cmds.indexOf('effect give Bob minecraft:resistance 3 4 true') &&
   logs.some(l => l == '[Shrine] Knockout: Bob (mob), woken at the start'), [bob.x, bob.y, bob.z].join(' '))
 ok('... /kill still kills', !fall(bob, 'genericKill'))
+// her kit made new every 3rd knockout (owner, 2026-11-21: "kits need to be refreshed after every 3 knock outs"): she has
+// eaten most of her steak, lost her shield, worn her sword, and carries a King's potato and something she picked up
+const carolAt = [carol.x, carol.y, carol.z]
+carol.slots[1].count = 3
+carol.slots[40] = stack('minecraft:air', 0)
+carol.slots[0].snbt = carol.slots[0].snbt.replace('{ShrineKit:1b,', '{ShrineKit:1b,Damage:900,')
+carol.slots[5] = stack('minecraft:potato', 2, true); carol.slots[6] = stack('minecraft:string', 4)
+carol.msgs = []
+fall(carol, 'mob'); fall(carol, 'mob')
+ok('two knockouts: the kit as it was', carol.slots[1].count == 3 && carol.slots[40].isEmpty() && /Damage:900/.test(carol.slots[0].snbt) && !said(carol, /kit is made new/))
+fall(carol, 'mob')
+ok('the third: her kit is made new, the steak a full 16 again, the sword whole, the lost shield back in her off hand, and she is told',
+  carol.slots[1].id == 'minecraft:cooked_beef' && carol.slots[1].count == 16 && carol.slots[0].id == 'minecraft:diamond_sword' && !/Damage:900/.test(carol.slots[0].snbt) &&
+  carol.slots[40].id == 'minecraft:shield' && /ShrineKit:1b/.test(carol.slots[40].snbt) && kitOf(carol).length == 7 &&
+  said(carol, /Your kit is made new: whole again, and the steak restocked, with what you lost\./) && logs.some(l => /\[Shrine\] Kit made new for Carol \(knockout 3, 1 pieces put back\)/.test(l)),
+  carol.slots.map((s, i) => s.isEmpty() ? '' : i + ':' + s.id + 'x' + s.count).filter(x => x).join(' '))
+ok('... and what else she carries is untouched: the King\'s potatoes, and what she picked up', carol.slots[5].id == 'minecraft:potato' && carol.slots[5].count == 2 && carol.slots[5].marked &&
+  carol.slots[6].id == 'minecraft:string' && carol.slots[6].count == 4)
+fall(carol, 'mob'); fall(carol, 'mob')
+ok('... the 4th and 5th knockouts don\'t, the 6th does', !logs.some(l => /Kit made new for Carol \(knockout [45]/.test(l)) && (fall(carol, 'mob'), logs.some(l => /Kit made new for Carol \(knockout 6\)/.test(l))))
+carol.slots[5] = stack('minecraft:air', 0); carol.slots[6] = stack('minecraft:air', 0)
+carol.x = carolAt[0]; carol.y = carolAt[1]; carol.z = carolAt[2]
+// Waves at the braziers (owner decision at the fifth run's rerun, 2026-11-20: 7 to 8 players on the night, "Waves should
+// continuously spawn"): while a brazier is unlit, a group every 20 seconds at the pilgrims within 40 blocks of it (made harder
+// before release, 2026-11-21: 3 + 1 per pilgrim, at most 8 a wave and 16 up)
+const atB2 = () => mobs.filter(m => !m.discarded && m.tags.indexOf('shrine_brazier_1') >= 0)
+const spotsOf = ms => ms.map(m => m.x + ' ' + m.y + ' ' + m.z).join(', ')
+carol.x = b2.x + 20.5; carol.z = b2.z + 0.5; dave.x = b2.x - 15.5; dave.z = b2.z + 5.5; carol.msgs = []
+advance(25)
+ok('two pilgrims within 40 blocks of unlit brazier 2: a group comes at once, 3 + 1 for each of them, on the ground 6 to 12 blocks from the fire',
+  atB2().length == 5 && atB2().every(m => { const d = Math.hypot(m.x - (b2.x + 0.5), m.z - (b2.z + 0.5)); return d >= 5.2 && d <= 12.8 && m.y == 64 && m.tags.indexOf('shrine_ambush') >= 0 }) &&
+  said(carol, /More Inspectors close in on the fire/) && logs.some(l => /\[Shrine\] Brazier 2 wave: 5 Inspectors for 2 near \(/.test(l)), spotsOf(atB2()))
+seconds(15)
+ok('... 15 seconds later, no more yet', atB2().length == 5)
+seconds(6)
+ok('... 20 seconds after the first, the next group', atB2().length == 10)
+seconds(60 * 3)
+ok('... they keep coming every 20 seconds until 16 of the fire\'s own are up (the last group tops it up), then wait', atB2().length == 16)
+atB2().forEach(m => { m.discarded = true })
+dave.x = 9000; carol.x = 1060.5; carol.z = 2000.5
+seconds(40)
+ok('... with nobody near, no more come', atB2().length == 0)
+// lighting by kneeling (owner, 2026-11-21: "instead of flint and steel lighting them immediately players should have to
+// shift for 2 seconds without taking damage to light them")
+const daveHeld = dave.slots[0]
+players.forEach(p => { p.msgs = [] })
+dave.x = b2.x + 2.5; dave.y = b2.y + 1; dave.z = b2.z + 0.5
+dave.slots[0] = stack('minecraft:flint_and_steel', 1)
+const rightClickOn = (p, x, y, z) => { const e = { player: p, item: p.slots[0], hand: 'MAIN_HAND', block: { level, x, y, z }, server, cancelled: false, cancel() { e.cancelled = true; throw EXIT } }
+  ;(handlers.blockRightClicked || []).forEach(h => { try { h(e) } catch (err) { if (err !== EXIT) throw err } }); return e.cancelled }
+ok('flint and steel at a brazier: refused, and told how to light it', rightClickOn(dave, b2.x, b2.y + 1, b2.z) && said(dave, /won't take from that\. Kneel at a fire to light it: hold sneak beside it for a second and a half without being hurt./))
+dave.slots[0] = daveHeld
+litByOther(b2); advance(20)
+ok('a brazier lit some other way (a flaming arrow) is put out, and those near are told how', fireOf(b2) == 'minecraft:campfire[lit=false,signal_fire=false]' && !B().lit[1] &&
+  B().state == 'placed' && dave.msgs.filter(m => /won't take from that/.test(m)).length == 2)
+cmds = []
+advance(10)
+ok('beside an unlit fire, not sneaking: the action bar says how', cmds.some(c => /^title Dave actionbar .*Hold sneak to kindle the second fire/.test(c)))
+dave.crouch = true; cmds = []
+advance(10)
+ok('kneeling (sneaking within 3 blocks of it): the kindling fills on the action bar, with sparks; half a second in, not lit yet', !B().lit[1] &&
+  cmds.some(c => /^title Dave actionbar .*Kindling the second fire/.test(c)) && cmds.some(c => /run particle minecraft:flame -499\.5 \S+ 10\.5 /.test(c)), cmds.filter(c => /Dave actionbar/.test(c)).slice(-1)[0])
+dave.health -= 3
+advance(5)
+ok('... a blow scatters it: start again', cmds.some(c => /^title Dave actionbar .*Struck! The kindling scatters/.test(c)) && !B().lit[1])
+advance(10)
+ok('... half a second unhurt after it: not yet', !B().lit[1])
+advance(50)
+ok('... a second and a half unhurt: the fire takes, and counts as caught (1 of 3)', B().lit[1] && B().state == 'counting' && fireOf(b2) == 'minecraft:campfire[lit=true,signal_fire=false]' &&
+  said(carol, /Far away, a fire catches\. 1 of 3/) && logs.some(l => /\[Shrine\] Dave kindled brazier 2/.test(l)) && cmds.some(c => /^title Dave actionbar .*The fire takes/.test(c)))
+// every 30 seconds the unlit fires flare again; a lit one doesn't
+cmds = []
+advance(620)
+const flareCmd = b => 'execute in minecraft:overworld run playsound minecraft:entity.blaze.shoot block @a ' + (b.x + 0.5) + ' ' + (b.y + 1) + ' ' + (b.z + 0.5) + ' 4 0.5'
+ok('every 30 seconds each unlit fire flares again (its pillar and a roar), the lit one not', cmds.indexOf(flareCmd(b1)) >= 0 && cmds.indexOf(flareCmd(b3)) >= 0 &&
+  cmds.indexOf(flareCmd(b2)) < 0 && cmds.some(c => c.indexOf('run particle minecraft:flame ' + (b1.x + 0.5) + ' ' + (b1.y + 13) + ' ' + (b1.z + 0.5) + ' 0.4 10 0.4') >= 0))
+douse(b2); advance(20)
+dave.crouch = false; dave.health = 20; dave.x = 9000
+atB2().forEach(m => { m.discarded = true })
+ok('... put out again before the others: back to waiting, none lit', B().state == 'placed' && !B().lit[1])
 
 // lighting: one, two, then the clock runs out
 players.forEach(p => { p.msgs = [] })
 lightFire(b1)
 advance(20)
-ok('lighting one starts the clock: 1 of 3, and everyone is told', B().state == 'counting' && B().lit[0] && said(carol, /Far away, a fire catches\. 1 of 3/) && said(far, /1 of 3/))
+ok('lighting one starts the clock: 1 of 3, and everyone is told', B().state == 'counting' && B().lit[0] && said(carol, /Far away, a fire catches\. 1 of 3\. The others have 45 seconds\./) && said(far, /1 of 3/))
 ok('... a column of flame and smoke over it, and a roar everyone hears', cmds.some(c => /particle minecraft:flame 1900\.5 74 0\.5 0\.25 3 0\.25/.test(c)) &&
   cmds.some(c => /particle minecraft:campfire_signal_smoke 1900\.5 76 0\.5/.test(c)) && cmds.some(c => /^execute as Far at @s run playsound minecraft:entity\.blaze\.shoot/.test(c)))
 bob.x = 3000.5; bob.z = 3000.5
 ok('a knockout with a fire lit: woken beside it, 3 blocks east, on the ground', fall(bob, 'mob') && bob.x == 1903.5 && bob.y == 64 && bob.z == 0.5 && said(bob, /beside the last fire lit/),
   [bob.x, bob.y, bob.z].join(' '))
-ok('... the boss bar shows the fires and the time left', cmds.some(c => /^bossbar set trollcraft:shrine_fires name .*The fires: 1 \/ 3.*(1:00|0:5\d)/.test(c)) && cmds.some(c => c == 'bossbar set trollcraft:shrine_fires players @a'))
+ok('... the boss bar shows the fires and the time left', cmds.some(c => /^bossbar set trollcraft:shrine_fires name .*The fires: 1 \/ 3.*0:4[45]/.test(c)) && cmds.some(c => c == 'bossbar set trollcraft:shrine_fires players @a'))
 advance(100)
-ok('... counting down', cmds.some(c => /^bossbar set trollcraft:shrine_fires name .*The fires: 1 \/ 3.*0:5[45]/.test(c)) && /The fires: 1 of 3 lit, 0:5\d left/.test(cmd('status', admin)[5]), cmd('status', admin)[5])
+ok('... counting down', cmds.some(c => /^bossbar set trollcraft:shrine_fires name .*The fires: 1 \/ 3.*0:[34]\d/.test(c)) && /The fires: 1 of 3 lit, 0:[34]\d left/.test(cmd('status', admin)[5]), cmd('status', admin)[5])
 lightFire(b2)
 advance(20)
 ok('a second: 2 of 3', B().lit[1] && said(carol, /Another fire catches\. 2 of 3/))
 ok('... a knockout now wakes beside the second, the last one lit', fall(bob, 'arrow') && bob.x == -496.5 && bob.z == 10.5, [bob.x, bob.y, bob.z].join(' '))
+advance(40)
+ok('... a lit brazier sends no waves, even with a pilgrim beside it', atB2().length == 0)
 // a /reload while the clock runs: the watch carries on
 load()
-seconds(60)
-ok('after a minute without the third, the lit ones gutter out (even across a /reload)', B().state == 'placed' && fireOf(b1) == 'minecraft:campfire[lit=false,signal_fire=false]' &&
+seconds(45)
+ok('after 45 seconds without the third, the lit ones gutter out (even across a /reload)', B().state == 'placed' && fireOf(b1) == 'minecraft:campfire[lit=false,signal_fire=false]' &&
   fireOf(b2) == 'minecraft:campfire[lit=false,signal_fire=false]' && said(carol, /The fires gutter out\. They must burn together\./), B().state)
 ok('... with smoke and a hiss, and the boss bar goes', cmds.some(c => /particle minecraft:large_smoke 1900\.5 71\.5 0\.5/.test(c)) && cmds.some(c => /block\.fire\.extinguish/.test(c)) &&
   cmds.lastIndexOf('bossbar remove trollcraft:shrine_fires') > cmds.findIndex(c => /The fires: 2 \/ 3/.test(c)))
@@ -555,6 +716,7 @@ players.forEach(p => { p.msgs = [] })
 lightFire(b1); advance(20)
 lightFire(b2); lightFire(b3); advance(20)
 ok('all three within the minute: they burn as one, and everyone is told', B().state == 'lit' && said(carol, /Three fires burn as one/) && said(far, /red light rises/))
+ok('... and the brazier stage\'s Inspectors are driven off by the fires: the rite begins clean', inspectors().length == 0 && said(carol, /The Inspectors fall back from the fires/))
 ok('... lightning for show strikes each brazier (a bolt that can\'t burn or hurt), and "THREE FIRES BURN" fills every screen',
   [b1, b2, b3].every(b => bolts.some(x => x.visual && x.at[0] == b.x + 0.5 && x.at[1] == b.y + 1 && x.at[2] == b.z + 0.5)) && bolts.every(x => x.visual) &&
   cmds.some(c => /^title Far title .*THREE FIRES BURN/.test(c)) && cmds.some(c => /^title Carol subtitle .*A red light rises over the Shrine/.test(c)), bolts.length)
@@ -580,7 +742,7 @@ cmds = []
 r = cmd('rise', admin)
 ok('/shrine rise with the beam up but no Awakening yet: refused (the Shrine rises last)', /The Shrine rises last/.test(r[0]) && S().rise.state == 'none', r[0])
 r = cmd('rise force', admin)
-ok('/shrine rise force during the event: it rises, and the Shrine doesn\'t wait on itself (the Purge names it)', /64 layers in about 29 seconds/.test(r[0]), r[0])
+ok('/shrine rise force during the event: it rises, and the Shrine doesn\'t wait on itself (the Purge names it)', /64 layers in about 45 seconds/.test(r[0]), r[0])
 ok('... during the event the sky turns to night and a storm rolls in', cmds.indexOf('time set midnight') >= 0 && cmds.indexOf('weather thunder 72000') >= 0 && S().event.sky)
 advance(25)
 ok('when the rise begins, the beam comes out and its ground is put back', !S().beam.up && world['1000,62,2000'] == 'minecraft:grass_block' && world['999,61,1999'] == 'minecraft:grass_block')
@@ -601,12 +763,17 @@ ok('... and Carol\'s own things come back to the slots they were in; the kit is 
   carol.slots[38].id == 'minecraft:iron_chestplate' && kitOf(carol).length == 0 && !S().vaults['carol-uuid'] && !!vaultFiles['kubejs/shrine_vaults/Carol_carol-uuid.json'].restored &&
   said(carol, /Your own belongings are back/), carol.slots.filter(s => !s.isEmpty()).map(s => s.id).join())
 ok('... Bob, who kept his own gear, still has it', bob.slots[3] === unsavable && bob.slots[4].id == 'minecraft:bread')
-ok('... status: nobody\'s belongings are held but Ivy\'s, who is offline', /The kit: belongings held for Ivy \(handed back when they're online\)/.test(cmd('status', admin)[13]), cmd('status', admin)[13])
+ok('... status: nobody\'s belongings are held but Ivy\'s and Jay\'s, who are offline', /The kit: belongings held for Ivy, Jay \(handed back when they're online\)/.test(cmd('status', admin)[13]), cmd('status', admin)[13])
 players.push(ivy)
 ;(handlers.loggedIn || []).forEach(h => h({ player: ivy }))
 advance(100)
 ok('Ivy, offline when the night ended, gets her belongings back when she next joins', ivy.slots[2].id == 'minecraft:diamond' && ivy.slots[2].count == 9 && kitOf(ivy).length == 0 && !S().vaults['ivy-uuid'])
 players.splice(players.indexOf(ivy), 1)
+players.push(jay)
+;(handlers.loggedIn || []).forEach(h => h({ player: jay }))
+advance(100)
+ok('... Jay too, armed late in the night', jay.slots[3].id == 'minecraft:emerald' && kitOf(jay).length == 0 && !S().vaults['jay-uuid'])
+players.splice(players.indexOf(jay), 1)
 // a kit item that got out (into Carol's ender chest): the sweep takes it back
 carol.ender[4] = Item.of('minecraft:diamond_sword', 1, '{ShrineKit:1b}')
 carol.msgs = []
@@ -668,13 +835,13 @@ const carriesNothing = m => !m.tags.some(t => /^shrine_pot_/.test(t))
 ok('the Inspectors\' ground: never on the steps, in a hill\'s cave or a lake; under leaves, the forest floor', ordinary(0).map(colOf).sort().join(' ') == '1002,64,2030 1025,64,1983 973,64,1987',
   ordinary(0).map(colOf).join(' '))
 terrain.forEach(k => { delete world[k] })
-ok('/shrine rite: 2 present (the op in creative doesn\'t count), so the altar needs 16 potatoes: at least 2 Senior Inspectors must fall',
-  /2 present, so the altar needs 16 Potato King's Potatoes\. Waves come until it's full, each led by a Senior Inspector who drops 8, so at least 2 must fall\./.test(r[0]) &&
+ok('/shrine rite: 2 present (the op in creative doesn\'t count), so the altar needs 16 potatoes: at least 8 Senior Inspectors must fall',
+  /2 present, so the altar needs 16 Potato King's Potatoes\. Waves come until it's full, led by Senior Inspectors who drop 2 each, more of them with every wave, so at least 8 must fall\./.test(r[0]) &&
   RT().state == 'running' && RT().need == 16, r[0])
 ok('... wave 1: 3 Inspectors (1 per player, at least 3), in iron, seeing 64 blocks, carrying no potatoes', ordinary(0).length == 3 &&
   ordinary(0).every(m => /iron_chestplate/.test(m.nbt) && /generic\.follow_range",Base:64\.0d/.test(m.nbt) && carriesNothing(m) && m.tags.indexOf('shrine_inspector') >= 0))
-ok('... and a Senior Inspector at their head, the only one carrying potatoes (8): 150 health, a netherite axe, named in bold', !!seniorOf(0) &&
-  seniorOf(0).tags.indexOf('shrine_pot_8') >= 0 && /"text":"Senior Inspector","color":"gold","italic":false,"bold":true/.test(seniorOf(0).nbt) && /netherite_axe/.test(seniorOf(0).nbt) && seniorOf(0).health == 150)
+ok('... and a Senior Inspector at their head, the only one carrying potatoes (2): 150 health, a netherite axe, named in bold', !!seniorOf(0) &&
+  seniorOf(0).tags.indexOf('shrine_pot_2') >= 0 && /"text":"Senior Inspector","color":"gold","italic":false,"bold":true/.test(seniorOf(0).nbt) && /netherite_axe/.test(seniorOf(0).nbt) && seniorOf(0).health == 150)
 ok('... with Resistance and his own boss bar, "Senior Inspector (wave 1)"', cmds.indexOf('effect give @e[tag=shrine_senior] minecraft:resistance infinite 0 true') >= 0 &&
   cmds.some(c => /^bossbar add trollcraft:shrine_senior_0 .*Senior Inspector \(wave 1\)/.test(c)) && Object.keys(RT().seniors).join() == '0')
 ok('... on the land around the Shrine, 30 to 45 blocks from its centre', waveMobs(0).every(m => { const d = Math.hypot(m.x - 1000.5, m.z - 2000.5); return d >= 29 && d <= 46 }),
@@ -746,8 +913,8 @@ cmds = []
 players.forEach(p => { p.msgs = [] })
 kill(seniorOf(2))
 advance(20)
-ok('a Senior Inspector falls: 8 Potato King\'s Potatoes, marked, named in gold, with a glint; his bar goes; those present are told',
-  cmds.some(c => /run summon minecraft:item .*Count:8b,tag:\{trollcraft:\{kingspotato:1b\}.*Potato King\\'s Potato.*Enchantments/.test(c)) &&
+ok('a Senior Inspector falls: 2 Potato King\'s Potatoes, marked, named in gold, with a glint; his bar goes; those present are told',
+  cmds.some(c => /run summon minecraft:item .*Count:2b,tag:\{trollcraft:\{kingspotato:1b\}.*Potato King\\'s Potato.*Enchantments/.test(c)) &&
   cmds.indexOf('bossbar remove trollcraft:shrine_senior_2') >= 0 && said(carol, /The Senior Inspector falls/), cmds.filter(c => /summon minecraft:item|shrine_senior/.test(c)).join('\n'))
 ok('... in a burst of red', cmds.some(c => /run particle minecraft:dust 0\.8 0 0 2 /.test(c)) && cmds.some(c => /playsound minecraft:entity\.evoker\.death/.test(c)))
 ok('... the other Senior still up keeps his bar', Object.keys(RT().seniors).join() == '1' && cmds.indexOf('bossbar remove trollcraft:shrine_senior_1') < 0)
@@ -766,6 +933,34 @@ const capped = RT().wave
 seconds(60 * 10)
 ok('a rite nobody fights: a wave every 3 minutes until 30 Inspectors are up, then no more', riteMobsNow().length >= 30 && riteMobsNow().length < 35 && RT().wave == capped && capped > 4,
   riteMobsNow().length + ' up, wave ' + (capped + 1))
+riteMobsNow().forEach(m => kill(m))
+// Nobody at the site (everyone gone, or the server restarted mid-rite): the rite waits. In game the Inspectors then sit
+// in chunks nobody has loaded, out of the script's sight, which read as every wave beaten: on the test server
+// (2026-11-20) 49 waves, 147 Inspectors, piled up with nobody online. Here no mob is up, as the script would see it.
+const homes = players.map(p => [p.x, p.z]), waitWave = RT().wave
+players.forEach(p => { p.x = 3000.5; p.z = 3000.5 })
+seconds(60 * 10)
+ok('nobody within 64 blocks of the site: no wave comes, however long', RT().wave == waitWave && riteMobsNow().length == 0, 'wave ' + (RT().wave + 1))
+admin.x = 1000.5; admin.z = 2030.5
+advance(20)
+ok('... an op comes back (even in creative): the next wave comes', RT().wave == waitWave + 1 && riteMobsNow().length > 0)
+players.forEach((p, k) => { p.x = homes[k][0]; p.z = homes[k][1] })
+riteMobsNow().forEach(m => kill(m))
+// A stray from an earlier night, loading with its chunk, is taken away before it can fight (fifth run, 2026-11-20: 16
+// of run 4's Inspectors, five Seniors among them, in a lake 100 blocks off, a reset and a day later). This rite's own,
+// loading again, stay.
+const strayOf = tags => mob('minecraft:vindicator', 'MONSTER', 1100.5, 64, 2100.5, { tags: tags, named: true })
+const oldSenior = strayOf(['shrine_inspector', 'shrine_rite', 'shrine_rs_12345', 'shrine_wave_9', 'shrine_senior', 'shrine_pot_8'])
+cmds = []
+ok('a stray Senior Inspector from an earlier rite, loading with its chunk: taken away, no potatoes dropped', spawn(oldSenior) && (advance(2), oldSenior.discarded) &&
+  !cmds.some(c => /summon minecraft:item/.test(c)) && logs.some(l => /A stray Inspector from an earlier night, taken away as its chunk loaded/.test(l)))
+const ownAgain = strayOf(['shrine_inspector', 'shrine_rite', 'shrine_rs_' + RT().serial, 'shrine_wave_' + RT().wave])
+ok('... one of this rite\'s, loading again: it stays', RT().serial > 0 && !spawn(ownAgain))
+ownAgain.discarded = true
+ok('... an ambush Inspector from another night: taken away', spawn(strayOf(['shrine_inspector', 'shrine_ambush', 'shrine_ev_777'])))
+advance(20)
+ok('... and every Inspector the rite summons carries its rite\'s tag', riteMobsNow().length > 0 && riteMobsNow().every(m => m.tags.indexOf('shrine_rs_' + RT().serial) >= 0),
+  riteMobsNow().map(m => m.tags.join('/')).join(' | '))
 riteMobsNow().forEach(m => kill(m))
 // the potatoes: only the altar takes them
 carol.slots[0] = kings(6); carol.slots[5] = kings(2)
@@ -842,8 +1037,8 @@ const straggler = mob('minecraft:vindicator', 'MONSTER', 1040.5, 64, 2000.5, { t
 cmds = []
 const bolts0 = bolts.length
 r = cmd('awaken force', admin)
-ok('/shrine awaken: the tribute, the words, the book, then the Pool raised to 230,000 and the seals broken to Tier 4 (no vote), in about 49 seconds', /The Awakening begins/.test(r[0]) &&
-  /the seals broken up to Tier 4 \(no vote\) and the Pool raised to 230,000 Drops, credited to nobody/.test(r[0]) && /About 49 seconds/.test(r[0]), r[0])
+ok('/shrine awaken: the tribute, the words and the book in about 49 seconds; when the night ends, the seals broken to Tier 4 (no vote) and the Pool raised to 230,000', /The Awakening begins/.test(r[0]) &&
+  /When the night ends, the seals break up to Tier 4 \(no vote\) and the Pool is raised to 230,000 Drops, credited to nobody/.test(r[0]) && /about 49 seconds/.test(r[0]), r[0])
 advance(2)
 ok('it begins: every Inspector left is taken away', straggler.discarded)
 ok('... those present see "The Shrine awakens" and hear it; someone far away doesn\'t get the title', cmds.some(c => /^title Carol title .*The Shrine awakens/.test(c)) && cmds.some(c => /^title Bob title/.test(c)) && !cmds.some(c => /^title Far title/.test(c)))
@@ -874,17 +1069,16 @@ ok('... with sparkles and a page turning; everyone is told, with a [/regalia] to
 r = regalia(carol)
 ok('/regalia: the eight relics, none restored yet', /THE REGALIA OF THE BLADE {3}restored at the Shrine: 0 of 8/.test(r[0]) && r.length == 10 && /The War Chest {2}0 \/ 10,000 potatoes/.test(r[1]) &&
   /The Crown of the Blade {2}0 \/ 1 crown/.test(r[8]), r.slice(0, 3).join(' | '))
+ok('... the Axe of Peace asks 1,000 blocks of cobalt, the Swine\'s Oath 128 blocks of pig iron (owner decisions 2026-11-20), in /regalia and the book',
+  /The Axe of Peace {2}0 \/ 1,000 blocks of cobalt/.test(r[2]) && /The Swine's Oath {2}0 \/ 128 blocks of pig iron/.test(r[7]) &&
+  pageTexts.some(t => /^THE AXE OF PEACE[\s\S]*Bring me the metal to forge its equal: a thousand blocks of cobalt\.$/.test(t)) &&
+  pageTexts.some(t => /^THE SWINE'S OATH[\s\S]*Forge me pig iron, iron and blood made one: a hundred and twenty-eight blocks\.$/.test(t)), r[2] + ' | ' + r[7])
 ok('global.Regalia: open, eight relics', global.Regalia.isOpen() && global.Regalia.relics.length == 8 && global.Regalia.progress('war_chest').have == 0)
 advance(120)
 ok('the Blood God: "I break the third seal, and the fourth with it. Blood for the Blood God."', said(carol, /\[BLOOD GOD\] I break the third seal, and the fourth with it\. Blood for the Blood God\./))
 advance(40)
-ok('the Pool is raised to a quarter past Tier 4, 230,000: 164,000 Drops in one, credited to nobody (owner decision at the rehearsal, 2026-11-19)', pool.drops == 230000 &&
-  pool.adds.length == 1 && pool.adds[0].n == 164000 && pool.adds[0].source == 'shrine' && pool.adds[0].uuid === '' && pool.adds[0].name === '' &&
-  logs.some(l => /The Awakening added 164000 Drops, credited to nobody/.test(l)), JSON.stringify(pool.adds))
-ok('... and the Shrine breaks the seals itself: Tiers 3 and 4 open, by "the Shrine"', pool.opens.length == 1 && pool.opens[0].n == 4 && pool.opens[0].by == 'the Shrine' &&
-  pool.tier == 4 && logs.some(l => /The Awakening broke the seals: Tier 2 to 4/.test(l)), JSON.stringify(pool.opens))
-ok('... the seals break before the Drops land, so the Pool never calls a vote on a tier about to open (rehearsal, 2026-11-19)', pool.adds.every(a => a.tierThen == 4), JSON.stringify(pool.adds))
-ok('... no vote is asked for', !carol.msgs.some(m => /bloodpool vote|break the third seal together/.test(m)))
+ok('... the seals crack, but the Pool waits for the night\'s end (its reload would stall the server mid-show; fifth run, 2026-11-20)', pool.drops == 66000 &&
+  pool.adds.length == 0 && pool.opens.length == 0 && pool.tier == 2, JSON.stringify(pool))
 const ringOf = r => bolts.slice(bolts0).filter(b => b.visual && Math.abs(Math.hypot(b.at[0] - 1000.5, b.at[2] - 2000.5) - r) < 1.5).length
 ok('... as the seals break, lightning for show rings the Shrine (8 bolts), soul fire rises at its corners, and more fireworks',
   ringOf(26) == 8 && cmds.some(c => /run particle minecraft:soul_fire_flame /.test(c)) && cmds.filter(c => /summon minecraft:firework_rocket/.test(c)).length >= 15,
@@ -893,14 +1087,24 @@ ok('... not over yet: a moment for his last words before everyone is let go', S(
 advance(60)
 ok('the Awakening is done; status says so, with the Drops it added', S().awake.state == 'done' && global.Shrine.awakened() &&
   /The Awakening: done\. The Regalia is open; 164,000 Drops added, credited to nobody\./.test(cmd('status', admin)[8]), cmd('status', admin)[8])
+// the Shrine stood already (raised first), so the night ends as the Awakening does, and the seals break then
+ok('the night over, the Pool is raised to a quarter past Tier 4, 230,000: 164,000 Drops in one, credited to nobody (owner decision at the rehearsal, 2026-11-19)', pool.drops == 230000 &&
+  pool.adds.length == 1 && pool.adds[0].n == 164000 && pool.adds[0].source == 'shrine' && pool.adds[0].uuid === '' && pool.adds[0].name === '' &&
+  logs.some(l => /The Awakening added 164000 Drops, credited to nobody/.test(l)), JSON.stringify(pool.adds))
+ok('... and the Shrine breaks the seals itself: Tiers 3 and 4 open, by "the Shrine"', pool.opens.length == 1 && pool.opens[0].n == 4 && pool.opens[0].by == 'the Shrine' &&
+  pool.tier == 4 && logs.some(l => /The Awakening broke the seals: Tier 2 to 4/.test(l)), JSON.stringify(pool.opens))
+ok('... the seals break before the Drops land, so the Pool never calls a vote on a tier about to open (rehearsal, 2026-11-19)', pool.adds.every(a => a.tierThen == 4), JSON.stringify(pool.adds))
+ok('... no vote is asked for', !carol.msgs.some(m => /bloodpool vote|break the third seal together/.test(m)))
 // While he speaks: "Fire particles, lightning, heart beats. The works" (owner, 2026-11-19)
 const heartbeats = cmds.filter(c => /^execute as Far at @s run playsound minecraft:entity\.warden\.heartbeat/.test(c)).length
 ok('while the Blood God speaks: a heartbeat everyone hears, every second (twice as fast on his last line), and a growl as each line begins',
-  heartbeats == 6 + 6 + 8 && cmds.filter(c => /^execute as Far at @s run playsound minecraft:entity\.ender_dragon\.growl/.test(c)).length == 3, heartbeats)
+  heartbeats == 6 + 8 + 8 && cmds.filter(c => /^execute as Far at @s run playsound minecraft:entity\.ender_dragon\.growl/.test(c)).length == 3, heartbeats)
 ok('... a blood mist with each beat; with each sentence, fire up the statue, lava and soul fire from the head',
-  cmds.filter(c => /run particle minecraft:dust 0\.6 0 0 2\.5 /.test(c)).length == 20 && cmds.filter(c => /run particle minecraft:flame 1000\.5 96 2000\.5 5 30 5 /.test(c)).length == 8 &&
-  cmds.filter(c => /run particle minecraft:lava 1000\.5 128 2000\.5 /.test(c)).length == 8 && cmds.some(c => /run particle minecraft:soul_fire_flame 1000\.5 124 2000\.5 3 3 3 /.test(c)))
-ok('... and two bolts for show with each sentence, in a ring beyond the seals\' (16 in all)', ringOf(34) == 16, ringOf(34))
+  cmds.filter(c => /run particle minecraft:dust 0\.6 0 0 2\.5 /.test(c)).length == 22 && cmds.filter(c => /run particle minecraft:flame 1000\.5 96 2000\.5 5 30 5 /.test(c)).length == 9 &&
+  cmds.filter(c => /run particle minecraft:lava 1000\.5 128 2000\.5 /.test(c)).length == 9 && cmds.some(c => /run particle minecraft:soul_fire_flame 1000\.5 124 2000\.5 3 3 3 /.test(c)))
+ok('... and two bolts for show with each sentence, in a ring beyond the seals\' (18 in all)', ringOf(34) == 18, ringOf(34))
+ok('... and the Regalia\'s line now says what the relics are for: "With each one returned, I break another seal."',
+  said(far, /Restore them here, and my name returns with them\. With each one returned, I break another seal\./))
 ok('... his last words fill the screen: "BLOOD FOR THE BLOOD GOD."', cmds.some(c => c == 'title Far title ' + JSON.stringify({ text: 'BLOOD FOR THE BLOOD GOD.', color: 'dark_red', bold: true })) &&
   cmds.some(c => c == 'title Far subtitle ' + JSON.stringify({ text: 'I break the third seal, and the fourth with it.', color: 'red' })))
 ok('/shrine awaken again: refused', /already awakened/.test(cmd('awaken', admin)[0]))
@@ -937,6 +1141,82 @@ ok('/shrine repair places every layer again over the Shrine (nothing cleared), t
   world[LECTERN] == 'minecraft:lectern[facing=east,has_book=true,powered=false]' && /The Regalia of the Blade/.test(bookOf()), r[0])
 ok('... with its chunks loaded for it, and let go after', cmds.indexOf('execute in minecraft:overworld run forceload add 979 1979 1020 2021') >= 0 && cmds.indexOf('execute in minecraft:overworld run forceload remove 979 1979 1020 2021') >= 0)
 
+// ---------- Act II: the Regalia restored at the altar (owner decisions 2026-11-20: relics break the seals) ----------
+const ALTAR_AT = LECTERN.split(',').map(Number)
+const hand = (p, id, n) => { p.slots[0] = stack(id, n) }
+const tally = id => S().regalia.progress[id] ? S().regalia.progress[id].have : 0
+const atAltar = p => clickBlock(p, ALTAR_AT[0], ALTAR_AT[1], ALTAR_AT[2])
+players.forEach(p => { p.msgs = [] })
+cmds = []
+hand(carol, 'minecraft:totem_of_undying', 10)
+atAltar(carol)
+ok('ten totems given at the altar: all counted for the Totem Hoard, credited to Carol, and she\'s told', tally('totem_hoard') == 10 && carol.slots[0].count == 0 &&
+  S().regalia.progress.totem_hoard.by['carol-uuid'].n == 10 && said(carol, /You give 10 Totems of Undying to The Totem Hoard: 10 of 64 Totems of Undying\./), carol.msgs.join(' | '))
+hand(bob, 'minecraft:totem_of_undying', 64)
+atAltar(bob)
+ok('... only what it still needs is taken: 54 of Bob\'s 64, the rest left in his hand', tally('totem_hoard') == 64 && bob.slots[0].count == 10)
+ok('... restored: "THE TOTEM HOARD is restored" on every screen, the Blood God speaks, and the seal relics are counted',
+  cmds.some(c => /^title Far title .*THE TOTEM HOARD/.test(c)) && said(far, /\[BLOOD GOD\] The Totem Hoard is mine again\. Another seal will break for you\./) &&
+  said(far, /The Totem Hoard is restored: 1 of 7 relics for the seals/) && global.Regalia.restoredForSeals() == 1 && global.Regalia.isRestored('totem_hoard'))
+bob.msgs = []
+atAltar(bob)
+ok('... once restored, it takes no more', bob.slots[0].count == 10 && said(bob, /The Totem Hoard is already restored/))
+const raiders = () => mobs.filter(m => !m.discarded && m.tags.indexOf('shrine_raid') >= 0)
+advance(205)
+ok('... 10 seconds later, Inspectors come for it on the ring round the Shrine, in diamond (STORY.md #38)', raiders().length >= 3 &&
+  raiders().every(m => { const d = Math.hypot(m.x - 1000.5, m.z - 2000.5); return d >= 29 && d <= 46 && /diamond_chestplate/.test(m.nbt) }) &&
+  logs.some(l => /\[Shrine\] Relic raid for totem_hoard: \d+ Inspectors/.test(l)), raiders().length)
+raiders().forEach(m => { m.discarded = true })
+// cobalt and pig iron by the block, ingots counting 9 to one
+players.forEach(p => { p.msgs = [] })
+hand(carol, 'tconstruct:cobalt_block', 64); atAltar(carol)
+hand(carol, 'tconstruct:cobalt_ingot', 5); atAltar(carol)
+ok('cobalt blocks and ingots for the Axe of Peace, counted in ingots, told in blocks', tally('axe_of_peace') == 64 * 9 + 5 &&
+  said(carol, /You give 64 blocks of cobalt to The Axe of Peace: 64 of 1,000 blocks of cobalt\./) && said(carol, /You give 5 cobalt ingots to The Axe of Peace: 64 of 1,000 blocks of cobalt\./), carol.msgs.join(' | '))
+hand(carol, 'tconstruct:cobalt_block', 190); atAltar(carol)
+ok('... each quarter, everyone is told', said(far, /The Axe of Peace is a quarter restored: 254 of 1,000 blocks of cobalt\./))
+hand(dave, 'tconstruct:pig_iron_ingot', 18); atAltar(dave)
+ok('pig iron ingots for the Swine\'s Oath', tally('swines_oath') == 18 && said(dave, /You give 2 blocks of pig iron to The Swine's Oath: 2 of 128 blocks of pig iron\./), dave.msgs.join(' | '))
+// potatoes and crates for the War Chest; never the Potato King's
+hand(bob, 'minecraft:potato', 3000); atAltar(bob)
+hand(bob, 'quark:potato_crate', 10); atAltar(bob)
+ok('potatoes and potato crates (9 each) for the War Chest', tally('war_chest') == 3090)
+// blood for the Chalice: a bucket of it, and the bucket comes back empty
+hand(carol, 'evilcraft:bucket_blood', 1); carol.msgs = []
+atAltar(carol)
+ok('a bucket of blood for the Chalice: 1,000 mB counted, an empty bucket back', tally('chalice') == 1000 && carol.slots[0].id == 'minecraft:bucket' &&
+  said(carol, /You give 1 buckets of blood to The Chalice of Blood: 1 of 1,000 buckets of blood\./), carol.msgs.join(' | '))
+// anything else at the altar: the lectern's book reads as usual
+hand(carol, 'minecraft:dirt', 5)
+ok('anything else at the altar is left alone (the book reads as usual)', !atAltar(carol).cancelled && carol.slots[0].count == 5)
+const regaliaNow = regalia(carol)
+ok('/regalia shows each relic in its own unit, its contributors, and how many seal relics are in', /The Axe of Peace {2}254 \/ 1,000 blocks of cobalt \(Carol 254\)/.test(regaliaNow[2]) &&
+  /The Totem Hoard {2}64 \/ 64 Totems of Undying \(Bob 54, Carol 10\)/.test(regaliaNow[3]) && /each one restored breaks another seal \(1 of 7\)/.test(regaliaNow[9]), regaliaNow.join(' | '))
+// Carl's Bridle (owner decision 2026-11-20, it was a bred horse): 32 saddles and 16 diamond horse armour, each filled
+// on its own. Neither stacks, so everything of it the giver carries goes in at once.
+players.forEach(p => { p.msgs = [] })
+for (let i = 0; i < 5; i++) carol.slots[i] = stack('minecraft:saddle', 1)
+carol.slots[6] = stack('minecraft:diamond_horse_armor', 1)
+atAltar(carol)
+ok('Carl\'s Bridle: the five saddles Carol carries go in at once (not the horse armour), and she\'s told each part\'s count',
+  [0, 1, 2, 3, 4].every(i => carol.slots[i].count == 0) && carol.slots[6].count == 1 && S().regalia.progress.carls_bridle.parts['minecraft:saddle'] == 5 &&
+  said(carol, /You give 5 saddles to Carl's Bridle: saddles 5 of 32, diamond horse armour 0 of 16\./), carol.msgs.join(' | '))
+for (let i = 0; i < 30; i++) bob.slots[i] = stack('minecraft:saddle', 1)
+atAltar(bob)
+const bobSaddles = () => bob.slots.filter(s => s.id == 'minecraft:saddle' && s.count > 0).length
+ok('... only the saddles it still needs: 27 of Bob\'s 30', S().regalia.progress.carls_bridle.parts['minecraft:saddle'] == 32 && bobSaddles() == 3)
+bob.slots[0] = stack('minecraft:saddle', 1); bob.msgs = []
+atAltar(bob)
+ok('... then no more saddles: it has all it needs', said(bob, /Carl's Bridle has all the saddles it needs/) && bobSaddles() == 4)
+for (let i = 0; i < 16; i++) dave.slots[i] = stack('minecraft:diamond_horse_armor', 1)
+atAltar(dave)
+ok('... and with 16 diamond horse armour, Carl\'s Bridle is restored', global.Regalia.isRestored('carls_bridle') && said(far, /Carl's Bridle is mine again/) &&
+  global.Regalia.restoredForSeals() == 2 && dave.slots.every(s => s.id != 'minecraft:diamond_horse_armor' || s.count == 0))
+const rTack = regalia(carol)
+ok('/regalia shows Carl\'s Bridle part by part', /Carl's Bridle {2}saddles 32 \/ 32, diamond horse armour 16 \/ 16/.test(rTack[6]), rTack[6])
+advance(205)
+raiders().forEach(m => { m.discarded = true })
+
 // a second night (test server): whoever offered the potatoes, the Drops go to nobody, and a /reload mid-way carries on
 cmd('reset confirm', admin); advance(40)
 ok('the reset forgets the Awakening and closes the Regalia', S().awake.state == 'none' && !global.Regalia.isOpen() && /named nothing yet/.test(regalia(carol)[0]))
@@ -961,6 +1241,19 @@ ok('... and the seals are broken once (the /reload didn\'t open them twice)', po
 cmd('reset confirm', admin); advance(40)
 cmd('braziers', admin); advance(2)
 ok('a night begun with /shrine braziers: the event is on', global.Shrine.eventOn())
+// (2026-11-21, on the test server: its start is near the braziers, and 21 Inspectors came at second 0 of the opening)
+const carolWas = [carol.x, carol.z], nearB1 = () => mobs.filter(m => !m.discarded && (m.tags.indexOf('shrine_brazier_0') >= 0 || m.tags.indexOf('shrine_ambush') >= 0))
+carol.x = b1.x + 10.5; carol.z = b1.z + 0.5
+advance(100)
+ok('no ambush and no brazier wave while the opening plays, even beside a brazier', nearB1().length == 0, nearB1().length + ' Inspectors')
+cmds = []
+r = cmd('stop', admin)
+advance(100)
+ok('/shrine stop during the opening cuts it short; the night goes on without the rest of it', /The opening is cut short/.test(r[0]) && global.Shrine.eventOn() && S().fires.state == 'placed' &&
+  !cmds.some(c => /THE PILGRIMAGE|The first fire/.test(c)), r[0])
+ok('... and with the opening over, the Inspectors come', nearB1().length > 0, nearB1().length + ' Inspectors')
+nearB1().forEach(m => { m.discarded = true })
+carol.x = carolWas[0]; carol.z = carolWas[1]
 cmd('rise force', admin); advance(layerTicks * 66 + 30)
 ok('... still on once the Shrine has risen (and the fires\' stage is done)', global.Shrine.eventOn() && S().fires.state == 'done')
 pool.drops = 240000; pool.tier = 2; pool.adds = []; pool.opens = []; carol.msgs = []
@@ -991,6 +1284,7 @@ const toTheBeam = () => { cmd('braziers', admin); advance(2); cmd('fires light',
 const allAtTheBeam = () => { players.forEach((p, k) => { p.x = 990.5 + k * 8; p.y = 64; p.z = 2030.5 }) }
 const GLASS = [1000, 63, 2000]                                    // the beam's red glass: the site (1000 64 2000), one down
 carol.slots[8] = own('minecraft:compass', 1)
+pool.drops = 66000; pool.tier = 2; pool.adds = []; pool.opens = []
 toTheBeam()
 ok('(the night: the fires lit, the beam up, nothing risen)', S().beam.up && S().rise.state == 'none' && world[GLASS.join(',')] == 'minecraft:red_stained_glass')
 allAtTheBeam(); far.x = 3000.5; far.z = 3000.5
@@ -1033,13 +1327,19 @@ players.forEach(p => { p.msgs = [] })
 cmds = []
 far.spectator = true
 const farAt = [far.x, far.z]
+// a tree's canopy, vines hanging from it, over where everyone will watch: they stand on the ground under it, not on top
+// (at the fifth run, 2026-11-20, the owner was put on a tree, vines between them and the Shrine)
+const canopy = []
+for (let x = 1053; x <= 1062; x++) for (let z = 1985; z <= 2015; z++) for (let y = 66; y <= 70; y++) {
+  world[x + ',' + y + ',' + z] = y >= 69 ? 'minecraft:oak_leaves' : 'minecraft:vine'; canopy.push(x + ',' + y + ',' + z)
+}
 carol.slots[0] = kings(30)
 clickBlock(carol, GLASS[0], GLASS[1], GLASS[2])
 ok('the offering is full: the beam blazes, every Inspector vanishes, and the op is told the Awakening begins by itself', RT().state == 'full' && riteMobsNow().length == 0 &&
   said(carol, /The beam blazes\. Beneath it, something enormous stirs\./) && said(carol, /The Inspectors crumble to ash/) && said(admin, /the Awakening begins by itself in 13 seconds/))
 advance(61)
 const x0 = 979 + 38 + 34 + 4, watchers = [admin, bob, carol, dave]
-ok('3 seconds later, everyone but spectators is brought back from the beam: east of the site, beyond where the steps will go, side by side, facing it',
+ok('3 seconds later, everyone but spectators is brought back from the beam: east of the site, beyond where the steps will go, side by side, facing it, on the ground under the trees',
   watchers.every(p => p.x == x0 + 0.5 && p.y == 64) && new Set(watchers.map(p => p.z)).size == 4 &&
   cmds.some(c => c.indexOf('run tp Carol ' + (x0 + 0.5) + ' 64 ') > 0 && / facing 1000\.5 84 2000\.5$/.test(c)) && far.x == farAt[0] && far.z == farAt[1] &&
   said(carol, /drawn back from the beam/), watchers.map(p => p.name + ' ' + p.x + ' ' + p.y + ' ' + p.z).join(', '))
@@ -1055,8 +1355,10 @@ advance(780)
 ok('... the Regalia is named, its book to lie on the Shrine\'s altar once it stands', global.Regalia.isOpen() && said(carol, /\[REGALIA\] The Blood God has named the Regalia of the Blade\. Its book will lie on his Shrine's altar\./))
 advance(awakeTicks - 780 + 30)
 ok('when the Awakening is done, the Shrine rises: the night\'s last act. Everyone is still held, still in the kit, the event still on', S().awake.state == 'done' && S().rise.state == 'rising' &&
-  global.Shrine.eventOn() && Object.keys(S().awake.spots).length == 4 && kitOf(carol).length >= 7 && logs.some(l => /The Shrine rises: the night's last act/.test(l)), S().rise.state)
+  global.Shrine.eventOn() && Object.keys(S().awake.spots).length == 4 && kitOf(carol).length >= 6 && logs.some(l => /The Shrine rises: the night's last act/.test(l)), S().rise.state)
 ok('... and the beam comes out as it rises', !S().beam.up)
+ok('... the Pool still untouched while the Shrine rises: the seals break when the night ends (owner, fifth run, 2026-11-20)', pool.drops == 66000 && pool.adds.length == 0 &&
+  pool.opens.length == 0 && /the seals break and the Pool rises when the night ends/.test(cmd('status', admin)[8]), cmd('status', admin)[8])
 carol.x += 10
 advance(20)
 ok('... still held while it rises', carol.x == x0 + 0.5)
@@ -1067,11 +1369,13 @@ advance(2)
 ok('the Shrine stands: "TECHNOBLADE\'S SHRINE stands once more", it burns from its feet to its crown, and the Regalia book lies on its altar',
   S().rise.state == 'risen' && cmds.some(c => /^title Carol title .*TECHNOBLADE'S SHRINE/.test(c)) && cmds.some(c => /run setblock \d+ 1[01]\d \d+ minecraft:light\[level=15\]$/.test(c)) &&
   world[LECTERN] == 'minecraft:lectern[facing=east,has_book=true,powered=false]' && said(carol, /\[REGALIA\] The Regalia of the Blade lies on the Shrine's altar/) && S().stairs > 0)
-ok('... the night isn\'t over until a moment later', global.Shrine.eventOn() && Object.keys(S().awake.spots).length == 4)
+ok('... the night isn\'t over until a moment later, and the Pool waits for it', global.Shrine.eventOn() && Object.keys(S().awake.spots).length == 4 && pool.adds.length == 0 && pool.opens.length == 0)
 advance(110)
 ok('then the night is over: the sky clears, everyone is let go, and the belongings come back (the kit goes)', !global.Shrine.eventOn() && Object.keys(S().awake.spots).length == 0 &&
   cmds.indexOf('weather clear') >= 0 && cmds.indexOf('time set day') >= 0 && carol.slots[8].id == 'minecraft:compass' && kitOf(carol).length == 0 && kitOf(bob).length == 0 &&
   Object.keys(S().vaults).length == 0, Object.keys(S().vaults).join())
+ok('... and then the seals break and the Pool rises: Tiers 3 and 4 open, 230,000 Drops, once', pool.opens.length == 1 && pool.opens[0].n == 4 && pool.tier == 4 &&
+  pool.drops == 230000 && pool.adds.length == 1 && /164,000 Drops added, credited to nobody/.test(cmd('status', admin)[8]), JSON.stringify(pool))
 carol.x += 10
 advance(40)
 ok('... and free to move', carol.x == x0 + 10.5)
@@ -1102,17 +1406,136 @@ load()
 riseUntilRisen(); advance(120)
 ok('a /reload mid-rise: it carries on, and the night still ends when the Shrine stands', S().rise.state == 'risen' && !global.Shrine.eventOn() && Object.keys(S().vaults).length == 0 &&
   Object.keys(S().awake.spots).length == 0)
-// /shrine stop while the Awakening is due: it won't begin, and everyone is let go
+// The viewing platform (owner decisions at the fifth run, 2026-11-20, after mobs kept spawning round the owner held on
+// the ground): /shrine view set lays a 6 x 6 floor of barriers under the spot with a rail round it; everyone watches from
+// it, and when the night ends they're set down in front of the lectern and it's taken away
+canopy.forEach(k => { delete world[k] })
 cmd('reset confirm', admin); advance(40)
+ok('status: the viewing spot picked by itself until it\'s set', /The viewing spot: picked by itself, on the ground east of the steps/.test(cmd('status', admin)[14]), cmd('status', admin)[14])
+r = cmd('view set 1000 100 2010', null)
+ok('/shrine view set over the Shrine\'s footprint: refused', /over the Shrine's footprint/.test(r[0]) && !S().view, r[0])
+const barrier = (x, y, z) => world[x + ',' + y + ',' + z] == 'minecraft:barrier'
+r = cmd('view set 1000 120 2090', null)
+r = cmd('view set 1000 120 2080', null)
+ok('/shrine view set <x> <y> <z>: the platform is built there, 80 blocks from the Shrine\'s centre, and status says so',
+  /The viewing platform is built there, at 1000 120 2080, 80 blocks from the Shrine's centre: a 6 x 6 floor of barriers with an invisible rail round it/.test(r[0]) &&
+  S().platformUp && /The viewing spot: a platform in the sky at 1000 120 2080 \(\/shrine view set moves it\)/.test(cmd('status', admin)[14]), r[0])
+ok('... a 6 x 6 floor of barriers just under the spot, a rail 2 high round its edge, and room to stand on it', barrier(998, 119, 2078) && barrier(1003, 119, 2083) &&
+  !barrier(997, 119, 2080) && barrier(997, 120, 2080) && barrier(1004, 121, 2083) && barrier(1000, 121, 2077) && !barrier(997, 122, 2080) && !barrier(1000, 120, 2080) && !barrier(1000, 121, 2080))
+ok('... moved there from where it was set first: the old platform came down', !barrier(998, 119, 2088) && !barrier(997, 120, 2090) && S().view.z == 2080)
+// /shrine stop while the Awakening is due: it won't begin, and everyone on the platform is set down at the start (the
+// Shrine hasn't risen); the platform goes
 toTheBeam(); allAtTheBeam(); advance(200)
 carol.slots[0] = kings(RT().need); clickBlock(carol, GLASS[0], GLASS[1], GLASS[2])
 advance(61)
+const onIt = [admin, bob, carol, dave, far], wherePs = ps => ps.map(p => p.name + ' ' + p.x + ' ' + p.y + ' ' + p.z).join(', ')
+ok('brought back to watch: onto the platform, the first on the owner\'s spot, the rest on the cells nearest it', admin.x == 1000.5 && admin.y == 120 && admin.z == 2080.5 &&
+  onIt.every(p => p.y == 120 && p.x >= 998 && p.x < 1004 && p.z >= 2078 && p.z < 2084) && new Set(onIt.map(p => p.x + ',' + p.z)).size == 5 && S().platformUp, wherePs(onIt))
 r = cmd('stop', admin)
-carol.x += 10
-advance(300)
-ok('/shrine stop while the Awakening is due: it won\'t begin by itself, and everyone may move again', /The Awakening won't begin by itself, and everyone is free to move/.test(r[0]) &&
-  S().awake.state == 'none' && !S().rise.awakenAt && carol.x == x0 + 10.5, r[0])
+ok('/shrine stop while the Awakening is due: it won\'t begin by itself; everyone is set down at the start, and the platform goes',
+  /The Awakening won't begin by itself, and everyone is free to move/.test(r[0]) && S().awake.state == 'none' && !S().rise.awakenAt &&
+  onIt.every(p => p.x == 5000.5 && p.y == 64 && p.z == 5000.5) && !S().platformUp && !barrier(998, 119, 2078) && !barrier(997, 120, 2080), wherePs(onIt))
 cmd('reset confirm', admin); advance(40)
+ok('... /shrine reset confirm keeps the viewing spot, as it keeps the sites', S().view && S().view.x == 1000)
+// a whole night from the platform: when the Shrine stands and the night ends, everyone is set down in front of the
+// lectern, facing it, and the platform goes. Dave, offline then and still where it was, is set down there when he joins.
+toTheBeam(); allAtTheBeam(); advance(200)
+carol.slots[0] = kings(RT().need); clickBlock(carol, GLASS[0], GLASS[1], GLASS[2])
+advance(61)
+ok('(the platform built again for the night, everyone on it)', S().platformUp && barrier(998, 119, 2078) && onIt.every(p => p.y == 120))
+players.splice(players.indexOf(dave), 1)
+advance(awakeTicks + 30)
+riseUntilRisen()
+cmds = []
+advance(120)
+const stayed = [admin, bob, carol, far]
+ok('the night over: everyone is set down in front of the lectern, facing it, and the platform is taken away', stayed.every(p => p.x == 1008.5 && p.y == 86 && p.z == 1999.5) &&
+  cmds.some(c => /run tp Carol 1008\.5 86 1999\.5 facing 1007\.5 87 1999\.5$/.test(c)) && !S().platformUp && !barrier(998, 119, 2078) && !barrier(997, 120, 2080) &&
+  !global.Shrine.eventOn(), wherePs(stayed))
+players.push(dave)
+;(handlers.loggedIn || []).forEach(h => h({ player: dave }))
+advance(100)
+ok('... Dave, offline then and still where the platform was, is set down there too when he joins', dave.x == 1008.5 && dave.y == 86 && dave.z == 1999.5, wherePs([dave]))
+cmd('reset confirm', admin); advance(40)
+const noView = JSON.parse(persistent.shrine); noView.view = null; persistent.shrine = JSON.stringify(noView); load()
+// a night saved before the seals waited for the night's end (the fifth run's): its Awakening broke them as it ran
+const oldNight = JSON.parse(persistent.shrine); oldNight.awake = { state: 'done', step: 7, added: 164000, spots: {} }; persistent.shrine = JSON.stringify(oldNight); load()
+ok('a night saved before the seals waited for the night\'s end counts as having broken them', S().awake.pooled === true &&
+  /164,000 Drops added, credited to nobody/.test(cmd('status', admin)[8]), cmd('status', admin)[8])
+cmd('reset confirm', admin); advance(40)
+
+// ---------- Where the waves come from (owner decision, 2026-11-20: Inspectors kept spawning in caves and water) ----------
+// Around the braziers until half the potatoes are offered, then 4 to 6 blocks from the beam's red glass. Two braziers
+// near the beam, the third too far to use (141 blocks). East of brazier 1 is water: lily pads on it, kelp and seagrass
+// up to its surface.
+const oldBraziers = S().braziers.map(b => b.x + ' ' + b.y + ' ' + b.z)
+cmd('brazier set 1 1040 64 2000', null); cmd('brazier set 2 1010 64 2040', null); cmd('brazier set 3 1100 64 2100', null)
+const wetKeys = []
+for (let x = 1042; x <= 1048; x++) for (let z = 1992; z <= 2008; z++) {
+  const kind = (x + z) % 3
+  if (kind == 0) { world[x + ',63,' + z] = 'minecraft:water'; world[x + ',64,' + z] = 'minecraft:lily_pad'; wetKeys.push(x + ',64,' + z) }
+  else world[x + ',63,' + z] = kind == 1 ? 'minecraft:kelp' : 'minecraft:seagrass'
+  wetKeys.push(x + ',63,' + z)
+}
+const B1 = [1040.5, 2000.5], B2 = [1010.5, 2040.5], from = (m, b) => Math.hypot(m.x - b[0], m.z - b[1])
+const nearest = m => Math.min(from(m, B1), from(m, B2)), whereAre = ms => ms.map(m => m.x + ' ' + m.y + ' ' + m.z).join(', ')
+players.forEach(p => { p.msgs = [] })
+toTheBeam(); allAtTheBeam(); advance(200)
+const wave1 = riteMobsNow()
+ok('braziers near the beam: the rite opens "by the braziers", and wave 1 comes from them, 3 to 7 blocks out, shared by the two near ones (not the third, 141 blocks off)',
+  RT().state == 'running' && said(carol, /Figures gather by the braziers/) && said(carol, /Wave 1: \d+ Inspectors come from the braziers/) && wave1.length >= 4 &&
+  wave1.every(m => nearest(m) >= 2.2 && nearest(m) <= 7.8) && wave1.some(m => from(m, B1) <= 7.8) && wave1.some(m => from(m, B2) <= 7.8), whereAre(wave1))
+ok('... none in the water by brazier 1: not on a lily pad, nor on kelp or seagrass reaching the surface', wave1.filter(m => from(m, B1) <= 7.8).every(m => m.x < 1042 && m.y == 64),
+  whereAre(wave1.filter(m => from(m, B1) <= 7.8)))
+// several Senior Inspectors to a wave (owner decision 2026-11-21: "each drops 2 but add more senior inspectors as the waves
+// increase", still about 8 waves)
+const shares = JSON.parse(src.match(/const SENIORS_PER_PLAYER = (\[[^\]]*\])/)[1]), perSenior = Number(src.match(/potatoes: (\d+), helpers/)[1])
+ok('the Seniors\' shares fill the offering at the 8th wave: they add up to 8 potatoes per player at 2 a Senior (8 players: 2, 2, 3, 4, 4, 5, 6, 6)',
+  shares.length == 8 && Math.abs(shares.reduce((a, b) => a + b, 0) * perSenior - Number(src.match(/const POTATOES_PER_PLAYER = (\d+)/)[1])) < 1e-9 &&
+  shares.map(s => Math.ceil(s * 8 - 1e-9)).join() == '2,2,3,4,4,5,6,6' && shares.every((s, k) => k == 0 || s >= shares[k - 1]), shares.join())
+const sr1 = wave1.filter(isSenior), want1 = Math.max(1, Math.ceil(shares[0] * RT().present - 1e-9))
+ok('... ' + RT().present + ' present: wave 1 is led by ' + want1 + ' Senior Inspectors, each tagged with his place in it, each carrying 2', want1 > 1 && sr1.length == want1 &&
+  sr1.every(m => m.tags.indexOf('shrine_pot_2') >= 0) && sr1.map(m => m.tags.filter(t => /^shrine_sid_/.test(t))[0]).sort().join() == sr1.map((m, k) => 'shrine_sid_0_' + k).join(),
+  sr1.map(m => m.tags.join('/')).join(' | '))
+ok('... one bar for the wave, their health together ("Senior Inspectors (wave 1): ' + want1 + ' of ' + want1 + ' standing"); status counts them',
+  cmds.some(c => c.indexOf('bossbar add trollcraft:shrine_senior_0 ') == 0 && c.indexOf('Senior Inspectors (wave 1): ' + want1 + ' of ' + want1 + ' standing') >= 0) &&
+  cmds.indexOf('bossbar set trollcraft:shrine_senior_0 max ' + (150 * want1)) >= 0 && cmd('status', admin)[7].indexOf('(' + want1 + ' Senior Inspectors up)') >= 0, cmd('status', admin)[7])
+cmds = []; carol.msgs = []
+kill(sr1[0]); advance(20)
+ok('... one falls: his 2 potatoes, the wave\'s bar stays with one fewer standing, and those present are told how many still stand',
+  cmds.some(c => /run summon minecraft:item .*Count:2b,tag:\{trollcraft:\{kingspotato:1b\}/.test(c)) && cmds.indexOf('bossbar remove trollcraft:shrine_senior_0') < 0 &&
+  cmds.some(c => c.indexOf('bossbar set trollcraft:shrine_senior_0 name ') == 0 && c.indexOf((want1 - 1) + ' of ' + want1 + ' standing') >= 0) &&
+  said(carol, want1 == 2 ? /A Senior Inspector falls\. His clipboard does not\. One more of wave 1 still stands\./ : /A Senior Inspector falls\. His clipboard does not\. \d+ more of wave 1 still stand\./),
+  carol.msgs.join(' | '))
+players.forEach(p => { p.msgs = [] })
+carol.slots[0] = kings(RT().need / 2); clickBlock(carol, GLASS[0], GLASS[1], GLASS[2])
+ok('half the offering in the beam (its second surge): those present are told the waves now rise around the beam', RT().lit == 2 &&
+  said(carol, /Half the offering burns in the beam\. The Inspectors come for it now: the next waves rise around the beam itself\./))
+riteMobsNow().forEach(m => kill(m))
+advance(20)
+ok('... the rest of wave 1\'s Seniors down: its bar goes', cmds.indexOf('bossbar remove trollcraft:shrine_senior_0') >= 0 && !RT().seniors[0])
+const wave2 = riteMobsNow()
+ok('... the next wave rises around the red glass, 4 to 6 blocks out, on the ground', RT().wave == 1 && said(carol, /Wave 2: \d+ Inspectors rise around the beam/) && wave2.length >= 4 &&
+  wave2.every(m => { const d = Math.hypot(m.x - 1000.5, m.z - 2000.5); return d >= 3.2 && d <= 6.8 && m.y == 64 }), whereAre(wave2))
+ok('... the log says where each wave came from and where every Inspector landed', logs.some(l => /\[Shrine\] Rite wave 1: \d+ Inspectors, from the braziers \((-?\d+ 64 -?\d+; )+Senior -?\d+ 64 -?\d+(; Senior -?\d+ 64 -?\d+)*\)/.test(l)) &&
+  logs.some(l => /\[Shrine\] Rite wave 2: \d+ Inspectors, round the red glass \(/.test(l)), logs.filter(l => /Rite wave [12]:/.test(l)).slice(-2).join(' | '))
+// a Senior's helpers: on dry ground near him, not in the water on his east side (the old way could put them on water)
+const sen = wave2.filter(isSenior)[0], sx = Math.floor(sen.x), sz = Math.floor(sen.z), flooded = []
+for (let x = sx + 1; x <= sx + 6; x++) for (let z = sz - 6; z <= sz + 6; z++) {
+  const k = x + ',63,' + z
+  if ((Math.abs(x - 1000) <= 1 && Math.abs(z - 2000) <= 1) || world[k]) continue
+  world[k] = 'minecraft:water'; flooded.push(k)
+}
+sen.health = 70
+advance(20)
+const helpers = riteMobsNow().filter(m => wave2.indexOf(m) < 0)
+ok('a Senior\'s two helpers land on dry ground 2 to 5 blocks from him, none in the water beside him', helpers.length == 2 &&
+  helpers.every(m => { const d = Math.hypot(m.x - sen.x, m.z - sen.z); return d >= 1.2 && d <= 5.8 && flooded.indexOf(Math.floor(m.x) + ',63,' + Math.floor(m.z)) < 0 && m.y == 64 }), whereAre(helpers))
+flooded.forEach(k => { delete world[k] })
+riteMobsNow().forEach(m => kill(m))
+cmd('reset confirm', admin); advance(40)
+wetKeys.forEach(k => { delete world[k] })
+oldBraziers.forEach((b, i) => cmd('brazier set ' + (i + 1) + ' ' + b, null))
 
 // ---------- Stage 0, the Signal, and Stage 1, the Summons (the drafts as approved, 2026-11-19) ----------
 // A player joining: online, and PlayerEvents.loggedIn fires.

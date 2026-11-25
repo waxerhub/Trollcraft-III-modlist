@@ -77,7 +77,7 @@
 		}
 		{
 			dependencies: ["507A70000001012F"]
-			description: ["Four chapters of nodes: Tinkers' Smithy, Logistics, Autocrafting and Farms.", "Each node needs a rank, a Blood Pool tier and the nodes below it, and costs potatoes plus some of that branch's items.", "A node unlocks things for you alone: Tinkers metals your tools may be made of, building smelteries, and placing and using autocrafters, logistics and farm machines."]
+			description: ["Four chapters of nodes: Tinkers' Smithy, Logistics, Autocrafting and Farms.", "Each node needs a rank, a Blood Pool tier and the nodes below it, and costs potatoes plus some of that branch's items.", "Pay a node's potatoes a part at a time: loose ones with its Submit button, or any kind with the line on its page or &6/potatowar pay <node>&r (a crate counts as 9). Nothing worth more than what is still needed is taken, so finish with loose potatoes.", "A node unlocks things for you alone: Tinkers metals your tools may be made of, building smelteries, and placing and using autocrafters, logistics and farm machines."]
 			icon: "tconstruct:smeltery_controller"
 			id: "507A700000010130"
 			tags: ["potato_start"]
@@ -128,7 +128,7 @@
 		}
 		{
 			dependencies: ["507A700000010132"]
-			description: ["&6/potatowar&r your rank · &6/potatowar next&r what to do next · &6/potatowar tree&r this book", "&6/potatowar offer [count]&r · &6/potatowar ranks&r · &6/potatowar top&r", "&6/bloodpool&r the Pool · &6/bloodpool tiers&r · &6/bloodpool check&r (hold an item)"]
+			description: ["&6/potatowar&r your rank · &6/potatowar next&r what to do next · &6/potatowar tree&r this book", "&6/potatowar offer [count]&r · &6/potatowar pay <node>&r · &6/potatowar ranks&r · &6/potatowar top&r", "&6/bloodpool&r the Pool · &6/bloodpool tiers&r · &6/bloodpool check&r (hold an item)"]
 			icon: "minecraft:writable_book"
 			id: "507A700000010133"
 			tags: ["potato_start"]

@@ -150,6 +150,14 @@ if (PT) {
     return !t || t.item != w[0] || t.tags[0] != w[1] || !t.count || t.count.long != n.potatoes
   })
   ok('every node\'s potato cost is its number in its tier\'s unit (potatoes to Tier 5, Enchanted 6-8, Enchanted Baked 9-12)', wrongUnit.length == 0, wrongUnit.map(n => n.id).join(', '))
+  // /potatowar pay (part2/potato_tree.js) finds a node's potato task by this id, and its page has a line to click.
+  const wrongId = PT.nodes.filter(n => n.potatoes > 0 && (offerTask(quests[PT.questId(n.id)] || {}) || {}).id != PT.potatoTaskId(n.id))
+  ok('every node\'s potato task has the id /potatowar pay looks for', wrongId.length == 0, wrongId.map(n => n.id).join(', '))
+  const payLines = n => ((quests[PT.questId(n.id)] || {}).description || []).filter(l => /^\{"/.test(l)).map(l => { try { return JSON.parse(l) } catch (e) { return null } })
+  const noLine = PT.nodes.filter(n => n.potatoes > 0).filter(n => { const l = payLines(n); return l.length != 1 || !l[0] || l[0].clickEvent.action != 'run_command' || l[0].clickEvent.value != '/potatowar pay ' + n.id })
+  ok('... and its page one line to click, a JSON text FTB Quests reads, that runs /potatowar pay <node>', noLine.length == 0, noLine.map(n => n.id).join(', '))
+  const unitLine = PT.nodes.filter(n => n.potatoes > 0).filter(n => { const l = payLines(n)[0] || { text: '' }, t = tierOf(n); return t >= 9 ? !/Enchanted Baked Potatoes/.test(l.text) : t >= 6 ? !/Enchanted Potatoes/.test(l.text) : /Enchanted/.test(l.text) })
+  ok('... naming what that node takes', unitLine.length == 0, unitLine.map(n => n.id).join(', '))
   const late = PT.nodes.filter(n => tierOf(n) >= 6), early = PT.nodes.filter(n => tierOf(n) < 6)
   const unveiled = late.filter(n => { const q = quests[PT.questId(n.id)]; return !q || q.hide_details_until_startable !== true || (q.dependencies || []).indexOf(reveal && reveal.id) < 0 })
   ok('Tier 6+ nodes (' + late.length + ') wait for the reveal and hide their details until then', late.length > 0 && unveiled.length == 0, unveiled.map(n => n.id).join(', '))

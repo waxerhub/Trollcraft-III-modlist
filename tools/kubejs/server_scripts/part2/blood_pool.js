@@ -181,6 +181,13 @@ const TIERS = [
   { tier: 4, name: 'A Font', drops: 200000, unlocks: {
       mods: ['mekanism', 'mekanismgenerators', 'tinker_rapier'],
       items: [
+        // The Aether's gravitite (diamond, with set powers) and Deeper and Darker's resonarium tools, with Twilight's steeleaf
+        // (owner decisions 2026-11-22, research/AETHER_DEEPERDARKER.md). Looted copies are held by WEAR_LOCKS and WIELD_LOCKS.
+        'aether:enchanted_gravitite', 'aether:gravitite_helmet', 'aether:gravitite_chestplate', 'aether:gravitite_leggings',
+        'aether:gravitite_boots', 'aether:gravitite_gloves', 'aether:gravitite_sword', 'aether:gravitite_pickaxe',
+        'aether:gravitite_axe', 'aether:gravitite_shovel', 'aether:gravitite_hoe',
+        'deeperdarker:resonarium_sword', 'deeperdarker:resonarium_pickaxe', 'deeperdarker:resonarium_axe',
+        'deeperdarker:resonarium_shovel', 'deeperdarker:resonarium_hoe',
         'create:precision_mechanism', 'create:mechanical_crafter', 'create:deployer',
         'create:mechanical_arm', 'create:rotation_speed_controller',
         'twilightforest:steeleaf_ingot', 'twilightforest:steeleaf_block',
@@ -199,6 +206,9 @@ const TIERS = [
   { tier: 5, name: 'A Spring', drops: 320000, unlocks: {
       mods: ['thermal', 'enderio'],
       items: [
+        // The Aether's zanite sword (its damage climbs from 6 to 13 as it wears, past netherite) and netherite gloves
+        // (owner decisions 2026-11-22).
+        'aether:zanite_sword', 'aether:netherite_gloves',
         'tconstruct:cobalt_ingot', 'tconstruct:raw_cobalt', 'tconstruct:raw_cobalt_block', 'tconstruct:cobalt_block',
         'tconstruct:nether_grout', 'tconstruct:scorched_brick', 'tconstruct:foundry_controller',
         'tconstruct:scorched_alloyer', 'tconstruct:scorched_fuel_gauge', 'tconstruct:scorched_ingot_gauge',
@@ -254,6 +264,10 @@ const TIERS = [
       mods: ['ae2', 'ae2additions', 'ae2wtlib', 'ae2insertexportcard', 'appliedcooking', 'appbot',
              'appmek', 'createappliedkinetics', 'bigreactors', 'reliquary', 'alexscaves', 'iceandfire'],
       items: [
+        // Deeper and Darker's resonarium armour: a full set cancels every armour-bypassing hit (falls, wither, poison, the
+        // void), with dragon scale and terrasteel (owner decisions 2026-11-22).
+        'deeperdarker:resonarium_helmet', 'deeperdarker:resonarium_chestplate', 'deeperdarker:resonarium_leggings',
+        'deeperdarker:resonarium_boots',
         'botania:terra_plate', 'botania:terrasteel_ingot', 'botania:alfheim_portal',
         'botania:natura_pylon', 'botania:mana_pylon', 'botania:dreamwood_log',
         'botania:elementium_ingot', 'botania:pixie_dust', 'botania:dragonstone',
@@ -282,6 +296,11 @@ const TIERS = [
       mods: ['rftoolsbase', 'rftoolsutility', 'rftoolsbuilder', 'powersuits', 'numina',
              'redstone_arsenal', 'bluepower', 'extrautilitiesreborn'],
       items: [
+        // Deeper and Darker's warden gear (24 armour, 16 toughness, a 9-damage sword), between fiery (Tier 6) and refined
+        // obsidian (Tier 8); the echo shard and copying the template with it (owner decisions 2026-11-22).
+        'deeperdarker:warden_helmet', 'deeperdarker:warden_chestplate', 'deeperdarker:warden_leggings', 'deeperdarker:warden_boots',
+        'deeperdarker:warden_sword', 'deeperdarker:warden_pickaxe', 'deeperdarker:warden_axe', 'deeperdarker:warden_shovel',
+        'deeperdarker:warden_hoe', 'deeperdarker:reinforced_echo_shard', 'deeperdarker:warden_upgrade_smithing_template',
         'create:sturdy_sheet', 'create:railway_casing', 'create:track', 'create:track_station',
         'create:controls', 'create:packager', 'create:stock_ticker', 'create:package_frogport',
         'create:item_vault', 'create:mechanical_roller',
@@ -333,6 +352,9 @@ const TIERS = [
   { tier: 9, name: 'A Tide', drops: 1400000, unlocks: {
       mods: ['draconicevolution'],
       items: [
+        // Deeper and Darker's sonorous staff: up to 50 armour-ignoring damage along an 18-block beam, with dragonsteel
+        // (owner decisions 2026-11-22).
+        'deeperdarker:sonorous_staff',
         'minecraft:ender_eye',
         'botania:gaia_pylon', 'botania:gaia_ingot', 'botania:flight_tiara', 'botania:terra_sword',
         'enderio:octadic_capacitor', 'enderio:soul_binder', 'enderio:powered_spawner', 'enderio:end_steel_ingot',
@@ -529,7 +551,7 @@ const BANNED_USE_ITEM = 'ars_nouveau:wixie_charm'
 //   'use'    right-clicking with it (in the air, or on a block or mob that doesn't take the click);
 //   'block'  that, and right-clicking a block with it (tools that act on the block they're used on);
 //   'mob'    that, and right-clicking a mob with it (items used on a mob).
-// Only for items that work by being used. Weapons that hit, tools that mine and armour need other checks.
+// Only for items that work by being used. Weapons, tools and armour are held by WEAR_LOCKS and WIELD_LOCKS (below).
 const USE_LOCKS = {
   // Guns and bows
   'immersiveengineering:railgun': 'use', 'immersiveengineering:revolver': 'use',
@@ -566,6 +588,33 @@ const PLACE_LOCKS = ['alexscaves:nuclear_bomb', 'alexscaves:tremorzilla_egg', 'e
 // that item is sealed. A dispenser fires a Nuclear Bomb as a primed bomb (Alex's Caves' own dispenser behaviour),
 // with no block placed, so the placement lock alone can't stop it. The dispenser still uses up the bomb.
 const SPAWN_LOCKS = { 'alexscaves:nuclear_bomb': 'alexscaves:nuclear_bomb' }
+// Wear and wield locks (owner decision 2026-11-22, for the Aether and Deeper and Darker, whose dungeons hand some
+// sealed gear out as loot that crafting locks can't touch; research/AETHER_DEEPERDARKER.md). For gear that's worn or
+// swung, where USE_LOCKS only covers right-clicks. As there, each item's tier is its own in TIERS and it works again the
+// moment that tier opens; creative players are exempt, ops in survival are not.
+// WEAR_LOCKS: armour and worn accessories (Curios slots too). A sealed piece found worn is taken off into the inventory,
+// or dropped at the player's feet if it's full, checked every WEAR_CHECK_TICKS.
+const WEAR_LOCKS = [
+  'aether:gravitite_helmet', 'aether:gravitite_chestplate', 'aether:gravitite_leggings', 'aether:gravitite_boots',
+  'aether:gravitite_gloves',                                                                  // Tier 4
+  'aether:netherite_gloves',                                                                  // Tier 5
+  'deeperdarker:resonarium_helmet', 'deeperdarker:resonarium_chestplate', 'deeperdarker:resonarium_leggings',
+  'deeperdarker:resonarium_boots',                                                            // Tier 6
+  'deeperdarker:warden_helmet', 'deeperdarker:warden_chestplate', 'deeperdarker:warden_leggings',
+  'deeperdarker:warden_boots',                                                                // Tier 7
+]
+// WIELD_LOCKS: weapons and tools. With one in the main hand a hit does nothing and no block can be broken; right-clicking
+// with it (a gravitite tool floating a block, the sonorous staff's beam) is refused, in either hand.
+const WIELD_LOCKS = [
+  'aether:gravitite_sword', 'aether:gravitite_pickaxe', 'aether:gravitite_axe', 'aether:gravitite_shovel',
+  'aether:gravitite_hoe', 'deeperdarker:resonarium_sword', 'deeperdarker:resonarium_pickaxe',
+  'deeperdarker:resonarium_axe', 'deeperdarker:resonarium_shovel', 'deeperdarker:resonarium_hoe',     // Tier 4
+  'aether:zanite_sword',                                                                      // Tier 5
+  'deeperdarker:warden_sword', 'deeperdarker:warden_pickaxe', 'deeperdarker:warden_axe', 'deeperdarker:warden_shovel',
+  'deeperdarker:warden_hoe',                                                                  // Tier 7
+  'deeperdarker:sonorous_staff',                                                              // Tier 9
+]
+const WEAR_CHECK_TICKS = 20
 const RANKUP_PUBLIC = true               // announce rank-ups to everyone (and Discord, with TO_DISCORD)
 // Catch-up: when the Pool opens Tier T, every player can craft Tiers 1..T-CATCH_UP_GAP whatever their rank (their
 // rank's name still comes from potatoes only, and the black market uses that). part2/potato_tree.js uses the same
@@ -581,6 +630,11 @@ const RELOAD_DELAY_TICKS = 20          // /bloodpool unlock reloads this long af
 // across sessions) and start again when a tier opens. Ops can still open it at once with /bloodpool unlock.
 // 0 = no voting (ops only).
 const VOTES_TO_BREAK = 5
+// Relics break the seals (owner decisions 2026-11-20, STORY.md #37): from Tier RELIC_SEALS.from, a seal also needs one
+// more of the Regalia's relics restored at the Shrine (Tier 5: 1 ... Tier 11: 7), at most RELIC_SEALS.max (the Crown
+// isn't one: it's the final act's). part2/shrine.js counts them (global.Regalia.restoredForSeals); without it, no seal
+// waits on relics. /bloodpool unlock force, /bloodpool settier and the Shrine's own openTo still open a tier.
+const RELIC_SEALS = { from: 5, max: 7 }
 const LOGIN_NOTICE_DELAY_TICKS = 100   // while a tier is ready, each player is told at login, after the join messages
 
 const VOICE_BLOOD = { tag: '[BLOOD GOD]', tagColor: 'dark_red', textColor: 'red' }
@@ -1070,6 +1124,7 @@ function checkReady(server) {
     D.announced[T.tier] = true
     if (!server) return
     announce(server, VOICE_BLOOD, line('ready', T))
+    if (T.tier == D.tier + 1 && relicsShort(T) > 0) announce(server, VOICE_BLOOD, sealHolds(T))
     if (VOTES_TO_BREAK > 0 && T.tier == D.tier + 1) onlinePlayers(server).forEach(o => tell(o, VOICE_POOL, readyNotice(T, o)))
     onlinePlayers(server).filter(isOp).forEach(o => tell(o, VOICE_POOL, 'Tier ' + T.tier + ' is ready. ' +
       (VOTES_TO_BREAK > 0 ? 'Players break the seal with /bloodpool vote (' + VOTES_TO_BREAK + ' votes), or open it now with /bloodpool unlock.' : 'Unlock it with /bloodpool unlock (one tier at a time).')))
@@ -1104,6 +1159,8 @@ function statusText() {
     return t + ' (' + fmt(next.drops - D.drops) + ' to go).' + (S.allowed < S.span ? ' Potatoes may pay ' + fmt(S.allowed) + ' of its ' +
       fmt(S.span) + ' Drops (' + fmt(S.paid) + ' paid); the rest must be blood.' : '')
   }
+  if (relicsShort(next) > 0) return t + ': ready, but its seal holds until ' + relicsShort(next) + ' more of the Blood God\'s Regalia ' + (relicsShort(next) == 1 ? 'is' : 'are') +
+    ' restored at his Shrine (' + relicsRestored() + ' of ' + relicsNeeded(next) + '; /regalia).'
   return t + (VOTES_TO_BREAK > 0 ? ': ready. ' + voteCount(next) + ' of ' + VOTES_TO_BREAK + ' votes to break the seal (/bloodpool vote).' : ': ready, waiting for the seal to break.')
 }
 
@@ -1112,7 +1169,31 @@ function statusText() {
 function readyTier() { const D = db(), next = nextTier(); return next && D.drops >= next.drops ? next : null }
 function votersFor(T) { const V = db().vote; return V && T && V.tier == T.tier && V.voters ? V.voters : {} }
 function voteCount(T) { return Object.keys(votersFor(T)).length }
+// ----- Relics break the seals (RELIC_SEALS) -----
+function relicsNeeded(T) { return T && T.tier >= RELIC_SEALS.from ? Math.min(RELIC_SEALS.max, T.tier - RELIC_SEALS.from + 1) : 0 }
+// How many seal relics are restored: -1 without part2/shrine.js (then no seal waits on them).
+function relicsRestored() {
+  const R = global.Regalia
+  if (!R || typeof R.restoredForSeals != 'function') return -1
+  try { return Number(R.restoredForSeals()) } catch (e) { return -1 }
+}
+function relicsShort(T) { const need = relicsNeeded(T), have = relicsRestored(); return need && have >= 0 ? Math.max(0, need - have) : 0 }
+function sealHolds(T) { return 'The seal on Tier ' + T.tier + ' holds. Bring me ' + relicsShort(T) + (relicsRestored() > 0 ? ' more' : '') + ' of my Regalia.' }
+// A relic restored (part2/shrine.js): if the ready tier's seal no longer waits on relics, the vote opens; if it still
+// does, everyone hears how many more.
+function relicsChanged(server) {
+  const T = readyTier()
+  if (!T || !server) return
+  if (relicsShort(T) > 0) { announce(server, VOICE_BLOOD, sealHolds(T)); return }
+  if (!relicsNeeded(T)) return
+  announce(server, VOICE_BLOOD, 'The seal on Tier ' + T.tier + ' (' + T.name + ') can break now.')
+  if (VOTES_TO_BREAK > 0) onlinePlayers(server).forEach(o => tell(o, VOICE_POOL, readyNotice(T, o)))
+  onlinePlayers(server).filter(isOp).forEach(o => tell(o, VOICE_POOL, 'Tier ' + T.tier + '\'s relics are restored: /bloodpool unlock opens it now.'))
+  console.info('[BloodPool] Tier ' + T.tier + '\'s seal no longer waits on relics (' + relicsRestored() + ' restored)')
+}
 function readyNotice(T, p) {
+  if (relicsShort(T) > 0) return 'The Blood Pool overflows: Tier ' + T.tier + ' (' + T.name + ') is ready, but its seal holds until ' + relicsShort(T) + ' more of the Blood God\'s Regalia ' +
+    (relicsShort(T) == 1 ? 'is' : 'are') + ' restored at his Shrine (/regalia).'
   const mine = p && votersFor(T)[uuidOf(p)]
   return 'The Blood Pool overflows: Tier ' + T.tier + ' (' + T.name + ') is ready. ' + voteCount(T) + ' of ' + VOTES_TO_BREAK +
     ' votes break the Ministry\'s seal. ' + (mine ? 'You have voted.' : 'Vote with /bloodpool vote.')
@@ -1123,6 +1204,7 @@ function castVote(server, p) {
   const D = db(), T = readyTier(), next = nextTier()
   if (!next) return { bad: true, text: 'Every tier is already open.' }
   if (!T) return { bad: true, text: 'Tier ' + next.tier + ' (' + next.name + ') isn\'t ready: the Pool needs ' + fmt(next.drops - D.drops) + ' more Drops.' }
+  if (relicsShort(T) > 0) return { bad: true, text: sealHolds(T) + ' (' + relicsRestored() + ' of ' + relicsNeeded(T) + ' relics restored at the Shrine; /regalia)' }
   const u = uuidOf(p)
   if (!D.vote || D.vote.tier != T.tier) D.vote = { tier: T.tier, voters: {} }
   if (D.vote.voters[u]) return { bad: true, text: 'You have already voted to break the seal on Tier ' + T.tier + ' (' + voteCount(T) + ' of ' + VOTES_TO_BREAK + ').' }
@@ -1348,6 +1430,8 @@ function countPotatoes(p) {
 }
 // Every worth in POTATO_WORTH, smallest first.
 const WORTHS = Object.keys(POTATO_WORTH).map(k => POTATO_WORTH[k]).filter((w, i, a) => a.indexOf(w) == i).sort((a, b) => a - b)
+const KIND_NAMES = { 1: ['loose potato', 'loose potatoes'], 9: ['crate', 'crates'], 160: ['Enchanted Potato', 'Enchanted Potatoes'],
+  25600: ['Enchanted Baked Potato', 'Enchanted Baked Potatoes'] }
 // Takes n potatoes' worth, the smallest kinds first (loose potatoes, crates, Enchanted, Enchanted Baked). Change from
 // the last one broken comes back as Enchanted Potatoes and potatoes.
 function takePotatoes(p, n) {
@@ -1371,6 +1455,41 @@ function giveChange(p, n) {
     n -= k * c[0]
     while (k > 0) { let m = Math.min(64, k); p.give(Item.of(c[1], m)); k -= m }
   })
+}
+// For a price that's paid exactly (the upgrade tree's nodes, part2/potato_tree.js): what a player carries that fits in
+// `need` potatoes' worth, the biggest kinds first. A kind worth more than what's still needed is left alone, so no change
+// is ever given, and loose potatoes fill the last of it (owner decision, 2026-11-25). Only kinds worth a whole number of
+// `unit` (what the price counts, in potatoes) are taken: a price in Enchanted Potatoes takes no crates.
+// { worth: the potatoes' worth it would take, kinds: [{ name, worth, count }] taken, left: the kinds the player still
+//   carries that didn't fit, take(), putBack() (the same stacks, if the price couldn't be paid after all) }
+function exactPotatoes(p, need, unit) {
+  const inv = p.inventory, picks = [], kinds = [], left = []
+  let worth = 0
+  WORTHS.slice().reverse().forEach(w => {
+    if (w % unit != 0) return
+    let used = 0, kept = 0
+    for (let i = 0; i < 36; i++) {
+      let s = inv.getItem(i)
+      if (potatoWorth(s) != w) continue
+      let use = Math.min(s.getCount(), Math.max(0, Math.floor((need - worth) / w)))
+      if (use > 0) { picks.push({ slot: i, count: use }); worth += use * w; used += use }
+      kept += s.getCount() - use
+    }
+    const name = KIND_NAMES[w] || ['potato item', 'potato items']
+    if (used > 0) kinds.push({ name: used == 1 ? name[0] : name[1], worth: w, count: used })
+    if (kept > 0) left.push({ name: name[1], worth: w, count: kept })
+  })
+  const taken = []
+  return {
+    worth: worth, kinds: kinds, left: left,
+    take: () => picks.forEach(k => {
+      const s = inv.getItem(k.slot), copy = s.copy()
+      copy.setCount(k.count)
+      taken.push(copy)
+      s.shrink(k.count)
+    }),
+    putBack: () => taken.splice(0, taken.length).forEach(c => p.give(c)),
+  }
 }
 
 
@@ -1554,10 +1673,23 @@ Object.keys(USE_LOCKS).forEach(id => {
 })
 PLACE_LOCKS.forEach(id => { if (!tierOf(id, null)) console.warn('[BloodPool] PLACE_LOCKS: ' + id + ' is in no tier, so it is never locked') })
 Object.keys(SPAWN_LOCKS).forEach(t => { if (!tierOf(SPAWN_LOCKS[t], null)) console.warn('[BloodPool] SPAWN_LOCKS: ' + SPAWN_LOCKS[t] + ' is in no tier, so ' + t + ' is never stopped') })
-// The click modes an item is refused in: 'use' everywhere it's used; 'block' or 'mob' also when clicked on one.
+const WEAR_LOCKED = {}, WIELD_LOCKED = {}
+WEAR_LOCKS.forEach(id => {
+  WEAR_LOCKED[String(id)] = true
+  if (!tierOf(id, null)) console.warn('[BloodPool] WEAR_LOCKS: ' + id + ' is in no tier, so it is never locked')
+})
+WIELD_LOCKS.forEach(id => {
+  WIELD_LOCKED[String(id)] = true
+  if (!tierOf(id, null)) console.warn('[BloodPool] WIELD_LOCKS: ' + id + ' is in no tier, so it is never locked')
+})
+function wearLocked(s) { if (!s || s.isEmpty()) return false; const id = String(s.id); return own(WEAR_LOCKED, id) && isLocked(id, s) }
+function wieldLocked(s) { if (!s || s.isEmpty()) return false; const id = String(s.id); return own(WIELD_LOCKED, id) && isLocked(id, s) }
+// The click modes an item is refused in: 'use' everywhere it's used; 'block' or 'mob' also when clicked on one. A
+// wield-locked item is refused in the air and on blocks.
 function useLockOf(s, where) {
   if (!s || s.isEmpty()) return ''
   const id = String(s.id)
+  if (own(WIELD_LOCKED, id)) return (where == 'use' || where == 'block') && isLocked(id, s) ? 'block' : ''
   if (!own(USE_LOCKS, id)) return ''
   const mode = USE_LOCKS[id]
   if (where != 'use' && mode != where) return ''
@@ -1603,6 +1735,83 @@ function entityType(e) {
   try { let t = e.getEncodeId(); if (t != null) return String(t) } catch (err) { }
   try { return String(e.type) } catch (err) { return '' }
 }
+// Wield locks (WIELD_LOCKS): a hit with a sealed weapon in the main hand does nothing, and no block breaks under one.
+function attackerOf(source) {
+  if (!source) return null
+  let p = null
+  try { p = source.player } catch (e) { }
+  if (p) return p
+  try { let a = source.actual; if (a && a.isPlayer()) return a } catch (e) { }
+  return null
+}
+EntityEvents.hurt(event => {
+  let source = null
+  try { source = event.source } catch (e) { return }
+  const p = attackerOf(source)
+  if (!p || exemptFromSeals(p)) return
+  let s = null
+  try { s = p.mainHandItem } catch (e) { return }
+  if (!wieldLocked(s)) return
+  tellSealed(p, itemKey(s), tierOf(String(s.id), s))
+  event.cancel()
+})
+BlockEvents.broken(event => {
+  const p = event.player
+  if (!p || exemptFromSeals(p)) return
+  let s = null
+  try { s = p.mainHandItem } catch (e) { return }
+  if (!wieldLocked(s)) return
+  tellSealed(p, itemKey(s), tierOf(String(s.id), s))
+  event.cancel()
+})
+// Wear locks (WEAR_LOCKS): every WEAR_CHECK_TICKS, a sealed piece found in an armour or Curios slot is taken off into
+// the inventory, or dropped at the player's feet if it's full.
+let CuriosApi = null
+try { CuriosApi = Java.loadClass('top.theillusivec4.curios.api.CuriosApi') } catch (e) {
+  console.warn('[BloodPool] Curios not found, so sealed gear in Curios slots (the Aether\'s gloves) is not taken off: ' + e)
+}
+function curiosOf(p) {
+  if (!CuriosApi) return null
+  try {
+    let opt = CuriosApi.getCuriosInventory(p).resolve()
+    if (opt.isPresent()) return opt.get().getEquippedCurios()
+  } catch (e) { }
+  return null
+}
+function noItem() { try { return Item.empty } catch (e) { return Item.of('minecraft:air') } }
+function takeOffSealed(p) {
+  if (exemptFromSeals(p)) return 0
+  const off = []
+  for (let i = 36; i <= 39; i++) {
+    let s = p.inventory.getItem(i)
+    if (!wearLocked(s)) continue
+    p.inventory.setItem(i, noItem())
+    off.push(s)
+  }
+  const cur = curiosOf(p)
+  if (cur) {
+    for (let i = 0; i < Number(cur.getSlots()); i++) {
+      let s = cur.getStackInSlot(i)
+      if (!wearLocked(s)) continue
+      cur.setStackInSlot(i, noItem())
+      off.push(s)
+    }
+  }
+  off.forEach(s => p.give(s))
+  if (off.length) {
+    tellSealed(p, itemKey(off[0]), tierOf(String(off[0].id), off[0]))
+    console.info('[BloodPool] Took sealed gear off ' + nameOf(p) + ': ' + off.map(s => String(s.id)).join(', '))
+  }
+  return off.length
+}
+let wearTicks = 0
+ServerEvents.tick(event => {
+  wearTicks++
+  if (wearTicks % WEAR_CHECK_TICKS) return
+  const server = event.server || Utils.server
+  if (!server) return
+  onlinePlayers(server).forEach(p => { try { takeOffSealed(p) } catch (e) { console.error('[BloodPool] Wear lock: ' + e) } })
+})
 EntityEvents.spawned(event => {
   const t = entityType(event.entity)
   if (!own(SPAWN_LOCKS, t) || !isLocked(SPAWN_LOCKS[t], null)) return
@@ -1622,6 +1831,8 @@ global.BloodPool = {
   isLocked: (id, obj) => isLocked(id, obj),          // true = can't be crafted yet
   tierOf: (id, obj) => tierOf(id, obj),
   tierCount: TIERS.length,
+  relicsNeeded: n => relicsNeeded(tierDef(Number(n))),  // relics a seal needs (RELIC_SEALS): part2/shrine.js's messages
+  relicsChanged: server => relicsChanged(server || Utils.server),
   netherTier: NETHER_TIER,                           // part2/dimension_gates.js
   endTier: END_TIER,
   // The Potato War. standing(player) = { potatoes, tier (rank number, 0 = none), rank (its name), next, nextRank }.
@@ -1638,6 +1849,16 @@ global.BloodPool = {
     setStanding(player.server || Utils.server, u, nameOf(player), standingOf(u).potatoes + n, true)
     console.info('[BloodPool] Potato War: ' + nameOf(player) + ' handed in ' + n + ' potatoes (upgrade tree)')
   },
+  // The same by UUID, for an owner who is offline (a Task Screen finishing a node's price; part2/potato_tree.js).
+  creditStandingOf: (uuid, name, n) => {
+    uuid = String(uuid).toLowerCase()
+    n = Math.floor(Number(n) || 0)
+    if (!(n > 0)) return
+    setStanding(Utils.server, uuid, name ? String(name) : '', standingOf(uuid).potatoes + n, true)
+    console.info('[BloodPool] Potato War: ' + (name || uuid) + ' handed in ' + n + ' potatoes (upgrade tree, offline)')
+  },
+  // Paying a price exactly with whatever kinds of potato fit (part2/potato_tree.js): see exactPotatoes above.
+  exactPotatoes: (player, need, unit) => exactPotatoes(player, Number(need), Number(unit)),
   // By UUID, for players who may be offline (part2/purge.js's Potato Heist).
   standingOfUuid: uuid => standingOf(String(uuid).toLowerCase()),
   // Takes up to n potatoes from a player's total. Their rank is kept (the peak). Returns how many were taken.
@@ -1745,6 +1966,8 @@ ServerEvents.commandRegistry(event => {
     const D = db(), next = nextTier()
     if (!next) return reply(ctx, 'Every tier is already open.', true)
     if (!force && D.drops < next.drops) return reply(ctx, 'Tier ' + next.tier + ' needs ' + fmt(next.drops) + ' Drops; the Pool has ' + fmt(D.drops) + '. (/bloodpool unlock force to open it anyway.)', true)
+    if (!force && relicsShort(next) > 0) return reply(ctx, 'Tier ' + next.tier + '\'s seal waits on the Regalia: ' + relicsRestored() + ' of ' + relicsNeeded(next) +
+      ' relics restored at the Shrine. (/bloodpool unlock force to open it anyway.)', true)
     setTier(ctx.source.server, next.tier, who(ctx), true)
     return reply(ctx, 'Tier ' + next.tier + ' (' + next.name + ') unlocked: ' + contents(next) + '. Reloading so its recipes come back.')
   }
@@ -1822,7 +2045,8 @@ ServerEvents.commandRegistry(event => {
         else if (place && !(PT && PT.handlesPlacing)) rank += ' Placing it needs ' + rankName(place) + '.'
       }
       return reply(ctx, String(s.id) + ' can be crafted from Tier ' + n + (T ? ' (' + T.name + ')' : '') + ': ' +
-        (n <= db().tier ? 'open now.' : own(USE_LOCKS, String(s.id)) ? 'sealed for now, and so is using one, however it was got.' :
+        (n <= db().tier ? 'open now.' : own(USE_LOCKS, String(s.id)) || own(WIELD_LOCKED, String(s.id)) ? 'sealed for now, and so is using one, however it was got.' :
+          own(WEAR_LOCKED, String(s.id)) ? 'sealed for now, and so is wearing one, however it was got.' :
           own(PLACE_LOCKED, String(s.id)) ? 'sealed for now, and so is placing one, however it was got.' :
           'sealed for now (found ones still work).') + rank)
     })))
@@ -1891,6 +2115,24 @@ ServerEvents.commandRegistry(event => {
     console.info('[BloodPool] Potato War: ' + who(ctx) + (add ? ' added ' : ' set ') + n + ' potatoes for ' + t.name)
     return war(ctx, t.name + ': ' + standingText(standingOf(t.uuid)))
   }
+  const payNode = () => {
+    const arg = word('node')
+    try {
+      return arg.suggests((ctx, builder) => {
+        const p = me(ctx), PT = global.PotatoTree
+        if (p && PT && PT.payable) PT.payable(p).forEach(id => builder.suggest(id))
+        return builder.buildFuture()
+      })
+    } catch (e) { return arg }
+  }
+  const payFor = (ctx, count) => {
+    const p = me(ctx), PT = global.PotatoTree
+    if (!p) return war(ctx, 'Players only.', true)
+    if (!PT || !PT.pay) return war(ctx, 'The upgrade tree isn\'t installed.', true)
+    if (count < 0) return war(ctx, 'Techno\'s war chest takes potatoes. It doesn\'t hand them out.', true)
+    const r = PT.pay(p, str(ctx, 'node'), count)
+    return war(ctx, r.text, !r.ok)
+  }
   event.register(Commands.literal('potatowar')
     .executes(safe(ctx => {
       const p = me(ctx)
@@ -1911,7 +2153,7 @@ ServerEvents.commandRegistry(event => {
       const PT = global.PotatoTree
       if (PT) {
         let st = PT.status(p)
-        war(ctx, st.ready.length ? 'Ready in the upgrade tree (/potatowar tree): ' + st.ready.join(', ') + '.' : 'Nothing in the upgrade tree is ready to buy yet.')
+        war(ctx, st.ready.length ? 'Ready in the upgrade tree (/potatowar tree): ' + st.ready.join(', ') + '. Pay potatoes in the book or with /potatowar pay.' : 'Nothing in the upgrade tree is ready to buy yet.')
         st.soon.slice(0, 5).forEach(x => war(ctx, '  Next: ' + x.name + ' (needs ' + x.missing.join(', ') + ')'))
       }
       return 1
@@ -1923,6 +2165,16 @@ ServerEvents.commandRegistry(event => {
       PT.open(p)
       return 1
     })))
+    // Potatoes for an upgrade-tree node, in any kind that fits (part2/potato_tree.js). No node: what can be paid toward.
+    .then(Commands.literal('pay')
+      .executes(safe(ctx => {
+        const p = me(ctx), PT = global.PotatoTree
+        if (!p) return war(ctx, 'Players only.', true)
+        if (!PT || !PT.payList) return war(ctx, 'The upgrade tree isn\'t installed.', true)
+        return war(ctx, PT.payList(p))
+      }))
+      .then(payNode().executes(safe(ctx => payFor(ctx, 0)))
+        .then(int('count').executes(safe(ctx => payFor(ctx, Math.floor(num(ctx, 'count'))))))))
     .then(Commands.literal('offer')
       .executes(safe(ctx => offer(ctx, 0)))
       .then(int('potatoes').executes(safe(ctx => offer(ctx, Math.floor(num(ctx, 'potatoes')))))))

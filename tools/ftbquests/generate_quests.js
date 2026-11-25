@@ -80,6 +80,13 @@ function rankTask(n, k, rank) {
 function tierTask(n, k, tier) {
   return { id: taskId(n, k), type: TASK_STAGE, stage: 'blood_pool_tier_' + tier, title: 'Blood Pool: Tier ' + tier }
 }
+// The line to click on a node's page: it runs /potatowar pay, which takes every kind of potato (FTB Quests' Submit button
+// takes only the task's own item). FTB Quests reads a description line that starts with {" as a JSON text component.
+function payLine(N, unit) {
+  return JSON.stringify({ text: '▶ ' + (!unit ? 'Hand in the potatoes you carry' : unit.worth > 160 ? 'Hand in the Enchanted Baked Potatoes you carry'
+      : 'Hand in the Enchanted Potatoes you carry (a baked one counts as 160)'), color: 'gold', underlined: true,
+    clickEvent: { action: 'run_command', value: '/potatowar pay ' + N.id }, hoverEvent: { action: 'show_text', contents: '/potatowar pay ' + N.id } })
+}
 function nodeQuest(N) {
   const tasks = []
   const tier = Math.max(1, N.tier || 0, N.rank || 0), unit = unitOf(tier)
@@ -108,7 +115,9 @@ function nodeQuest(N) {
       (needs.length ? ', and ' + needs.map(x => x.name).join(' and ') : '') + '.',
     unit ? '&5The price was never potatoes: ' + fmt(N.potatoes) + ' ' + unit.many + ' (' + unit.worth + ' potatoes\' worth each, made in the Potato ' +
       (unit.worth > 160 ? 'Oven' : 'Press') + '). They count toward your rank at that worth.&r'
-      : '&7Potatoes handed in here count toward your rank. Items are taken when you submit them (loose potatoes only).',
+      : '&7Pay a part at a time: what you hand in is saved, and counts toward your rank once it is all paid. The Submit button takes loose potatoes only. ' +
+        'To use crates (9 each) or Enchanted Potatoes (160 each), click below. One worth more than what is still needed is refused, so finish with loose potatoes.',
+    ...(N.potatoes > 0 ? [payLine(N, unit)] : []),
     '&7Comes to you for free ' + catchUpText(tier) + ' (catch-up).'])
   const q = {
     id: questId(N.n), title: N.name, icon: N.icon, x: D(N.x), y: D(N.y),
@@ -125,7 +134,10 @@ function rankQuest(r) {
   const n = 100 + r
   const T = BP.tiers.find(x => x.tier === r)
   const q = {
-    id: questId(n), title: BP.rankName(r), icon: r == BP.rankCount ? 'minecraft:golden_carrot' : 'minecraft:potato',
+    // Each rank shows what it counts (owner, 2026-11-21): potatoes, then from rank 6 Enchanted Potatoes and from rank 9
+    // Enchanted Baked Potatoes. The book is the same for everyone from day one, so on a world before Tier 5 these icons
+    // show the price before the reveal does. (The top rank was a golden carrot until then.)
+    id: questId(n), title: BP.rankName(r), icon: unitOf(r) ? unitOf(r).item : 'minecraft:potato',
     // A rank priced in a revealed unit shows its number alone (/potatowar ranks names the unit once it's revealed).
     x: D(0), y: D(-(r - 1) * 1.5), subtitle: 'Rank ' + r + ' · ' + fmt(BP.standingThresholds[r - 1]) + (unitOf(r) ? '' : ' potatoes') +
       (BP.rankTier(r) ? ' · Blood Pool Tier ' + BP.rankTier(r) : ''),
@@ -185,6 +197,7 @@ const START = [
   ['The upgrade tree', 'tconstruct:smeltery_controller', [
     'Four chapters of nodes: Tinkers\' Smithy, Logistics, Autocrafting and Farms.',
     'Each node needs a rank, a Blood Pool tier and the nodes below it, and costs potatoes plus some of that branch\'s items.',
+    'Pay a node\'s potatoes a part at a time: loose ones with its Submit button, or any kind with the line on its page or &6/potatowar pay <node>&r (a crate counts as 9). Nothing worth more than what is still needed is taken, so finish with loose potatoes.',
     'A node unlocks things for you alone: Tinkers metals your tools may be made of, building smelteries, and placing and using autocrafters, logistics and farm machines.']],
   ['Nobody falls behind', 'minecraft:clock', [
     'When the Blood Pool is ' + BP.catchUpGap + ' tiers past something, it comes to everyone for free: crafting access and every tree node up to that tier.',
@@ -195,7 +208,7 @@ const START = [
     'The Hooded Merchant sells some items only to high enough ranks: pranks from Potato Farmer, up to the War Party contract at Potato Captain.']],
   ['Useful commands', 'minecraft:writable_book', [
     '&6/potatowar&r your rank · &6/potatowar next&r what to do next · &6/potatowar tree&r this book',
-    '&6/potatowar offer [count]&r · &6/potatowar ranks&r · &6/potatowar top&r',
+    '&6/potatowar offer [count]&r · &6/potatowar pay <node>&r · &6/potatowar ranks&r · &6/potatowar top&r',
     '&6/bloodpool&r the Pool · &6/bloodpool tiers&r · &6/bloodpool check&r (hold an item)']],
 ]
 function startQuest(entry, k) {

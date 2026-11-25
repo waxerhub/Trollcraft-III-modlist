@@ -8,7 +8,9 @@
 //      * placing: smelteries, autocrafters, logistics and farm blocks need their node, and so does right-clicking
 //        (using) them, even when someone else placed them; AE2 terminals need ME Logistics (the wireless crafting
 //        and pattern terminals ME Autocrafting);
-//      * potatoes handed in for a node count toward the player's rank (part2/blood_pool.js);
+//      * potatoes handed in for a node count toward the player's rank (part2/blood_pool.js). The book's Submit button
+//        takes loose potatoes; /potatowar pay <node>, and the line to click on each node's page, take crates and Enchanted
+//        Potatoes too, a part at a time and only while they fit (owner decision, 2026-11-25);
 //      * the price revealed: a node of Tier 6-8 costs its potato number in Enchanted Potatoes, of Tier 9-12 in
 //        Enchanted Baked Potatoes (part2/blood_pool.js reveals it at Tier 5; the quest book hides those prices until then);
 //      * catch-up: when the Blood Pool opens Tier T, every node of Tier T-2 and below is completed for everyone, and
@@ -16,7 +18,7 @@
 //      * parties are switched off (FTB Teams), so every player's quest progress is their own.
 //
 // Needs: part2/blood_pool.js, FTB Quests + FTB Library + FTB Teams + FTB XMod Compat (without them only the locks
-// work). Commands: /potatowar tree (anyone); /potatotree check|grant|revoke|catchup (op).
+// work). Commands: /potatowar tree and pay (anyone); /potatotree check|grant|revoke|catchup (op).
 // Copy to <server>/kubejs/server_scripts/part2/ and run /reload. Part II only.
 //
 // KubeJS 6 notes: no template strings; `let` inside nested blocks; closures in loops use forEach; event.cancel() last.
@@ -83,7 +85,8 @@ const NODES = [
       'create:andesite_belt_funnel', 'create:brass_belt_funnel'],   // a funnel placed on a belt becomes a belt funnel block
     desc: 'Place and use Create funnels, tunnels, smart chutes and portable storage interfaces.' },
   { n: 12, id: 'create_automation', name: 'Create Automation', chapter: 'logistics', rank: 4, tier: 4, needs: ['create_logistics'],
-    potatoes: 25000, items: [['create:precision_mechanism', 8]], icon: 'create:mechanical_arm', x: 0, y: -2,
+    // Not precision mechanisms: only Deployers make those, and this node is what lets you place one (players, 2026-11-25).
+    potatoes: 25000, items: [['create:brass_hand', 8], ['create:electron_tube', 8]], icon: 'create:mechanical_arm', x: 0, y: -2,
     places: ['create:deployer', 'create:mechanical_arm'], desc: 'Place and use Deployers and Mechanical Arms (and so Sequenced Assembly).' },
   { n: 13, id: 'immersive_logistics', name: 'Immersive Logistics', chapter: 'logistics', rank: 3, tier: 3, needs: [],
     potatoes: 2500, items: [['immersiveengineering:ingot_steel', 16]], icon: 'immersiveengineering:conveyor_basic', x: 3, y: 0,
@@ -227,6 +230,9 @@ S.forcing = false
 function hex8(v) { return ('00000000' + Number(v).toString(16).toUpperCase()).slice(-8) }
 function questId(node) { return ID_PREFIX + hex8(0x10000 + node.n) }
 function chapterId(key) { return ID_PREFIX + hex8(0xC000 + CHAPTERS[key][0]) }
+// The id of a node's potato task: it comes after its rank and tier tasks (tools/ftbquests/generate_quests.js).
+function potatoTaskId(node) { return ID_PREFIX + hex8(0x20000 + node.n * 16 + (node.rank > 0 ? 1 : 0) + (node.tier > 0 ? 1 : 0)) }
+function fmt(n) { return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ',') }
 
 function onlinePlayers(server) {
   const list = server.players, out = []
@@ -420,15 +426,33 @@ function startLoops(server) {
 // Potatoes (potato_offer_ebp), which count at their worth in potatoes.
 const OFFER_TAGS = { potato_offer: 1, potato_offer_ep: 160, potato_offer_ebp: 25600 }
 function creditOffer(event, worth) {
-  if (S.forcing) return                       // catch-up and op grants take no potatoes
+  if (S.forcing) return                       // catch-up and op grants take no potatoes (creditPartPaid counts what was paid)
   let p = null
   try { p = event.player } catch (e) { }
   if (!p) { try { let m = event.onlineMembers; if (m && m.size() > 0) p = m.get(0) } catch (e) { } }
   let n = 0
   try { n = Number(event.object.getMaxProgress()) } catch (e) { }
   const b = BP()
-  if (!p || !b || !(n > 0)) return
-  try { b.creditStanding(p, n * worth) } catch (e) { console.error('[PotatoTree] rank credit: ' + e) }
+  if (!b || !(n > 0)) return
+  try {
+    if (p) { b.creditStanding(p, n * worth); return }
+    // Nobody of theirs is online: a Task Screen fed by a hopper finished the price. Their own team's owner is the player.
+    let o = ownerOf(event)
+    if (o) b.creditStandingOf(o.uuid, o.name, n * worth)
+    else console.warn('[PotatoTree] ' + n * worth + ' potatoes handed in with nobody to credit them to')
+  } catch (e) { console.error('[PotatoTree] rank credit: ' + e) }
+}
+// The player a quest event belongs to when none of their team is online: { uuid, name }, or null.
+function ownerOf(event) {
+  const id = event.getData().getData().getTeamId()
+  const found = Java.loadClass('dev.ftb.mods.ftbteams.api.FTBTeamsAPI').api().getManager().getTeamByID(id)
+  if (!found.isPresent()) return null
+  // A player's own team has their UUID as its id; its getOwner() is all zeros (seen on the test server, 2026-11-25).
+  const team = found.get(), uuid = String(team.isPlayerTeam() ? team.getId() : team.getOwner()).toLowerCase()
+  if (/^[0-]+$/.test(uuid)) return null
+  let name = ''
+  try { if (team.isPlayerTeam()) name = String(team.getPlayerName()) } catch (e) { }   // (a name lookup in the profile cache is "ambiguous" to Rhino)
+  return { uuid: uuid, name: name }
 }
 if (typeof FTBQuestsEvents != 'undefined') {
   try {
@@ -437,6 +461,123 @@ if (typeof FTBQuestsEvents != 'undefined') {
 } else {
   console.warn('[PotatoTree] FTB Quests (with FTB XMod Compat) isn\'t installed: the locks work, the quest book doesn\'t.')
 }
+
+// ===================== PAYING FOR A NODE =====================
+
+// FTB Quests takes one exact item per task: its Submit button and Task Screens take loose potatoes (or the late nodes'
+// Enchanted ones) and silently ignore everything else. /potatowar pay <node> (part2/blood_pool.js's command), and the
+// line to click on each node's page, hand in every kind of potato at its worth, a part at a time, into the same task.
+// Never more than the node still needs: a crate or an Enchanted Potato worth more than that is refused, and loose
+// potatoes fill the rest (owner decision, 2026-11-25). The unit is the task's own item, from the book as loaded, so an
+// old chapter file can't make a potato count as an Enchanted one.
+const PLAIN_UNIT = { item: 'minecraft:potato', worth: 1, one: 'potato', many: 'potatoes' }
+function unitOfItem(id) {
+  if (id == PLAIN_UNIT.item) return PLAIN_UNIT
+  const b = BP()
+  return ((b && b.units) || []).filter(u => u.item == id)[0] || null
+}
+function amount(n, u) { return fmt(n) + ' ' + (n == 1 ? u.one : u.many) }
+// The player's own quest data (FTB XMod Compat), or null without FTB Quests.
+function book(p) {
+  if (typeof FTBQuests == 'undefined') return null
+  try { return FTBQuests.getServerDataFromPlayer(p) } catch (e) { return null }
+}
+// A node's potato price as it stands for a player: { task, unit, max, paid, left, done }, or null if the book has none.
+function priceOf(q, N) {
+  const id = potatoTaskId(N), file = q.getFile(), task = file.getTask(file.getID(id))
+  if (task == null) return null
+  const unit = unitOfItem(String(task.getItemStack().id))
+  if (!unit) return null
+  const max = Number(task.getMaxProgress()), done = !!q.isCompleted(id), paid = done ? max : Math.min(max, Number(q.getTaskProgress(id)))
+  return { task: id, unit: unit, max: max, paid: paid, left: max - paid, done: done }
+}
+// The nodes a player can pay potatoes toward now: [{ N, price }].
+function payableNodes(p) {
+  const q = book(p), out = []
+  if (!q) return out
+  NODES.forEach(N => {
+    if (has(p, N) || !(N.potatoes > 0) || !q.canStartQuest(questId(N))) return
+    const price = priceOf(q, N)
+    if (price && !price.done && price.left > 0) out.push({ N: N, price: price })
+  })
+  return out
+}
+function payList(p) {
+  const list = payableNodes(p)
+  if (!list.length) return 'There is no node you can pay potatoes toward now (/potatowar next).'
+  return 'You can pay toward: ' + list.map(x => x.N.id + ' (' + fmt(x.price.paid) + ' of ' + amount(x.price.max, x.price.unit) + ')').join(', ') +
+    '. Use /potatowar pay <node>.'
+}
+// What fits a price, for someone carrying none of it.
+function takesText(unit) {
+  const b = BP()
+  if (unit.worth > 160) return ''
+  if (unit.worth == 160) return ' An Enchanted Baked Potato counts as 160.'
+  return b && b.revealed() ? ' Loose ones, crates (9 each) or Enchanted Potatoes (160 each).' : ' Loose ones or crates (9 each).'
+}
+// Hands in what a player carries toward a node's potato price: at most `count` of its unit (0 = all that fits).
+// { ok, text } for the reply.
+function pay(p, id, count) {
+  const no = text => ({ ok: false, text: text }), b = BP()
+  const key = String(id).toLowerCase(), N = Object.prototype.hasOwnProperty.call(NODE, key) ? NODE[key] : null
+  if (!N) return no('There is no node called that. ' + payList(p))
+  if (has(p, N)) return no('You already have ' + N.name + '.')
+  const q = book(p)
+  if (!q || !b || !b.exactPotatoes) return no('The quest book isn\'t there, so nothing was taken.')
+  const price = priceOf(q, N)
+  if (!price) return no('The book has no potato price for ' + N.name + ', so nothing was taken. Tell an op.')
+  const unit = price.unit
+  if (price.done || price.left <= 0) return no(N.name + '\'s potatoes are already paid. What else it needs is in the book (/potatowar tree).')
+  if (!q.canStartQuest(questId(N))) {
+    let first = (N.needs || []).filter(x => NODE[x] && !has(p, NODE[x])).map(x => NODE[x].name)
+    return no(N.name + ' can\'t be paid for yet' + (first.length ? ': it needs ' + first.join(' and ') + ' first.' : ' (/potatowar next).'))
+  }
+  if (q.getLocked()) return no('Your quest book is locked, so nothing was taken. Tell an op.')
+  const want = count > 0 ? Math.min(price.left, count) : price.left
+  const plan = b.exactPotatoes(p, want * unit.worth, unit.worth)
+  const short = want - plan.worth / unit.worth
+  // kinds the player still carries that are worth more than what's still wanted
+  const tooBig = short > 0 ? plan.left : []
+  const refused = tooBig.length ? tooBig.map(k => k.name + ' (' + fmt(k.worth / unit.worth) + ' each)').join(' and ') + ' are worth more than the ' +
+    amount(short, unit) + (count > 0 && count < price.left ? ' left of that' : ' still needed') + ', so they were refused: use ' +
+    (unit.worth == 1 ? 'loose potatoes' : unit.many) + ' for the rest.' : ''
+  if (!(plan.worth > 0)) {
+    if (refused) return no(refused.charAt(0).toUpperCase() + refused.slice(1))
+    return no('You carry nothing ' + N.name + ' takes. It still needs ' + amount(price.left, unit) + '.' + takesText(unit))
+  }
+  const n = plan.worth / unit.worth
+  plan.take()
+  try { q.addProgress(price.task, n) } catch (e) { console.error('[PotatoTree] paying for ' + N.id + ': ' + e) }
+  const now = priceOf(q, N)
+  if (!now || now.paid <= price.paid) {
+    plan.putBack()
+    console.error('[PotatoTree] The book took none of ' + nameOf(p) + '\'s ' + n + ' for ' + N.id + '; they were given back')
+    return no('The book wouldn\'t take them, so you have them back. Tell an op.')
+  }
+  console.info('[PotatoTree] ' + nameOf(p) + ' paid ' + n + ' (' + plan.kinds.map(k => k.count + ' ' + k.name).join(', ') + ') toward ' + N.id + ': ' + now.paid + ' of ' + now.max)
+  const took = plan.kinds.map(k => fmt(k.count) + ' ' + k.name).join(', ')
+  if (now.done) {
+    return { ok: true, text: N.name + ': ' + took + ' handed in. All ' + amount(now.max, unit) + ' are paid, and count toward your rank.' +
+      (has(p, N) ? '' : ' What else it needs is in the book (/potatowar tree).') }
+  }
+  return { ok: true, text: N.name + ': ' + took + ' handed in. ' + fmt(now.paid) + ' of ' + amount(now.max, unit) + ' paid, ' + fmt(now.left) + ' to go.' +
+    (refused ? ' Your ' + refused : '') + ' They count toward your rank once it\'s all paid.' }
+}
+// Potatoes handed in toward a node that's about to be completed for free (catch-up, an op's grant). They were really
+// given, so they count toward the rank; a price already paid in full was credited then.
+function creditPartPaid(p, N) {
+  const q = book(p), b = BP()
+  if (!q || !b || !(N.potatoes > 0)) return 0
+  try {
+    let price = priceOf(q, N)
+    if (!price || price.done || !(price.paid > 0)) return 0
+    b.creditStanding(p, price.paid * price.unit.worth)
+    tell(p, 'The ' + amount(price.paid, price.unit) + ' you had handed in for ' + N.name + ' count toward your rank.')
+    return price.paid
+  } catch (e) { console.error('[PotatoTree] part-paid credit: ' + e) }
+  return 0
+}
+
 
 // Parties off: every player stays their own FTB Teams team, so quest progress (and unlocks) are personal.
 function lockParties() {
@@ -447,12 +588,15 @@ function lockParties() {
 }
 lockParties()
 
-// Completes a node for a player: its quest (so the book shows it), and its stage. Nothing is taken or credited.
+// Completes a node for a player: its quest (so the book shows it), and its stage. Nothing is taken; only potatoes they
+// had already handed in toward it are credited.
 function grant(server, p, N) {
+  const part = creditPartPaid(p, N)
   S.forcing = true
   try { server.runCommandSilent('ftbquests change_progress ' + nameOf(p) + ' complete ' + questId(N)) } catch (e) { }
   finally { S.forcing = false }
   try { if (!p.stages.has(STAGE_PREFIX + N.id)) p.stages.add(STAGE_PREFIX + N.id) } catch (e) { console.error('[PotatoTree] stage: ' + e) }
+  return part
 }
 function revoke(server, p, N) {
   S.forcing = true
@@ -537,6 +681,11 @@ global.PotatoTree = {
   nodes: NODES,
   chapters: CHAPTERS,
   questId: id => NODE[id] ? questId(NODE[id]) : null,
+  potatoTaskId: id => NODE[id] ? potatoTaskId(NODE[id]) : null,
+  // /potatowar pay (part2/blood_pool.js): hands in what fits a node's potato price. { ok, text }.
+  pay: (p, id, count) => pay(p, id, Number(count) || 0),
+  payList: p => payList(p),
+  payable: p => payableNodes(p).map(x => x.N.id),
   chapterId: key => CHAPTERS[key] ? chapterId(key) : null,
   idPrefix: ID_PREFIX,
   stagePrefix: STAGE_PREFIX,
@@ -575,9 +724,9 @@ ServerEvents.commandRegistry(event => {
     .then(Commands.literal('grant').then(player().then(nodeArg().executes(safe(ctx => {
       const p = target(ctx), N = nodeOf(ctx)
       if (!N) return reply(ctx, 'No such node. Ids: ' + NODES.map(x => x.id).join(', '), true)
-      grant(ctx.source.server, p, N)
+      const part = grant(ctx.source.server, p, N)
       console.info('[PotatoTree] ' + N.id + ' granted to ' + nameOf(p))
-      return reply(ctx, N.name + ' granted to ' + nameOf(p) + ' (nothing taken, no potatoes credited).')
+      return reply(ctx, N.name + ' granted to ' + nameOf(p) + ' (nothing taken' + (part > 0 ? '; the ' + fmt(part) + ' already handed in toward it were credited).' : ', no potatoes credited).'))
     })))))
     .then(Commands.literal('revoke').then(player().then(nodeArg().executes(safe(ctx => {
       const p = target(ctx), N = nodeOf(ctx)

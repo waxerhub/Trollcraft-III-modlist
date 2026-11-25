@@ -138,7 +138,7 @@ const server = {
   get tickCount() { return W.tick },
   getLevel: d => levels[String(d)] || null,
   getPlayerList: () => ({ getPlayer: u => players.find(p => p.online && p.uuid == u) || null }),
-  getProfileCache: () => ({ get: n => { const p = players.find(x => x.name.toLowerCase() == String(n).toLowerCase()); return { isPresent: () => !!p, get: () => ({ getId: () => p.uuid, getName: () => p.name }) } } }),
+  getProfileCache: () => ({ get: () => { throw new Error('The choice of Java method GameProfileCache.get is ambiguous') } }),   // as on a real server (2026-11-25)
   persistentData: { getString: k => W.persistent[k] || '', putString: (k, v) => { W.persistent[k] = String(v) } },
   scheduleInTicks: (n, f) => W.q.push([W.tick + n, f]),
   runCommandSilent(c) {
@@ -191,6 +191,8 @@ const Java = { loadClass: n => ({
   'net.minecraft.world.level.Level$ExplosionInteraction': { NONE: 'NONE', TNT: 'TNT' },
   'net.minecraft.nbt.StringTag': { valueOf: s => s },
   'com.mojang.brigadier.arguments.StringArgumentType': { word: () => 'word', greedyString: () => 'greedy', getString: (ctx, n) => ctx.args[n] },
+  // FTB Teams' list of everyone who has joined: personal teams (their id is the player's UUID) and parties.
+  'dev.ftb.mods.ftbteams.api.FTBTeamsAPI': { api: () => ({ getManager: () => ({ getTeams: () => { if (W.teamsError) throw new Error('not ready'); return W.teams || [] } }) }) },
 })[n] || (() => { throw new Error('no class ' + n) })() }
 const mkText = t => ({ text: String(t), append(o) { this.text += o.text; return this } })
 const Text = { red: mkText, gold: mkText, yellow: mkText, of: mkText, lightPurple: mkText }
@@ -438,6 +440,27 @@ r = useHeld(admin, ct2)
 ok('target on the contract cooldown: refused, not used up', /hit recently/.test(text(admin)) && ct2.count == 1, text(admin))
 cmd('blackmarket heat Bob reset', admin)
 ok('heat reset', !DB().heat[bob.uuid])
+
+// ----- offline players by name (2026-11-25: the profile cache's lookup throws on a real server) -----
+const person = (name, id) => ({ isPlayerTeam: () => true, getPlayerName: () => name, getId: () => id })
+const party = name => ({ isPlayerTeam: () => false, getPlayerName: () => { throw new Error('a party has no player') }, getId: () => 'party-1' })
+W.teams = [party('The Crew'), person('Zed', 'ZED-1111'), person('Yan', 'YAN-1111')]
+bob.online = false
+const heatOfName = n => { cmd('blackmarket heat ' + n, admin); return flat(lastReply()) }
+ok('an offline player this market has seen is found by name', /Bob: heat 0/.test(heatOfName('Bob')) && /Bob: heat 0/.test(heatOfName('bob')), heatOfName('Bob'))
+bob.online = true
+ok('so is one only FTB Teams knows, whatever the capitals', /Zed: heat 0/.test(heatOfName('Zed')) && /Zed: heat 0/.test(heatOfName('zED')), heatOfName('Zed'))
+ok('... but not a stranger, and not a party\'s name', /Unknown player/.test(heatOfName('Notch')) && /Unknown player/.test(heatOfName('The')))
+cmd('blackmarket test contract tipoff Zed', admin)
+const zedContract = Object.keys(DB().contracts).map(k => DB().contracts[k]).find(c => c.targetName == 'Zed')
+ok('a contract can name them, with their UUID as the game writes it', zedContract && zedContract.target == 'zed-1111', JSON.stringify(zedContract))
+alice.inbox = []
+cmd('blackmarket buy contract tipoff Notch', alice)
+ok('a typed stranger: the merchant has never heard of them', /has never heard of Notch/.test(text(alice) + flat(lastReply())), text(alice) + flat(lastReply()))
+W.teamsError = true
+ok('FTB Teams not answering: unknown, with a warning in the log, no error', /Unknown player/.test(heatOfName('Yan')) && W.logs.some(l => /^W \[BlackMarket\] Looking up Yan in FTB Teams failed/.test(l)) && !W.logs.some(l => /^E .*Yan/.test(l)))
+W.teamsError = false
+realSlots(admin).forEach(s => { if (s.count > 0 && s.parsed && s.parsed.trollcraft && s.parsed.trollcraft.contract && /Zed/.test(s.snbtStr)) s.count = 0 })
 
 // ----- inspect -----
 putInHand(admin, ct2)
@@ -847,6 +870,12 @@ cmd('bounty Alice 1', alice)
 ok('a bounty on yourself is refused', /your own head/.test(flat(lastReply())) && coinsOf(alice) == 25)
 cmd('bounty Nobody 1', alice)
 ok('an unknown player is refused', /Nobody has heard of Nobody/.test(flat(lastReply())) && coinsOf(alice) == 25)
+cmd('bounty Zed 1', alice)
+ok('a bounty on someone offline whom only FTB Teams knows: placed, on their UUID', coinsOf(alice) == 24 && !!JSON.parse(W.persistent.bounties).bounties['zed-1111'], flat(lastReply()))
+cmd('bounty cancel Zed', alice)
+ok('... and cancelled by name', coinsOf(alice) == 25 && !JSON.parse(W.persistent.bounties).bounties['zed-1111'], flat(lastReply()))
+cmd('bounty clear Notch', admin); ok('/bounty clear on a stranger: unknown', /Unknown player/.test(flat(lastReply())))
+clearInboxes()
 alice.x = 1100.5
 cmd('bounty Eve 1', alice)
 ok('away from the merchant: refused', /Find him first/.test(flat(lastReply())) && coinsOf(alice) == 25 && !pot('Eve'))

@@ -40,6 +40,7 @@ function stack(id, count, snbtStr) {
     getItem() { const id = this.id; const blocks = ['minecraft:stone', 'minecraft:grass_block', 'minecraft:oak_planks', 'minecraft:chest', 'minecraft:tnt', 'minecraft:dirt']; return blocks.indexOf(id) >= 0 ? { getBlock: () => ({ defaultBlockState: () => ({ hasBlockEntity: () => id == 'minecraft:chest' }) }) } : {} },
     getCount() { return this.count },
     shrink(n) { this.count = Math.max(0, this.count - n) },
+    setCount(n) { this.count = n },
     copy() { return stack(this.id, this.count, this.snbtStr) },
     getHoverName() { const self = this; return { getString: () => { try { return JSON.parse(self.parsed.display.Name).text } catch (e) { return self.id.split(':')[1] } } } },
   }
@@ -147,7 +148,7 @@ const server = {
   get tickCount() { return W.tick },
   getLevel: d => levels[String(d)] || null,
   getPlayerList: () => ({ getPlayer: u => players.find(p => p.online && p.uuid == u) || null }),
-  getProfileCache: () => ({ get: n => { const p = players.find(x => x.name.toLowerCase() == String(n).toLowerCase()); return { isPresent: () => !!p, get: () => ({ getId: () => p.uuid, getName: () => p.name }) } } }),
+  getProfileCache: () => ({ get: () => { throw new Error('The choice of Java method GameProfileCache.get is ambiguous') } }),   // as on a real server (2026-11-25)
   persistentData: { getString: k => W.persistent[k] || '', putString: (k, v) => { W.persistent[k] = String(v) }, putBoolean: (k, v) => { W.persistent[k] = !!v }, getBoolean: k => !!W.persistent[k] },
   scheduleInTicks: (n, f) => W.q.push([W.tick + n, f]),
   runCommandSilent(c) {
@@ -188,6 +189,7 @@ const server = {
       const pl = players.find(x => x.name == m[1]), PT = glob.PotatoTree
       const N = PT && PT.nodes.find(x => PT.questId(x.id) == m[3])
       if (!pl || !N) return 0
+      W.qp[pl.uuid] = W.qp[pl.uuid] || {}; W.qp[pl.uuid][PT.potatoTaskId(N.id)] = m[2] == 'complete' ? N.potatoes : 0
       if (m[2] == 'complete') { pl.stages.add(PT.stagePrefix + N.id); fireFtbq('#potato_offer', { player: pl, object: { getMaxProgress: () => N.potatoes } }) }
       else pl.stages.remove(PT.stagePrefix + N.id)
       return 1
@@ -219,13 +221,49 @@ const Java = { loadClass: n => ({
   'java.time.ZonedDateTime': { now: zone => { W.zoneAsked = zone.z; const mk = ms => ({ minusHours: h => mk(ms - h * 3600000), toLocalDate: () => ({ toString: () => new Date(ms).toISOString().slice(0, 10) }) }); return mk(W.time - 5 * 3600000) } },
   'net.minecraft.world.level.Level$ExplosionInteraction': { NONE: 'NONE', TNT: 'TNT' },
   'net.minecraft.nbt.StringTag': { valueOf: s => s },
-  'dev.ftb.mods.ftbteams.api.FTBTeamsAPI': { api: () => ({ setPartyCreationFromAPIOnly: v => { W.partyApiOnly = v } }) },
+  'dev.ftb.mods.ftbteams.api.FTBTeamsAPI': { api: () => ({ setPartyCreationFromAPIOnly: v => { W.partyApiOnly = v },
+    getManager: () => ({ getTeamByID: id => ({ isPresent: () => /^team-(off|party|server)$/.test(id), get: () => ({
+      // as FTB Teams 2001.3.2: a player's own team has their UUID as its id and an all-zero owner; a party has an owner
+      isPlayerTeam: () => id == 'team-off', getPlayerName: () => 'Offie', getId: () => id == 'team-off' ? 'OFF-1111' : id, getOwner: () => id == 'team-party' ? 'PAR-1111' : '00000000-0000-0000-0000-000000000000' }) }) }) }) },
   'com.mojang.brigadier.arguments.StringArgumentType': { word: () => 'word', greedyString: () => 'greedy', getString: (ctx, n) => ctx.args[n] },
 })[n] || (() => { throw new Error('no class ' + n) })() }
 const mkText = t => ({ text: String(t), append(o) { this.text += o.text; return this } })
 const Text = { red: mkText, gold: mkText, yellow: mkText, of: mkText, lightPurple: mkText }
 const Item = { of: (id, a, b) => (typeof a == 'string' ? stack(id, 1, a) : stack(id, a == null ? 1 : a, b || null)), empty: EMPTY() }
 const Ingredient = { of: id => ({ id, getItemIds: () => { const t = String(id).replace(/^#/, ''); const l = (W.tagItems || {})[t] || []; return { toArray: () => l.slice() } } }), custom: (base, pred) => ({ base, pred, custom: true }) }
+// ---------- FTB Quests' data for scripts (FTB XMod Compat's FTBQuests binding) ----------
+// One potato task per node, with its item and price as the quest file has them, and each player's progress.
+W.qp = {}            // player uuid -> { task id: progress }
+W.taskItem = {}      // node id -> the item its task names, for an old chapter file
+W.noTask = []        // node ids the book has no potato task for
+W.qLocked = false    // the player's quest progress is locked
+W.qRefuse = false    // the book takes nothing
+const treeNodes = () => glob.PotatoTree.nodes
+const nodeOfTask = id => treeNodes().find(N => glob.PotatoTree.potatoTaskId(N.id) == id)
+const taskItem = N => { const t = Math.max(1, N.tier || 0, N.rank || 0); return W.taskItem[N.id] || (t >= 9 ? 'kubejs:enchanted_baked_potato' : t >= 6 ? 'kubejs:enchanted_potato' : 'minecraft:potato') }
+const OFFER_EVENT = { 'minecraft:potato': '#potato_offer', 'kubejs:enchanted_potato': '#potato_offer_ep', 'kubejs:enchanted_baked_potato': '#potato_offer_ebp' }
+const FTBQ = { getServerDataFromPlayer: p => {
+  const mine = W.qp[p.uuid] = W.qp[p.uuid] || {}
+  const file = { getID: x => String(x), getTask: id => { const N = nodeOfTask(id); return N && W.noTask.indexOf(N.id) < 0 ? { getMaxProgress: () => N.potatoes, getItemStack: () => stack(taskItem(N), 1) } : null } }
+  return {
+    getFile: () => file,
+    getTaskProgress: id => mine[id] || 0,
+    isCompleted: id => { const N = nodeOfTask(id); return !!N && (mine[id] || 0) >= N.potatoes },
+    // The nodes below it bought, and, for a late node, the price revealed.
+    canStartQuest: id => { const N = treeNodes().find(x => glob.PotatoTree.questId(x.id) == id)
+      return !!N && (N.needs || []).every(x => p._stages.has(glob.PotatoTree.stagePrefix + x)) && (Math.max(N.tier || 0, N.rank || 0) < 6 || p._stages.has('potato_war_revealed')) },
+    getLocked: () => W.qLocked,
+    addProgress(id, n) {
+      const N = nodeOfTask(id)
+      if (!N || W.qLocked || W.qRefuse) return false
+      const before = mine[id] || 0
+      mine[id] = Math.min(N.potatoes, before + n)
+      // FTB Quests fires this while the script's addProgress runs, with no "current player" (nobody clicked in the book)
+      if (before < N.potatoes && mine[id] >= N.potatoes) fireFtbq(OFFER_EVENT[taskItem(N)], { player: null, onlineMembers: { size: () => (p.online ? 1 : 0), get: () => p }, object: { getMaxProgress: () => N.potatoes } })
+      return true
+    },
+  }
+} }
 function fireFtbq(tag, ev) { (handlers['ftbq:' + tag] || []).forEach(h => h(ev)) }
 function fire(n, ev) { for (const h of handlers[n] || []) { try { h(ev) } catch (e) { if (e instanceof Exit) { ev.cancelled = true; return } throw e } } }
 function fireSpawn(e) { const ev = { entity: e, cancel() { throw new Exit() } }; fire('spawned', ev); return !ev.cancelled }
@@ -240,9 +278,9 @@ function loadOne(src) {
     register: r => { roots[r.n] = r; return r },
   }
   const ftbq = W.noFtbq ? undefined : { completed: (tag, cb) => { (handlers['ftbq:' + tag] = handlers['ftbq:' + tag] || []).push(cb) } }
-  new Function('PlayerEvents', 'EntityEvents', 'ServerEvents', 'ItemEvents', 'BlockEvents', 'Utils', 'Text', 'Item', 'Ingredient', 'console', 'global', 'Java', 'Date', 'JsonIO', 'FTBQuestsEvents', src)(
+  new Function('PlayerEvents', 'EntityEvents', 'ServerEvents', 'ItemEvents', 'BlockEvents', 'Utils', 'Text', 'Item', 'Ingredient', 'console', 'global', 'Java', 'Date', 'JsonIO', 'FTBQuestsEvents', 'FTBQuests', src)(
     { loggedIn: on('loggedIn'), loggedOut: on('loggedOut'), chestOpened: on('chestOpened'), inventoryChanged: on('inventoryChanged') }, { hurt: on('hurt'), death: on('death'), spawned: on('spawned') },
-    { loaded: on('loaded'), commandRegistry: f => f(ev), tags: (reg, f) => f({ add: (t, v) => { (W.addedTags = W.addedTags || {})[reg + ' ' + t] = v } }), recipes: f => { const rev = { replaceInput: (filter, from, to) => W.recipes.push({ filter, from, to }), remove: filt => { (W.removedRecipes = W.removedRecipes || []).push(JSON.parse(JSON.stringify(filt, (k, v) => v instanceof RegExp ? 're:' + v.source : v))) },
+    { loaded: on('loaded'), tick: on('tick'), commandRegistry: f => f(ev), tags: (reg, f) => f({ add: (t, v) => { (W.addedTags = W.addedTags || {})[reg + ' ' + t] = v } }), recipes: f => { const rev = { replaceInput: (filter, from, to) => W.recipes.push({ filter, from, to }), remove: filt => { (W.removedRecipes = W.removedRecipes || []).push(JSON.parse(JSON.stringify(filt, (k, v) => v instanceof RegExp ? 're:' + v.source : v))) },
       forEachRecipe: (filt, cb) => {
         W.forEachCalls = (W.forEachCalls || 0) + 1
         const all = filt === '*', types = all ? [] : (Array.isArray(filt) ? filt : [filt]).map(x => x.type)
@@ -259,7 +297,7 @@ function loadOne(src) {
     { rightClicked: on('itemRightClicked'), entityInteracted: on('entityInteracted'), foodEaten: on('foodEaten'), pickedUp: on('pickedUp') }, { rightClicked: on('blockRightClicked'), placed: on('blockPlaced'), broken: on('blockBroken') },
     Utils, Text, Item, Ingredient,
     { info: m => W.logs.push('I ' + m), warn: m => W.logs.push('W ' + m), error: m => W.logs.push('E ' + m) }, glob, Java, Datex,
-    { write: (path, obj) => { W.files[path] = JSON.parse(JSON.stringify(obj)) }, read: path => { const o = W.files[path]; if (!o) throw new Error('no file ' + path); return { get: k => o[k] } } }, ftbq)
+    { write: (path, obj) => { W.files[path] = JSON.parse(JSON.stringify(obj)) }, read: path => { const o = W.files[path]; if (!o) throw new Error('no file ' + path); return { get: k => o[k] } } }, ftbq, W.noFtbq ? undefined : FTBQ)
 }
 function loadAll(bmSrc, paSrc) {
   handlers = {}; roots = {}
@@ -665,6 +703,177 @@ cmd('potatotree grant Bo nonsense', admin); ok('an unknown node is refused with 
 const qn = W.q.length; reload(); reload(); advance(200)
 ok('/reload doesn\'t stack the armour loop', W.q.length <= qn + 3, qn + ' -> ' + W.q.length)
 ok('no errors logged with the tree', errors().length == 0, errors().join(' | '))
+
+// ----- /potatowar pay: crates and Enchanted Potatoes toward a node, a part at a time -----
+// The live report (2026-11-25): the book's Submit button ignores crates, and 25,000 potatoes don't fit in one inventory.
+{
+cmd('bloodpool settier 5', admin); advance(25)
+const CRATE = 'quark:potato_crate', LOOSE = 'minecraft:potato', EP = 'kubejs:enchanted_potato', EBP = 'kubejs:enchanted_baked_potato'
+const fill = (p, list) => { for (let i = 0; i < 36; i++) setReal(p, i, list[i] ? stack(list[i][0], list[i][1], list[i][2]) : EMPTY()) }
+const many = (id, n) => { const out = []; while (n > 0) { out.push([id, Math.min(64, n)]); n -= 64 } return out }
+const paid = (p, id) => (W.qp[p.uuid] || {})[PT().potatoTaskId(id)] || 0
+const setPaid = (p, id, n) => { W.qp[p.uuid] = W.qp[p.uuid] || {}; W.qp[p.uuid][PT().potatoTaskId(id)] = n }
+const pot = p => glob.BloodPool.standing(p).potatoes
+const payCmd = (p, line) => { replies.length = 0; cmd('potatowar pay ' + line, p); return flat(lastReply()) }
+const pia = mk2('Pia', 1007.5); advance(70)
+let said = ''
+ok('Osmium & Steeleaf can be paid toward once Steel Smithing is there (Tier 5, caught up to Tier 3)', PT().payable(pia).indexOf('osmium_steeleaf') >= 0 && PT().payable(pia).indexOf('cobalt_smithing') < 0, PT().payable(pia).join(','))
+// the report: an inventory full of crates
+fill(pia, many(CRATE, 36 * 64))
+const piaP = pot(pia)
+said = payCmd(pia, 'osmium_steeleaf')
+ok('a full inventory of crates (2,304) pays 20,736 of the 25,000', paid(pia, 'osmium_steeleaf') == 20736 && countOf(pia, CRATE) == 0, paid(pia, 'osmium_steeleaf') + ' ' + said)
+ok('... and says so, with what\'s to go and when it counts', /Osmium & Steeleaf: 2,304 crates handed in\. 20,736 of 25,000 potatoes paid, 4,264 to go\. They count toward your rank once it's all paid\./.test(said), said)
+ok('... nothing counts toward the rank yet', pot(pia) == piaP)
+// the second trip: crates only while they fit, then loose potatoes
+fill(pia, many(CRATE, 600).concat(many(LOOSE, 64)))
+said = payCmd(pia, 'osmium_steeleaf')
+ok('the rest: 473 whole crates (4,257) and 7 loose potatoes make exactly 25,000', paid(pia, 'osmium_steeleaf') == 25000 && countOf(pia, CRATE) == 127 && countOf(pia, LOOSE) == 57, paid(pia, 'osmium_steeleaf') + ' ' + countOf(pia, CRATE) + ' ' + countOf(pia, LOOSE))
+ok('... the whole price then counts toward the rank, once', pot(pia) == piaP + 25000 && /473 crates, 7 loose potatoes handed in\. All 25,000 potatoes are paid, and count toward your rank\. What else it needs is in the book/.test(said), pot(pia) - piaP + ' ' + said)
+said = payCmd(pia, 'osmium_steeleaf')
+ok('paid already: refused, nothing taken', /potatoes are already paid\. What else it needs is in the book/.test(said) && countOf(pia, CRATE) == 127 && countOf(pia, LOOSE) == 57, said)
+
+// a kind worth more than what's still needed is refused (owner decision, 2026-11-25)
+pia.stages.add(SP('seared_smeltery'))
+setPaid(pia, 'foundry', 24993)
+fill(pia, many(CRATE, 10))
+said = payCmd(pia, 'foundry')
+ok('7 still needed and only crates (9 each): refused, with what to use instead', paid(pia, 'foundry') == 24993 && countOf(pia, CRATE) == 10 && /Crates \(9 each\) are worth more than the 7 potatoes still needed, so they were refused: use loose potatoes for the rest\./.test(said), said)
+fill(pia, many(CRATE, 10).concat(many(LOOSE, 5)))
+said = payCmd(pia, 'foundry')
+ok('... with 5 loose potatoes: those are taken, the crates are left', paid(pia, 'foundry') == 24998 && countOf(pia, CRATE) == 10 && countOf(pia, LOOSE) == 0 && /5 loose potatoes handed in\. 24,998 of 25,000 potatoes paid, 2 to go\. Your crates \(9 each\) are worth more than the 2 potatoes still needed/.test(said), said)
+setPaid(pia, 'foundry', 24960)
+fill(pia, many(EP, 3).concat(many(CRATE, 2)))
+said = payCmd(pia, 'foundry')
+ok('40 still needed: Enchanted Potatoes (160) are refused, 2 crates (18) are taken', paid(pia, 'foundry') == 24978 && countOf(pia, EP) == 3 && countOf(pia, CRATE) == 0 && /2 crates handed in\. 24,978 of .*Your Enchanted Potatoes \(160 each\) are worth more than the 22 potatoes still needed, so they were refused: use loose potatoes/.test(said), said)
+setPaid(pia, 'foundry', 0)
+fill(pia, many(EP, 200))
+said = payCmd(pia, 'foundry')
+ok('25,000 needed and 200 Enchanted Potatoes: 156 fit (24,960), 44 stay', paid(pia, 'foundry') == 24960 && countOf(pia, EP) == 44, paid(pia, 'foundry') + ' ' + countOf(pia, EP))
+setPaid(pia, 'foundry', 0)
+fill(pia, many(LOOSE, 200).concat(many(CRATE, 20), many(EP, 1)))
+said = payCmd(pia, 'foundry')
+ok('a mixed inventory is all taken while it fits: 1 Enchanted Potato, 20 crates, 200 loose', paid(pia, 'foundry') == 540 && /1 Enchanted Potato, 20 crates, 200 loose potatoes handed in/.test(said), said)
+setPaid(pia, 'foundry', 24000)
+fill(pia, many(LOOSE, 10).concat(many(CRATE, 200)))
+said = payCmd(pia, 'foundry')
+ok('the biggest kinds go first, so the loose ones are there for the last few: 111 crates and 1 loose', paid(pia, 'foundry') == 25000 && countOf(pia, CRATE) == 89 && countOf(pia, LOOSE) == 9, countOf(pia, CRATE) + ' ' + countOf(pia, LOOSE))
+// a count
+setPaid(pia, 'foundry', 0)
+fill(pia, many(CRATE, 64).concat(many(LOOSE, 64)))
+said = payCmd(pia, 'foundry 100')
+ok('a count is the most it takes: 100 is 11 crates and 1 loose potato', paid(pia, 'foundry') == 100 && countOf(pia, CRATE) == 53 && countOf(pia, LOOSE) == 63, said)
+fill(pia, many(CRATE, 64))
+said = payCmd(pia, 'foundry 5')
+ok('... 5 with only crates: refused, "left of that"', paid(pia, 'foundry') == 100 && countOf(pia, CRATE) == 64 && /worth more than the 5 potatoes left of that/.test(said), said)
+said = payCmd(pia, 'foundry -5')
+ok('a negative count is refused', paid(pia, 'foundry') == 100 && countOf(pia, CRATE) == 64 && /doesn't hand them out/.test(said), said)
+// what isn't a potato for this
+fill(pia, [[LOOSE, 64, '{trollcraft:{kingspotato:1b}}'], ['minecraft:baked_potato', 64]])
+said = payCmd(pia, 'foundry')
+ok('Potato King\'s Potatoes and baked potatoes aren\'t taken; it says what it takes', paid(pia, 'foundry') == 100 && countOf(pia, LOOSE) == 64 && /You carry nothing The Foundry takes\. It still needs 24,900 potatoes\. Loose ones, crates \(9 each\) or Enchanted Potatoes \(160 each\)\./.test(said), said)
+// only what's in the 36 slots the war chest takes from
+fill(pia, []); setReal(pia, 40, stack(CRATE, 64))
+said = payCmd(pia, 'foundry')
+ok('the offhand isn\'t touched', countOf(pia, CRATE) == 0 && realSlots(pia)[40].count == 64 && paid(pia, 'foundry') == 100)
+setReal(pia, 40, EMPTY())
+
+// refusals
+fill(pia, many(CRATE, 64))
+said = payCmd(pia, 'cobalt_smithing')
+ok('a node whose nodes below aren\'t bought: refused, naming them', countOf(pia, CRATE) == 64 && /Cobalt Smithing can't be paid for yet: it needs Osmium & Steeleaf first\./.test(said), said)
+said = payCmd(pia, 'nonsense'); ok('an unknown node: the ones that can be paid are named', /There is no node called that\. You can pay toward: .*foundry \(100 of 25,000 potatoes\)/.test(said), said)
+said = payCmd(pia, 'constructor'); ok('... also for a name every object has', /There is no node called that/.test(said), said)
+said = payCmd(pia, 'seared_smeltery'); ok('a node they already have: refused', /You already have Seared Smeltery\./.test(said) && countOf(pia, CRATE) == 64, said)
+replies.length = 0; cmd('potatowar pay', pia)
+ok('/potatowar pay alone lists what can be paid toward, with how far along', /You can pay toward: .*foundry \(100 of 25,000 potatoes\).*Use \/potatowar pay <node>\./.test(flat(lastReply())), flat(lastReply()))
+W.qLocked = true; said = payCmd(pia, 'foundry')
+ok('a locked quest book: refused, nothing taken', /locked, so nothing was taken/.test(said) && countOf(pia, CRATE) == 64, said)
+W.qLocked = false
+W.qRefuse = true; const errs0 = errors().length; said = payCmd(pia, 'foundry')
+ok('a book that takes nothing: everything is given back, and it\'s logged', /you have them back/.test(said) && countOf(pia, CRATE) == 64 && paid(pia, 'foundry') == 100 && errors().length == errs0 + 1, said)
+W.qRefuse = false
+W.logs = W.logs.filter(l => !/The book took none of/.test(l))
+W.noTask = ['foundry']; said = payCmd(pia, 'foundry')
+ok('a book without that price (old chapter files): refused, nothing taken', /The book has no potato price for The Foundry/.test(said) && countOf(pia, CRATE) == 64, said)
+W.noTask = []
+W.taskItem = { foundry: 'minecraft:carrot' }; said = payCmd(pia, 'foundry')
+ok('a price in something that isn\'t a kind of potato: refused', /The book has no potato price/.test(said) && countOf(pia, CRATE) == 64, said)
+W.taskItem = {}
+
+// late nodes are priced in Enchanted (Baked) Potatoes: only kinds worth a whole number of those
+pia.stages.add(SP('osmium_steeleaf')); pia.stages.add(SP('cobalt_smithing'))
+fill(pia, many(CRATE, 64).concat(many(LOOSE, 64), many(EP, 100)))
+said = payCmd(pia, 'alloy_smithing')
+ok('Alloy Smithing (100,000 Enchanted Potatoes) takes Enchanted Potatoes, not crates or loose ones', paid(pia, 'alloy_smithing') == 100 && countOf(pia, EP) == 0 && countOf(pia, CRATE) == 64 && countOf(pia, LOOSE) == 64 && /100 Enchanted Potatoes handed in\. 100 of 100,000 Enchanted Potatoes paid/.test(said), said)
+fill(pia, many(EBP, 2).concat(many(EP, 64)))
+said = payCmd(pia, 'alloy_smithing')
+ok('... an Enchanted Baked Potato counts as 160 of them', paid(pia, 'alloy_smithing') == 100 + 320 + 64 && countOf(pia, EBP) == 0, paid(pia, 'alloy_smithing') + ' ' + said)
+setPaid(pia, 'alloy_smithing', 99900)
+fill(pia, many(EBP, 2))
+said = payCmd(pia, 'alloy_smithing')
+ok('... and is refused when 100 are still needed: use Enchanted Potatoes', paid(pia, 'alloy_smithing') == 99900 && countOf(pia, EBP) == 2 && /Enchanted Baked Potatoes \(160 each\) are worth more than the 100 Enchanted Potatoes still needed, so they were refused: use Enchanted Potatoes for the rest/.test(said), said)
+fill(pia, many(CRATE, 64))
+said = payCmd(pia, 'alloy_smithing')
+ok('... carrying only crates: told what it takes', /You carry nothing Alloy Smithing takes\. It still needs 100 Enchanted Potatoes\. An Enchanted Baked Potato counts as 160\./.test(said), said)
+const piaE = pot(pia)
+fill(pia, many(EP, 100))
+payCmd(pia, 'alloy_smithing')
+ok('... paid in full, they count at their worth: 100,000 x 160', pot(pia) == piaE + 16000000, pot(pia) - piaE)
+// an old chapter file with plain potatoes on a late node can't be paid in Enchanted ones at 1 each
+W.taskItem = { me_logistics: 'minecraft:potato' }
+fill(pia, many(EP, 1))
+payCmd(pia, 'me_logistics')
+ok('the unit is the task\'s own item: one Enchanted Potato is 160 of a price in potatoes', paid(pia, 'me_logistics') == 160, paid(pia, 'me_logistics'))
+W.taskItem = {}; delete W.qp[pia.uuid][PT().potatoTaskId('me_logistics')]
+// before the reveal nothing is said of a late node's price
+pia.stages.remove('potato_war_revealed')
+fill(pia, many(EP, 64))
+said = payCmd(pia, 'me_logistics')
+ok('before the reveal a late node can\'t be paid, and its unit isn\'t named', countOf(pia, EP) == 64 && /ME Logistics can't be paid for yet/.test(said) && !/Enchanted/.test(said) && PT().payable(pia).indexOf('me_logistics') < 0, said)
+pia.stages.add('potato_war_revealed')
+
+// who may use it
+fill(pia, many(CRATE, 5))
+replies.length = 0; cmd('potatowar pay foundry')
+ok('the console can\'t pay', /Players only/.test(flat(lastReply())))
+ok('/potatowar next points at it', (() => { replies.length = 0; cmd('potatowar next', pia); return replies.map(flat).some(r => /Ready in the upgrade tree .*Pay potatoes in the book or with \/potatowar pay\./.test(r) || /Nothing in the upgrade tree is ready/.test(r)) })(), replies.map(flat).join(' | '))
+
+// ----- the two rank-credit gaps -----
+// 1. A Task Screen finishes a price while its owner is offline: their own team's owner is credited.
+const off = glob.BloodPool.standing({ getStringUuid: () => 'off-1111' }).potatoes
+fireFtbq('#potato_offer', { player: null, onlineMembers: { size: () => 0 }, object: { getMaxProgress: () => 250 }, getData: () => ({ getData: () => ({ getTeamId: () => 'team-off' }) }) })
+ok('a price finished while its owner is offline counts for the owner of that team, by name', glob.BloodPool.standing({ getStringUuid: () => 'off-1111' }).potatoes == off + 250 && PDB().standing['off-1111'].name == 'Offie')
+const teamDone = id => fireFtbq('#potato_offer', { player: null, onlineMembers: { size: () => 0 }, object: { getMaxProgress: () => 250 }, getData: () => ({ getData: () => ({ getTeamId: () => id }) }) })
+teamDone('team-party')
+ok('... for a party made before parties were off, its owner', glob.BloodPool.standing({ getStringUuid: () => 'par-1111' }).potatoes == 250)
+teamDone('team-server')
+ok('... a team nobody owns credits nobody (never the all-zero UUID)', !PDB().standing['00000000-0000-0000-0000-000000000000'] && !PDB().standing['team-server'])
+const warn0 = W.logs.filter(l => /^W .*nobody to credit/.test(l)).length
+fireFtbq('#potato_offer', { player: null, onlineMembers: { size: () => 0 }, object: { getMaxProgress: () => 250 }, getData: () => ({ getData: () => ({ getTeamId: () => 'team-none' }) }) })
+ok('... with no such team: nobody is credited, and it\'s logged', W.logs.filter(l => /^W .*nobody to credit/.test(l)).length == warn0 + 1 && errors().length == errs0, errors().join(' | '))
+// 2. Catch-up gives a node that was part-paid: what was handed in counts.
+const quin = mk2('Quin', 1008.5); advance(70)
+setPaid(quin, 'osmium_steeleaf', 20736)
+const quinP = pot(quin)
+quin.inbox.length = 0
+cmd('potatotree grant Quin osmium_steeleaf', admin)
+ok('a part-paid node given for free: the 20,736 already handed in count toward the rank, and the player is told', quin.stages.has(SP('osmium_steeleaf')) && pot(quin) == quinP + 20736 &&
+  /The 20,736 potatoes you had handed in for Osmium & Steeleaf count toward your rank\./.test(text(quin)), pot(quin) - quinP + ' ' + text(quin))
+ok('... the op is told too', /Osmium & Steeleaf granted to Quin \(nothing taken; the 20,736 already handed in toward it were credited\)\./.test(flat(lastReply())), flat(lastReply()))
+cmd('potatotree grant Quin osmium_steeleaf', admin)
+ok('... once: it is complete now', pot(quin) == quinP + 20736 && /no potatoes credited/.test(flat(lastReply())), flat(lastReply()))
+setPaid(quin, 'logistical_transport', 25000)
+cmd('potatotree grant Quin logistical_transport', admin)
+ok('a price already paid in full was credited then, and isn\'t again', pot(quin) == quinP + 20736)
+setPaid(quin, 'foundry', 10)
+const kept = new Map(players.map(p => [p, [...p._stages]])), boxes = new Map(players.map(p => [p, p.inbox.length]))
+cmd('bloodpool settier 7', admin); advance(25); cmd('potatotree catchup', admin)
+ok('catch-up does the same when a tier opens', quin.stages.has(SP('foundry')) && pot(quin) == quinP + 20736 + 10 && /The 10 potatoes you had handed in for The Foundry/.test(text(quin)), pot(quin) - quinP)
+cmd('bloodpool settier 6', admin); advance(25)
+;[pia, quin].forEach(p => { p.online = false; players.splice(players.indexOf(p), 1) })
+players.forEach(p => { [...p._stages].filter(x => /^potato_tree_/.test(x)).forEach(x => p._stages.delete(x)); (kept.get(p) || []).filter(x => /^potato_tree_/.test(x)).forEach(x => p._stages.add(x)); p.inbox.length = Math.min(p.inbox.length, boxes.get(p) || 0) })
+}
 
 // ----- without FTB Quests, and with catch-up off -----
 W.noFtbq = true; reload(); advance(30)

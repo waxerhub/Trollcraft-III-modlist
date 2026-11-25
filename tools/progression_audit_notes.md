@@ -31,6 +31,10 @@
 - **Free Tinkers materials:** basic, vanilla and compat materials (wood, stone, iron, copper, bronze, brass, Botania's livingwood and manasteel, …). The strong ones are all in a tier and a node.
 - **Section 6 leftovers:** fluid and energy pipes, Tinkers ducts and chutes, Create chutes, teleporters, boss spawners and Botania's Hopperhock aren't item automation. They stay free.
 
+### Found since, in game (25 November 2026)
+- **Create Automation** cost precision mechanisms, which only its own Deployers make. Fixed: 8 brass hands and 8 electron tubes (owner decision). `tools/tests/suites/tree_costs.test.js` checks every node's cost against the recipes.
+- **Almost Unified** (not in this audit: it ships no recipes) turns every steel, tin, lead, silver, nickel, bronze, electrum, invar and constantan recipe into Thermal's, so nothing makes them below Tier 5, and Steel Smithing's and Immersive Logistics' steel can't be made at all. Open, and only below Tier 5: see POTATO_TREE.md, "Known: only below Pool Tier 5".
+
 ### Still to confirm in game
 `/bloodpool audit` writes `kubejs/progression_audit.json`:
 - every crafting-type recipe that still lacks the rank check;

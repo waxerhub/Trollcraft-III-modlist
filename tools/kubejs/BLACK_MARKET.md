@@ -197,7 +197,7 @@ Right-clicking the merchant opens a chest-style window. It's a vanilla chest scr
   - The target menu shows each player's price.
 - **Buying a contract:**
   - [BUY] opens a second menu of every online player except you. Click a name to buy.
-  - Someone offline can be typed: `/blackmarket buy contract squad <name>`, if the server has seen them before.
+  - Someone offline can be typed: `/blackmarket buy contract squad <name>`, if the server has seen them before: anyone the market has seen log in, or anyone FTB Teams knows has joined.
   - You can't target yourself. Same-faction contracts are allowed (`ALLOW_SAME_FACTION`).
 
 **The contract item** is a skull banner pattern. It can't be placed and stacks to 1, and shows "Ambush Contract (*Tier*)" with a glint.
@@ -599,7 +599,6 @@ Its repair uses `stack.setDamageValue(0)`. Tinkers' class files show that this g
 - **Right-clicking:** `ItemEvents.rightClicked` and `BlockEvents.rightClicked` both firing for one click on a block. It's handled once either way.
 - **Inventory calls:** `player.give` dropping what doesn't fit, and `player.inventory.getItem` slot numbers (0–35 main and hotbar, 40 offhand).
 - **The summon:** the vendor NBT (`NoAI`, `DespawnDelay:0`, `Offers:{Recipes:[]}`) and forceloading before he's summoned.
-- **Contract hookups:**
-  - offline names through `server.getProfileCache().get(name)`;
-  - `event.source.actual` on a player's death, which is how a contract is marked fulfilled.
+- **Contract hookups:** `event.source.actual` on a player's death, which is how a contract is marked fulfilled.
+  - (Offline names: found on the test server by console, 25 November 2026, with a stranger's name refused. Until then no offline player could be found this way: Minecraft's profile cache, which was asked, throws (the script engine can't choose between its `get(name)` and `get(UUID)`), and the error was hidden.)
 - **`BLOCK_COIN_CRAFTING`** (off): when on, `Ingredient.custom` inside `replaceInput`. In game it stopped Ender IO's Basic Capacitor (which takes the gold nugget tag) from being crafted, so it's off by default.

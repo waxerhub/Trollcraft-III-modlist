@@ -247,6 +247,7 @@ Technoblade's Potato War, revived. **The Pool decides what the server can make; 
 - **The upgrade tree** ✅ (`part2/potato_tree.js` + FTB Quests, see [POTATO_TREE.md](tools/kubejs/POTATO_TREE.md)): Hypixel-style branches on top of the ranks (owner decisions).
   - **The book:** an FTB Quests chapter group, "Techno's Potato War": The Ranks, Tinkers' Smithy, Logistics, Autocrafting and Farms.
   - **Nodes** cost potatoes plus branch items. The potatoes count toward rank.
+  - **Paid a part at a time** (owner decision, 25 November 2026): `/potatowar pay <node>`, or a line to click on the node's page, takes crates (9) and Enchanted Potatoes (160) at their worth, whole ones only. One worth more than what's still needed is refused, and loose potatoes fill the rest.
   - **Each node unlocks, for that player only:**
     - the Tinkers metals their gear may be made of (found and traded gear included);
     - building and using a smeltery or foundry;
@@ -273,32 +274,34 @@ Technoblade's Potato War, revived. **The Pool decides what the server can make; 
     1. **The Signal** (the day before): a scrambled, unsigned broadcast, plus a Discord post with the time. Gather at the castle. ✅ (`/shrine signal`, built 2026-11-19: to each player, and to anyone joining within 24 hours)
     2. **The Summons** (about 10 minutes, at the castle): the testimony is the **Blood God's** (owner decision 2026-11-13; it was the scout's). His words come as a book that everyone gets, and the Castellan reads them out. They name **three braziers**, far apart, each by its direction and distance from the castle, filled in automatically (owner decision 2026-11-14). The book ends on the first hint of the two threads: "They want the Pool full. So do I." (kept, same day). ✅ (`/shrine summons`, built 2026-11-19; late arrivals get the book until the Awakening)
     3. **The Pilgrimage: three braziers, three teams** (about 30 minutes).
-       - **Lighting them:** the server splits up, and the braziers must all be lit within 60 seconds of each other. Otherwise the lit ones gutter out, and the teams try again.
+       - **Lighting them:** the server splits up, and the braziers must all be lit within 45 seconds of the first (60 until 2026-11-21). A brazier is lit by kneeling at it: holding sneak beside it for a second and a half without being hurt (owner decisions 2026-11-21; flint and steel no longer works). Everyone gets the fires' coordinates in chat at the start, and each unlit fire sends up a pillar of fire every 30 seconds. Otherwise the lit ones gutter out, and the teams try again.
        - **The beam:** once all three burn, a beacon beam rises at the Shrine site, visible from far off.
-       - **Ambushes:** unsigned Inspector patrols ambush "unregistered pilgrims" on the way: one automatic ambush per team as it nears its brazier, plus any an op starts (owner decision 2026-11-14).
+       - **Ambushes:** unsigned Inspector patrols ambush "unregistered pilgrims" on the way: one automatic ambush per team as it nears its brazier, plus any an op starts (owner decision 2026-11-14). At each brazier, Inspectors keep coming at the team in small groups until the fire burns, sized for the 7 or 8 players expected (owner decision 2026-11-20); once all three burn, the fires drive them off.
        - **The night's rules** (owner decision 2026-11-15): putting out the braziers starts the event. Everyone is brought to a set start, and until the Awakening ends nobody dies: a lethal hit knocks them out, and they wake beside the last brazier lit, or at the start (at the Shrine's edge during the rite). ✅ (`part2/shrine.js`, run end to end on the test server 2026-11-15)
-       - **The night's kit** (owner decision 2026-11-19, after armour and weapons broke at the rehearsal): at the start, everyone in survival is armed with diamond armour, a diamond sword (Sharpness IV), a shield and a flint and steel, all Unbreaking X, plus food. Their own belongings are held safe and come back when the night ends. ✅ (built, not yet tried in game)
+       - **The night's kit** (owner decision 2026-11-19, after armour and weapons broke at the rehearsal): at the start, everyone in survival is armed with diamond armour, a diamond sword (Sharpness IV) and a shield, all Unbreaking X, plus food. Every 3rd knockout their kit is made new (owner decision 2026-11-21). Their own belongings are held safe and come back when the night ends. ✅ (built, not yet tried in game)
+       - **The opening** ✅ (owner decisions 2026-11-20, "let's make the start of the event more dramatic"): about 30 seconds at the start, nobody held. "THE PILGRIMAGE", then each fire flares on the horizon in turn with thunder from its direction and its name on screen, then the Inspectors' channel is overheard, scrambled and unsigned ("...an unregistered gathering at the castle... No fire is to be lit... Bring them in, and keep the potatoes where they are..."), then "Light the fires". See SHRINE.md.
        - **Cinematic effects** throughout (owner decision 2026-11-19): each fire catching sends up a column of flame; when all three burn, lightning strikes them and "THREE FIRES BURN" fills the screen. The rite brings night and a storm, and its waves come with a raid horn; the Awakening has the Blood God's words on screen with a heartbeat, fire, lightning and fireworks; the Shrine rises in fire and lightning, then day. ✅ (built, not yet tried in game)
     - **The order** (owner decision 2026-11-19, at the fourth rehearsal run: "I want the shrine to be the climax ending instead of in the middle"): the rite and the Awakening happen around the beam over the empty site, and **the Shrine rises last**, as the night's climax.
     4. **The Ignition Rite** (about 20 minutes, around the beam).
        - **It begins by itself** once every pilgrim has gathered at the beam: something stirs on the land around it, and the first wave comes. Night falls and a storm rolls in (owner decisions 2026-11-19).
-       - **The waves:** Inspectors close in on the beam from the land around it, escalating from iron-tier to diamond-tier. Every wave is led by a **Senior Inspector** mini-boss, and the waves keep coming until the offering is full (owner decision 2026-11-19).
-       - **The potatoes:** only the Senior Inspectors carry **Potato King's Potatoes**, 8 each: Techno's own potatoes, which the Inspectors had been hoarding (owner decision 2026-11-19, so they're harder won).
+       - **The waves:** Inspectors come from around the braziers, and once half the offering is in, they rise right round the beam's red glass (owner decision 2026-11-20, after Inspectors kept spawning in caves and water). They escalate from iron-tier to diamond-tier. Every wave is led by a **Senior Inspector** mini-boss, and the waves keep coming until the offering is full (owner decision 2026-11-19).
+       - **The potatoes:** only the Senior Inspectors carry **Potato King's Potatoes**, 2 each: Techno's own potatoes, which the Inspectors had been hoarding (owner decision 2026-11-19, so they're harder won). More Seniors lead each wave as the rite goes on, so it takes about 8 waves (owner decision 2026-11-21: each was 8 potatoes and one Senior a wave). The brazier waves were made harder at the same time (every 20 seconds, 3 + 1 per pilgrim).
        - **The offering:** the potatoes go **into the beam**, at its red glass where it leaves the ground (owner decision 2026-11-19). Each quarter, the beam surges with a ring of fire and a strike of lightning. It needs **8 potatoes per player present**.
        - **Knockouts, not deaths** (owner decision 2026-11-14): like the Gladiator Arena, lethal damage during the rite heals the player and sets them down at the edge of the Shrine's site. Nothing drops.
        - **The King's Potatoes are only for the offering:** they can't be eaten, planted or tithed, and any left over crumble at the Awakening (owner decision 2026-11-14: no keepsake). The Awakening waits until the offering is full.
-       ✅ (`part2/shrine.js`; first run at the Shrine on the test server 2026-11-14, moved to the beam 2026-11-19, not yet tried there in game)
+       ✅ (`part2/shrine.js`; first run at the Shrine on the test server 2026-11-14, moved to the beam 2026-11-19, run there at the fifth rehearsal 2026-11-20)
     5. **The Awakening** (about a minute, respectful, no jokes, at the beam).
        - **It begins by itself** (owner decision 2026-11-19): once the offering is full, the Inspectors crumble to ash, everyone is drawn back from the beam to watch, and the Awakening begins.
        - **The tribute:** the Techno Tribute and a server-wide `/superaura`.
        - **The Regalia:** the Blood God names the **Regalia of the Blade**, and `/regalia` opens on the eight relics. Its book will lie on his Shrine's altar.
        - **The Pool** (owner decisions 2026-11-19: no vote): it's raised to **a quarter of the way past Tier 4** (230,000; about 164,000 Drops on the night), credited to nobody (owner decision at the rehearsal). The Blood God breaks the seals himself: "I break the third seal, and the fourth with it. Blood for the Blood God." Tiers 3 and 4 open, and **the Nether opens** that night. ✅ (seen in game at the third run, 2026-11-19)
-    6. **The Shrine Rises: the climax** (about 30 seconds, then the night ends; changed 2026-11-13 from a Shrine hidden underground, and moved to the end 2026-11-19).
-       - **The rise:** the Shrine **builds itself layer by layer from the ground up** out of the owner's schematic, with fire and lightning, in **about 30 seconds** (owner decision 2026-11-14, after watching it on the test server). Everyone watches from the same spot. It stays afterwards as the Shrine for the relic hunt.
+         - **When:** the words are spoken here, but the seals break and the Pool rises **when the night ends, after the Shrine has risen** (owner decision 2026-11-20, at the fifth run: the reload that opening a tier brings stalled the server and skipped the start of the rise).
+    6. **The Shrine Rises: the climax** (about 45 seconds, then the night ends; changed 2026-11-13 from a Shrine hidden underground, and moved to the end 2026-11-19).
+       - **The rise:** the Shrine **builds itself layer by layer from the ground up** out of the owner's schematic, with fire and lightning, in **about 45 seconds**, ringed by pillars of fire that grow with it and roar to full height with the last stone (owner decision 2026-11-21; about 30 seconds from 2026-11-14, after watching it on the test server). Everyone watches from a platform in the sky that the owner places (`/shrine view set`: a 6 x 6 floor of invisible barriers; owner decisions 2026-11-20, after the spot picked by itself was on a tree canopy and mobs kept spawning round the owner held on the ground). It stays afterwards as the Shrine for the relic hunt.
        - **When it stands:** it burns from its feet to its crown, the book *The Regalia of the Blade* appears on the altar's lectern, under Technoblade's head (owner decision 2026-11-13), and "TECHNOBLADE'S SHRINE stands once more" fills the screen. The book has one page per relic: what each honours and what it asks, and a closing page, "When the Crown returns, so does my name." Anyone can read it there; a copy taken is replaced.
        - **The way up:** the altar is 22 blocks up, so invisible barrier steps, marked with red dust, climb to it from the east (the owner's idea, 2026-11-14, after nobody in survival could reach the lectern at the test rite).
-       - **The night ends** a few seconds later: day comes, and everyone's own belongings come back.
-       ✅ (`part2/shrine.js`; the rise was tried on the test server 2026-11-14; its place at the end is not yet tried in game)
+       - **The night ends** a few seconds later: everyone is set down in front of the lectern, facing the book (owner decision 2026-11-20), day comes, everyone's own belongings come back, and then the seals break and the Pool rises.
+       ✅ (`part2/shrine.js`; the rise was tried on the test server 2026-11-14, and at the end of the night at the fifth rehearsal, 2026-11-20)
     - **The reward is the Drops** (owner decision): no title or keepsake.
     - **The spec** is [SHRINE.md](tools/kubejs/SHRINE.md) (signed off 2026-11-14): every stage's command, the drafts of the Signal, the Summons and the Regalia book, and the build progress.
     - **Still needed:**
@@ -323,20 +326,32 @@ Technoblade's Potato War, revived. **The Pool decides what the server can make; 
   ✅ (title and castle files) + 🔨 (the broadcast line, with the other Part II lines)
 
 ### Act II: The Regalia of the Blade
-37. **The Relic Hunt:** eight relics, restored at the Shrine by the whole server. Progress is tallied server-wide and credited to each contributor (`/regalia`). The amounts are placeholders. 🔨 (*TBD*: whether each relic also needs a Blood offering)
+37. **The Relic Hunt:** eight relics, restored at the Shrine by the whole server. Progress is tallied server-wide and credited to each contributor (`/regalia`). The amounts are placeholders. ✅ (the deliveries at the altar, Carl's Bridle and the seal gate: `part2/shrine.js` and `part2/blood_pool.js`, 2026-11-20; see SHRINE.md, "Act II") + 🔨 (the Crown, with the final act; *TBD*: whether each relic also needs a Blood offering)
+    - **The stakes: relics break the seals** (owner decisions 2026-11-20, "I need something tied to progression, something that ties in with the plot"):
+      - **The rule:** from Tier 5, blood alone can't break a seal. Each one also needs one more relic restored: Tier 5 needs 1, Tier 6 needs 2, and so on to Tier 11, which needs 7. Tier 12 needs all seven too. The Crown isn't one of them: it stays for the final act.
+      - **Any relics, in any order:** only the count matters. The Axe of Peace's cobalt can't be smelted or cast before Tier 5, so it can count toward the Tier 6 seal at the earliest.
+      - **The story:** at the Shrine the Blood God spent what strength he had breaking the third and fourth seals himself. His strength lives in his Regalia, so each relic returned lets him break one more. The Ministry still wants the seals broken (they're its pump), so it lets the hunt run; it wants the Regalia gathered, for the Crown.
+      - **Telling it:** the Blood God says it at the Awakening ("With each one returned, I break another seal."), and the Regalia book says it too. When a seal is ready but short of relics, the Pool says so: "[BLOOD GOD] The seal holds. Bring me 2 of my Regalia."
+      - **The Seizure** (Act III, #39) doesn't touch the seals: a seized relic still counts.
+      - **The final act** stays about the Crown: the other relics don't change the drain or the vessel.
+      - **The Axe of Peace** becomes **1,000 blocks of cobalt** (owner decisions 2026-11-20): "Bring me the metal to forge its equal." ADLODS (Large Ore Deposits) puts huge cobalt deposits in the Overworld, about one every 3,000 chunks, under cornflowers and blue mystical flowers. That's the supply: the ore can be mined any time, and the cobalt worked from Tier 5.
+        - **A vein:** the seven in the test world held 711 to 1,281 ore, about 980 on average (counted from its region files, 2026-11-20).
+        - **Per vein:** about 109 blocks of cobalt with a plain pick and a furnace, about 218 with Silk Touch and the smeltery or arc furnace (2 ingots an ore), about 240 with Fortune III and a furnace (2.2 raw an ore), and about 360 with Fortune III and Immersive Engineering's arc furnace (1.5 ingots a raw).
+        - **So 1,000 blocks** (9,000 ingots) is about four veins with Fortune III, or nearly three with the arc furnace (about nine with a plain pick): a big server project once Tier 5 opens.
+      - **The Swine's Oath** changes from 10 op-run Pig Escorts to **128 blocks of pig iron** (owner decision 2026-11-20), since a seal could wait on it and players must be able to finish it themselves. Pig iron is iron and blood made one: Tinkers' alloy of iron, meat soup and honey, Create Crafts & Additions' mix of iron and blood slimeballs, or Mystical Agriculture's pig iron seed (open from Tier 1).
 
 | Relic | Techno reference | The grind | Pulls players through |
 |---|---|---|---|
 | The War Chest | The Potato War | 10,000 potatoes, counted for the relic only (no Potato Standing, no Drops) | Farming automation (Create, Mystical Agriculture, AgriCraft) |
-| The Axe of Peace | His Dream SMP axe | A Tinkers broad axe meeting set conditions (Manyullyn or Hepatizon head, Netherite upgrade, set modifiers) | Tinkers' end game |
+| The Axe of Peace | His Dream SMP axe | 1,000 blocks of cobalt, the metal to forge its equal (ingots count, 9 to a block; owner decisions 2026-11-20; it was a Tinkers broad axe with set conditions) | The cobalt deposits in the Overworld (ADLODS) and the Nether; cobalt processing opens at Tier 5 |
 | The Totem Hoard | Never dying | 64 Totems of Undying | Raids, woodland mansions |
 | The Wither's Due | He set Withers on L'Manberg | 8 Nether Stars | Wither kills (and Draconic's Wyvern tier) |
 | The Chalice of Blood | "Blood for the Blood God" | 1,000 buckets of EvilCraft blood | EvilCraft, mob farming |
-| Carl's Bridle | Carl, his horse | A horse bred to near-perfect speed and jump | Horse breeding |
-| The Swine's Oath | The pig with the crown | 10 completed Pig Escorts | The server's own events |
+| Carl's Bridle | Carl, his horse | His tack: 32 saddles and 16 diamond horse armour (owner decision 2026-11-20; it was a horse bred to near-perfect speed and jump) | Exploring: neither can be crafted in this pack, so structure chests, villagers and fishing |
+| The Swine's Oath | The pig with the crown | 128 blocks of pig iron (ingots count too; owner decision 2026-11-20, "it should be very hard"; it was 10 op-run Pig Escorts) | Tinkers' smeltery alloys, Create Crafts & Additions, Mystical Agriculture's pig iron seed |
 | The Crown of the Blade | His crown | Awakened Draconium + a Dragon Heart + Gaia Spirit + a Chaos Shard | Draconic and Botania end game (last) |
 
-38. **Shrine Raids:** each relic restored brings Inspectors down on the Shrine. ✅ (raids) + 🔨 (Shrine targeting)
+38. **Shrine Raids:** each relic restored brings Inspectors down on the Shrine. ✅ (`part2/shrine.js`, 2026-11-20: 10 seconds after, Inspectors in diamond on the ring round the Shrine, one per player near it, 3 to 10)
 
 ### Act III: The Seizure
 39. **The Confiscation:** the Ministry "seizes" a relic in a scripted event. Only the Shrine's progress is at stake, never players' items. 🔨
@@ -482,8 +497,7 @@ Starts at Blood Pool Tier 12. **The twelfth seal isn't the end of Part II; it be
   - **the upgrade tree's costs** are placeholders: tune them after a week of Part II;
   - the first relic, renamed **"The War Chest"** (owner decisions 2026-11-13; it was "The Potato Tithe", the Blood Pool tithe's name): its 10,000 potatoes count **for the relic only**. Handing them in gives no Potato Standing and fills no Pool, so potatoes don't pay three times.
 - **Regalia:**
-  - relic amounts;
+  - relic amounts (now the pace of progression: from Tier 5 every seal waits on one more relic);
   - whether relics need a Blood offering;
-  - whether relics must be restored in order;
-  - whether a carrier killed in a Purge loses their delivery;
-  - rewards per relic.
+  - whether a carrier killed in a Purge loses their delivery.
+  - Decided 2026-11-20: relics break the seals (the reward), in any order, and the Seizure doesn't touch the seals (Act II, #37).

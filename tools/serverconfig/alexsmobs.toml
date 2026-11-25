@@ -115,7 +115,8 @@
 	#List of items that cannot be put in a Transmuting Table.
 	transmutationBlacklist = ["minecraft:beacon"]
 	#True if transmutation tables should not have the ability to pick up new items to transmute, and only give options from the loot tables.
-	limitTransmutingToLootTables = false
+	#TROLLCRAFT: was false. A table that learns what players feed it turns any 64-stack into 64 of a learned item (unlimited nether stars, and any Pool-sealed item); owner decision 2026-11-20.
+	limitTransmutingToLootTables = true
 	#True if transmutation tables can explode when broken.
 	transmutingTableExplodes = true
 	#The experience, in levels, that each transmutation of a stack takes in the transmuting table.

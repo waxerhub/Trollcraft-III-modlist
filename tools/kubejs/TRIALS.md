@@ -71,7 +71,7 @@ All announcements are sent to each player with `player.tell`, so they don't reac
 `persistentData["trials"]`, one JSON string:
 - every charge (accused, text, who filed it and when, status, who ruled and their note);
 - the next charge number;
-- the players the server knows (for offline charges);
+- the players the server knows (for offline charges). A typed name can also be anyone FTB Teams knows has joined;
 - messages waiting for the next login;
 - the last 100 log lines.
 

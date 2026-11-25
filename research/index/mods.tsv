@@ -1,0 +1,210 @@
+jar	modid	name	version	deps
+accessories-neoforge-1.0.0-beta.48+1.20.1	accessories	Accessories	1.0.0-beta48+1.20.1	forge,minecraft,cloth_config
+addonslib-forge-1.20.1-1.11	addonslib	AddonsLib	1.20.1-1.11	forge(opt),minecraft
+AdLods-1.20.1-8.1.12.0-build.2294	adlods	Large Ore Deposits	8.1.12.0	forge(opt),minecraft,forgeendertech
+AdvancedAE-1.3.6-1.20.1	advanced_ae	Advanced AE	1.3.6-1.20.1	forge,minecraft,ae2,ae2wtlib(opt)
+ae2ct-1.20.1-1.1.1	ae2ct	ae2CraftingTree	1.20.1-1.1.1	forge(opt),minecraft,ae2(opt)
+ae2insertexportcard-1.20.1-1.3.0	ae2insertexportcard	AE2 Insert Export Card	${file.jarVersion}	ae2,forge,minecraft
+ae2wtlib-15.3.3-forge	ae2wtlib	AE2WTLib	15.3.3-forge	forge,minecraft,ae2,cloth_config,architectury,curios
+AEAdditions-1.20.1-5.1.1	ae2additions	AE Additions	5.1.1	forge,minecraft,ae2,mekanism(opt),appmek(opt),ae2things(opt),ftbteams(opt)
+AgriCraft-forge-1.20.1-4.0.6	agricraft	AgriCraft	4.0.6	forge,minecraft,resourcefulconfig
+agricreatecompat-1.20.1-1.0.0	agricreatecompat	AgriCraft Create Compatibility	1.0.0	forge(opt),minecraft,agricraft,create
+alexscaves-2.0.2	alexscaves	Alex's Caves	2.0.2	citadel(opt),forge
+alexsdelight-1.5	alexsdelight	Alex's Delight	1.5	forge(opt),minecraft
+alexsmobs-1.22.9	alexsmobs	Alex's Mobs	1.22.9	citadel(opt),forge
+almostunified-forge-1.20.1-0.11.0	almostunified	AlmostUnified	1.20.1-0.11.0	forge,minecraft,jei(opt),roughlyenoughitems(opt),emi(opt)
+appleskin-forge-mc1.20.1-2.5.1	appleskin	AppleSkin	${file.jarVersion}	forge
+applied-botanics-forge-1.5.2	appbot	Applied Botanics	1.5.2	forge,ae2,botania
+Applied-Mekanistics-1.4.3	appmek	Applied Mekanistics	1.4.3	forge,ae2(opt),mekanism
+appliedcooking-4.0.0	appliedcooking	Applied Cooking	4.0.0	ae2,cookingforblockheads,sebastrnlib
+appliedenergistics2-forge-15.4.11	ae2	Applied Energistics 2	15.4.11	forge,minecraft,guideme,jei(opt),theoneprobe(opt),jade(opt)
+architectury-9.2.14-forge	architectury	Architectury	9.2.14	minecraft,forge
+ars_nouveau-1.20.1-4.12.7-all	ars_nouveau	Ars Nouveau	${file.jarVersion}	forge(opt),curios,geckolib
+balm-forge-1.20.1-7.3.44	balm	Balm	7.3.44	forge,minecraft
+baubley-heart-canisters-1.20.1-1.2.0	bhc	Baubley Heart Canisters	${file.jarVersion}	forge
+bellsandwhistles-0.4.5-1.20.x-Create6.0+	bellsandwhistles	Create: Bells & Whistles	0.4.3-1.20.x	forge(opt),minecraft,create
+bettercombat-forge-1.9.0+1.20.1	bettercombat	Better Combat	1.9.0+1.20.1	forge(opt),minecraft,playeranimator,cloth_config
+BetterCompatibilityChecker-forge-4.0.8+mc1.20.1	bcc	Better Compatibility Checker	4.0.8	
+betterfpsdist-1.20.1-6.0	betterfpsdist	betterfpsdist mod	${file.jarVersion}	forge(opt),minecraft,cupboard
+bfendcities-1.0	bfendcities	Big F&$%ing End Cities	${file.jarVersion}	forge(opt),minecraft
+BHStats_Forge_1.20+	bisecthosting	BisectHosting	1.20-1.0.6	forge(opt),minecraft
+bibliocraft-1.20.1-1.3.1	bibliocraft	BiblioCraft Legacy	1.20.1-1.3.1	forge,minecraft
+bluepower-1.20.1-0.10.323-alpha-universal	bluepower	Blue Power	0.10.323-alpha	forge(opt),minecraft
+Bookshelf-Forge-1.20.1-20.2.15	bookshelf	Bookshelf	20.2.15	forge
+Botania-1.20.1-456-FORGE	botania	Botania	${file.jarVersion}	forge,patchouli,curios,gardenofglass(opt),crafttweaker(opt),ears(opt),vminus(opt)
+BrandonsCore-1.20.1-3.2.1.302-universal	brandonscore	Brandon's Core	3.2.1.302	forge,minecraft,codechickenlib,projectintelligence(opt)
+bygonenether-1.3.2-1.20.x	bygonenether	Bygone Nether	1.3.2	forge,minecraft
+caelus-forge-3.2.0+1.20.1	caelus	Caelus API	3.2.0+1.20.1	forge,minecraft
+ChanceCubes-1.20.1-5.0.2.489	chancecubes	Chance Cubes	${file.jarVersion}	
+ChickenChunks-1.20.1-2.10.0.100-universal	chickenchunks	ChickenChunks	2.10.0.100	forge,minecraft,codechickenlib
+chisel-forge-2.0.0+mc1.20.1	chisel	Chisel Reborn	2.0.0+mc1.20.1	forge,minecraft,architectury,cryonicconfig
+Chunky-1.3.146	chunky	Chunky	1.3.146	forge,minecraft
+citadel-2.6.3-1.20.1	citadel	Citadel	2.6.3	forge
+cloth-config-11.1.136-forge	cloth_config	Cloth Config v10 API	11.1.136	forge
+Clumps-forge-1.20.1-12.0.0.4	clumps	Clumps	${file.jarVersion}	
+cmpackagepipebomb-forge-2.1.0	cmpackagepipebomb	Create More: Pipe Bombs in Packages	2.1.0	forge,minecraft,create
+CodeChickenLib-1.20.1-4.4.0.528-universal	codechickenlib	CodeChicken Lib	4.4.0.528	forge,minecraft
+cofh_core-1.20.1-11.0.2.56	cofh_core	CoFH Core	11.0.2	minecraft,forge
+configured-forge-1.20.1-2.2.3	configured	Configured	2.2.3	forge,minecraft,catalogue(opt),jei(opt),framework(opt)
+connectivity-1.20.1-7.7	connectivity	Connectivity Mod	${file.jarVersion}	forge(opt),minecraft,cupboard
+cookingforblockheads-forge-1.20.1-16.0.15	cookingforblockheads	CookingForBlockheads	16.0.15	forge,minecraft,balm
+corpse-forge-1.20.1-1.0.23	corpse	Corpse	1.20.1-1.0.23	forge,minecraft,jei(opt),jade(opt)
+cosmeticarmorreworked-1.20.1-v1a	cosmeticarmorreworked	CosmeticArmorReworked	1.20.1-v1a	forge
+craftedcore-5.8.2	craftedcore	CraftedCore	5.8.2	minecraft,cloth_config(opt)
+craftingtweaks-forge-1.20.1-18.2.9	craftingtweaks	CraftingTweaks	18.2.9	forge,minecraft,balm
+CraterLib-Forge-1.20-3.1.3	craterlib	CraterLib	3.1.3	forge,minecraft
+create-1.20.1-6.0.8	create	Create	6.0.8	forge,minecraft,flywheel,ponder,jei(opt)
+createaddition-1.20.1-1.3.3	createaddition	Create Crafts & Additions	${file.jarVersion}	forge(opt),create,jei(opt),computercraft(opt),minecraft
+createappliedkinetics-1.5.1-1.20.1	createappliedkinetics	Create Applied Kinetics	${file.jarVersion}	forge(opt),minecraft,ae2,create
+createbigcannons-5.11.4-mc.1.20.1-forge	createbigcannons	Create Big Cannons	5.11.4	forge,minecraft,create,ritchiesprojectilelib,copycats(opt),framedblocks(opt),curios(opt),cbc_at(opt)
+createdeco-2.0.3-1.20.1-forge	createdeco	Create Deco	2.0.3-1.20.1-forge	forge,minecraft,create
+create_aquatic_ambitions-1.20.1-6.0.8-2.0.2	create_aquatic_ambitions	Create: Aquatic Ambitions	1.20.1-2.0.2	forge(opt),minecraft,create
+create_radar-0.4.6+mc1.20.1	create_radar	Create: Radars	0.4.5	forge(opt),minecraft,create,createbigcannons(opt),valkyrienskies(opt),shupapium(opt)
+create_sabers-1.20.1+2.0.3	create_sabers	Create Sabers	2.0.3	forge,minecraft,create,stalapi
+CreativeCore_FORGE_v2.12.40_mc1.20.1	creativecore	CreativeCore	2.12.40	forge,minecraft
+cryonicconfig-forge-1.0.0+mc1.20.1	cryonicconfig	Cryonic Config	1.0.0+mc1.20.1	forge,minecraft
+Cucumber-1.20.1-7.0.16	cucumber	Cucumber Library	${file.jarVersion}	forge,minecraft
+cupboard-1.20.1-4.2	cupboard	Cupboard utilities	${file.jarVersion}	forge(opt),minecraft
+curios-forge-5.14.1+1.20.1	curios	Curios API	${file.jarVersion}	forge,minecraft
+CyclopsCore-1.20.1-1.22.3	cyclopscore	Cyclops Core	${file.jarVersion}	forge,minecraft
+Draconic-Evolution-1.20.1-3.1.2.621-universal	draconicevolution	Draconic Evolution	3.1.2.621	forge,minecraft,computercraft(opt),codechickenlib,brandonscore
+dragonfight-1.20.1-5.0	dragonfight	dragonfight mod	${file.jarVersion}	forge(opt),minecraft,cupboard
+elevatorid-1.20.1-1.9.1-forge	elevatorid	Elevator Mod	1.20.1-1.9.1-forge	forge,minecraft
+elytraslot-forge-6.4.4+1.20.1	elytraslot	Elytra Slot	6.4.4+1.20.1	forge,minecraft,curios,caelus
+EnderIO-1.20.1-6.2.18-beta-all	enderio	Ender IO	6.2.18-beta	minecraft,forge,ae2(opt),mekanism(opt),computercraft(opt),kubejs_enderio(opt),create(opt)
+EnderStorage-1.20.1-2.11.0.188-universal	enderstorage	EnderStorage	2.11.0.188	forge,minecraft,codechickenlib
+EvilCraft-1.20.1-1.3.3	evilcraft	EvilCraft	${file.jarVersion}	cyclopscore,forge,minecraft,evilcraft,cyclopscore,forge,minecraft
+EvilCraft-1.20.1-1.3.3	evilcraftcompat	EvilCraft-Compat	${file.jarVersion}	
+extrautilitiesreborn-1.0.1-forge-1.20.1	extrautilitiesreborn	Extra Utilities Reborn	1.0.1	minecraft
+ExtremeReactors2-1.20.1-2.0.97	bigreactors	Extreme Reactors	${file.jarVersion}	minecraft,forge,zerocore
+factory_blocks-forge-1.4.0+mc1.20.1	factory_blocks	Factory Blocks	1.4.0+mc1.20.1	forge,minecraft,architectury
+farmers-cutting-regions-unexplored-1.20.1-1.1b-forge				
+FarmersDelight-1.20.1-1.3.4	farmersdelight	Farmer's Delight	1.20.1-1.3.4	forge,minecraft,crafttweaker(opt)
+FastLeafDecay-32	fastleafdecay	Fast Leaf Decay	32	forge(opt),minecraft
+ferritecore-6.0.1-forge	ferritecore	Ferrite Core	${file.jarVersion}	forge,minecraft
+ForgeEndertech-1.20.1-11.1.11.1-build.2351	forgeendertech	ForgeEndertech	11.1.11.1	forge(opt),minecraft
+fragmentum-5.3.0+1.20.1-forge	fragmentum	Fragmentum	5.3.0	forge,minecraft
+ftb-essentials-forge-2001.2.4	ftbessentials	FTB Essentials	2001.2.4	forge,minecraft,ftblibrary,ftbranks(opt),luckperms(opt)
+ftb-library-forge-2001.2.13	ftblibrary	FTB Library	2001.2.13	forge,minecraft,architectury,ftbquests(opt)
+ftb-ranks-forge-2001.1.7	ftbranks	FTB Ranks	2001.1.7	forge,minecraft,architectury,ftblibrary
+fusion-1.3.16-forge-mc1.20.1	fusion	Fusion	1.3.16	forge(opt),minecraft
+geckolib-forge-1.20.1-4.8.4	geckolib	GeckoLib 4	4.8.4	forge,minecraft,geckoanimfix(opt)
+gml-4.0.11-all				
+gravitygunforge-1.20.1-1.0.0	gravitygun	Gravity Gun	1.20.1-1.0.0	forge,minecraft
+guideme-20.1.15	guideme	GuideME	20.1.15	forge,minecraft
+hexerei-0.4.2.3	hexerei	Hexerei	1.20.1-0.4.2.3	forge,minecraft
+iceandfire-2.1.13-1.20.1-beta-5	iceandfire	Ice and Fire	${file.jarVersion}	citadel(opt),forge
+idas_forge-1.13.0+1.20.1	idas	Integrated Dungeons and Structures	${file.jarVersion}	minecraft,forge,quark,create,supplementaries,integrated_api
+ImmersiveEngineering-1.20.1-10.2.0-183	immersiveengineering	Immersive Engineering	1.20.1-10.2.0-183	forge,minecraft,jei(opt)
+integrated_api-forge-1.20.1-1.9.1	integrated_api	Integrated API	1.9.1	minecraft,forge
+integrated_stronghold-1.1.2+1.20.1-forge	integrated_stronghold	Integrated Stronghold	1.1.2+1.20.1-forge	minecraft,integrated_api,forge,create,supplementaries,quark
+integrated_villages-1.3.2+1.20.1-forge	integrated_villages	Integrated Villages	1.3.2+1.20.1-forge	minecraft,integrated_api,forge,create,supplementaries
+inventoryessentials-forge-1.20.1-8.2.19	inventoryessentials	Inventory Essentials	8.2.19	forge,minecraft,balm
+inzhefopcore-1.0.0-forge-1.20.1	inzhefopcore	inzhefop's core	1.0.0	minecraft
+ironchest-1.20.1-14.4.4	ironchest	Iron Chests	1.20.1-14.4.4	forge,minecraft
+Jade-1.20.1-Forge-11.13.3	jade	Jade	${file.jarVersion}	forge
+JadeAddons-1.20.1-Forge-5.5.1	jadeaddons	Jade Addons	${file.jarVersion}	jade,create(opt)
+jei-1.20.1-forge-15.62.0.219	jei	Just Enough Items	15.62.0.219	mezz_config(opt),mezz_config_gui(opt),forge(opt),minecraft(opt)
+journeymap-forge-1.20.1-6.0.7	journeymap	Journeymap	1.20.1-6.0.7	forge,commonnetworking
+JustEnoughMekanismMultiblocks-1.20.1-4.27	jei_mekanism_multiblocks	Just Enough Mekanism Multiblocks	4.27	minecraft,forge,jei,mekanism,mekanism_extras(opt)
+JustEnoughResources-1.20.1-1.4.0.247	jeresources	Just Enough Resources	1.4.0.247	jei
+kotlinforforge-4.12.0-all				
+kubejs-forge-2001.6.5-build.26	kubejs	KubeJS	2001.6.5-build.26	forge,rhino,architectury,jei(opt),roughlyenoughitems(opt)
+lootintegrations-1.20.1-4.7	lootintegrations	Lootintegrations mod	${file.jarVersion}	forge(opt),minecraft,cupboard
+lootintegrations_moog-2.2	lootintegrations_moog	lootintegrations_moog mod	1	lootintegrations
+Mantle-1.20.1-1.11.104	mantle	Mantle	1.11.104	forge,minecraft
+mcjtylib-1.20-8.0.8	mcjtylib	McJtyLib	${file.jarVersion}	forge
+mcw-bridges-3.1.2-mc1.20.1forge	mcwbridges	Macaw's Bridges	3.1.2	
+mcw-doors-1.1.5-mc1.20.1forge	mcwdoors	Macaw's Doors	1.1.5	
+mcw-mcwfences-1.2.1-mc1.20.1forge	mcwfences	Macaw's Fences and Walls	1.2.1	
+mcw-mcwstairs-1.0.2-mc1.20.1forge	mcwstairs	Macaw's Stairs and Balconies	1.0.2	
+mcw-mcwwindows-2.4.2-mc1.20.1forge	mcwwindows	Macaw's Windows	2.4.2	
+mcw-roofs-2.3.2-mc1.20.1forge	mcwroofs	Macaw's Roofs	2.3.2	
+mcw-trapdoors-1.1.5-mc1.20.1forge	mcwtrpdoors	Macaw's Trapdoors	1.1.5	
+mcwregionsunexplored-1.20.1-1.6	mcwregionsunexplored	Macaw's Regions Unexplored	1.20.1-1.6	forge,minecraft,regions_unexplored,addonslib
+Measurements-forge-1.20.1-2.0.1	measurements	Measurements	${file.jarVersion}	minecraft
+Mekanism-1.20.1-10.4.16.80	mekanism	Mekanism	10.4.16	minecraft,forge,crafttweaker(opt),curios(opt),jei(opt),jsonthings(opt),wthit(opt)
+mekanismcurios-1.20.1-1.2.1	mekanismcurios	Mekanism Curios	1.2.1	forge,minecraft,mekanism,curios
+MekanismGenerators-1.20.1-10.4.16.80	mekanismgenerators	Mekanism: Generators	10.4.16	mekanism
+MekanismTools-1.20.1-10.4.16.80	mekanismtools	Mekanism: Tools	10.4.16	mekanism
+mekanism_weaponry-1.1.3	mekanism_weaponry	Mekanism Weaponry	1.1.3	forge,minecraft,mekanism,geckolib
+mezz_config-1.20.1-forge-0.6.8	mezz_config	MezzConfig	0.6.8	forge,minecraft
+modernfix-forge-5.27.88+mc1.20.1	modernfix	ModernFix	5.27.88+mc1.20.1	forge(opt),minecraft,jei(opt)
+ModularPowersuits-Forge-1.20.1-2.3.13	powersuits	MachineMuse's Modular Powersuits	2.3.13	forge,minecraft,numina
+MoogsSoaringStructures-universal-1.20-2.2.0				
+MoogsStructureLib-forge-1.20-3.4.2	moogs_structures	Moog's Structure Lib	3.4.2	forge,minecraft
+moonlight-1.20-2.16.36-forge	moonlight	Moonlight Library	1.20-2.16.36	forge,minecraft
+mowziesmobs-1.8.2	mowziesmobs	Mowzie's Mobs	1.8.2	forge,minecraft,geckolib
+MRU-1.0.4+1.20.1+forge	mru	Mineblock's Repeated Utilities	1.0.4+1.20.1+forge	forge,minecraft
+MysticalAgriculture-1.20.1-7.0.24	mysticalagriculture	Mystical Agriculture	${file.jarVersion}	forge,minecraft,cucumber
+Nether Ores Plus+ 1.0.0 - 1.20.1	netheroresplus	Nether Ores Plus+	1.0.0	minecraft
+netherportalfix-forge-1.20-13.0.1	netherportalfix	NetherPortalFix	13.0.1	forge,minecraft,balm
+NoChatReports-FORGE-1.20.1-v2.2.3	nochatreports	No Chat Reports	1.20.1-v2.2.3	forge,minecraft
+Numina-Forge-1.20.1-2.3.13	numina	Numina	2.3.13	forge,minecraft,jei(opt)
+pamhc2foodcore-1.20.4-1.0.5	pamhc2foodcore	Pam's HarvestCraft 2 - Food Core	${file.jarVersion}	forge,minecraft
+pamhc2foodextended-1.20.4-1.0.1	pamhc2foodextended	Pam's HarvestCraft 2 - Food Extended	${file.jarVersion}	forge(opt),minecraft
+Patchouli-1.20.1-85-FORGE	patchouli	Patchouli	${file.jarVersion}	forge,minecraft
+player-animation-lib-forge-1.0.2-rc1+1.20	playeranimator	Player Animator	1.0.2-rc1+1.20	minecraft
+polyeng-forge-0.1.1-1.20.1	polyeng	Polymorphic Energistics	0.1.1-1.20.1	ae2,polymorph
+polymorph-forge-0.49.11+1.20.1	polymorph	Polymorph	0.49.11+1.20.1	forge,minecraft,jei(opt)
+Quark-4.0-462	quark	Quark	${file.jarVersion}	forge,zeta,curios(opt),lootr(opt)
+Quark_Recipes_Unexplored_1.20.1(ver.1.0)	quark_recipes_unexplored	Quark Recipes Unexplored	1.0	minecraft,regions_unexplored,quark
+rechiseled-1.2.6-forge-mc1.20.1	rechiseled	Rechiseled	1.2.6	forge(opt),minecraft,supermartijn642corelib,supermartijn642configlib,fusion
+rechiseledae2-forge-1.20-1.20.1-1.2.0	rechiseledae2	Rechiseled: AE2	1.2.0	forge,minecraft,ae2,rechiseled
+rechiseledcreate-1.1.1-forge-mc1.20	rechiseledcreate	Rechiseled: Create	1.1.1	forge(opt),minecraft,supermartijn642corelib,rechiseled,create
+redstone_arsenal-1.20.1-8.0.1.24	redstone_arsenal	Redstone Arsenal	8.0.1	minecraft,forge,cofh_core
+RegionsUnexploredForge-0.5.6+1.20.1	regions_unexplored	Regions Unexplored	0.5.6	forge,minecraft,terrablender
+reliquary-1.20.1-2.0.65.1565	reliquary	Reliquary	2.0.65.1565	forge(opt)
+remorphed-4.2	remorphed	ReMorphed	4.2	forge,minecraft,craftedcore,walkers
+resourcefulconfig-forge-1.20.1-2.1.3	resourcefulconfig	Resourcefulconfig	2.1.3	forge,minecraft
+rftoolsbase-1.20-5.0.7	rftoolsbase	RFToolsBase	${file.jarVersion}	forge,mcjtylib
+rftoolsbuilder-1.20-6.0.10	rftoolsbuilder	RFToolsBuilder	${file.jarVersion}	forge,mcjtylib,rftoolsbase
+rftoolsdim-1.20-11.0.11	rftoolsdim	RFToolsDimensions	${file.jarVersion}	forge,mcjtylib,rftoolsbase
+rftoolsutility-1.20-6.0.7	rftoolsutility	RFToolsUtility	${file.jarVersion}	forge,mcjtylib,rftoolsbase
+rhino-forge-2001.2.3-build.10	rhino	Rhino	2001.2.3-build.10	
+ritchiesprojectilelib-2.1.1-mc.1.20.1-forge	ritchiesprojectilelib	Ritchie's Projectile Library	2.1.1	forge,minecraft
+RUExpansion-1.0.1+1.20.1	ru_expansion	Regions Unexplored: Expansion	1.0.1	minecraft,regions_unexplored
+sebastrnlib-4.0.0	sebastrnlib	Sebastrn Lib	4.0.0	patchouli
+SecretRooms-1.20.1-Unofficial-20260510	secretroomsmod	Secret Rooms: Reborn (1.20.1)	20260510	forge,minecraft
+SimpleDiscordLink-Universal-3.4.5	sdlink	Simple Discord Link	3.4.5	forge(opt),neoforge(opt),minecraft,craterlib
+simplehats-forge-1.20.1-0.4.0a	simplehats	SimpleHats	0.4.0a	forge(opt),minecraft,accessories
+SkyVillages-1.0.4-1.19.2-1.20.1-forge-release	skyvillages	Sky Villages	1.0.4	forge(opt),minecraft
+sliceanddice-forge-3.6.0	sliceanddice	Create Slice & Dice	3.6.0	forge,minecraft,create,create_enchantment_industry(opt),kotlinforforge
+spark-1.10.53-forge	spark	spark	1.10.53	forge
+stalapi-1.20.1+1.0.4	stalapi	StalApi	1.0.4	forge,minecraft
+supermartijn642configlib-1.1.8-forge-mc1.20	supermartijn642configlib	SuperMartijn642's Config Library	1.1.8	forge(opt),minecraft
+supermartijn642corelib-1.1.25-forge-mc1.20.1	supermartijn642corelib	SuperMartijn642's Core Lib	1.1.25	forge(opt),minecraft
+supplementaries-1.20-3.1.44-forge	supplementaries	Supplementaries	1.20-3.1.44	forge,minecraft,moonlight,quark(opt),create(opt)
+suppsquared-1.20-1.1.29	suppsquared	Supplementaries Squared	1.20-1.1.29	forge(opt),minecraft,moonlight,supplementaries
+taiga-1.20.1-forge-2.0.0-port.5	taiga	TAIGA - Tinkers Alloying Addon (Unofficial Port)	2.0.0-port.5	forge,minecraft,mantle,tconstruct
+TCIntegrations-1.20.1-2.0.26.0	tcintegrations	TCIntegrations	2.0.26.0	forge,minecraft,tconstruct,immersiveengineering(opt),botania(opt),aquaculture(opt),malum(opt),create(opt)
+TConstruct-1.20.1-3.11.2.166	tconstruct	Tinkers' Construct	3.11.2.166	forge,minecraft,mantle,jei(opt),jsonthings(opt)
+TerraBlender-forge-1.20.1-3.0.1.10	terrablender	TerraBlender	${file.jarVersion}	forge
+tesseract-1.0.39-forge-mc1.20.1	tesseract	Tesseract	1.0.39	forge(opt),minecraft,supermartijn642corelib,supermartijn642configlib
+thejokebook-0.1.0-1.20.1	thejokebook	The Joke Book	0.1.0-1.20.1	forge(opt),minecraft
+thermal_dynamics-1.20.1-11.0.1.23	thermal_dynamics	Thermal Dynamics	11.0.1	minecraft,forge,cofh_core,thermal
+thermal_expansion-1.20.1-11.0.1.29	thermal_expansion	Thermal Expansion	11.0.1	minecraft,forge,cofh_core,thermal
+thermal_foundation-1.20.1-11.0.6.70	thermal_foundation	Thermal Foundation	11.0.6	minecraft,forge,cofh_core,thermal
+thermal_innovation-1.20.1-11.0.1.23	thermal_innovation	Thermal Innovation	11.0.1	minecraft,forge,cofh_core,thermal
+thermal_integration-1.20.1-11.0.1.27	thermal_integration	Thermal Integration	11.0.1	minecraft,forge,cofh_core,thermal
+TinkersLevellingAddon-1.20.1-1.4.3	tinkerslevellingaddon	Tinkers' Levelling Addon	1.4.3	forge,minecraft,tconstruct
+tinker_rapier-1.0.1-1.20.1 (1)	tinker_rapier	Tinkers' Rapier	1.0.1-1.20.1	forge,minecraft,tconstruct
+ToolBelt-1.20.1-1.20.03	toolbelt	Tool Belt	${file.jarVersion}	forge,minecraft,sewingkit(opt)
+trashcans-1.1.1a-forge-mc1.20.4	trashcans	Trash Cans	1.1.1+a	forge(opt),minecraft,supermartijn642corelib,supermartijn642configlib
+twilightforest-1.20.1-4.3.2508-universal	twilightforest	The Twilight Forest	${file.jarVersion}	forge,minecraft
+voicechat-forge-1.20.1-2.6.22	voicechat	Simple Voice Chat	1.20.1-2.6.22	forge,minecraft,cloth_config(opt)
+voicechat-forge-1.20.1-2.6.22	voicechat_api	Simple Voice Chat API	2.6.20	
+walkers-5.8.13	walkers	Walkers	5.8.13	minecraft,craftedcore
+waystones-forge-1.20.1-14.1.21	waystones	Waystones	14.1.21	forge,minecraft,balm
+worldedit-mod-7.2.15	worldedit	WorldEdit	7.2.15+6463-5ca4dff	minecraft,forge
+YungsApi-1.20-Forge-4.0.6	yungsapi	YUNG's API	1.20-Forge-4.0.6	minecraft,forge
+YungsBetterDesertTemples-1.20-Forge-3.0.3	betterdeserttemples	YUNG's Better Desert Temples	1.20-Forge-3.0.3	minecraft,forge,yungsapi
+YungsBetterEndIsland-1.20-Forge-2.0.6	betterendisland	YUNG's Better End Island	1.20-Forge-2.0.6	minecraft,forge,yungsapi
+YungsBetterJungleTemples-1.20-Forge-2.0.5	betterjungletemples	YUNG's Better Jungle Temples	1.20-Forge-2.0.5	minecraft,forge,yungsapi
+YungsBetterMineshafts-1.20-Forge-4.0.4	bettermineshafts	YUNG's Better Mineshafts	1.20-Forge-4.0.4	minecraft,forge,yungsapi
+YungsBetterNetherFortresses-1.20-Forge-2.0.6	betterfortresses	YUNG's Better Nether Fortresses	1.20-Forge-2.0.6	minecraft,forge,yungsapi
+YungsBetterOceanMonuments-1.20-Forge-3.0.4	betteroceanmonuments	YUNG's Better Ocean Monuments	1.20-Forge-3.0.4	minecraft,forge,yungsapi
+YungsBridges-1.20-Forge-4.0.3	yungsbridges	YUNG's Bridges	1.20-Forge-4.0.3	minecraft,forge,yungsapi
+YungsExtras-1.20-Forge-4.0.3	yungsextras	YUNG's Extras	1.20-Forge-4.0.3	minecraft,forge,yungsapi
+ZeroCore2-1.20.1-2.1.48	zerocore	Zero CORE 2	${file.jarVersion}	minecraft,forge
+Zeta-1.0-31	zeta	Zeta	${file.jarVersion}	forge,quark(opt)

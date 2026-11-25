@@ -9,7 +9,7 @@
 	quest_links: [ ]
 	quests: [
 		{
-			description: ["Build your own smeltery.", "", "&6Unlocks&r", "- Place: smeltery controller", "- Use (whoever placed it): smeltery controller", "", "&7Needs Potato Farmer.", "&7Potatoes handed in here count toward your rank. Items are taken when you submit them (loose potatoes only).", "&7Comes to you for free once the Blood Pool is 2 tiers past Tier 1 (catch-up)."]
+			description: ["Build your own smeltery.", "", "&6Unlocks&r", "- Place: smeltery controller", "- Use (whoever placed it): smeltery controller", "", "&7Needs Potato Farmer.", "&7Pay a part at a time: what you hand in is saved, and counts toward your rank once it is all paid. The Submit button takes loose potatoes only. To use crates (9 each) or Enchanted Potatoes (160 each), click below. One worth more than what is still needed is refused, so finish with loose potatoes.", "{\"text\":\"▶ Hand in the potatoes you carry\",\"color\":\"gold\",\"underlined\":true,\"clickEvent\":{\"action\":\"run_command\",\"value\":\"/potatowar pay seared_smeltery\"},\"hoverEvent\":{\"action\":\"show_text\",\"contents\":\"/potatowar pay seared_smeltery\"}}", "&7Comes to you for free once the Blood Pool is 2 tiers past Tier 1 (catch-up)."]
 			icon: "tconstruct:smeltery_controller"
 			id: "507A700000010001"
 			rewards: [
@@ -52,7 +52,7 @@
 		}
 		{
 			dependencies: ["507A700000010001"]
-			description: ["Use Tinkers tools made with steel.", "", "&6Unlocks&r", "- Tinkers materials: steel", "", "&7Needs Potato Recruit, Blood Pool Tier 3, and Seared Smeltery.", "&7Potatoes handed in here count toward your rank. Items are taken when you submit them (loose potatoes only).", "&7Comes to you for free once the Blood Pool is 2 tiers past Tier 3 (catch-up)."]
+			description: ["Use Tinkers tools made with steel.", "", "&6Unlocks&r", "- Tinkers materials: steel", "", "&7Needs Potato Recruit, Blood Pool Tier 3, and Seared Smeltery.", "&7Pay a part at a time: what you hand in is saved, and counts toward your rank once it is all paid. The Submit button takes loose potatoes only. To use crates (9 each) or Enchanted Potatoes (160 each), click below. One worth more than what is still needed is refused, so finish with loose potatoes.", "{\"text\":\"▶ Hand in the potatoes you carry\",\"color\":\"gold\",\"underlined\":true,\"clickEvent\":{\"action\":\"run_command\",\"value\":\"/potatowar pay steel_smithing\"},\"hoverEvent\":{\"action\":\"show_text\",\"contents\":\"/potatowar pay steel_smithing\"}}", "&7Comes to you for free once the Blood Pool is 2 tiers past Tier 3 (catch-up)."]
 			icon: "tconstruct:steel_ingot"
 			id: "507A700000010002"
 			rewards: [
@@ -101,7 +101,7 @@
 		}
 		{
 			dependencies: ["507A700000010002"]
-			description: ["Use osmium and steeleaf Tinkers tools, and Twilight Forest steeleaf gear.", "", "&6Unlocks&r", "- Tinkers materials: osmium, steeleaf", "- Gear: steeleaf helmet, steeleaf chestplate, steeleaf leggings, steeleaf boots, steeleaf sword, steeleaf pickaxe, steeleaf axe, steeleaf shovel, steeleaf hoe", "", "&7Needs Potato Private, Blood Pool Tier 4, and Steel Smithing.", "&7Potatoes handed in here count toward your rank. Items are taken when you submit them (loose potatoes only).", "&7Comes to you for free once the Blood Pool is 2 tiers past Tier 4 (catch-up)."]
+			description: ["Use osmium and steeleaf Tinkers tools, and Twilight Forest steeleaf gear.", "", "&6Unlocks&r", "- Tinkers materials: osmium, steeleaf", "- Gear: steeleaf helmet, steeleaf chestplate, steeleaf leggings, steeleaf boots, steeleaf sword, steeleaf pickaxe, steeleaf axe, steeleaf shovel, steeleaf hoe", "", "&7Needs Potato Private, Blood Pool Tier 4, and Steel Smithing.", "&7Pay a part at a time: what you hand in is saved, and counts toward your rank once it is all paid. The Submit button takes loose potatoes only. To use crates (9 each) or Enchanted Potatoes (160 each), click below. One worth more than what is still needed is refused, so finish with loose potatoes.", "{\"text\":\"▶ Hand in the potatoes you carry\",\"color\":\"gold\",\"underlined\":true,\"clickEvent\":{\"action\":\"run_command\",\"value\":\"/potatowar pay osmium_steeleaf\"},\"hoverEvent\":{\"action\":\"show_text\",\"contents\":\"/potatowar pay osmium_steeleaf\"}}", "&7Comes to you for free once the Blood Pool is 2 tiers past Tier 4 (catch-up)."]
 			icon: "twilightforest:steeleaf_ingot"
 			id: "507A700000010003"
 			rewards: [
@@ -157,7 +157,7 @@
 		}
 		{
 			dependencies: ["507A700000010001"]
-			description: ["Build your own foundry and alloyer.", "", "&6Unlocks&r", "- Place: foundry controller, scorched alloyer", "- Use (whoever placed it): foundry controller, scorched alloyer", "", "&7Needs Potato Soldier, Blood Pool Tier 5, and Seared Smeltery.", "&7Potatoes handed in here count toward your rank. Items are taken when you submit them (loose potatoes only).", "&7Comes to you for free once the Blood Pool is 2 tiers past Tier 5 (catch-up)."]
+			description: ["Build your own foundry and alloyer.", "", "&6Unlocks&r", "- Place: foundry controller, scorched alloyer", "- Use (whoever placed it): foundry controller, scorched alloyer", "", "&7Needs Potato Soldier, Blood Pool Tier 5, and Seared Smeltery.", "&7Pay a part at a time: what you hand in is saved, and counts toward your rank once it is all paid. The Submit button takes loose potatoes only. To use crates (9 each) or Enchanted Potatoes (160 each), click below. One worth more than what is still needed is refused, so finish with loose potatoes.", "{\"text\":\"▶ Hand in the potatoes you carry\",\"color\":\"gold\",\"underlined\":true,\"clickEvent\":{\"action\":\"run_command\",\"value\":\"/potatowar pay foundry\"},\"hoverEvent\":{\"action\":\"show_text\",\"contents\":\"/potatowar pay foundry\"}}", "&7Comes to you for free once the Blood Pool is 2 tiers past Tier 5 (catch-up)."]
 			icon: "tconstruct:foundry_controller"
 			id: "507A700000010004"
 			rewards: [
@@ -206,7 +206,7 @@
 		}
 		{
 			dependencies: ["507A700000010003"]
-			description: ["Use cobalt, knightmetal (and knightly) and scorched stone Tinkers tools, and Twilight Forest knightmetal gear.", "", "&6Unlocks&r", "- Tinkers materials: cobalt, knightmetal, knightly, scorched stone", "- Gear: knightmetal helmet, knightmetal chestplate, knightmetal leggings, knightmetal boots, knightmetal sword, knightmetal axe, knightmetal pickaxe, knightmetal ring, knightmetal shield, block and chain", "", "&7Needs Potato Soldier, Blood Pool Tier 5, and Osmium & Steeleaf.", "&7Potatoes handed in here count toward your rank. Items are taken when you submit them (loose potatoes only).", "&7Comes to you for free once the Blood Pool is 2 tiers past Tier 5 (catch-up)."]
+			description: ["Use cobalt, knightmetal (and knightly) and scorched stone Tinkers tools, and Twilight Forest knightmetal gear.", "", "&6Unlocks&r", "- Tinkers materials: cobalt, knightmetal, knightly, scorched stone", "- Gear: knightmetal helmet, knightmetal chestplate, knightmetal leggings, knightmetal boots, knightmetal sword, knightmetal axe, knightmetal pickaxe, knightmetal ring, knightmetal shield, block and chain", "", "&7Needs Potato Soldier, Blood Pool Tier 5, and Osmium & Steeleaf.", "&7Pay a part at a time: what you hand in is saved, and counts toward your rank once it is all paid. The Submit button takes loose potatoes only. To use crates (9 each) or Enchanted Potatoes (160 each), click below. One worth more than what is still needed is refused, so finish with loose potatoes.", "{\"text\":\"▶ Hand in the potatoes you carry\",\"color\":\"gold\",\"underlined\":true,\"clickEvent\":{\"action\":\"run_command\",\"value\":\"/potatowar pay cobalt_smithing\"},\"hoverEvent\":{\"action\":\"show_text\",\"contents\":\"/potatowar pay cobalt_smithing\"}}", "&7Comes to you for free once the Blood Pool is 2 tiers past Tier 5 (catch-up)."]
 			icon: "tconstruct:cobalt_ingot"
 			id: "507A700000010005"
 			rewards: [
@@ -262,7 +262,7 @@
 		}
 		{
 			dependencies: ["507A700000010005", "507A700000010190"]
-			description: ["Use electrum, invar, constantan, silver, lead, pewter, aluminum and fiery Tinkers tools, and Twilight Forest fiery gear.", "", "&6Unlocks&r", "- Tinkers materials: electrum, invar, constantan, silver, lead, pewter, aluminum, fiery", "- Gear: fiery helmet, fiery chestplate, fiery leggings, fiery boots, fiery sword, fiery pickaxe", "", "&7Needs Potato Sergeant, Blood Pool Tier 6, and Cobalt Smithing.", "&5The price was never potatoes: 100,000 Enchanted Potatoes (160 potatoes' worth each, made in the Potato Press). They count toward your rank at that worth.&r", "&7Comes to you for free once the Blood Pool is 2 tiers past Tier 6 (catch-up)."]
+			description: ["Use electrum, invar, constantan, silver, lead, pewter, aluminum and fiery Tinkers tools, and Twilight Forest fiery gear.", "", "&6Unlocks&r", "- Tinkers materials: electrum, invar, constantan, silver, lead, pewter, aluminum, fiery", "- Gear: fiery helmet, fiery chestplate, fiery leggings, fiery boots, fiery sword, fiery pickaxe", "", "&7Needs Potato Sergeant, Blood Pool Tier 6, and Cobalt Smithing.", "&5The price was never potatoes: 100,000 Enchanted Potatoes (160 potatoes' worth each, made in the Potato Press). They count toward your rank at that worth.&r", "{\"text\":\"▶ Hand in the Enchanted Potatoes you carry (a baked one counts as 160)\",\"color\":\"gold\",\"underlined\":true,\"clickEvent\":{\"action\":\"run_command\",\"value\":\"/potatowar pay alloy_smithing\"},\"hoverEvent\":{\"action\":\"show_text\",\"contents\":\"/potatowar pay alloy_smithing\"}}", "&7Comes to you for free once the Blood Pool is 2 tiers past Tier 6 (catch-up)."]
 			hide_details_until_startable: true
 			icon: "thermal:electrum_ingot"
 			id: "507A700000010006"
@@ -319,7 +319,7 @@
 		}
 		{
 			dependencies: ["507A700000010006", "507A700000010004", "507A700000010190"]
-			description: ["Use manyullyn, hepatizon, queen's slime, cinderslime and the other Nether masterwork materials.", "", "&6Unlocks&r", "- Tinkers materials: manyullyn, hepatizon, queens slime, cinderslime, necronium, blazing bone, blazewood, ancient, enderslime, ichor", "", "&7Needs Potato Captain, Blood Pool Tier 8, and Alloy Smithing and The Foundry.", "&5The price was never potatoes: 300,000 Enchanted Potatoes (160 potatoes' worth each, made in the Potato Press). They count toward your rank at that worth.&r", "&7Comes to you for free once the Blood Pool is 2 tiers past Tier 8 (catch-up)."]
+			description: ["Use manyullyn, hepatizon, queen's slime, cinderslime and the other Nether masterwork materials.", "", "&6Unlocks&r", "- Tinkers materials: manyullyn, hepatizon, queens slime, cinderslime, necronium, blazing bone, blazewood, ancient, enderslime, ichor", "", "&7Needs Potato Captain, Blood Pool Tier 8, and Alloy Smithing and The Foundry.", "&5The price was never potatoes: 300,000 Enchanted Potatoes (160 potatoes' worth each, made in the Potato Press). They count toward your rank at that worth.&r", "{\"text\":\"▶ Hand in the Enchanted Potatoes you carry (a baked one counts as 160)\",\"color\":\"gold\",\"underlined\":true,\"clickEvent\":{\"action\":\"run_command\",\"value\":\"/potatowar pay masterwork\"},\"hoverEvent\":{\"action\":\"show_text\",\"contents\":\"/potatowar pay masterwork\"}}", "&7Comes to you for free once the Blood Pool is 2 tiers past Tier 8 (catch-up)."]
 			hide_details_until_startable: true
 			icon: "tconstruct:manyullyn_ingot"
 			id: "507A700000010007"
@@ -376,7 +376,7 @@
 		}
 		{
 			dependencies: ["507A700000010007", "507A700000010190"]
-			description: ["Use dragon scale and dragonsteel Tinkers tools.", "", "&6Unlocks&r", "- Tinkers materials: dragon scale, dragonsteel fire, dragonsteel ice, dragonsteel lightning", "", "&7Needs Potato General, Blood Pool Tier 9, and Masterwork.", "&5The price was never potatoes: 500,000 Enchanted Baked Potatoes (25600 potatoes' worth each, made in the Potato Oven). They count toward your rank at that worth.&r", "&7Comes to you for free once the Blood Pool is 2 tiers past Tier 9 (catch-up)."]
+			description: ["Use dragon scale and dragonsteel Tinkers tools.", "", "&6Unlocks&r", "- Tinkers materials: dragon scale, dragonsteel fire, dragonsteel ice, dragonsteel lightning", "", "&7Needs Potato General, Blood Pool Tier 9, and Masterwork.", "&5The price was never potatoes: 500,000 Enchanted Baked Potatoes (25600 potatoes' worth each, made in the Potato Oven). They count toward your rank at that worth.&r", "{\"text\":\"▶ Hand in the Enchanted Baked Potatoes you carry\",\"color\":\"gold\",\"underlined\":true,\"clickEvent\":{\"action\":\"run_command\",\"value\":\"/potatowar pay dragonsteel\"},\"hoverEvent\":{\"action\":\"show_text\",\"contents\":\"/potatowar pay dragonsteel\"}}", "&7Comes to you for free once the Blood Pool is 2 tiers past Tier 9 (catch-up)."]
 			hide_details_until_startable: true
 			icon: "iceandfire:dragonsteel_fire_ingot"
 			id: "507A700000010008"

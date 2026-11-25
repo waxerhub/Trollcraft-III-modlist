@@ -159,7 +159,7 @@ const server = {
       .filter(o => !(W.brokenRecipes || {})[o.getId()])
   } }),
   getPlayerList: () => ({ getPlayer: u => players.find(p => p.online && p.uuid == u) || null }),
-  getProfileCache: () => ({ get: n => { const p = players.find(x => x.name.toLowerCase() == String(n).toLowerCase()); return { isPresent: () => !!p, get: () => ({ getId: () => p.uuid, getName: () => p.name }) } } }),
+  getProfileCache: () => ({ get: () => { throw new Error('The choice of Java method GameProfileCache.get is ambiguous') } }),   // as on a real server (2026-11-25)
   persistentData: { getString: k => W.persistent[k] || '', putString: (k, v) => { W.persistent[k] = String(v) }, putBoolean: (k, v) => { W.persistent[k] = !!v }, getBoolean: k => !!W.persistent[k] },
   scheduleInTicks: (n, f) => W.q.push([W.tick + n, f]),
   runCommandSilent(c) {
@@ -224,6 +224,9 @@ const Java = { loadClass: n => ({
   'net.minecraft.world.level.Level$ExplosionInteraction': { NONE: 'NONE', TNT: 'TNT' },
   'net.minecraft.nbt.StringTag': { valueOf: s => s },
   'com.mojang.brigadier.arguments.StringArgumentType': { word: () => 'word', greedyString: () => 'greedy', getString: (ctx, n) => ctx.args[n] },
+  // Curios 5.14.1: getCuriosInventory -> LazyOptional<ICuriosItemHandler>; a player's p.curios is its equipped handler.
+  'top.theillusivec4.curios.api.CuriosApi': { getCuriosInventory: p => ({ resolve: () => p.curios
+    ? { isPresent: () => true, get: () => ({ getEquippedCurios: () => p.curios }) } : { isPresent: () => false } }) },
 })[n] || (() => { throw new Error('no class ' + n) })() }
 const mkText = t => ({ text: String(t), append(o) { this.text += o.text; return this } })
 const Text = { red: mkText, gold: mkText, yellow: mkText, of: mkText, lightPurple: mkText }
@@ -245,7 +248,7 @@ function loadOne(src) {
   }
   new Function('PlayerEvents', 'EntityEvents', 'ServerEvents', 'ItemEvents', 'BlockEvents', 'Utils', 'Text', 'Item', 'Ingredient', 'console', 'global', 'Java', 'Date', 'JsonIO', src)(
     { loggedIn: on('loggedIn'), loggedOut: on('loggedOut'), chestOpened: on('chestOpened'), inventoryChanged: on('inventoryChanged') }, { hurt: on('hurt'), death: on('death'), spawned: on('spawned') },
-    { loaded: on('loaded'), commandRegistry: f => f(ev), tags: (reg, f) => f({ add: (t, v) => { (W.addedTags = W.addedTags || {})[reg + ' ' + t] = v } }), recipes: f => { (W.mockRecipes || []).forEach(r => { r.type = r.baseType; r.gate = null }); const rev = { replaceInput: (filter, from, to) => W.recipes.push({ filter, from, to }), remove: filt => { (W.removedRecipes = W.removedRecipes || []).push(JSON.parse(JSON.stringify(filt, (k, v) => v instanceof RegExp ? 're:' + v.source : v))) },
+    { loaded: on('loaded'), tick: on('tick'), commandRegistry: f => f(ev), tags: (reg, f) => f({ add: (t, v) => { (W.addedTags = W.addedTags || {})[reg + ' ' + t] = v } }), recipes: f => { (W.mockRecipes || []).forEach(r => { r.type = r.baseType; r.gate = null }); const rev = { replaceInput: (filter, from, to) => W.recipes.push({ filter, from, to }), remove: filt => { (W.removedRecipes = W.removedRecipes || []).push(JSON.parse(JSON.stringify(filt, (k, v) => v instanceof RegExp ? 're:' + v.source : v))) },
       forEachRecipe: (filt, cb) => {
         W.forEachCalls = (W.forEachCalls || 0) + 1
         const all = filt === '*', types = all ? [] : (Array.isArray(filt) ? filt : [filt]).map(x => x.type)
@@ -855,6 +858,35 @@ ok('... and a vote that broke the seal can\'t be taken back', /You haven't voted
 cmd('bloodpool settier 5', admin); advance(25); reload()
 cmd('bloodpool set ' + poolDrops0, admin)
 ok('(the test tier and Drops are put back)', PDB().tier == 5 && PDB().drops == poolDrops0)
+// Relics break the seals (owner decisions 2026-11-20, STORY.md #37): with part2/shrine.js counting them (global.Regalia),
+// a seal from Tier 5 also needs one more of the Regalia's relics restored. Without it (as above), no seal waits on relics.
+let relicsIn = 1
+glob.Regalia = { restoredForSeals: () => relicsIn }
+ana.inbox.length = 0
+const cR0 = W.cmds.length
+cmd('bloodpool set 480000', admin)
+ok('Tier 6 ready with 1 of its 2 relics restored: the seal holds, and the Blood God says what it needs', said(cR0).some(l => /The seal on Tier 6 holds\. Bring me 1 more of my Regalia\./.test(l)) &&
+  /Tier 6 \(A Stream\) is ready, but its seal holds until 1 more of the Blood God's Regalia is restored at his Shrine \(\/regalia\)/.test(text(ana)), said(cR0).join(' | ') + ' || ' + text(ana))
+cmd('bloodpool vote', ana)
+ok('... a vote is refused while it holds', /The seal on Tier 6 holds\. Bring me 1 more of my Regalia\. \(1 of 2 relics restored at the Shrine; \/regalia\)/.test(flat(lastReply())) && !PDB().vote, flat(lastReply()))
+cmd('bloodpool', bo)
+ok('... /bloodpool says why', /ready, but its seal holds until 1 more of the Blood God's Regalia is restored at his Shrine \(1 of 2; \/regalia\)/.test(flat(lastReply())), flat(lastReply()))
+cmd('bloodpool unlock', admin)
+ok('... and so is /bloodpool unlock (force still opens it)', /Tier 6's seal waits on the Regalia: 1 of 2 relics restored at the Shrine\. \(\/bloodpool unlock force to open it anyway\.\)/.test(flat(lastReply())) && PDB().tier == 5,
+  flat(lastReply()))
+relicsIn = 2
+ana.inbox.length = 0
+const cR1 = W.cmds.length
+glob.BloodPool.relicsChanged()
+ok('the second relic restored: the seal can break now, and the vote opens', said(cR1).some(l => /The seal on Tier 6 \(A Stream\) can break now\./.test(l)) &&
+  /Tier 6 \(A Stream\) is ready\. 0 of 5 votes break the Ministry's seal/.test(text(ana)), said(cR1).join(' | ') + ' || ' + text(ana))
+cmd('bloodpool vote', ana)
+ok('... and votes count again', /Your vote is counted: 1 of 5/.test(flat(lastReply())), flat(lastReply()))
+ok('the relics each seal needs: none before Tier 5, then one more a tier, seven at most (the Crown is the final act\'s)', [4, 5, 6, 11, 12].map(n => glob.BloodPool.relicsNeeded(n)).join() == '0,1,2,7,7')
+delete glob.Regalia
+cmd('bloodpool settier 5', admin); advance(25); reload()
+cmd('bloodpool set ' + poolDrops0, admin)
+ok('(the test tier, votes and Drops are put back)', PDB().tier == 5 && PDB().drops == poolDrops0 && !PDB().vote)
 // Extra Utilities' spikes (and the compressed cobblestone stone spikes need) open at Tier 2, ahead of the mod (Tier 7).
 const XU_EARLY = ['wooden_spikes', 'stone_spikes', 'iron_spikes', 'golden_spikes', 'diamond_spikes', 'compressed_cobblestone'].map(i => 'extrautilitiesreborn:' + i)
 const xuFilters = rem().map(s => JSON.parse(s)).filter(f => f.output == '@extrautilitiesreborn' || f.mod == 'extrautilitiesreborn')
@@ -992,6 +1024,67 @@ ok('ops in survival are refused too (so an op can test it); creative players are
 setReal(bo, bo.selected, gun())
 cmd('bloodpool check', bo)
 ok('/bloodpool check says using one is sealed too', /alexscaves:raygun can be crafted from Tier 6 \(A Stream\): sealed for now, and so is using one/.test(flat(lastReply())), flat(lastReply()))
+// ----- Wear and wield locks (owner decision 2026-11-22): the Aether's and Deeper and Darker's sealed gear, looted -----
+const ticks = n => { for (let i = 0; i < n; i++) fire('tick', { server }) }
+const hit = (p, target) => { const ev = { entity: target || entity('minecraft:zombie', OW, 0, 64, 0, []), source: { player: p, actual: p, getMsgId: () => 'player' }, cancel() { throw new Exit() } }; fire('hurt', ev); return !ev.cancelled }
+const breakWith = p => { const ev = { player: p, block: { x: 9000, y: 64, z: 9000, level: levels[OW], getDimension: () => OW, id: 'minecraft:stone' }, cancel() { throw new Exit() } }; fire('blockBroken', ev); return !ev.cancelled }
+const clickBlockWith = (p, s) => { const ev = { player: p, item: s, hand: 'MAIN_HAND', block: { x: 9000, y: 64, z: 9000, level: levels[OW], getDimension: () => OW, id: 'minecraft:stone' }, cancel() { throw new Exit() } }; fire('blockRightClicked', ev); return !ev.cancelled }
+const heldSave = bo.inventory.getItem(bo.selected)
+ok('every wear and wield lock is in a tier (nothing logged at load)', !W.logs.some(l => /(WEAR|WIELD)_LOCKS/.test(l)), W.logs.filter(l => /(WEAR|WIELD)_LOCKS/.test(l)).join(' | '))
+ok('their tiers: gravitite 4, zanite sword 5, resonarium tools 4 and armour 6, warden gear 7, the sonorous staff 9',
+  glob.BloodPool.tierOf('aether:gravitite_chestplate') == 4 && glob.BloodPool.tierOf('aether:zanite_sword') == 5 && glob.BloodPool.tierOf('deeperdarker:resonarium_sword') == 4 &&
+  glob.BloodPool.tierOf('deeperdarker:resonarium_chestplate') == 6 && glob.BloodPool.tierOf('deeperdarker:warden_sword') == 7 && glob.BloodPool.tierOf('deeperdarker:sonorous_staff') == 9 &&
+  glob.BloodPool.tierOf('aether:zanite_chestplate') == 0)
+bo.status = []
+setReal(bo, 38, stack('deeperdarker:resonarium_chestplate', 1)); setReal(bo, 39, stack('aether:gravitite_helmet', 1))
+ticks(19)
+ok('a sealed chestplate worn (resonarium, Tier 6, at Tier 5) stays on until the next check (every second)', bo.inventory.getItem(38).id == 'deeperdarker:resonarium_chestplate')
+ticks(1)
+ok('... then it\'s taken off into the inventory, and the action bar says until when', bo.inventory.getItem(38).count <= 0 &&
+  bo.inventory.slots.slice(0, 36).some(s => s.id == 'deeperdarker:resonarium_chestplate' && s.count == 1) &&
+  bo.status.some(l => l == 'The <item.deeperdarker.resonarium_chestplate> is sealed until the Blood Pool opens Tier 6 (A Stream).'), bo.status.join(' | '))
+ok('... an open piece (gravitite, Tier 4) stays on', bo.inventory.getItem(39).id == 'aether:gravitite_helmet')
+const mainSave = bo.inventory.slots.slice(0, 36).map(s => s)
+for (let i = 0; i < 36; i++) setReal(bo, i, stack('minecraft:cobblestone', 64))
+setReal(bo, 36, stack('deeperdarker:warden_boots', 1)); bo.ground = []
+ticks(20)
+ok('... with no room in the inventory, the sealed piece is dropped at the player\'s feet', bo.inventory.getItem(36).count <= 0 && bo.ground.some(s => s.id == 'deeperdarker:warden_boots'))
+for (let i = 0; i < 36; i++) setReal(bo, i, mainSave[i])
+// The Aether's gloves sit in a Curios slot. The test takes any sealed piece there: at Tier 5 the gloves are all open.
+const curioSlots = [stack('aether:netherite_gloves', 1), stack('deeperdarker:resonarium_leggings', 1)]
+bo.curios = { getSlots: () => curioSlots.length, getStackInSlot: i => curioSlots[i], setStackInSlot: (i, s) => { curioSlots[i] = s } }
+ticks(20)
+ok('a sealed piece in a Curios slot is taken off too; open gloves (netherite, Tier 5) stay on',
+  curioSlots[1].count <= 0 && curioSlots[0].id == 'aether:netherite_gloves' && bo.inventory.slots.slice(0, 36).some(s => s.id == 'deeperdarker:resonarium_leggings'))
+ok('... and the log says whose and what', W.logs.some(l => /Took sealed gear off .*deeperdarker:resonarium_leggings/.test(l)), W.logs.slice(-3).join(' | '))
+ok('Curios loaded without a warning', !W.logs.some(l => /Curios not found/.test(l)))
+delete bo.curios
+cy.online = true
+setReal(cy, 38, stack('deeperdarker:warden_chestplate', 1))
+ticks(20)
+ok('creative players keep sealed armour on', cy.inventory.getItem(38).id == 'deeperdarker:warden_chestplate')
+cy.online = false
+setReal(bo, bo.selected, stack('deeperdarker:warden_sword', 1)); bo.status = []
+ok('a hit with a sealed sword (warden, Tier 7) does nothing, and says why', !hit(bo) && bo.status.some(l => /warden_sword> is sealed until the Blood Pool opens Tier 7 \(A River\)/.test(l)), bo.status.join(' | '))
+ok('... nor can it break a block', !breakWith(bo))
+setReal(bo, bo.selected, stack('aether:zanite_sword', 1))
+ok('the zanite sword (Tier 5) works at Tier 5; so do ordinary weapons and bare hands', hit(bo) && (setReal(bo, bo.selected, stack('minecraft:diamond_sword', 1)), hit(bo)) && (setReal(bo, bo.selected, EMPTY()), hit(bo)))
+setReal(bo, bo.selected, stack('deeperdarker:warden_pickaxe', 1))
+ok('a sealed tool can\'t break blocks', !breakWith(bo))
+setReal(bo, bo.selected, stack('aether:gravitite_pickaxe', 1))
+ok('... an open one (gravitite, Tier 4) can', breakWith(bo))
+ok('right-clicking a sealed staff (sonorous, Tier 9) is refused, in the air and on a block', !useItem(bo, stack('deeperdarker:sonorous_staff', 1)) && !clickBlockWith(bo, stack('deeperdarker:sonorous_staff', 1)))
+ok('... and a sealed tool on a block (a warden pickaxe), while an open one (gravitite: floating blocks) works', !clickBlockWith(bo, stack('deeperdarker:warden_pickaxe', 1)) && clickBlockWith(bo, stack('aether:gravitite_pickaxe', 1)))
+cy.creative = true
+setReal(cy, cy.selected, stack('deeperdarker:warden_sword', 1))
+ok('creative players can hit and mine with sealed weapons', hit(cy) && breakWith(cy))
+setReal(bo, bo.selected, stack('deeperdarker:warden_chestplate', 1))
+cmd('bloodpool check', bo)
+ok('/bloodpool check says wearing one is sealed too', /deeperdarker:warden_chestplate can be crafted from Tier 7 \(A River\): sealed for now, and so is wearing one/.test(flat(lastReply())), flat(lastReply()))
+setReal(bo, bo.selected, stack('deeperdarker:sonorous_staff', 1))
+cmd('bloodpool check', bo)
+ok('... and using a wield-locked one', /deeperdarker:sonorous_staff can be crafted from Tier 9 \(A Tide\): sealed for now, and so is using one/.test(flat(lastReply())), flat(lastReply()))
+setReal(bo, bo.selected, heldSave)
 cmd('bloodpool settier 6', admin); advance(25)
 ok('Tier 6 open: the raygun works for everyone', useItem(bo, gun()) && useItem(admin, gun()))
 cmd('bloodpool settier 5', admin); advance(25); reload()

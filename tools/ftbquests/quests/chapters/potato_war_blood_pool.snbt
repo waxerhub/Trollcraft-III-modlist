@@ -66,7 +66,7 @@
 		}
 		{
 			dependencies: ["507A7000000100CB"]
-			description: ["The whole server fills the Blood Pool: trolls in the Troll Log, Hush Coins (/bloodpool donate) and the Potato Tithe (/bloodpool tithe).", "", "&6Opens at 200,000 Drops&r", "- Mods: mekanism, mekanismgenerators, tinker_rapier", "- 16 items, e.g. precision mechanism, mechanical crafter, deployer, mechanical arm, rotation speed controller, steeleaf ingot", "", "&7Potatoes may pay up to 75% of this tier's Drops; the rest must be blood.", "", "&7Crafting its items at a table also needs Potato Private (or catch-up at Tier 6). Machines work for everyone."]
+			description: ["The whole server fills the Blood Pool: trolls in the Troll Log, Hush Coins (/bloodpool donate) and the Potato Tithe (/bloodpool tithe).", "", "&6Opens at 200,000 Drops&r", "- Mods: mekanism, mekanismgenerators, tinker_rapier", "- 32 items, e.g. enchanted gravitite, gravitite helmet, gravitite chestplate, gravitite leggings, gravitite boots, gravitite gloves", "", "&7Potatoes may pay up to 75% of this tier's Drops; the rest must be blood.", "", "&7Crafting its items at a table also needs Potato Private (or catch-up at Tier 6). Machines work for everyone."]
 			icon: "minecraft:redstone"
 			id: "507A7000000100CC"
 			subtitle: "200,000 Drops"
@@ -85,7 +85,7 @@
 		}
 		{
 			dependencies: ["507A7000000100CC"]
-			description: ["The whole server fills the Blood Pool: trolls in the Troll Log, Hush Coins (/bloodpool donate) and the Potato Tithe (/bloodpool tithe).", "", "&6Opens at 320,000 Drops&r", "- Mods: thermal, enderio", "- 63 items, e.g. cobalt ingot, raw cobalt, raw cobalt block, cobalt block, nether grout, scorched brick", "", "&7Potatoes may pay up to 75% of this tier's Drops; the rest must be blood.", "", "&7Crafting its items at a table also needs Potato Soldier (or catch-up at Tier 7). Machines work for everyone."]
+			description: ["The whole server fills the Blood Pool: trolls in the Troll Log, Hush Coins (/bloodpool donate) and the Potato Tithe (/bloodpool tithe).", "", "&6Opens at 320,000 Drops&r", "- Mods: thermal, enderio", "- 65 items, e.g. zanite sword, netherite gloves, cobalt ingot, raw cobalt, raw cobalt block, cobalt block", "", "&7Potatoes may pay up to 75% of this tier's Drops; the rest must be blood.", "", "&7Crafting its items at a table also needs Potato Soldier (or catch-up at Tier 7). Machines work for everyone."]
 			icon: "minecraft:redstone"
 			id: "507A7000000100CD"
 			subtitle: "320,000 Drops"
@@ -104,7 +104,7 @@
 		}
 		{
 			dependencies: ["507A7000000100CD"]
-			description: ["The whole server fills the Blood Pool: trolls in the Troll Log, Hush Coins (/bloodpool donate) and the Potato Tithe (/bloodpool tithe).", "", "&6Opens at 480,000 Drops&r", "- Mods: ae2, ae2additions, ae2wtlib, ae2insertexportcard, appliedcooking, appbot, appmek, createappliedkinetics, bigreactors, reliquary, alexscaves, iceandfire", "- 31 items, e.g. terra plate, terrasteel ingot, alfheim portal, natura pylon, mana pylon, dreamwood log", "", "&7Potatoes may pay up to 75% of this tier's Drops; the rest must be blood.", "", "&7Crafting its items at a table also needs Potato Sergeant (or catch-up at Tier 8). Machines work for everyone."]
+			description: ["The whole server fills the Blood Pool: trolls in the Troll Log, Hush Coins (/bloodpool donate) and the Potato Tithe (/bloodpool tithe).", "", "&6Opens at 480,000 Drops&r", "- Mods: ae2, ae2additions, ae2wtlib, ae2insertexportcard, appliedcooking, appbot, appmek, createappliedkinetics, bigreactors, reliquary, alexscaves, iceandfire", "- 35 items, e.g. resonarium helmet, resonarium chestplate, resonarium leggings, resonarium boots, terra plate, terrasteel ingot", "", "&7Potatoes may pay up to 75% of this tier's Drops; the rest must be blood.", "", "&7Crafting its items at a table also needs Potato Sergeant (or catch-up at Tier 8). Machines work for everyone."]
 			icon: "minecraft:redstone"
 			id: "507A7000000100CE"
 			subtitle: "480,000 Drops"
@@ -123,7 +123,7 @@
 		}
 		{
 			dependencies: ["507A7000000100CE"]
-			description: ["The whole server fills the Blood Pool: trolls in the Troll Log, Hush Coins (/bloodpool donate) and the Potato Tithe (/bloodpool tithe).", "", "&6Opens at 700,000 Drops&r", "- Mods: rftoolsbase, rftoolsutility, rftoolsbuilder, powersuits, numina, redstone_arsenal, bluepower, extrautilitiesreborn", "- 37 items, e.g. sturdy sheet, railway casing, track, track station, controls, packager", "", "&7Potatoes may pay up to 50% of this tier's Drops; the rest must be blood.", "", "&7Crafting its items at a table also needs Potato Lieutenant (or catch-up at Tier 9). Machines work for everyone."]
+			description: ["The whole server fills the Blood Pool: trolls in the Troll Log, Hush Coins (/bloodpool donate) and the Potato Tithe (/bloodpool tithe).", "", "&6Opens at 700,000 Drops&r", "- Mods: rftoolsbase, rftoolsutility, rftoolsbuilder, powersuits, numina, redstone_arsenal, bluepower, extrautilitiesreborn", "- 48 items, e.g. warden helmet, warden chestplate, warden leggings, warden boots, warden sword, warden pickaxe", "", "&7Potatoes may pay up to 50% of this tier's Drops; the rest must be blood.", "", "&7Crafting its items at a table also needs Potato Lieutenant (or catch-up at Tier 9). Machines work for everyone."]
 			icon: "minecraft:redstone"
 			id: "507A7000000100CF"
 			subtitle: "700,000 Drops"
@@ -161,7 +161,7 @@
 		}
 		{
 			dependencies: ["507A7000000100D0"]
-			description: ["The whole server fills the Blood Pool: trolls in the Troll Log, Hush Coins (/bloodpool donate) and the Potato Tithe (/bloodpool tithe).", "", "&6Opens at 1,400,000 Drops&r", "- Mods: draconicevolution", "- 20 items, e.g. ender eye, gaia pylon, gaia ingot, flight tiara, terra sword, octadic capacitor", "- &5The End&r", "", "&7Potatoes may pay up to 50% of this tier's Drops; the rest must be blood.", "", "&7Crafting its items at a table also needs Potato General (or catch-up at Tier 11). Machines work for everyone."]
+			description: ["The whole server fills the Blood Pool: trolls in the Troll Log, Hush Coins (/bloodpool donate) and the Potato Tithe (/bloodpool tithe).", "", "&6Opens at 1,400,000 Drops&r", "- Mods: draconicevolution", "- 21 items, e.g. sonorous staff, ender eye, gaia pylon, gaia ingot, flight tiara, terra sword", "- &5The End&r", "", "&7Potatoes may pay up to 50% of this tier's Drops; the rest must be blood.", "", "&7Crafting its items at a table also needs Potato General (or catch-up at Tier 11). Machines work for everyone."]
 			icon: "minecraft:ender_eye"
 			id: "507A7000000100D1"
 			subtitle: "1,400,000 Drops"

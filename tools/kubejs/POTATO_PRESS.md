@@ -45,7 +45,7 @@ The recipes are in `part2/blood_pool.js` (`MACHINE_RECIPES`), sealed with the Bl
 
   > [PotatoPress] Hoppers and pipes can't reach the Potato Press and Oven: ModernFix's mixin.perf.faster_capabilities is on. Add "mixin.perf.faster_capabilities=false" to config/modernfix-mixins.properties and restart. They still work by hand.
 
-  So a server without the line doesn't crash; the machines just work by hand only.
+  So a server without the line doesn't crash; the machines just work by hand only. The line is a **warning**: until 2026-11-21 it was logged as an error, and KubeJS refuses to start a dedicated server when a startup script has logged any error, so the live server wouldn't start without the ModernFix line.
 - **Only on the server:** players' games never attach it, so their ModernFix stays as it is.
 - **Cost:** ModernFix's optimisation of capability lookups is off for the whole server. The cost should be small (it's Forge's normal path), but it hasn't been measured.
 

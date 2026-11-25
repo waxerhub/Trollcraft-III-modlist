@@ -62,23 +62,31 @@ There's no `data.snbt` to copy. FTB Quests keeps its own defaults.
 ## How it works
 - **The book:** press the quest key or run `/potatowar tree`.
   - **Start Here:** eight short pages: the Blood Pool, your rank, tithe versus offer, the tree, catch-up, the black market, the commands.
-  - **The Ranks:** the 11 ranks. Each ticks when you reach it (or when catch-up gives you its crafting access).
+  - **The Ranks:** the 11 ranks. Each ticks when you reach it (or when catch-up gives you its crafting access). Each shows what it counts: a potato for ranks 1 to 5, an Enchanted Potato for 6 to 8, an Enchanted Baked Potato for 9 to 11 (owner, 2026-11-21; on a world before Tier 5 these icons give the price away early).
   - **The Blood Pool:** the 12 tiers. Each ticks when it opens and lists what it opens.
   - **The branches:** one chapter each, drawn as trees with dependency lines.
 - **Each node is a quest:**
   - **stage tasks** for its rank (`potato_standing_<n>`) and its Blood Pool tier (`blood_pool_tier_<n>`). These tick by themselves;
-  - **item tasks** that take potatoes and the branch's items. Submit them in the book; partial submissions count;
+  - **item tasks** that take potatoes and the branch's items. Submit them in the book, or pay the potatoes with `/potatowar pay` (see "Paying for a node"); part payments are saved;
   - **dependencies** on the nodes below it;
   - **a hidden stage reward** `potato_tree_<node>`. That stage is what the locks check.
   - In the files, the stage tasks and rewards have type `gamestage`, the name FTB Quests 2001.4.22 uses. (An earlier version of these files used `stage`, which FTB Quests ignores: re-upload the chapters.)
 - **Potatoes handed in count toward your rank.** When a node's potato task completes, its potatoes are added to your Potato Standing, as if offered with `/potatowar offer`, with the rank-up line. They never fill the Blood Pool.
-  - Only plain potatoes count for the potato tasks. Break crates first.
+  - Part payments count once the whole price is paid, or when the node comes to you for free (catch-up, an op's grant): what you'd already handed in is credited then.
+  - If a Task Screen finishes the price while you're offline, your own team's record still credits you.
   - **The late nodes** (Tier 6 and up) take Enchanted Potatoes or Enchanted Baked Potatoes instead (see below). Those count at their worth: 160 and 25,600 potatoes each. The tasks are tagged `potato_offer`, `potato_offer_ep` and `potato_offer_ebp`, and `potato_tree.js` credits each at its worth.
 - **The price revealed** (owner decision, 15 November 2026; see BLOOD_POOL.md): the nodes keep their numbers, but from Tier 6 the number counts **Enchanted Potatoes** and from Tier 9 **Enchanted Baked Potatoes**. Dragonsteel (Tier 9) costs 500,000 Enchanted Baked Potatoes. The book keeps that hidden until the Blood Pool opens Tier 5:
   - an **invisible quest**, "The price revealed" (in The Ranks), ticks when the player gets the stage `potato_war_revealed`;
   - every Tier 6+ node **depends on it** and has `hide_details_until_startable`, so before the reveal its tasks and description are hidden;
   - every node's subtitle shows its number with no unit: "Potato General · Tier 9 · 500,000". The ranks chapter shows ranks 6–11 the same way. Players assume potatoes until the reveal.
   - After the reveal, a node's description says "The price was never potatoes: 500,000 Enchanted Baked Potatoes (25600 potatoes' worth each, made in the Potato Oven)."
+- **Paying for a node** (owner decision, 25 November 2026, after players reported that crates weren't taken and 25,000 potatoes don't fit in one inventory):
+  - **The book's Submit button** takes only the task's own item, a part at a time: loose potatoes up to Tier 5 (2,304 a full inventory), Enchanted Potatoes for Tiers 6–8, Enchanted Baked Potatoes from Tier 9. It ignores everything else without a word. That's how FTB Quests works.
+  - **`/potatowar pay <node>`**, or the gold line to click on the node's page, takes every kind of potato you carry, at its worth: loose 1, crates 9, Enchanted Potatoes 160, Enchanted Baked Potatoes 25,600. What's paid goes into the same task, so the two ways mix. `/potatowar pay <node> <count>` takes at most that many; `/potatowar pay` lists what you can pay toward.
+  - **Whole crates and Enchanted Potatoes only, and only while they fit.** The biggest kinds go first. One worth more than what's still needed is refused, no change is given, and loose potatoes fill the rest. 25,000 is 2,777 crates and 7 loose potatoes.
+  - **A price in Enchanted Potatoes** takes Enchanted Potatoes, and Enchanted Baked ones at 160 each, but no crates or loose potatoes (they aren't a whole Enchanted Potato). A price in Enchanted Baked Potatoes takes only those.
+  - **It asks the book for the price and its item,** so an old chapter file on the server can't make a potato count as an Enchanted one; if the book has no such price, nothing is taken. If the book takes nothing (progress locked, for example), the potatoes come back.
+  - **Task Screens** (FTB Quests' blocks: 8 stone around a book) take the task's own item from a hopper or pipe, for the same task. They never take crates.
 - **Personal:** the script switches FTB Teams **parties off**, so every player is their own team and has their own progress. Allies still work.
   - Parties made before install keep their shared progress, so disband them.
 
@@ -107,7 +115,7 @@ Metals in no node (wood, stone, iron, copper, bronze and the rest) are free.
 | Node | Needs | Cost | Place and use |
 |---|---|---|---|
 | Create Logistics | Potato Farmer, Tier 1 | 500, 16 andesite alloy | Funnels (also on belts), tunnels, smart chute, portable storage interface |
-| Create Automation | Potato Private, Tier 4, Create Logistics | 25,000, 8 precision mechanisms | Deployer, Mechanical Arm (and so Sequenced Assembly) |
+| Create Automation | Potato Private, Tier 4, Create Logistics | 25,000, 8 brass hands, 8 electron tubes | Deployer, Mechanical Arm (and so Sequenced Assembly) |
 | Immersive Logistics | Potato Recruit, Tier 3 | 2,500, 16 IE steel | Conveyor, sorter, fluid sorter |
 | Logistical Transport | Potato Private, Tier 4 | 25,000, 8 basic control circuits | Logistical transporters (all tiers), restrictive and diversion transporters, logistical sorter, QIO importer and exporter |
 | Thermal Servos | Potato Soldier, Tier 5 | 50,000, 8 tin gears | Servo, turbo servo and filter attachments (placing only) |
@@ -129,6 +137,8 @@ Metals in no node (wood, stone, iron, copper, bronze and the rest) are free.
 | Project Automation | Potato Lieutenant, Tier 7 | 175,000, 4 project tables | Blue Power's Auto Project Table |
 | RFTools Crafting | Potato Lieutenant, Tier 7, Ender IO Crafting | 175,000, 4 RFTools machine frames | RFTools Crafters 1–3 |
 | Quantum Crafting | Potato Emperor, Tier 11, ME Autocrafting | 500,000, 16 calculation processors | Advanced AE's Quantum Crafter (and its terminal). Tier 11 because its parts are Tier 11 items |
+
+**Create Automation's cost** was 8 precision mechanisms until 25 November 2026. Players found that nobody could pay it: the only recipe for precision mechanisms uses a Deployer at every step, and this node is what lets you place one. Mechanical Crafting (which needs it) and Crushing Wheels (made only in Mechanical Crafters) were stuck behind it until catch-up at Tier 6. The owner chose a Deployer's own parts instead: 8 brass hands and 8 electron tubes, both open at Tier 3 and made without one. `tree_costs.test.js` now checks every node's cost for this.
 
 A node lets you run an autocrafter, but it only makes what every player can already craft: Tiers up to T−2 at Pool Tier T (see BLOOD_POOL.md). No node unlocks Bibliocraft's Fancy Crafters or the Ars Nouveau Wixie, which are banned because no check can reach them.
 
@@ -174,7 +184,7 @@ When the Blood Pool opens Tier T, everyone gets everything of Tier T−2 and bel
   - Your **rank's name**, the rank-up lines and the **black market** still use your real rank. Those are earned with potatoes.
 - **Nodes:**
   - **Which ones:** every node whose tier is T−2 or lower is completed for you, through FTB Quests (`/ftbquests change_progress … complete`), so the book shows it done. A node's tier is its Blood Pool tier or its rank, whichever is higher.
-  - **Nothing is taken,** and no potatoes are credited.
+  - **Nothing is taken,** and nothing is credited except potatoes you had already handed in toward the node's price.
   - You're told privately what you got.
 - **When it runs:** when a tier opens, at login (for players who were offline), and after `/reload`.
 - **It never takes anything back.** If an op lowers the tier (testing), caught-up nodes stay. Remove them with `/potatotree revoke`.
@@ -184,8 +194,9 @@ When the Blood Pool opens Tier T, everyone gets everything of Tier T−2 and bel
 |---|---|---|
 | `/potatowar tree` | players | Opens the book at the Potato War |
 | `/potatowar next` | players | Your rank, your crafting access, the nodes you can buy now, and what the next ones need |
+| `/potatowar pay <node> [count]` | players | Hands in potatoes, crates and Enchanted Potatoes toward a node's price, as many as fit (or at most `count` of its unit). Without a node: what you can pay toward. Tab lists the nodes |
 | `/potatotree check <player>` | op | Their nodes |
-| `/potatotree grant <player> <node>` | op | Completes the node's quest and gives its stage. Nothing taken, nothing credited |
+| `/potatotree grant <player> <node>` | op | Completes the node's quest and gives its stage. Nothing taken; only potatoes already handed in toward it are credited |
 | `/potatotree revoke <player> <node>` | op | Resets the quest and takes the stage. Nothing is given back |
 | `/potatotree catchup` | op | Runs catch-up now |
 
@@ -226,8 +237,32 @@ Moving nodes around in the book's editor is fine. Keep the ids, and re-run the g
 9. **`/potatowar next`** and the message when a tier opens (`/bloodpool unlock force`): each player is told privately what they can craft and buy.
 10. **The price revealed:** at Tier 4, open Alloy Smithing (Tier 6): its title and "Potato Sergeant · Tier 6 · 100,000" show, but not its tasks. `/bloodpool settier 5`, reopen the book: the tasks show 100,000 Enchanted Potatoes, and the description says the price was never potatoes. Submit 10 Enchanted Potatoes: `/potatowar` goes up by 1,600.
 11. **Full Measure:** `/bloodpool settier 12`: an unranked account is granted every node, Quantum Crafting too.
+12. **Paying with crates:** at Tier 5, with Steel Smithing, fill the second account's inventory with potato crates.
+    - Open Osmium & Steeleaf in the book and click the gold line "▶ Hand in the potatoes you carry". The task shows 20,736 of 25,000.
+    - Carry 600 crates and click again: 473 are taken (24,993) and the rest stay. The chat says the crates are worth more than the 7 still needed.
+    - Carry 20 loose potatoes and click: 7 are taken, and `/potatowar` goes up by 25,000.
+    - Try Submit with only crates: nothing is taken (that's FTB Quests).
+13. **Part-paid, then free:** hand in some of a node's potatoes, then `/potatotree grant <name> <node>`: they're told the potatoes they'd handed in count, and `/potatowar` goes up by them.
+
+## Known: only below Pool Tier 5
+Found on the test server on 25 November 2026, by stepping the Pool through its tiers and reading the loaded recipes. Left as they are: the live server was past Tier 5 by then, and from Tier 5 on none of it applies. They'd need fixing for a fresh world.
+- **Almost Unified runs before the Blood Pool.** It turns duplicate metal parts into one mod's (its defaults: Create, then Thermal, then Immersive Engineering, then Mekanism). So every recipe for steel, tin, lead, silver, nickel, bronze, electrum, invar and constantan (ingots, dusts, plates, gears) makes Thermal's, and the Pool removes those while `thermal` is sealed. **Below Tier 5 nothing makes any of them.** Mekanism's steel casings can't be made at Tier 4, for example.
+- **Steel Smithing** asks for `tconstruct:steel_ingot` and **Immersive Logistics** for `immersiveengineering:ingot_steel`. No recipe makes either at any tier (they all make `thermal:steel_ingot`), so neither can be bought. Catch-up gives both at Tier 5.
+- **Listed before they can be made** (they arrive later by themselves): the Crushing Wheel (Tier 3; needs a Mechanical Crafter, Tier 4), Mekanism's Chemical Injection Chamber (Tier 5; its parts are Tier 6), Botania's Natura Pylon (Tier 6; needs an Eye of Ender, Tier 9).
+
+Every other node's cost had a loaded recipe at its own tier (1 to 9 and 11).
+
+## Seen on the test server: paying (25 November 2026)
+No player online: FTB Quests' own code was run from a script against the real quest file, then the finished `pay` with a stand-in player (Forge's FakePlayer) and real inventories.
+- **FTB Quests alone:** 64 crates and 64 Enchanted Potatoes offered to Osmium & Steeleaf were not taken; 36 stacks of loose potatoes were (2,304 of 25,000, saved). A hopper over a Task Screen paid Seared Smeltery's 250 potatoes and left the rest.
+- **Paying:** 2,304 crates paid 20,736; 600 more paid 4,257 and left 127, with the refusal; 5 crates and 2 Enchanted Potatoes with 7 still needed were refused; 7 loose ones finished it. From nothing, 200 Enchanted Potatoes paid 24,960 and left 44.
+- **A late node:** Alloy Smithing took 100 Enchanted Potatoes and 2 Enchanted Baked ones (420 in all) and left the crates and loose potatoes.
+- **Offline credit:** the price finished with the owner offline and their rank went up by 25,000, under their own name. (FTB Teams says a personal team's owner is an all-zero UUID, so the script uses the team's id.)
+- The book loaded with the new page lines (7 chapters, 63 quests, no errors), and a page's line came through as written.
 
 ## What couldn't be verified for KubeJS 6 on 1.20.1
+**Paying** (25 November 2026): a player clicking the gold line in the book, `/potatowar pay` typed by a player and its Tab list, the progress bar moving while the book is open, and catch-up crediting part-paid potatoes (mock-tested only).
+
 **The price revealed** (16 November 2026): on the test server FTB Quests loaded the regenerated book (63 quests), with the Enchanted tasks, the invisible reveal quest and `hide_details_until_startable`, without errors. Not seen with a player: the late nodes' details staying hidden before the reveal and showing after it, and handing in Enchanted Potatoes. `generated_files.test.js` checks the files (units, the reveal dependency, hidden details, unit-less subtitles), and `potato_tree.test.js` the credit at their worth and Full Measure.
 
 A mock-server test passed 117 checks (with the Blood Pool's tests). The Blood Pool's own suite passes with the tree absent (135), and the tooltip script passed 10:

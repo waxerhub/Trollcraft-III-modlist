@@ -42,9 +42,10 @@ The stages keep their numbers from the first plan (Stage 3 is the rise), but the
 **Sites are set in game.** An op stands on the spot and runs:
 - `/shrine site set`: the Shrine's centre, at ground level;
 - `/shrine brazier set <1|2|3>`: each brazier;
-- `/shrine start set`: the start, where `/shrine braziers` brings every player (near the castle, say).
+- `/shrine start set`: the start, where `/shrine braziers` brings every player (near the castle, say);
+- `/shrine view set`: the viewing platform, where everyone watches the Awakening and the rise (owner decisions at the fifth run, 2026-11-20). Fly to a spot in the sky with the whole site in view and run it there: a 6 x 6 floor of barriers is laid just under you (`PLATFORM`), with an invisible rail 2 high round its edge so nobody steps off. Its rail can't be over the Shrine's footprint. Running it again somewhere else takes the old platform down. Until it's set, a spot on the ground east of the steps is picked by itself.
 
-Or give the coordinates, in the Overworld, which also works from the console: `/shrine site set <x> <y> <z>`, `/shrine brazier set <1-3> <x> <y> <z>` and `/shrine start set <x> <y> <z>`.
+Or give the coordinates, in the Overworld, which also works from the console: `/shrine site set <x> <y> <z>`, `/shrine brazier set <1-3> <x> <y> <z>`, `/shrine start set <x> <y> <z>` and `/shrine view set <x> <y> <z>`.
 
 `/shrine status` shows the sites, the stage, and each brazier's distance and direction from the castle.
 
@@ -100,6 +101,15 @@ The last page is the first hint of the two threads (kept: owner decision).
 **`/shrine braziers`** places an unlit brazier at each site and **starts the night's event** (below). It needs all three brazier sites and the start set, and it won't start during a Purge or a Gladiator match.
 - **Everyone to the start:** every player online is teleported to the start and told "The pilgrimage begins. Until the Shrine awakens, falling is not the end: you wake by the last fire lit, or here."
 - **Armed for the night:** everyone in survival is given the night's kit there, and their own belongings are held (see "The night's kit" below).
+- **The opening** (owner decisions, 2026-11-20: "let's make the start of the event more dramatic"; fires on the horizon and an Inspector broadcast, about 30 seconds, nobody held; `OPENING`, `OPENING_BROADCAST`). Players can move from the first second; it plays around them:
+  - 1 s: **"THE PILGRIMAGE"** on every screen ("Three fires must burn as one"), with a deep bell;
+  - 4, 9 and 14 s: **each fire flares** in turn: "The first fire" on screen with its distance and direction from the start, lightning on the brazier (only for show), thunder from its direction for each player, and for 3 seconds a pillar of fire, orange sparks and signal smoke. A brazier more than 96 blocks from the start (`horizon`) flares on the horizon toward it, 96 blocks out, so it can be seen through the fog (the pillar also burns over the brazier itself, for anyone there);
+  - 19, 21.5 and 24 s: **the Inspectors' channel, overheard:** three scrambled, unsigned lines to each player (never `tellraw @a`), tagged `[INTERCEPTED]`, with a crackle: "...all units, all units... an unregistered gathering at the castle...", "...three fire sites. No fire is to be lit...", "...Inspectors to every site. Bring them in, and keep the potatoes where they are...". It never names who they work for;
+  - 28 s: **"Light the fires"** ("before they put them out"), with a blaze's roar.
+  - **Cut short** by `/shrine stop` ("The opening is cut short"), by all three fires burning, by the rise or a reset. A `/reload` drops the rest of it (its steps aren't saved); the night goes on.
+  - **The Inspectors wait for it** (seen on the test server, 2026-11-21: its start is beside the braziers, and 21 Inspectors came at second 0 and knocked the owner out 3 seconds in): no ambush and no brazier wave until it ends. After a `/reload` mid-opening the wait still ends on time.
+- **The fires' coordinates in chat** (owner decision 2026-11-21: "the coordinates should be released into chat at the start in case the fires are out of view distance"): at `/shrine braziers`, each player is told "The three fires wait at:", then each fire's coordinates with how far and which way from the start, then how to light them. Anyone joining while the fires are still out gets the same, measured from where they are (a lit one says "burning").
+- **The pillars again every 30 seconds** (owner decision 2026-11-21: "the fire pillars should fire every 30 seconds after start so players can track them"; `FLARE_AGAIN`): from 30 seconds after `/shrine braziers` until all three burn, each fire not yet lit sends up its pillar of fire and smoke for 3 seconds, with a roar heard near it. A lit one doesn't. The time is saved, so a `/reload` keeps the rhythm.
 - **Effects** (2026-11-19):
   - each fire that catches sends up a column of flame and signal smoke, with a blaze's roar everyone hears;
   - when all three burn, lightning strikes each brazier (only for show), and "THREE FIRES BURN" fills every screen ("A red light rises over the Shrine").
@@ -108,9 +118,16 @@ The last page is the first hint of the two threads (kept: owner decision).
 - **Protected:** the braziers can't be broken outside creative ("The brazier will not move").
 
 **Lighting them:**
-- **Any way works:** flint and steel, a fire charge or a flaming arrow. The script checks each brazier's campfire once a second.
-- **Everyone is told:** "Far away, a fire catches. 1 of 3. The others have a minute." Then "Another fire catches. 2 of 3."
-- **The window:** the first one lit starts a 60-second clock (`FIRE_WINDOW_SECONDS`). Everyone sees it as a boss bar, "The fires: 1 / 3   0:47", counting down.
+- **By kneeling** (owner decision 2026-11-21: "instead of flint and steel lighting them immediately players should have to shift for 2 seconds without taking damage to light them"; `KINDLE`): a pilgrim (survival or adventure) within 3 blocks of an unlit brazier's fire, **holding sneak for a second and a half without being hurt**, lights it (2 seconds at first; at the sixth run's rerun the owner tried 1, "maybe reduce the lighting time to 1 second", then "make it 1.5 seconds").
+  - **Near one, not sneaking:** the action bar says "Hold sneak to kindle the first fire".
+  - **Sneaking:** "Kindling the first fire" with a bar filling over the second and a half, sparks on the fire and a crackle.
+  - **A blow** (health or absorption hearts lost, or hit at all) scatters it: "Struck! The kindling scatters. Start again."
+  - **Done:** "The fire takes." The log says who ("leelinda kindled brazier 2"). Checked every 5 ticks.
+  - **Flint and steel and fire charges** are refused at a brazier while the fires wait ("The fire won't take from that. Kneel at a fire to light it: hold sneak beside it for a second and a half without being hurt."). A fire lit any other way (a flaming arrow) is put out within a second, and those within 16 blocks are told the same.
+  - **Ops:** `/shrine fires light` lights all three as before; other scripts can light one with `global.Shrine.kindle(i)`.
+  - The flint and steel has left the kit.
+- **Everyone is told:** "Far away, a fire catches. 1 of 3. The others have 45 seconds." Then "Another fire catches. 2 of 3."
+- **The window:** the first one lit starts a 45-second clock (`FIRE_WINDOW_SECONDS`; 60 until the owner cut it, 2026-11-21: "decrease the timer after a fire is lit to 45 seconds instead of 60"). Everyone sees it as a boss bar, "The fires: 1 / 3   0:37", counting down.
 - **Too slow:** if all three aren't burning before it runs out, the lit ones gutter out (smoke and a hiss), and the teams try again. Nothing else is lost.
   - A fire put out before the others catch counts as out.
   - If all of them are put out, the clock stops.
@@ -140,8 +157,16 @@ The last page is the first hint of the two threads (kept: owner decision).
   - **One automatic ambush per team:** the nearest pilgrim within 200 blocks of a brazier that isn't lit yet is ambushed there, with the pilgrims near them. Once per brazier.
   - Players in creative or spectator are never ambushed.
   - **More by hand:** `/shrine ambush <player>`, whenever the ops want one.
+  - **Waves at the braziers** (owner decision at the fifth run's rerun, 2026-11-20: "There will be 7 to 8 players on the event at the same time. Make sure to balance it accordingly. Waves should continuously spawn"; settings in `BRAZIER_WAVES`):
+    - **When:** while a brazier is unlit and the night's event is on, anyone in survival within **40 blocks** of it draws a group every **20 seconds**.
+    - **How many:** 3, plus 1 per pilgrim within those 40 blocks, at most 8 a group. A team of 3 faces 6 every 20 seconds; all 8 at one fire, 8. (Made harder before release, owner decision 2026-11-21: it was 2 + 1, at most 6, every 30 seconds, up to 12.)
+    - **Where:** 6 to 12 blocks from the fire, on dry ground (as the rite's waves), in iron; vindicators and pillagers in turn. They're tagged to their brazier (`shrine_brazier_<n>`).
+    - **The limit:** no more come while 16 of that brazier's own are up (the last group tops it up to 16), so a team that's struggling isn't buried.
+    - **When it's lit,** that brazier sends no more (if the fires gutter out, they start again). **Once all three burn,** every Inspector left from the brazier stage is driven off ("The Inspectors fall back from the fires."), so the rite begins clean at the beam.
+    - **The log:** "Brazier 2 wave: 5 Inspectors for 3 near (x y z; ...)".
+    - On the test server the start is within 200 blocks of all three braziers, so all three ambushes on the way fire at once as everyone arrives; on the live server, with the start at the castle, they come one at a time as teams travel.
 - **Deaths in an ambush:** none. The night's event is on from `/shrine braziers`, so a lethal hit is a knockout (below).
-- **Leftovers:** any ambushers still alive are taken away when the offering is full (or when the rise begins).
+- **Leftovers:** any ambushers still alive are driven off when all three fires burn (and taken away when the offering is full, or when the rise begins).
 
 ## The night's event: knockouts for everyone ✅ built
 **Owner decision 2026-11-15**, after an ambush killed the owner on the test server: "once the command /shrine braziers is run consider it an event trigger. all players are teleported and event rules engage until the end".
@@ -158,12 +183,14 @@ The last page is the first hint of the two threads (kept: owner decision).
 
 ## The night's kit ✅ built
 **Owner decisions at the rehearsal, 2026-11-19:** "my armor and weapons kept breaking during the event, I would like there to be a kit similar to the gladiatorial arena ... When the shrine awakens the player inventories are restored".
-- **The kit** (`KIT`): a diamond sword with Sharpness IV, 16 steak, a flint and steel to light the braziers (added at the third run, owner's request), a full set of diamond armour (worn), and a shield in the off hand.
+- **The kit** (`KIT`): a diamond sword with Sharpness IV, 16 steak, a full set of diamond armour (worn), and a shield in the off hand.
+- **Made new every 3rd knockout** (owner decision 2026-11-21: "kits need to be refreshed after every 3 knock outs"; `KIT_REFRESH_KNOCKOUTS`): each kitted player's knockouts in the night's event are counted, and at the 3rd, 6th and so on their kit is made new: every kit piece they still carry is replaced by a fresh one where it is (whole again, the steak back to 16), and any piece they've lost goes back in its own slot, or the first free one. Nothing else they carry is touched, the Potato King's Potatoes most of all. They're told "Your kit is made new: whole again, and the steak restocked", with a clink.
   - **Every piece of gear has Unbreaking X.** The food doesn't need it.
   - **The lore:** each piece is marked as the night's kit (`ShrineKit` in its data, and "Issued for the Shrine Awakens. Taken back at its end.").
 - **Who gets it:** everyone in survival or adventure, when `/shrine braziers` brings them to the start.
   - **Anyone joining mid-event** gets it when they arrive. Their Summons, if due, is given after the kit, so it stays in their hands.
-  - **Creative and spectators** are left alone.
+  - **Creative and spectators** are left alone. **Anyone who switches to survival mid-event** gets it within 10 seconds (`KIT_SWEEP_TICKS`). At the fifth run (2026-11-20) the owner was in creative at `/shrine braziers`, switched afterwards, got no kit, and was knocked out over and over in their own clothes.
+  - **Whose belongings couldn't be held** is told once, not at every check.
 - **Their own belongings are held safe,** as the Gladiator Arena and the Purge do it:
   - **What's held:** every inventory slot, the worn curios, and Tool Belt's belt slot.
   - **How:** each item is saved whole (so a backpack keeps its contents), and every one is checked to rebuild before anything is cleared.
@@ -192,8 +219,12 @@ The last page is the first hint of the two threads (kept: owner decision).
 - a `/reload` or restart mid-rise carries on, and the night still ends when it stands (one due in those 5 seconds ends at once).
 
 1. **Clearing the way:** players standing inside the Shrine's footprint are moved to its edge. The beacon comes out and its ground is put back.
-2. **Layer by layer:** for each of the 64 layers, the script clears that slice of the box, then places the layer, from `trollcraft:shrine/l_0` to `l_63`. One layer every **9 ticks** (a setting) takes about **29 seconds** for all 64. It was 4 seconds a layer (4½ minutes) until the owner watched it on the test server and asked for about 30 seconds (2026-11-14).
-3. **The show** (sounds chosen by the owner on the test server, 2026-11-14):
+2. **Layer by layer:** for each of the 64 layers, the script clears that slice of the box, then places the layer, from `trollcraft:shrine/l_0` to `l_63`. One layer every **14 ticks** (`LAYER_TICKS`) takes about **45 seconds** for all 64 (owner decision 2026-11-21, at the sixth run: "increase the length of time for the shrine to build to 45 seconds"). It was 4 seconds a layer (4½ minutes) until the owner asked for about 30 seconds (2026-11-14), then 9 ticks (29 seconds) until the sixth run.
+3. **The fire** (owner decision 2026-11-21: "make more particle effects. the fire columns are very good on the brazier but I think the major climax of the shrine being built would be fantastic"; `RISE_FIRE`):
+   - **Pillars of fire** like the braziers' stand on a ring 6 blocks beyond the Shrine's corners (about 36 blocks from its centre), 8 of them, on the ground. None stands within 13 blocks of the viewing platform, so the watchers aren't inside one.
+   - **They grow with the statue:** each burns 6 blocks above the layer being set (at least 10 tall), with orange sparks, lava at its foot and smoke at its head, pulsing every 7 ticks.
+   - **The last stone, the climax:** every pillar roars to full height (70 blocks) with blasts up its length; the crown blasts (an explosion's burst and boom, for show: nothing breaks); a shockwave of fire rolls out along the ground from the base in five rings; and the pillars burn on at full height until the night ends (5 seconds later, with the lights, the fireworks and the soul fire as before).
+4. **The show** (sounds chosen by the owner on the test server, 2026-11-14):
    - stone sounds: deepslate set down at every layer, grinding stone every 3rd, and a wither's crunch every 8th;
    - the respawn anchor's charge, the Blood God's power gathering, as it starts, when the pedestal is done (layer 21) and when the head is placed (layer 63), with a thunderclap at the last two;
    - dust and smoke along the layer's edge;
@@ -202,8 +233,8 @@ The last page is the first hint of the two threads (kept: owner decision).
      - flames run along every layer, and lava sparks every 3rd;
      - with every wither's crunch (every 8th layer), fire bursts across the layer with a blaze's roar, and a bolt (only for show) strikes one of the Shrine's corners, 3 blocks out, going round in turn (8 in all);
    - **lightning** rings the Shrine (6 bolts, 28 blocks out) when the head is placed.
-4. **The finish:** the altar's lectern and Technoblade's head (with its skin) are placed exactly as in the schematic.
-5. **The steps up to the altar** (owner decision 2026-11-14, from the owner's idea): the pedestal is 22 blocks high, so the script lays a flight of **barrier blocks**: solid, invisible, and no monster can spawn on them.
+5. **The finish:** the altar's lectern and Technoblade's head (with its skin) are placed exactly as in the schematic.
+6. **The steps up to the altar** (owner decision 2026-11-14, from the owner's idea): the pedestal is 22 blocks high, so the script lays a flight of **barrier blocks**: solid, invisible, and no monster can spawn on them.
    - **Where:** 3 wide, in the lectern's row, from the platform's edge east of the lectern down toward the rising sun, one block out and one down per step, until it meets the ground (at most 12 below the base). On the test server's ground that was 21 steps.
    - **They only fill air,** so they never cut into the build or the land.
    - **Faint red dust** marks the middle of each step once a second while anyone is within 48 blocks. The owner, climbing them in survival: "stairs are perfect, I can see where they are and everything".
@@ -223,8 +254,20 @@ The chunks are force-loaded while it builds, as the Gladiator Arena does, and re
 - **Outside the event** (the beam raised by hand with `/shrine beam up`), it never begins by itself.
 - (A Shrine raised first with `/shrine rise force`, as in the earlier rehearsals, works too: the rite is then fought at the Shrine and the potatoes go on its altar.)
 
-**Inspectors close in from the land around the beam**, appearing 30–45 blocks from the site's centre, on the ground.
-- **Where exactly:** each one's spot is the top of the ground there, through any leaves to the forest floor. A spot is skipped if it's water or lava, a tree trunk, the steps, or under a hill too high to see over (40 blocks above the site). Twelve spots are tried round its place in the ring (`SPAWN_TRIES`), then twelve anywhere on the ring (a lake filled the whole north side of the test ring), and only then is one placed regardless, with a warning in the log ("No dry ground ..."). The Stage 2 ambushes find their ground the same way.
+**Where the Inspectors come from** (owner decision 2026-11-20, at the fifth run's setup: "I find they often spawn in caves underground or in water"):
+- **First, the braziers:** until half the potatoes are offered, each wave appears around the braziers, **3–7 blocks** from each (`BRAZIER_WAVE`), the braziers taking the Inspectors in turn. The rite opens with "Figures gather by the braziers", and each wave is announced as coming from them.
+- **Then, the red glass:** at the beam's second surge (half the offering; `GLASS_WAVE.fromSurge`), those present are told "Half the offering burns in the beam. The Inspectors come for it now: the next waves rise around the beam itself." From the next wave on, they appear **4–6 blocks** from the glass, right on the offering place.
+- **Braziers too far away aren't used:** a brazier more than 64 blocks from the beam is skipped, since its Inspectors (who see 64 blocks) couldn't find the pilgrims. With none that near, or with a Shrine already raised by `/shrine rise force`, the waves come from the old ring, 30–45 blocks from the site.
+- **The ground:** each Inspector's spot is the top of the ground there, through leaves and hanging plants (vines, glow lichen and the like) to the forest floor.
+  - **Skipped:** anything wet (water, lava, kelp or seagrass reaching the surface, lily pads, any waterlogged block; `wetGround`), a tree trunk, the steps, or a spot under a hill.
+  - **How far up and down it looks:** near the braziers and the glass, from 12 blocks above that spot to 6 below (`NEAR_SCAN`), so no ravine floors or cave mouths. On the old ring, 40 above to 20 below the site.
+  - **Retries:** twelve spots are tried round its place (`SPAWN_TRIES`), then twelve anywhere round the same centre. Only then is one placed regardless, with a warning in the log ("No dry ground ...").
+  - **Elsewhere:**
+    - **The Stage 2 ambushes** find their ground the same way, 12 above to 6 below the player (at the fifth run one stood stuck on a spot 26 blocks above a brazier).
+    - **A Senior's two helpers** land 2–5 blocks from him on dry ground (before 2026-11-20 they used an older check that could put them on water or down a cave).
+  - **The log** says where each wave came from and where every Inspector landed ("Rite wave 3: 4 Inspectors, from the braziers (10519 72 4324; ...; Senior 10531 73 4285)").
+- **Nobody near the beam:** with no player (an op in creative counts) within 64 blocks, the rite waits: no waves, no Senior marked as fallen. The Inspectors' chunks aren't loaded then, so the script can't see them. On the test server (2026-11-20), a rite left running with nobody online took every wave for beaten and spawned 49 waves, 147 Inspectors, into the dark.
+- **Strays from another night:** every Inspector carries a tag for the rite it belongs to (`shrine_rs_<serial>`), or the night for an ambush (`shrine_ev_<start time>`). One that loads with its chunk while it doesn't belong (another rite, or its rite no longer running) is taken away before it can fight or drop anything ("A stray Inspector from an earlier night" in the log). Those that wander out of the loaded chunks are out of the reach of a reset, a stop or the full offering: at the fifth run, 16 of run 4's, five Seniors with their potatoes among them, were found in a lake 100 blocks off, a reset and a day later.
 - **Who counts as present:** the players in survival or adventure within 64 blocks of the Shrine when the rite starts (at least 1).
 - **What the altar needs:** **8 potatoes per player present.** An op can change it with `/shrine need <n>`.
 - **The rite's boss bar,** for everyone: "The Ignition Rite: 8 / 16 potatoes".
@@ -232,8 +275,15 @@ The chunks are force-loaded while it builds, as the Gladiator Arena does, and re
 
 **The waves** (owner decisions at the rehearsal, 2026-11-19, after the altar filled in under 2 minutes):
 - **They keep coming until the altar is full.** There's no last wave.
-- **Every wave is led by a Senior Inspector,** and only the Seniors carry the Potato King's Potatoes: **8 each**. The ordinary Inspectors and the Seniors' helpers drop nothing.
-- **So the altar needs one Senior to fall for each player present** (8 potatoes per player, 8 per Senior): 2 players, 2 Seniors; 9 players, 9.
+- **Senior Inspectors lead every wave,** and only the Seniors carry the Potato King's Potatoes: **2 each**. The ordinary Inspectors and the Seniors' helpers drop nothing.
+- **More Seniors as the waves go on** (owner decision 2026-11-21: "8 waves but instead of each senior inspector dropping 8 make it each drops 2 but add more senior inspectors as the waves increase"): wave n is led by `SENIORS_PER_PLAYER[n]` x the players present, rounded up, at least 1. The shares (0.25, 0.25, 0.375, 0.5, 0.5, 0.625, 0.75, 0.75) add up to 4 Seniors per player, which is the 8 potatoes per player at 2 each, so **the offering fills at about the 8th wave** whatever the number of players. Waves after the 8th (potatoes lost, say) use the last share.
+
+| Players | Seniors in waves 1 to 8 | In all |
+|---|---|---|
+| 8 | 2, 2, 3, 4, 4, 5, 6, 6 | 32 (64 potatoes) |
+| 7 | 2, 2, 3, 4, 4, 5, 6, 6 | 32 (56 needed: full at wave 8) |
+| 4 | 1, 1, 2, 2, 2, 3, 3, 3 | 17 (32 needed: full at wave 8) |
+| 2 | 1, 1, 1, 1, 1, 2, 2, 2 | 11 (16 needed: full at wave 7) |
 
 | Wave | Ordinary Inspectors | Gear |
 |---|---|---|
@@ -242,23 +292,23 @@ The chunks are force-loaded while it builds, as the Gladiator Arena does, and re
 | 3 | 1 per player (at least 3) | diamond |
 | 4 and every wave after | 1½ per player (at least 3) | diamond; the vindicators carry shields |
 
-Each wave also has its Senior Inspector. At most 12 ordinary Inspectors in a wave (`WAVE_MAX`). One in three is a pillager with a crossbow; the rest are vindicators with axes. The list is `WAVES`, and every wave after it uses its last entry.
-- **The next wave** comes once three-quarters of the last one is down (its Senior counts as one of them), or after 3 minutes (`NEXT_WAVE`). So two Seniors can be up at once.
+Each wave also has its Senior Inspectors. At most 12 ordinary Inspectors in a wave (`WAVE_MAX`). One in three is a pillager with a crossbow; the rest are vindicators with axes. The list is `WAVES`, and every wave after it uses its last entry.
+- **The next wave** comes once three-quarters of the last one is down (its Seniors count among them), or after 3 minutes (`NEXT_WAVE`). So two waves' Seniors can be up at once. With 8 players the last waves are heavy: 12 ordinary Inspectors and 6 Seniors, each calling 2 helpers at half health, up to 30 at once (`RITE_ALIVE_MAX` holds the next wave until they're thinned).
 - **A rite nobody fights** stops growing: no new wave comes while 30 of the rite's Inspectors are up (`RITE_ALIVE_MAX`).
 - **The Inspectors:**
   - vindicators and pillagers named **Inspector** in gold. Their armour protects them, though illagers don't show it;
   - they see players up to 64 blocks away, and once a second any without a target is sent after the nearest pilgrim at the Shrine;
   - they don't despawn, and every one left is removed at the Awakening;
   - they drop nothing.
-- **The Senior Inspectors,** mini-bosses, one per wave:
+- **The Senior Inspectors,** mini-bosses, leading every wave:
   - 150 health, diamond armour, a netherite axe, Resistance I, and the name in bold;
-  - each has his own boss bar showing his health, "Senior Inspector (wave 3)", so two up at once show two bars;
+  - one boss bar per wave with their health together: "Senior Inspector (wave 1)" for one, "Senior Inspectors (wave 6): 4 of 5 standing" for more, so two waves up at once show two bars. Each is tagged with his place in the wave (`shrine_sid_<wave>_<k>`);
   - at half health each calls two Inspectors in diamond to help, once;
-  - when one falls, he drops 8 Potato King's Potatoes, and those present hear "The Senior Inspector falls. His clipboard does not."
+  - when one falls, he drops 2 Potato King's Potatoes, and those present hear "The Senior Inspector falls. His clipboard does not." (with several: "A Senior Inspector falls. His clipboard does not. 3 more of wave 6 still stand.")
 
 **The Potato King's Potatoes:**
 - **What they are:** potatoes named *Potato King's Potato* in gold, with a glint and the lore "Technoblade's own. Hoarded by the Inspectors."
-  - They're dropped where a Senior Inspector dies, 8 each (`SENIOR.potatoes`).
+  - They're dropped where a Senior Inspector dies, 2 each (`SENIOR.potatoes`).
   - They're marked (`trollcraft.kingspotato`), so the script knows them.
 - **Only for the offering:**
   - they can't be eaten or planted ("Only the Shrine's altar will take these"), and a right-click on any block but the beam's red glass (or, with a Shrine standing, its altar) is refused;
@@ -273,7 +323,10 @@ Each wave also has its Senior Inspector. At most 12 ordinary Inspectors in a wav
 - **Full:** "The beam blazes. Beneath it, something enormous stirs." No more waves come.
   - **During the event, the night carries on by itself** (owner decision 2026-11-19, from "Once the event potatoes are offered at the altar, inspectors should despawn and the players should teleport to in front of the stairs to watch the shrine awaken"):
     - every Inspector vanishes at once in a puff of smoke, the Seniors' bars with them: "The Inspectors crumble to ash. Nothing stands between you and the Shrine now.";
-    - 3 seconds later (`GATHER_DELAY_TICKS`), everyone online but spectators is **brought back from the beam to the viewing spots** ("You are drawn back from the beam. Watch."): east of the site, 4 blocks beyond the furthest the steps can reach (about 55 blocks from the centre, so the whole statue will be in view and nobody stands where a step will be laid), in rows of 7, 2 blocks apart (`VIEW`), on the ground, facing the beam 20 blocks up. Soul fire rises at the site's corners;
+    - 3 seconds later (`GATHER_DELAY_TICKS`), everyone online but spectators is **brought back from the beam to the viewing spots** ("You are drawn back from the beam. Watch."), facing the beam 20 blocks up. Soul fire rises at the site's corners.
+      - **Where:** on the viewing platform (`/shrine view set`; it's built again first if it's gone): the first on the owner's spot, the rest on the cells nearest it, up to 36. Mobs can't spawn on barriers, and nothing on the ground reaches that high. At the fifth run, held on the ground, the owner had mobs spawning round them and couldn't move away.
+      - **When the night ends** (and at `/shrine stop`, which lets them go), everyone on the platform is **set down in front of the lectern**, facing it (the owner's choice), if the Shrine stands, at the start if not, and the platform is taken away. Anyone offline then, still where it was, is set down there when they next join. A reset sets them down at the start.
+      - **Without a platform,** east of the site, 4 blocks beyond the furthest the steps can reach (about 55 blocks from the centre, so the whole statue will be in view and nobody stands where a step will be laid), in the same rows, **on the ground**: through leaves and vines, never on top of a tree. At the fifth run (2026-11-20) the spot picked by itself was on a canopy, vines between the owner and the Shrine.
     - they're **held there** until the night ends (through the Awakening and the rise): anyone more than 2½ blocks from their spot (`HOLD_RADIUS`) is put back, once a second;
     - the Awakening **begins by itself** 10 seconds later (`AUTO_AWAKEN_SECONDS`). The ops are told when, and `/shrine status` counts down;
     - `/shrine stop` while it's due holds it and lets everyone move ("Start it with /shrine awaken"). A `/reload` or restart keeps the time.
@@ -304,8 +357,8 @@ Each wave also has its Senior Inspector. At most 12 ordinary Inspectors in a wav
     - a heartbeat everyone hears (the Warden's) once a second, twice as fast on his last line;
     - a dragon's growl as each line begins, and a blood-red mist around the Shrine with each beat;
     - with each sentence: a column of fire up the beam (where the statue will stand), lava and soul fire raining from 64 blocks up, flames at the watchers' feet, and two bolts for show in a ring 34 blocks out;
-  - **when the seals break:** lightning rings the site (8 bolts, 26 blocks out), with more fireworks;
-  - **soul fire** rises at the site's corners as it begins and as the seals break;
+  - **as he breaks the seals:** lightning rings the site (8 bolts, 26 blocks out), with more fireworks;
+  - **soul fire** rises at the site's corners as it begins and as he breaks the seals;
   - **the end** (49 seconds in, 3 seconds after his last words): the Shrine begins to rise. (With a Shrine already standing, from a rise forced first, the night ends here instead.)
 - **Lightning is only for show:** a bolt made "visual only" can't set fires or hurt anyone. If the game won't make one, flashes, sparks and thunder take its place, never a real bolt.
 1. **At once:**
@@ -321,9 +374,12 @@ Each wave also has its Senior Inspector. At most 12 ordinary Inspectors in a wav
 3. **The Regalia** (38 seconds in):
    - `/regalia` opens on the eight relics, and everyone is told, with a `[/regalia]` to click: "The Blood God has named the Regalia of the Blade. Its book will lie on his Shrine's altar.";
    - the book *The Regalia of the Blade* is laid on the altar's lectern when the Shrine stands, with sparkles and a page turning (at once, if a Shrine already stands).
-4. **The seals** (44 seconds in):
+4. **The seals** (44 seconds in), with lightning round the site 2 seconds later:
    > I break the third seal, and the fourth with it. Blood for the Blood God.
-5. **The Pool** (46 seconds in). Owner decisions 2026-11-19: no vote; the Blood God breaks the seals himself.
+5. **The Pool, when the night ends** (`breakSeals`), after the Shrine has risen and stood: everyone has been let go and has their belongings back. Owner decisions 2026-11-19: no vote; the Blood God breaks the seals himself.
+   - **Why at the end** (owner decision at the fifth run, 2026-11-20: "the blood pool increase needs to happen after the whole shrine is completely built, the reload skips the best part of the shrine being built"). Opening a tier reloads the server. At the fifth run, with the Pool still in the Awakening, the reload stalled the server for 5.6 seconds. The rise began a second later, while the server caught up, so its first layers appeared all at once.
+   - **Once a night** (`awake.pooled`): a `/reload` or restart at the end doesn't do it twice. `/shrine status` says "the seals break and the Pool rises when the night ends" until then.
+   - **With a Shrine already standing** (a rise forced first), the night ends as the Awakening does, and the Pool rises then.
    - **The Drops:** the Pool is raised to **a quarter of the way from Tier 4's threshold to Tier 5's** (`POOL_AFTER`). With `blood_pool.js`'s tiers (200,000 and 320,000) that's **230,000 Drops**, about 164,000 added on the night (from 66,000).
    - **Credited to nobody** (owner decision at the rehearsal, 2026-11-19): the Drops count toward the tiers but go on no player's contribution (`/bloodpool top`), as with an op's `/bloodpool add`. The potatoes offered at the altar fill the rite's bar and nothing else.
    - **Already there:** if the Pool is already past 230,000, nothing is added.
@@ -352,13 +408,15 @@ Signed *The Blood God*. One page per relic: what it honours, then what it asks. 
 > THE REGALIA OF THE BLADE
 > Eight things were mine. Restore them at my Shrine, and my name returns with them.
 
+(The Axe of Peace's and the Swine's Oath's pages changed 2026-11-20, with their relics: 1,000 blocks of cobalt and 128 blocks of pig iron; Carl's Bridle's too, from a bred horse to his tack; STORY.md #37.)
+
 > **THE WAR CHEST**
 > For the Potato War, which I won.
 > Fill it again: ten thousand potatoes.
 
 > **THE AXE OF PEACE**
 > I carried it in peace. Mostly.
-> Forge me its equal: a broad axe of manyullyn or hepatizon, made netherite.
+> Bring me the metal to forge its equal: a thousand blocks of cobalt.
 
 > **THE TOTEM HOARD**
 > I never died. I simply declined to.
@@ -374,11 +432,11 @@ Signed *The Blood God*. One page per relic: what it honours, then what it asks. 
 
 > **CARL'S BRIDLE**
 > For Carl, the finest horse who ever lived.
-> Breed me his equal: swift as wind, and a jump to clear any wall.
+> Bring me his tack: thirty-two saddles and sixteen suits of diamond horse armour.
 
 > **THE SWINE'S OATH**
 > For the pig who wore the crown.
-> See the pigs safely home, ten times over.
+> Forge me pig iron, iron and blood made one: a hundred and twenty-eight blocks.
 
 > **THE CROWN OF THE BLADE**
 > My crown. They wore it. They used it.
@@ -395,15 +453,40 @@ The Crown's page plants the final act: "They wore it" points at the Ministry rul
   - the eight relics, with how many are restored;
   - each relic's progress, e.g. "The War Chest  0 / 10,000 potatoes", with its top three contributors;
   - hovering over a relic shows what it honours and what it asks.
-- **The Shrine holds the progress,** server-wide. Other scripts can read it through `global.Regalia` (`isOpen()`, `relics`, `progress(id)`).
+- **The Shrine holds the progress,** server-wide. Other scripts can read it through `global.Regalia` (`isOpen()`, `relics`, `progress(id)`, `isRestored(id)`, `restoredForSeals()`, `sealRelics`).
+- **Each relic is shown in its own unit** (blocks of cobalt, buckets of blood), with its top three contributors, and the last line counts the relics for the seals: "each one restored breaks another seal (2 of 7)".
 
-The deliveries, Shrine raids and rewards are Act II's work and get their own spec. STORY.md lists what's still open: the amounts, a Blood offering, the order, and Purge losses.
+## Act II: the Regalia restored at the altar ✅ built (2026-11-20)
+**Relics break the seals** (owner decisions 2026-11-20, STORY.md #37): from Tier 5, each Blood Pool seal also needs one more relic restored (Tier 5: 1 ... Tier 11: 7). The Crown isn't one of them: it's for the final act. The Blood Pool's side is in [BLOOD_POOL.md](BLOOD_POOL.md#relics-break-the-seals).
+- **The words:** the Blood God's Regalia line at the Awakening ends "With each one returned, I break another seal.", and the book's first page reads "Eight things were mine. Restore them at my Shrine: each one returned breaks another seal, and with the last, my name returns."
+- **Delivering:** once the Shrine stands and the Regalia is named, right-click the altar (the lectern, or Technoblade's head above it) holding what a relic asks. The whole stack goes in, and the same relic's things anywhere else in the inventory with it (totems and saddles don't stack), up to what the relic still needs; the rest stays. Worn armour and the off hand are left alone. Anything else lets the lectern's book open as usual.
+  - **What each takes** (`DELIVER`; each relic keeps its tally in base units, `per` of them to one of its unit):
+
+    | Relic | Takes | Counted as |
+    |---|---|---|
+    | The War Chest | potatoes, and Quark's, Farmer's Delight's and Thermal's potato crates (9 each); never the Potato King's | 10,000 potatoes, for the relic only (no Standing, no Drops) |
+    | The Axe of Peace | anything tagged `forge:ingots/cobalt` (1) or `forge:storage_blocks/cobalt` (9) | 1,000 blocks (9,000 ingots) |
+    | The Totem Hoard | Totems of Undying | 64 |
+    | The Wither's Due | Nether Stars | 8 |
+    | The Chalice of Blood | EvilCraft blood (`evilcraft:blood`), drained from whatever holds it: a bucket of blood, or a tank. The container comes back empty | 1,000 buckets (1,000,000 mB) |
+    | Carl's Bridle | saddles and diamond horse armour (neither can be crafted in this pack), each filled on its own | 32 saddles and 16 diamond horse armour |
+    | The Swine's Oath | `forge:ingots/pig_iron` (1) or `forge:storage_blocks/pig_iron` (9) | 128 blocks (1,152 ingots) |
+    | The Crown of the Blade | nothing yet: it waits for the final act | |
+
+  - **Credit:** each giver is told ("You give 64 blocks of cobalt to The Axe of Peace: 64 of 1,000 blocks of cobalt."), and `/regalia` credits them. Everyone online is told at each quarter ("The Axe of Peace is half restored").
+- **Carl's Bridle** (owner decision 2026-11-20; it was a near-perfect bred horse, ridden up to the Shrine): its tack. Saddles and diamond horse armour come only from structure chests, villagers and fishing, so it's an exploration hunt. `/regalia` shows each part ("saddles 12 / 32, diamond horse armour 3 / 16").
+- **A relic restored:**
+  - **Everyone sees and hears it:** "THE TOTEM HOARD / is restored" on every screen, a challenge sound, lightning round the Shrine, red fireworks and soul fire.
+  - **The Blood God says it:** "[BLOOD GOD] The Totem Hoard is mine again. Another seal will break for you.", and the count goes out: "1 of 7 relics for the seals".
+  - **The Blood Pool hears of it** (`global.BloodPool.relicsChanged`): if the ready tier's seal no longer waits, the vote opens.
+  - **A Shrine raid** (STORY.md #38, `RELIC_RAID`): 10 seconds later, Inspectors in diamond come for it on the ring 30–45 blocks round the Shrine, one per player within 64 blocks (3 to 10). Outside the night's event, these deaths are real deaths. Set `RELIC_RAID.min` to 0 to turn raids off.
+
 
 ## Commands (op)
 | Command | What it does |
 |---|---|
 | `/shrine status` | The sites, the stage, the braziers, the rite's bar and who offered what |
-| `/shrine site set [x y z]` / `/shrine brazier set <1-3> [x y z]` / `/shrine start set [x y z]` | Set the Shrine's centre, a brazier or the start where you stand, or at those coordinates in the Overworld (the console can too) |
+| `/shrine site set [x y z]` / `/shrine brazier set <1-3> [x y z]` / `/shrine start set [x y z]` / `/shrine view set [x y z]` | Set the Shrine's centre, a brazier, the start or the viewing platform where you stand, or at those coordinates in the Overworld (the console can too). The viewing platform is built at once (6 x 6 barriers, a rail round it), clear of the Shrine's footprint; it can't move while everyone is on it |
 | `/shrine signal` | Stage 0: the scrambled message to everyone online, and to anyone who joins in the next 24 hours |
 | `/shrine summons` | Stage 1: the book *A Summons* for everyone online, and for anyone who joins until the Awakening (needs the three braziers set) |
 | `/shrine braziers` | Stage 2: place the braziers, bring everyone to the start, start the event (knockouts for everyone until the Awakening ends) |
@@ -416,7 +499,7 @@ The deliveries, Shrine raids and rewards are Act II's work and get their own spe
 | `/shrine book` | Put the Regalia book back on the altar |
 | `/shrine repair` | Put the Shrine back as it was built (every layer placed again; the head with its skin), then the book and any missing steps |
 | `/regalia` | **Anyone:** the eight relics and their progress |
-| `/shrine stop` | Stops whatever is running (waves, clock, rise), removes Inspectors and leaves the rest; a rite or an Awakening due to begin by itself won't (a held rite isn't queued again; everyone held at the viewing spots is let go) |
+| `/shrine stop` | Stops whatever is running (the opening, waves, clock, rise), removes Inspectors and leaves the rest; a rite or an Awakening due to begin by itself won't (a held rite isn't queued again; everyone held at the viewing spots is let go) |
 | `/shrine clearmobs` | Takes away the monsters in and right around the Shrine (event mobs and named ones stay) |
 | `/shrine reset confirm` | **Test server:** removes the Shrine, the braziers, the beam and the steps, ends the event, clears the sky, hands everyone's belongings back, and forgets the night, the Signal and the Summons included (the sites and the start are kept). It needs the word `confirm`, so it can't be run by accident on the live server |
 
@@ -461,12 +544,20 @@ The deliveries, Shrine raids and rewards are Act II's work and get their own spe
 16. **Knockouts stay as they are** (2026-11-19), after the second run's loop at the Shrine's edge.
 17. **The Shrine is the climax** (2026-11-19, at the fourth run): "I want the shrine to be the climax ending instead of in the middle". The order is now the braziers and the beam, the Ignition Rite around the beam, the Awakening at the beam, and the Shrine rising last; the night ends when it stands.
 18. **The offering goes into the beam** (2026-11-19): right-click its red glass; each quarter, the beam surges with a ring of fire and a bolt.
+19. **The waves come from the braziers, then the glass** (2026-11-20): "How about we make the inspectors spawn around the braziers and then at the red glass where potatoes are deposited", because "they often spawn in caves underground or in water". Around the braziers until half the offering, then 4–6 blocks from the red glass (the owner's pick of the distance).
+20. **The Pool rises after the Shrine is built** (2026-11-20, at the fifth run): "the blood pool increase needs to happen after the whole shrine is completely built, the reload skips the best part of the shrine being built". The seals break and the Drops land when the night ends; the Blood God's words and their lightning stay in the Awakening.
+21. **The owner sets the viewing spot** (2026-11-20, at the fifth run, after being put on a tree canopy with vines in the way): `/shrine view set`. Without it, the spot picked by itself is on the ground.
+22. **The viewing platform in the sky** (2026-11-20, at the fifth run's rerun): "mobs kept spawning near me when I couldn't move away while the shrine spawned. instead I would like to set a spot in the sky using a command that will create a 6x6 platform of barrier blocks which all players are teleported to". When the night ends, "everyone is teleported to infront of the lecturn".
+23. **Waves at the braziers** (2026-11-20, at the fifth run's rerun, after "the initial wave of inspectors just stops once killed during the brazier lighting"): "There will be 7 to 8 players on the event at the same time. Make sure to balance it accordingly. Waves should continuously spawn". The numbers are `BRAZIER_WAVES` (above), to tune at the next rehearsal.
+24. **The opening** (2026-11-20): "let's make the start of the event more dramatic". Chosen: fires on the horizon and an Inspector broadcast; nobody held ("Free to move"); about 30 seconds. Not chosen: the Blood God speaking at the start, night falling at the start.
+25. **Tuned before release** (2026-11-21): the brazier waves made harder (every 20 seconds, 3 + 1 per pilgrim, at most 8 a group, 16 up); each Senior Inspector drops 2 instead of 8, with more Seniors as the waves go on, so the rite still takes about 8 waves. The potatoes per player (8) and the braziers' look stay as they are.
+26. **The fires easier to find** (2026-11-21, at the sixth run): the pillars go up again every 30 seconds until each is lit, and everyone gets the fires' coordinates in chat at the start.
+27. **Lit by kneeling** (2026-11-21, at the sixth run): "instead of flint and steel lighting them immediately players should have to shift for 2 seconds without taking damage to light them". The flint and steel left the kit. At the rerun: "maybe reduce the lighting time to 1 second", so it's a second. Then 1.5: "make it 1.5 seconds".
+28. **A longer rise, with more fire** (2026-11-21, at the sixth run's rerun): 45 seconds instead of 29, with pillars of fire round the Shrine that grow with it and a climax with the last stone.
+29. **Less time to light them** (2026-11-21): the window after the first fire is lit is 45 seconds instead of 60.
+30. **The kit made new every 3rd knockout** (2026-11-21): "kits need to be refreshed after every 3 knock outs". The owner's verdict after the sixth run's nights: "I think this is ready".
 
 ## Still open
-- **To tune at the rehearsal:**
-  - the wave sizes;
-  - the potatoes per Inspector;
-  - how the braziers look.
 - **Still needed from the owner:** the three brazier sites, the Shrine site and the date.
 
 ## Install (what's built so far)
@@ -477,11 +568,12 @@ The deliveries, Shrine raids and rewards are Act II's work and get their own spe
 
 ## How the rise works (built)
 - **The box:** 42 × 43 blocks and 64 tall, centred on the site, from the site's ground level up. `/shrine site set` says its corners.
-- **Each layer:** every 9 ticks (`LAYER_TICKS`), about 29 seconds for all 64:
+- **Each layer:** every 14 ticks (`LAYER_TICKS`), about 45 seconds for all 64 (9 ticks until 2026-11-21):
   - its slice of the box is cleared to air;
   - the statue's layer is placed with `/place template trollcraft:shrine/l_<n>`;
   - stone sounds play: `block.deepslate.place` at every layer, `block.grindstone.use` every 3rd and `entity.wither.break_block` every 8th, and dust and smoke rise along it;
   - `block.respawn_anchor.charge` sounds at layer 0, layer 21 (the pedestal's top) and layer 63 (the head), with thunder at the last two.
+  - the pillars of fire round it grow by a block (see "The fire" above), and with the last layer comes the climax.
 - **Players in the way:** anyone inside the footprint is moved to the nearest side, 3 blocks out, onto the ground there, and told to stand back. It's checked again at every layer, so walking back in doesn't work.
 - **Who's told:** players within 128 blocks get the narration and a "The Shrine rises" title when it begins, and "Technoblade's Shrine stands" when the last stone settles.
 - **Chunks:** the box is force-loaded while it rises, and released after. If its chunks don't load within 90 seconds, the rise pauses.
@@ -620,12 +712,62 @@ Reset again (66,000, Tier 2, contributors cleared); the two players ran the nigh
   - it was day again (`time query daytime`: 1000).
 - **Found:** the backup files went to `kubejs/shrine_vault_<name>_<uuid>.json`, not the `shrine_vaults/` folder (KubeJS doesn't make it). The docs and the ops' message now say so.
 
+## The fifth run on the test server (2026-11-20): the new order, with one player
+- **Before it:** the fourth run's rite resumed when the server started, with nobody online, and spawned 49 waves (147 Inspectors) into unloaded chunks; `/shrine reset confirm` with the site's chunks force-loaded took them away. Fixed: the rite waits with nobody near.
+- **Seen working:**
+  - the Signal, the Summons and the braziers;
+  - the rite beginning 8 seconds after the owner reached the beam;
+  - waves 1 to 3 coming from the braziers, spread over all three, on dry ground and none in water;
+  - the switch at half the offering, the altar full (12 of 8);
+  - the Inspectors vanishing, the owner drawn back to watch, the Awakening beginning by itself;
+  - the seals broken from Tier 2 to 4 and 164,000 Drops credited to nobody;
+  - the rise (29 seconds, 21 steps), the Shrine standing, and the night ending 5 seconds later with the owner's belongings handed back. The Pool ended at 230,000 with Tier 4 open.
+- **Found and fixed:**
+  - **No kit:** the owner was in creative at `/shrine braziers`, switched to survival, and had no kit. Knocked out about every 5 seconds by the Inspectors at their wake spot, 21 times. The kit now reaches anyone switching to survival.
+  - **Strays:** 16 of run 4's Inspectors, five Seniors among them, in a lake 100 blocks away. Dropped into the void by hand; now taken away as their chunk loads.
+  - **The ambush:** one ambush Inspector stood 26 blocks above a brazier. Ambushes now look 12 up and 6 down.
+  - **The reload:** the Pool's reload at the end of the Awakening stalled the server 5.6 seconds, and the rise's first layers came all at once. The Pool now rises when the night ends.
+  - **The viewing spot:** it was on a tree canopy with vines in the way. The leaves and vines were cleared by hand that night; now `/shrine view set`, and the spot picked by itself is on the ground.
+- **Not seen:** where wave 4 rose (round the glass, by the code): the owner cut it down within 5 seconds, and the log didn't record spawn spots then. It does now.
+- **Not explained:** the owner's own `/shrine stop` during the knockouts didn't take; the console's did.
+
+### The reruns the same evening (2026-11-20)
+- **The second night** (21:45 to 21:48): waves 1 to 3 from the braziers; the rise in 28 seconds with nothing skipped; the night ended at 21:47:46, and only then did the seals break and the Pool rise to 230,000 (the reload's 4.5-second stall came after). The Pool's move to the night's end works in game.
+- **A 35-second stall** (21:58:01 to 21:58:36) during the brazier stage of a third start: not the garbage collector (4 seconds of it in all since the restart, no full collections) and nothing in the log; most likely the PC, running the game and the server side by side. A watchdog for thread dumps saw nothing more.
+- **The last night** (22:08 to 22:11), the owner alone: brazier waves at all three fires and a second round 30 seconds later; all three lit in 39 seconds; rite waves 1 and 2 from the braziers; the altar full at 22:09:51; the owner brought onto the platform 20 blocks up; the Awakening, then the rise in 28 seconds; at the night's end the owner was set down at the altar and the platform's barriers were gone; then the Pool rose to 230,000 at Tier 4. No knockouts all night. The owner: "this will work".
+- **Still not seen:** a wave rising round the red glass (the 8 potatoes went in at once each time).
+
+## The sixth run on the test server (2026-11-21): the opening, with one player
+The owner alone (as leelinda), with the test server's copy giving more Senior Inspectors a wave (`SENIORS_PER_PLAYER` [1, 1, 2, 2, 2, 3, 3, 3], marked TEST SERVER ONLY).
+- **The opening** played in full, 16:57:51 to 16:58:19. But the test server's start is within 25 blocks of all three braziers, so at second 0 three ambushes and three brazier waves (21 Inspectors) came, and knocked the owner out 3 seconds in. Fixed: the Inspectors now wait for the opening.
+- **The owner's verdict, "Something was off":** the pillars should go up every 30 seconds so players can track them, and the coordinates should be given in chat in case the fires are out of view (decision 26). Then: light them by kneeling, not flint and steel (decision 27).
+- **The fires** all burned at 16:58:52; the rite began by itself 8 seconds after.
+- **Rite waves 1 to 6** came 1, 1, 2, 2, 2 and 3 Seniors strong. **The waves moved to the red glass at wave 5**, once half the offering was in: the first time that switch was seen in game.
+- **Six knockouts** in the rite, alone against it, each woken at the Shrine's edge.
+- **The altar filled** at 17:00:39 (20 offered for the 8 needed: an offering takes every King's potato carried). Then the Awakening at 17:00:52, the rise at 17:01:41, the Shrine standing at 17:02:10, and the night's end at 17:02:15, with the owner's belongings handed back.
+- **The relic delivery** (17:12:48): 8 Nether Stars at the altar restored The Wither's Due ("1 of 7 for the seals"); the Blood Pool logged "Tier 5's seal no longer waits on relics" and went on to the vote; the relic raid came 10 seconds later, 3 Inspectors.
+- **The rerun** (17:14:16, after `/shrine reset confirm`, which also forgot the relic): no Inspector during the opening; then the three ambushes and the brazier waves at 17:14:47. **Kneeling worked:** "leelinda kindled brazier 1" at 17:16:11. But alone, within 40 blocks of all three braziers at once, the owner drew all three fires' waves (12 every 20 seconds, 48 up at the end) and was knocked out over and over; brazier 1 guttered out at 17:17:12. The waves are sized for teams split between the fires.
+- **After the Inspectors were cleared and kindling cut to 1 second** (17:17:32): the owner kindled brazier 2 at 17:18:03, 1 at 17:18:08 and 3 at 17:18:17, all three in 14 seconds; the rite ran 5 waves (all from the braziers: the offering went in at once, at 17:19:39, 12 for the 8 needed); the Awakening, the 29-second rise and the night's end at 17:21:14 followed. Then the owner asked for 1.5 seconds and the 45-second rise with more fire (decisions 27 and 28).
+
 ## What couldn't be verified yet
-- **The new order** (mock-tested only):
-  - the rite beginning once everyone is at the beam;
-  - the fight on open ground around the beam, and the offering into its red glass;
-  - the viewing spots on real ground, and whether the whole statue is in view as it rises;
-  - the night ending once the Shrine stands.
+- **The kit made new** (2026-11-21, mock-tested only): the fresh pieces and the off-hand shield as a player sees them, and the count carrying across a `/reload` (it's in the saved data).
+- **The fires' coordinates and the pillars every 30 seconds** (2026-11-21, mock-tested only): how the coordinates look in chat, and whether a pillar is seen from far off.
+- **The rise's fire** (2026-11-21, mock-tested only): how the pillars and the climax look from the platform, whether 8 pillars of up to 70 blocks plus the shockwave weigh on players' frame rates (the counts are in `risePillar` and `RISE_FIRE`), and the pillars kept clear of the platform (that part isn't covered by a test).
+- **The opening** (2026-11-20, mock-tested only): whether the fire pillars, 96 blocks out, read as fire on the horizon through the fog at the server's view distance; the thunder's direction (`execute ... facing ... ^ ^ ^16`); how the `[INTERCEPTED]` lines look in chat and on Discord (they go to each player, so Discord shouldn't get them); the sounds `block.sculk_sensor.clicking` and `block.note_block.bit` as the crackle.
+- **The relic deliveries** (2026-11-20, mock-tested only):
+  - item tags (`item.hasTag('forge:ingots/cobalt')`) and the lectern's right-click with a relic item in hand (the book shouldn't open);
+  - draining blood through Forge's fluid capability (`ForgeCapabilities.FLUID_HANDLER_ITEM`, `drain`, `getContainer`) for EvilCraft's tanks. Only the plain bucket of blood was mock-tested; if the capability can't be read, only buckets count;
+  - taking a relic's things from the whole inventory (`p.inventory.getItem`, slots 0 to 35) as well as the hand;
+  - the relic raid's Inspectors at the Shrine.
+- **The new order:**
+  - the waves round the red glass after the switch (the log now gives every spot);
+  - whether the whole statue is in view as it rises, from a spot set with `/shrine view set`;
+  - the Pool rising when the night ends: its tier titles and reload as the night clears;
+  - a stray Inspector taken away as its chunk loads (cancelling `EntityEvents.spawned` for an entity loaded from disk, with a discard the next tick as a fallback; mock-tested);
+  - the kit reaching someone who switches to survival mid-event (mock-tested);
+  - the viewing platform: the barriers laid by `fill ... replace air`, the view of the rise from it, and the landing in front of the lectern (room to stand there, facing the book). All mock-tested;
+  - the waves at the braziers with 7 or 8 players: whether every 20 seconds and up to 8 a group (16 up) is the right pressure (mock-tested only);
+  - several Senior Inspectors to a wave: the wave's one bar as players see it, and how the last waves (6 Seniors with 8 players) play (mock-tested only).
 - **The night's kit:**
   - the kit as players see it: Unbreaking X and Sharpness IV, the lore, the armour worn and the shield in the off hand;
   - the vault with a backpack's contents, worn curios and Tool Belt's belt slot (both players' belongings came back at the third run, but what they carried wasn't checked item by item);
@@ -637,6 +779,11 @@ Reset again (66,000, Tier 2, contributors cleared); the two players ran the nigh
 - **Stages 0–1:** how the Signal looks in chat and the Summons as a book, as players see them. The second run showed a late arrival getting both (the status counted them), but nobody recorded what they saw.
 - **The rite beginning by itself:** `/shrine stop` and a `/reload` while it's due (mock-tested; the start itself was seen at both runs).
 - **The new waves:** two Seniors' bars at once as players see them, and the 30-Inspector limit (mock-tested; the second run had five waves and no overlap reported).
+- **Where the waves come from** (2026-11-20, mock-tested):
+  - the braziers' Inspectors finding their way to the pilgrims at the beam (about 40 blocks on the test server);
+  - the switch to the glass at half the offering;
+  - `wetGround`'s check for waterlogged blocks (`blockState.fluidState.isEmpty()`; the mock only has block ids, so only the named blocks were tested);
+  - the rite waiting with nobody near the beam.
 - **The night's event:**
   - the teleport to the start with players in another dimension;
   - the whole-ring search for dry ground in game (the lake case is mock-tested).
@@ -651,7 +798,7 @@ Reset again (66,000, Tier 2, contributors cleared); the two players ran the nigh
   - the tribute and the Blood God's lines as players see them;
   - the guard against breaking and building, in game.
 - **Stage 2 with players:**
-  - lighting a brazier with flint and steel, a fire charge or a flaming arrow (it was lit with `/setblock`);
+  - kindling a brazier by sneaking (mock-tested only, 2026-11-21): `isCrouching()` on the server, the action bar, a blow read from health, absorption and `hurtTime`; flint and steel refused through `BlockEvents.rightClicked` (`event.item`), and a flaming arrow's fire put out;
   - the automatic ambush on a survival team on its way;
   - the Inspectors fighting;
   - how far away the beam shows.

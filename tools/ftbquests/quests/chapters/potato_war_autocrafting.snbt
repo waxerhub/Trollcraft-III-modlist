@@ -10,7 +10,7 @@
 	quests: [
 		{
 			dependencies: ["507A70000001000C"]
-			description: ["Place and use Create Mechanical Crafters.", "", "&6Unlocks&r", "- Place: mechanical crafter", "- Use (whoever placed it): mechanical crafter", "", "&7Needs Potato Private, Blood Pool Tier 4, and Create Automation.", "&7Potatoes handed in here count toward your rank. Items are taken when you submit them (loose potatoes only).", "&7Comes to you for free once the Blood Pool is 2 tiers past Tier 4 (catch-up)."]
+			description: ["Place and use Create Mechanical Crafters.", "", "&6Unlocks&r", "- Place: mechanical crafter", "- Use (whoever placed it): mechanical crafter", "", "&7Needs Potato Private, Blood Pool Tier 4, and Create Automation.", "&7Pay a part at a time: what you hand in is saved, and counts toward your rank once it is all paid. The Submit button takes loose potatoes only. To use crates (9 each) or Enchanted Potatoes (160 each), click below. One worth more than what is still needed is refused, so finish with loose potatoes.", "{\"text\":\"▶ Hand in the potatoes you carry\",\"color\":\"gold\",\"underlined\":true,\"clickEvent\":{\"action\":\"run_command\",\"value\":\"/potatowar pay mechanical_crafting\"},\"hoverEvent\":{\"action\":\"show_text\",\"contents\":\"/potatowar pay mechanical_crafting\"}}", "&7Comes to you for free once the Blood Pool is 2 tiers past Tier 4 (catch-up)."]
 			icon: "create:mechanical_crafter"
 			id: "507A700000010015"
 			rewards: [
@@ -58,7 +58,7 @@
 			y: 0.0d
 		}
 		{
-			description: ["Place and use the Formulaic Assemblicator.", "", "&6Unlocks&r", "- Place: formulaic assemblicator", "- Use (whoever placed it): formulaic assemblicator", "", "&7Needs Potato Private, Blood Pool Tier 4.", "&7Potatoes handed in here count toward your rank. Items are taken when you submit them (loose potatoes only).", "&7Comes to you for free once the Blood Pool is 2 tiers past Tier 4 (catch-up)."]
+			description: ["Place and use the Formulaic Assemblicator.", "", "&6Unlocks&r", "- Place: formulaic assemblicator", "- Use (whoever placed it): formulaic assemblicator", "", "&7Needs Potato Private, Blood Pool Tier 4.", "&7Pay a part at a time: what you hand in is saved, and counts toward your rank once it is all paid. The Submit button takes loose potatoes only. To use crates (9 each) or Enchanted Potatoes (160 each), click below. One worth more than what is still needed is refused, so finish with loose potatoes.", "{\"text\":\"▶ Hand in the potatoes you carry\",\"color\":\"gold\",\"underlined\":true,\"clickEvent\":{\"action\":\"run_command\",\"value\":\"/potatowar pay formulaic_assembly\"},\"hoverEvent\":{\"action\":\"show_text\",\"contents\":\"/potatowar pay formulaic_assembly\"}}", "&7Comes to you for free once the Blood Pool is 2 tiers past Tier 4 (catch-up)."]
 			icon: "mekanism:formulaic_assemblicator"
 			id: "507A700000010016"
 			rewards: [
@@ -106,7 +106,7 @@
 			y: 0.0d
 		}
 		{
-			description: ["Place and use the Ender IO Crafter.", "", "&6Unlocks&r", "- Place: crafter", "- Use (whoever placed it): crafter", "", "&7Needs Potato Soldier, Blood Pool Tier 5.", "&7Potatoes handed in here count toward your rank. Items are taken when you submit them (loose potatoes only).", "&7Comes to you for free once the Blood Pool is 2 tiers past Tier 5 (catch-up)."]
+			description: ["Place and use the Ender IO Crafter.", "", "&6Unlocks&r", "- Place: crafter", "- Use (whoever placed it): crafter", "", "&7Needs Potato Soldier, Blood Pool Tier 5.", "&7Pay a part at a time: what you hand in is saved, and counts toward your rank once it is all paid. The Submit button takes loose potatoes only. To use crates (9 each) or Enchanted Potatoes (160 each), click below. One worth more than what is still needed is refused, so finish with loose potatoes.", "{\"text\":\"▶ Hand in the potatoes you carry\",\"color\":\"gold\",\"underlined\":true,\"clickEvent\":{\"action\":\"run_command\",\"value\":\"/potatowar pay enderio_crafting\"},\"hoverEvent\":{\"action\":\"show_text\",\"contents\":\"/potatowar pay enderio_crafting\"}}", "&7Comes to you for free once the Blood Pool is 2 tiers past Tier 5 (catch-up)."]
 			icon: "enderio:crafter"
 			id: "507A700000010017"
 			rewards: [
@@ -154,7 +154,7 @@
 			y: 0.0d
 		}
 		{
-			description: ["Place and use the Sequential Fabricator.", "", "&6Unlocks&r", "- Place: machine crafter", "- Use (whoever placed it): machine crafter", "", "&7Needs Potato Soldier, Blood Pool Tier 5.", "&7Potatoes handed in here count toward your rank. Items are taken when you submit them (loose potatoes only).", "&7Comes to you for free once the Blood Pool is 2 tiers past Tier 5 (catch-up)."]
+			description: ["Place and use the Sequential Fabricator.", "", "&6Unlocks&r", "- Place: machine crafter", "- Use (whoever placed it): machine crafter", "", "&7Needs Potato Soldier, Blood Pool Tier 5.", "&7Pay a part at a time: what you hand in is saved, and counts toward your rank once it is all paid. The Submit button takes loose potatoes only. To use crates (9 each) or Enchanted Potatoes (160 each), click below. One worth more than what is still needed is refused, so finish with loose potatoes.", "{\"text\":\"▶ Hand in the potatoes you carry\",\"color\":\"gold\",\"underlined\":true,\"clickEvent\":{\"action\":\"run_command\",\"value\":\"/potatowar pay thermal_fabrication\"},\"hoverEvent\":{\"action\":\"show_text\",\"contents\":\"/potatowar pay thermal_fabrication\"}}", "&7Comes to you for free once the Blood Pool is 2 tiers past Tier 5 (catch-up)."]
 			icon: "thermal:machine_crafter"
 			id: "507A700000010018"
 			rewards: [
@@ -203,7 +203,7 @@
 		}
 		{
 			dependencies: ["507A700000010011", "507A700000010190"]
-			description: ["Place and use AE2 (and Advanced AE) pattern providers, crafting CPUs and Molecular Assemblers, and use wireless crafting and pattern terminals.", "", "&6Unlocks&r", "- Place: pattern provider, cable pattern provider, pattern encoding terminal, crafting unit, crafting accelerator, 1k crafting storage, 4k crafting storage, 16k crafting storage, 64k crafting storage, 256k crafting storage, crafting monitor, molecular assembler, adv pattern provider, adv pattern provider part, small adv pattern provider, small adv pattern provider part", "- Use (whoever placed it): pattern provider, crafting unit, crafting accelerator, 1k crafting storage, 4k crafting storage, 16k crafting storage, 64k crafting storage, 256k crafting storage, crafting monitor, molecular assembler, adv pattern provider, small adv pattern provider", "- Wireless terminals: wireless crafting terminal, wireless quantum crafter terminal, wireless universal terminal, wireless pattern encoding terminal, wireless pattern access terminal", "", "&7Needs Potato Sergeant, Blood Pool Tier 6, and ME Logistics.", "&5The price was never potatoes: 100,000 Enchanted Potatoes (160 potatoes' worth each, made in the Potato Press). They count toward your rank at that worth.&r", "&7Comes to you for free once the Blood Pool is 2 tiers past Tier 6 (catch-up)."]
+			description: ["Place and use AE2 (and Advanced AE) pattern providers, crafting CPUs and Molecular Assemblers, and use wireless crafting and pattern terminals.", "", "&6Unlocks&r", "- Place: pattern provider, cable pattern provider, pattern encoding terminal, crafting unit, crafting accelerator, 1k crafting storage, 4k crafting storage, 16k crafting storage, 64k crafting storage, 256k crafting storage, crafting monitor, molecular assembler, adv pattern provider, adv pattern provider part, small adv pattern provider, small adv pattern provider part", "- Use (whoever placed it): pattern provider, crafting unit, crafting accelerator, 1k crafting storage, 4k crafting storage, 16k crafting storage, 64k crafting storage, 256k crafting storage, crafting monitor, molecular assembler, adv pattern provider, small adv pattern provider", "- Wireless terminals: wireless crafting terminal, wireless quantum crafter terminal, wireless universal terminal, wireless pattern encoding terminal, wireless pattern access terminal", "", "&7Needs Potato Sergeant, Blood Pool Tier 6, and ME Logistics.", "&5The price was never potatoes: 100,000 Enchanted Potatoes (160 potatoes' worth each, made in the Potato Press). They count toward your rank at that worth.&r", "{\"text\":\"▶ Hand in the Enchanted Potatoes you carry (a baked one counts as 160)\",\"color\":\"gold\",\"underlined\":true,\"clickEvent\":{\"action\":\"run_command\",\"value\":\"/potatowar pay me_autocrafting\"},\"hoverEvent\":{\"action\":\"show_text\",\"contents\":\"/potatowar pay me_autocrafting\"}}", "&7Comes to you for free once the Blood Pool is 2 tiers past Tier 6 (catch-up)."]
 			hide_details_until_startable: true
 			icon: "ae2:molecular_assembler"
 			id: "507A700000010019"
@@ -253,7 +253,7 @@
 		}
 		{
 			dependencies: ["507A700000010017", "507A700000010190"]
-			description: ["Place and use RFTools Crafters.", "", "&6Unlocks&r", "- Place: crafter1, crafter2, crafter3", "- Use (whoever placed it): crafter1, crafter2, crafter3", "", "&7Needs Potato Lieutenant, Blood Pool Tier 7, and Ender IO Crafting.", "&5The price was never potatoes: 175,000 Enchanted Potatoes (160 potatoes' worth each, made in the Potato Press). They count toward your rank at that worth.&r", "&7Comes to you for free once the Blood Pool is 2 tiers past Tier 7 (catch-up)."]
+			description: ["Place and use RFTools Crafters.", "", "&6Unlocks&r", "- Place: crafter1, crafter2, crafter3", "- Use (whoever placed it): crafter1, crafter2, crafter3", "", "&7Needs Potato Lieutenant, Blood Pool Tier 7, and Ender IO Crafting.", "&5The price was never potatoes: 175,000 Enchanted Potatoes (160 potatoes' worth each, made in the Potato Press). They count toward your rank at that worth.&r", "{\"text\":\"▶ Hand in the Enchanted Potatoes you carry (a baked one counts as 160)\",\"color\":\"gold\",\"underlined\":true,\"clickEvent\":{\"action\":\"run_command\",\"value\":\"/potatowar pay rftools_crafting\"},\"hoverEvent\":{\"action\":\"show_text\",\"contents\":\"/potatowar pay rftools_crafting\"}}", "&7Comes to you for free once the Blood Pool is 2 tiers past Tier 7 (catch-up)."]
 			hide_details_until_startable: true
 			icon: "rftoolsutility:crafter1"
 			id: "507A70000001001A"
@@ -303,7 +303,7 @@
 		}
 		{
 			dependencies: ["507A700000010019", "507A700000010190"]
-			description: ["Place and use Advanced AE's Quantum Crafter.", "", "&6Unlocks&r", "- Place: quantum crafter, quantum crafter terminal", "- Use (whoever placed it): quantum crafter", "", "&7Needs Potato Emperor, Blood Pool Tier 11, and ME Autocrafting.", "&5The price was never potatoes: 500,000 Enchanted Baked Potatoes (25600 potatoes' worth each, made in the Potato Oven). They count toward your rank at that worth.&r", "&7Comes to you for free at Tier 12 (Full Measure) (catch-up)."]
+			description: ["Place and use Advanced AE's Quantum Crafter.", "", "&6Unlocks&r", "- Place: quantum crafter, quantum crafter terminal", "- Use (whoever placed it): quantum crafter", "", "&7Needs Potato Emperor, Blood Pool Tier 11, and ME Autocrafting.", "&5The price was never potatoes: 500,000 Enchanted Baked Potatoes (25600 potatoes' worth each, made in the Potato Oven). They count toward your rank at that worth.&r", "{\"text\":\"▶ Hand in the Enchanted Baked Potatoes you carry\",\"color\":\"gold\",\"underlined\":true,\"clickEvent\":{\"action\":\"run_command\",\"value\":\"/potatowar pay quantum_crafting\"},\"hoverEvent\":{\"action\":\"show_text\",\"contents\":\"/potatowar pay quantum_crafting\"}}", "&7Comes to you for free at Tier 12 (Full Measure) (catch-up)."]
 			hide_details_until_startable: true
 			icon: "advanced_ae:quantum_crafter"
 			id: "507A70000001001B"
@@ -352,7 +352,7 @@
 			y: -4.0d
 		}
 		{
-			description: ["Use Immersive Engineering's Assembler multiblock (it is formed with the hammer, so only using it is locked).", "", "&6Unlocks&r", "- Use (whoever placed it): assembler", "", "&7Needs Potato Private, Blood Pool Tier 4.", "&7Potatoes handed in here count toward your rank. Items are taken when you submit them (loose potatoes only).", "&7Comes to you for free once the Blood Pool is 2 tiers past Tier 4 (catch-up)."]
+			description: ["Use Immersive Engineering's Assembler multiblock (it is formed with the hammer, so only using it is locked).", "", "&6Unlocks&r", "- Use (whoever placed it): assembler", "", "&7Needs Potato Private, Blood Pool Tier 4.", "&7Pay a part at a time: what you hand in is saved, and counts toward your rank once it is all paid. The Submit button takes loose potatoes only. To use crates (9 each) or Enchanted Potatoes (160 each), click below. One worth more than what is still needed is refused, so finish with loose potatoes.", "{\"text\":\"▶ Hand in the potatoes you carry\",\"color\":\"gold\",\"underlined\":true,\"clickEvent\":{\"action\":\"run_command\",\"value\":\"/potatowar pay immersive_assembly\"},\"hoverEvent\":{\"action\":\"show_text\",\"contents\":\"/potatowar pay immersive_assembly\"}}", "&7Comes to you for free once the Blood Pool is 2 tiers past Tier 4 (catch-up)."]
 			icon: "immersiveengineering:component_steel"
 			id: "507A70000001001C"
 			rewards: [
@@ -400,7 +400,7 @@
 			y: 0.0d
 		}
 		{
-			description: ["Place and use the Quark Crafter and Botania's Crafty Crate.", "", "&6Unlocks&r", "- Place: crafter, crafty crate", "- Use (whoever placed it): crafter, crafty crate", "", "&7Needs Potato Private, Blood Pool Tier 4.", "&7Potatoes handed in here count toward your rank. Items are taken when you submit them (loose potatoes only).", "&7Comes to you for free once the Blood Pool is 2 tiers past Tier 4 (catch-up)."]
+			description: ["Place and use the Quark Crafter and Botania's Crafty Crate.", "", "&6Unlocks&r", "- Place: crafter, crafty crate", "- Use (whoever placed it): crafter, crafty crate", "", "&7Needs Potato Private, Blood Pool Tier 4.", "&7Pay a part at a time: what you hand in is saved, and counts toward your rank once it is all paid. The Submit button takes loose potatoes only. To use crates (9 each) or Enchanted Potatoes (160 each), click below. One worth more than what is still needed is refused, so finish with loose potatoes.", "{\"text\":\"▶ Hand in the potatoes you carry\",\"color\":\"gold\",\"underlined\":true,\"clickEvent\":{\"action\":\"run_command\",\"value\":\"/potatowar pay simple_crafting\"},\"hoverEvent\":{\"action\":\"show_text\",\"contents\":\"/potatowar pay simple_crafting\"}}", "&7Comes to you for free once the Blood Pool is 2 tiers past Tier 4 (catch-up)."]
 			icon: "quark:crafter"
 			id: "507A70000001001D"
 			rewards: [
@@ -449,7 +449,7 @@
 		}
 		{
 			dependencies: ["507A700000010190"]
-			description: ["Place and use Blue Power's Auto Project Table.", "", "&6Unlocks&r", "- Place: auto project table", "- Use (whoever placed it): auto project table", "", "&7Needs Potato Lieutenant, Blood Pool Tier 7.", "&5The price was never potatoes: 175,000 Enchanted Potatoes (160 potatoes' worth each, made in the Potato Press). They count toward your rank at that worth.&r", "&7Comes to you for free once the Blood Pool is 2 tiers past Tier 7 (catch-up)."]
+			description: ["Place and use Blue Power's Auto Project Table.", "", "&6Unlocks&r", "- Place: auto project table", "- Use (whoever placed it): auto project table", "", "&7Needs Potato Lieutenant, Blood Pool Tier 7.", "&5The price was never potatoes: 175,000 Enchanted Potatoes (160 potatoes' worth each, made in the Potato Press). They count toward your rank at that worth.&r", "{\"text\":\"▶ Hand in the Enchanted Potatoes you carry (a baked one counts as 160)\",\"color\":\"gold\",\"underlined\":true,\"clickEvent\":{\"action\":\"run_command\",\"value\":\"/potatowar pay project_automation\"},\"hoverEvent\":{\"action\":\"show_text\",\"contents\":\"/potatowar pay project_automation\"}}", "&7Comes to you for free once the Blood Pool is 2 tiers past Tier 7 (catch-up)."]
 			hide_details_until_startable: true
 			icon: "bluepower:auto_project_table"
 			id: "507A70000001001E"

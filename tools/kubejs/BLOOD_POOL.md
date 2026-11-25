@@ -24,6 +24,8 @@ See [STORY.md](../../STORY.md). The tier contents come from the progression rese
 | `server_scripts/economy/trolls.js` | `kubejs/server_scripts/economy/` | Every logged troll fills the Pool |
 | `server_scripts/economy/black_market.js` | (as Part I) | Hush Coins for donations. Its `STANDING_LOCKS` sell some items only to high enough ranks (no effect without the Blood Pool) |
 | `startup_scripts/potato_press.js` | `kubejs/startup_scripts/` on the server **and in the modpack** | Enchanted Potatoes, Enchanted Baked Potatoes, the Potato Press and the Potato Oven (see [POTATO_PRESS.md](POTATO_PRESS.md)). **Restart** after adding it. The server also needs `mixin.perf.faster_capabilities=false` in `config/modernfix-mixins.properties` for hoppers and pipes to reach the machines |
+| `data/alexsmobs/loot_tables/gameplay/transmutation_table_common.json`, `_uncommon.json`, `_rare.json` | `kubejs/data/alexsmobs/loot_tables/gameplay/` | Replace Alex's Mobs' three Transmutation Table lists (see "Routes closed by config"). A `/reload` picks them up |
+| `tools/serverconfig/alexsmobs.toml` | `config/alexsmobs.toml` | `limitTransmutingToLootTables = true`, so a Transmutation Table only offers its lists. **Restart** after changing it |
 
 Copy them, restart once (for the startup scripts), then `/reload` after any later change. The script creates `kubejs/blood_pool_tier.json` by itself (see "Why there's a file").
 
@@ -56,16 +58,16 @@ Copy them, restart once (for the startup scripts), then `/reload` after any late
 
 | Tier | Name | Drops (total) | Theme | Opens (main) |
 |---|---|---|---|---|
-| 0 | (start) | | | Vanilla, Twilight Forest (minus its later gear), Tinkers up to the smeltery, and every mod not listed |
+| 0 | (start) | | | Vanilla, Twilight Forest, the Aether and Deeper and Darker's Otherside (each minus its later gear), Tinkers up to the smeltery, and every mod not listed |
 | 1 | A Trickle | 20,000 | First Sparks | Create, Mystical Agriculture |
 | 2 | A Puddle | 60,000 | The Green Art | Botania, Ars Nouveau, EvilCraft, Hexerei's cauldron; Extra Utilities' spikes and compressed cobblestone, ahead of the rest of the mod at Tier 7 (owner decision, 10 November 2026) |
 | 3 | A Basin | 120,000 | Iron and Oil | Immersive Engineering, steel, Create brass; **the Nether** |
-| 4 | A Font | 200,000 | The First Circuit | Mekanism (2×), Tinkers' Rapier, Create mechanical crafting, TF steeleaf |
-| 5 | A Spring | 320,000 | The Nether Forge | Thermal, Ender IO, the Tinkers foundry and cobalt, netherite, Mekanism 3×, the Infusion Altar, TF knightmetal; **the price revealed**, and the Potato Press |
-| 6 | A Stream | 480,000 | Terrasteel and Storage | AE2 and addons, Extreme Reactors, Reliquary, Alex's Caves, Ice and Fire, Terrasteel, Mekanism 4×, TF fiery and yeti |
-| 7 | A River | 700,000 | Power and Rails | RFTools, Modular Powersuits, Redstone Arsenal, Blue Power, Extra Utilities, Create trains, Mekanism 5×, TF carminite and arctic |
+| 4 | A Font | 200,000 | The First Circuit | Mekanism (2×), Tinkers' Rapier, Create mechanical crafting, TF steeleaf, the Aether's gravitite, resonarium tools |
+| 5 | A Spring | 320,000 | The Nether Forge | Thermal, Ender IO, the Tinkers foundry and cobalt, netherite, Mekanism 3×, the Infusion Altar, TF knightmetal, the zanite sword; **the price revealed**, and the Potato Press |
+| 6 | A Stream | 480,000 | Terrasteel and Storage | AE2 and addons, Extreme Reactors, Reliquary, Alex's Caves, Ice and Fire, Terrasteel, Mekanism 4×, TF fiery and yeti, resonarium armour |
+| 7 | A River | 700,000 | Power and Rails | RFTools, Modular Powersuits, Redstone Arsenal, Blue Power, Extra Utilities, Create trains, Mekanism 5×, TF carminite and arctic, Deeper and Darker's warden gear |
 | 8 | A Flood | 1,000,000 | The Deep Forge | TAIGA, TC Integrations, Create Big Cannons, Mekanism Tools and Weaponry, Advanced AE, the Tinkers end-game alloys, the Potato Oven |
-| 9 | A Tide | 1,400,000 | Wither and Star | Draconic Evolution, Gaia, the End tier of Ender IO, dragonsteel; **the End** |
+| 9 | A Tide | 1,400,000 | Wither and Star | Draconic Evolution, Gaia, the End tier of Ender IO, dragonsteel, the sonorous staff; **the End** |
 | 10 | A Sea | 1,900,000 | Fission and Wyvern | RFTools Dimensions, fission, the MekaSuit, Draconic Wyvern, AE2 quantum and spatial |
 | 11 | An Ocean | 2,400,000 | Awakened | Mekanism SPS and antimatter, Draconic Awakened and Chaotic, Advanced AE quantum, Awakened Supremium, the Ender Quarry, the nuke |
 | 12 | Full Measure | 4,400,000 | | No recipes of its own: the last seal, which begins the final act (STORY.md, Act V). Renamed from "The Siege" and raised from 3,000,000 (owner decisions, 13 November 2026). The Blood God's power is full: every tier's crafting and every upgrade-tree node open for everyone (`OPEN_ALL_TIER`, owner decision, 15 November 2026) |
@@ -134,6 +136,18 @@ Copy them, restart once (for the startup scripts), then `/reload` after any late
   - **Tinkers:** the smeltery and every cross-mod melt depend on it.
 
   Their gear and materials are tiered by item and recipe id. **Ironwood** (Twilight Forest's first metal, about iron tier) is open from day 0.
+- **The Aether and Deeper and Darker** (added 22 November 2026) follow Twilight Forest: both dimensions are open, and their gear is tiered by item against what's already tiered, stat for stat ([research/AETHER_DEEPERDARKER.md](../../research/AETHER_DEEPERDARKER.md)). Owner decisions, 22 November 2026:
+
+  | Tier | Items | Comparable |
+  |---|---|---|
+  | 0 | skyroot, holystone and zanite gear (except the sword), rings, pendants, the Altar, Freezer and Incubator; everything else in Deeper and Darker | iron, ironwood |
+  | 4 | the Aether's gravitite armour, gloves, tools and enchanted gravitite; resonarium tools | diamond with modest powers, like steeleaf |
+  | 5 | the zanite sword (6 damage new, up to 13 as it wears); the Aether's netherite gloves | beyond netherite's 8 |
+  | 6 | resonarium armour (a full set cancels every armour-bypassing hit) | dragon scale, terrasteel |
+  | 7 | warden armour and tools, the reinforced echo shard, the warden upgrade template | between fiery (6) and refined obsidian (8) |
+  | 9 | the sonorous staff (up to 50 armour-ignoring damage along an 18-block beam) | dragonsteel |
+
+  Some of this gear is also loot (the zanite sword and gravitite gear in Aether dungeons), so it has wear and wield locks too (see "The locks").
 - **Checked against the jars:**
   - every Twilight Forest and Ice and Fire item id has a recipe in its jar;
   - every recipe rule for Tinkers, Mystical Agriculture, TC Integrations, TAIGA and Ice and Fire matches real recipe ids in the server's versions;
@@ -142,7 +156,7 @@ Copy them, restart once (for the startup scripts), then `/reload` after any late
 ## The locks: crafting only
 A sealed mod, item, tag or recipe **can't be crafted** until its tier opens. Its recipes are removed in every recipe type: the crafting table, furnaces, every machine, the smeltery and so on. They also disappear from JEI.
 
-**Everything else works.** Sealed items that players find, loot, trade for or get from mobs can be used, placed, worn and fought with normally (owner decision). A found item is a treat, not a way round the tier.
+**Everything else works.** Sealed items that players find, loot, trade for or get from mobs can be used, placed, worn and fought with normally (owner decision). A found item is a treat, not a way round the tier. The exceptions are below: what Part I players brought, and the Aether's and Deeper and Darker's sealed gear.
 
 **The exception: what Part I players brought (`USE_LOCKS`, `PLACE_LOCKS`, `SPAWN_LOCKS`).** Players kept their whole Part I inventory, and everything was craftable in Part I, so a sealed item made then would work from day one. These items can't be used or placed until their tier opens, however a player got one. Each item's tier is its own in `TIERS`, so it works again the moment that tier opens. The player is told why on the action bar ("The Raygun is sealed until the Blood Pool opens Tier 6 (A Stream).").
 
@@ -162,10 +176,18 @@ A sealed mod, item, tag or recipe **can't be crafted** until its tier opens. Its
 - **Spawn locks (`SPAWN_LOCKS`):** a dispenser fires a Nuclear Bomb as a primed bomb, with no block placed. That's Alex's Caves' own dispenser behaviour (`ACItemRegistry$7`, read with `javap`), so the place lock can't catch it. So a `alexscaves:nuclear_bomb` entity is stopped from spawning until Tier 11, and the log says so. The dispenser still uses up the bomb. It also stops `/summon` of a primed bomb.
 - **How a refused use stops an item:** the click is refused before the item's own use starts, so nothing happens on the server. The raygun only fires while it's being used, and its damage is dealt only on the server (`RaygunItem.onUseTick` in Alex's Caves 2.0.2, read with `javap`). The other items weren't read one by one; see "What couldn't be verified".
 - **Who:** ops in survival are refused too, so an op can test it. Creative players are exempt.
-- **Not covered yet:** weapons that hit, tools that mine (the Draconic staffs, the Meka-Tool, the Atomic Disassembler), armour and Curios (jetpacks, the Flight Tiara, Draconic chestpieces). Those need a gear lock like the upgrade tree's. Two gaps in `TIERS` matter for that lock:
+- **Not covered yet:** Part I's weapons that hit, tools that mine (the Draconic staffs, the Meka-Tool, the Atomic Disassembler), armour and Curios (jetpacks, the Flight Tiara, Draconic chestpieces). The wear and wield locks below can now hold them, but listing them is the owner's call. Two gaps in `TIERS` matter if they are:
   - the MekaSuit helmet, pants and boots fall back to Mekanism's Tier 4, since only the body armour is listed at Tier 10;
   - Draconic's chaotic gear opens with Draconic at Tier 9, though its parts are Tier 11.
-- **Adding an item:** put its id in `USE_LOCKS` with its mode, or a block in `PLACE_LOCKS`. The script warns at load if an id is in no tier (it would never be locked) or a mode is misspelt.
+- **Adding an item:** put its id in `USE_LOCKS` with its mode, a block in `PLACE_LOCKS`, or gear in `WEAR_LOCKS` or `WIELD_LOCKS`. The script warns at load if an id is in no tier (it would never be locked) or a mode is misspelt.
+
+**Wear and wield locks (`WEAR_LOCKS`, `WIELD_LOCKS`):** the Aether's dungeons hand out the zanite sword (bronze and silver dungeons) and gravitite gear (silver and gold), which crafting locks can't touch, and Deeper and Darker's gear could be traded or brought. So the sealed gear of both mods can't be worn or fought with until its tier opens, however it was got (owner decision, 22 November 2026). As with the use locks, each item's tier is its own in `TIERS`, the player is told why on the action bar, ops in survival are held too and creative players are exempt.
+- **Wear (`WEAR_LOCKS`, 14 pieces):** gravitite armour and gloves (Tier 4), the Aether's netherite gloves (5), resonarium armour (6) and warden armour (7). Every second (`WEAR_CHECK_TICKS`) each player's armour slots and Curios slots (where the Aether's gloves go) are checked. A sealed piece is taken off into the inventory, or dropped at the player's feet if it's full, and the log says whose and what.
+- **Wield (`WIELD_LOCKS`, 17 items):** gravitite and resonarium tools (Tier 4), the zanite sword (5), warden tools (7) and the sonorous staff (9). With one in the main hand:
+  - a hit does nothing (the damage is cancelled);
+  - no block can be broken;
+  - right-clicking with it is refused, in the air or on a block, in either hand (the use locks' `block` mode): a gravitite tool can't float a block, and the staff can't fire.
+- **Loot that stays open:** the dungeons' Valkyrie, Neptune and Phoenix gear, the dungeon swords, life shards and the sculk transmitter are boss rewards, like Twilight Forest's, and have no tier.
 
 **Routes the cohesion audit found and sealed** ([PROGRESSION_AUDIT.md](../../PROGRESSION_AUDIT.md)). Their results are tags or secondary outputs, neither of which an item lock can see, so they're locked by recipe id:
 - **Tier 1:** Create Aquatic Ambitions' three prismarine and nautilus crushing recipes, whose **secondary** outputs are Create experience and copper nuggets. Found in game by `/bloodpool audit` at Tier 0, not by the offline audit: that mod is one of the "not on hand" mods it can't read.
@@ -184,7 +206,20 @@ A sealed mod, item, tag or recipe **can't be crafted** until its tier opens. Its
 
   **What the audit still lists:** 8 recipes across Tiers 1 to 9, none of them sealed yet. The 4 `bigreactors:reprocessor/*_to_*` recipes at Tiers 6 to 9 make Tier 10 ingots, but every Reprocessor part needs the Tier 10 casing, so nobody can build one until then. The 4 `create:crushing/` recipes `tuff`, `tuff_recycling`, `ochrum` and `ochrum_recycling` at Tiers 1 to 4 can give `thermal:electrum_nugget` (Tier 5) as a secondary output. Sealing those would also remove their other outputs until Tier 5, so that's left for the owner to decide.
 
+**Routes closed by config and data, not by the scripts** (configs are in `tools/serverconfig/`, each changed line marked `#TROLLCRAFT`; data files are in `tools/kubejs/data/`):
+- **Twilight Forest's Uncrafting Table** is switched off (`disableUncraftingTable = true` in `twilightforest-common.toml`).
+- **Alex's Mobs' Transmutation Table** (owner decisions, 20 November 2026). Its recipe is open from the start, and a transmutation isn't a recipe, so no lock reached it.
+  - **How it works:** a player puts in a stack and is offered three choices, one from each of the table's loot lists (common, uncommon, rare). A pick costs 3 XP levels and turns the whole stack into that item. The player gets the same share of a full stack, so 64 cobblestone gives 64, 16 ender pearls give 64, and one tool that doesn't stack gives a full 64. The choices reroll after every use, so a player can reroll for 3 levels by transmuting a single dirt.
+  - **It only offers its lists** (`limitTransmutingToLootTables = true` in `alexsmobs.toml`). Before, it remembered anything a player fed it 2 or more of at once and offered it back, up to 1 roll in 5. A player's report of "unlimited nether stars" came down to this: feeding stars back 3 at a time to keep them on offer still netted about 49 stars a loop. It worked on Pool-sealed items too.
+  - **Its lists are replaced** (`data/alexsmobs/loot_tables/gameplay/transmutation_table_*.json`):
+    - **What came out:** the Nether and End items (blaze rods, ghast tears, gilded blackstone, netherrack, quartz, glowstone dust, ender pearls, shulker shells, end rods) and diamonds. Diamonds came up about 1 roll in 124, and blaze rods 1 in 10, 64 at a time.
+    - **The rare list's odds:** its removed weight went to the ordinary items on it (raw copper, amethyst, lapis, prismarine), so emeralds (1 in 62), Mimicream and nautilus shells (1 in 124) are exactly as rare as before.
+    - **What it still gives:** junk into raw iron, copper and gold, coal, flint, redstone, lapis, amethyst and prismarine. Emeralds are the most valuable thing left.
+  - **The code:** read in `TileEntityTransmutationTable`, `TransmutationData` and `MenuTransmutationTable` (Alex's Mobs 1.22.9) with `javap`. The table reads its lists by name from the server's loot data, so the `kubejs/data` files replace them. Not tried in game.
+  - **Tables already built:** each one saves the three choices it's showing, so one already offering a learned item, a diamond or a Nether item keeps that offer until its next transmutation.
+
 **Things the research flagged and left open on purpose:**
+- **Cobalt in the Overworld** (found 2026-11-20): Tinkers' own cobalt is Nether-only, but ADLODS (Large Ore Deposits, `config/adlods/Deposits/cobalt.cfg`, its default) places cobalt deposits in the Overworld: 700–1,400 ore each, about one every 3,094 chunks, between heights 16 and 64. The ore can be mined early, but every way of working it is sealed until Tier 5. The owner keeps them as the supply for the Axe of Peace (1,000 blocks of cobalt, about four veins; STORY.md #37). ADLODS' ancient debris deposits stay in the Nether.
 - **Botania's Orechid Ignem** (netherrack to ancient debris, from Tier 2) and **IE's Excavator** (ancient debris veins) are ore routes. Both need a mature setup first. The research's §3c has the one recipe id to add if netherite should stay a Nether trip.
 - **The Timewood Core** (Twilight Forest) speeds up any mod's machines within 8 blocks. It's a natural block, so no crafting lock can stop it; only its config can.
 - **Ender Storage, Walkers and ReMorphed** can't be gated by recipes.
@@ -239,6 +274,18 @@ Techno's Potato War runs alongside the Pool. **The Pool decides what the server 
   - A record from before the peak existed starts at the rank its potatoes buy now, so nobody's rank changed when it was added. Ranks bought under the launch numbers aren't brought back.
   - **Only an op can lower a rank,** with `/potatowar set <player> <potatoes>`, which sets it to what that total buys. `/potatowar add`, offers and tree hand-ins never lower it.
 - **Ranking up:** a title and a sound for the player, and a public line: "Ana has risen to Potato Soldier in Techno's Potato War" (sent to Discord with `TO_DISCORD`; `RANKUP_PUBLIC = false` keeps it quiet).
+
+### Relics break the seals
+Owner decisions 2026-11-20 (STORY.md #37: "I need something tied to progression, something that ties in with the plot"). From **Tier 5**, a seal also needs one more of the Regalia's relics restored at the Shrine (`RELIC_SEALS`): Tier 5 needs 1, Tier 6 needs 2, and so on to 7 at Tier 11; Tier 12 needs 7 too. The Crown isn't counted: it's for the final act. Any relics count, in any order.
+- **Who counts them:** `part2/shrine.js` (`global.Regalia.restoredForSeals()`). Without it on the server, no seal waits on relics.
+- **While a ready seal is short:**
+  - the ready line is followed by "[BLOOD GOD] The seal on Tier 6 holds. Bring me 1 more of my Regalia.";
+  - the vote notice (and the one at login) says the seal holds until N more are restored (/regalia);
+  - `/bloodpool vote` and `/bloodpool unlock` are refused, saying how many are in;
+  - `/bloodpool` says the same.
+- **When a relic is restored** (`global.BloodPool.relicsChanged`, from the Shrine): if the ready seal no longer waits, "[BLOOD GOD] The seal on Tier 6 (A Stream) can break now.", and the vote notice goes out; if it still waits, how many more.
+- **What still opens a tier anyway:** `/bloodpool unlock force`, `/bloodpool settier`, and the Shrine's own `openTo` (the Awakening's Tiers 3–4).
+- **API:** `global.BloodPool.relicsNeeded(n)` (the relics tier n's seal needs) and `relicsChanged(server)`.
 
 ### The price revealed (Tier 5)
 Owner decisions, 15 November 2026. A big potato farm (tens of thousands an hour) made ranks and the upgrade tree's potato costs meaningless. The fix is a story beat: the numbers stay, and what they count changes.
@@ -366,13 +413,14 @@ floor        5x5 chiseled nether bricks
 | `/bloodpool tithe [n]` | players | The Potato Tithe: everything you carry, or that many of the tithe's unit (potatoes, or after the reveal Enchanted / Enchanted Baked Potatoes) |
 | `/bloodpool top` | anyone | The 10 biggest contributors |
 | `/bloodpool tiers` | anyone | Every tier: threshold, what it opens (mods, item count, recipe rules, dimension), OPEN / READY / sealed, and the rank its crafting needs |
-| `/bloodpool check` | anyone | Which tier lets the item in your hand be crafted, and the rank (with yours). For an item in `USE_LOCKS` or `PLACE_LOCKS`, it also says that using or placing one is sealed |
+| `/bloodpool check` | anyone | Which tier lets the item in your hand be crafted, and the rank (with yours). For an item in `USE_LOCKS`, `PLACE_LOCKS`, `WEAR_LOCKS` or `WIELD_LOCKS`, it also says that using, placing or wearing one is sealed |
 | `/potatowar` | players | Your potatoes offered, your rank and the next one (and your catch-up crafting access, if higher) |
 | `/potatowar tree` | players | Opens the upgrade tree (FTB Quests; see [POTATO_TREE.md](POTATO_TREE.md)) |
 | `/potatowar next` | players | Your rank, your crafting access, what the full open tier needs, and the tree nodes you can buy now or nearly |
 | `/bloodpool gatecheck` | op | Reads the recipes the game holds now and reports how many of those given a rank check on the last reload really have it, naming any that ignore it or failed to load |
 | `/bloodpool audit` | op | Reloads and writes `kubejs/progression_audit.json`: every crafting-type recipe above catch-up without the rank check, and every recipe still making a sealed item (with whether KubeJS sees it). A summary goes to the log |
 | `/potatowar offer [n]` | players | Offer everything you carry, or that many of your next rank's unit, to raise your rank |
+| `/potatowar pay [node] [n]` | players | Hand in potatoes, crates and Enchanted Potatoes toward an upgrade-tree node's price, whole ones only and only while they fit (see [POTATO_TREE.md](POTATO_TREE.md), "Paying for a node") |
 | `/potatowar top` | anyone | The 10 highest ranks |
 | `/potatowar ranks` | anyone | Every rank, its number in its unit (potatoes, or after the reveal Enchanted / Enchanted Baked Potatoes), the tier it crafts and the Pool tier it needs |
 | `/potatowar check <player>` | op | A player's potatoes and rank (online, or anyone who has offered) |
@@ -400,7 +448,7 @@ floor        5x5 chiseled nether bricks
 | `POTATO_DROPS_CAP_PER_DAY` | 30000 | The whole server's daily tithe; 0 = no cap |
 | `POTATO_DROPS_CAP_PER_PLAYER` | 0 (off) | Set it (e.g. 4000) if one big farm keeps taking the whole day's quota |
 | `TITHE_ZONE`, `TITHE_RESET_HOUR` | `America/Chicago`, 4 | When the tithe quota reopens |
-| `POTATO_WORTH` | potato 1, the three crates 9, Enchanted Potato 160, Enchanted Baked Potato 25,600 | What the tithe and `/potatowar offer` accept, and its worth in potatoes |
+| `POTATO_WORTH` | potato 1, the three crates 9, Enchanted Potato 160, Enchanted Baked Potato 25,600 | What the tithe, `/potatowar offer` and `/potatowar pay` accept, and its worth in potatoes |
 | `POTATO_SHARE` | Tiers 1–3: 1, 4–6: 0.75, 7–9: 0.5, 10–12: 0.25 | The share of each tier's Drops potatoes may pay |
 | `REVEAL_TIER` | 5 | The tier whose opening reveals the price |
 | `UNITS` | from Tier 6: Enchanted Potato (160); from Tier 9: Enchanted Baked Potato (25,600) | What the Potato War's numbers count after the reveal, by tier |
@@ -418,6 +466,9 @@ floor        5x5 chiseled nether bricks
 | `USE_LOCKS` | 39 items, each `use`, `block` or `mob` | Items that can't be used until their tier opens, however they were got (see "The exception: what Part I players brought"). Creative players are exempt; ops in survival aren't |
 | `PLACE_LOCKS` | Nuclear Bomb, Tremorzilla Egg, Ender Quarry | Blocks that can't be placed until their tier opens, by anyone but a creative player |
 | `SPAWN_LOCKS` | `alexscaves:nuclear_bomb` (the primed bomb) | Entities stopped from spawning while the item named for them is sealed |
+| `WEAR_LOCKS` | 14 Aether and Deeper and Darker armour pieces and gloves | Gear that's taken off (armour and Curios slots) while sealed, however it was got. Creative players are exempt |
+| `WIELD_LOCKS` | 17 Aether and Deeper and Darker weapons and tools | Gear that can't hit, break blocks or be right-clicked while sealed. Creative players are exempt |
+| `WEAR_CHECK_TICKS` | 20 | How often worn gear is checked (every second) |
 | `STAGE_PREFIX` | `potato_standing_` | The KubeJS stage name for rank n |
 | `RANKUP_PUBLIC` | true | Announce rank-ups to everyone |
 | `CATCH_UP_GAP` | 2 | Catch-up: at Pool Tier T, everyone can craft Tiers 1..T−2 (and gets the tree's nodes up to there), and machines can make those tiers' recipes; 0 = off |
@@ -478,6 +529,7 @@ floor        5x5 chiseled nether bricks
    - **The raygun (a use lock):** in survival, `/give @s alexscaves:raygun` and `/give @s alexscaves:uranium_rod 4` (its ammo), then hold right-click at a mob. Nothing happens, the mob isn't hurt, all four rods are still there, and the action bar says the Raygun is sealed until Tier 6 (A Stream). `/bloodpool check` with it in hand says using one is sealed too. In creative it fires. After `/bloodpool settier 6` it fires in survival; `settier 0` seals it again.
    - **The rest of the list, at Tier 5:** an AE2 Matter Cannon and a Rending Gale do nothing, and say why. An Entropy Manipulator does nothing on a block. A Totem of Possession does nothing on a mob. Holding the raygun, a chest still opens.
    - **The Nuclear Bomb:** placing one is refused. Put one in a dispenser and power it: the bomb is used up, nothing explodes, and the log says `Stopped alexscaves:nuclear_bomb from spawning`. Test this away from anything you care about, in case the spawn lock fails. At `/bloodpool settier 11` the bomb places (don't light it).
+   - **Wear and wield locks, at Tier 5** (in survival): put on a resonarium chestplate (Tier 6) and a gravitite helmet (Tier 4). Within a second the chestplate comes off into the inventory, the action bar says it's sealed until Tier 6 (A Stream), and the helmet stays on. With a full inventory, warden boots drop at your feet. Put the Aether's netherite gloves (Tier 5) in the gloves slot: they stay on; at `settier 4` they come off. Hit a mob with a warden sword (Tier 7): no damage, and the action bar says why. Mine stone with a warden pickaxe: it doesn't break. The zanite sword (Tier 5) and a gravitite pickaxe (Tier 4) work. Right-click with the sonorous staff (Tier 9): nothing fires. In creative all of it works. After `settier 7` the warden gear works and stays on.
 9. **The Potato War** (a non-op player in survival; an op runs the commands):
    - **After lowering the tier to retest:** two things stay behind. Caught-up tree nodes stay until `/potatotree revoke` (`/potatowar set` only changes potatoes). A Tinkers Crafting Station keeps its last recipe through a reload, so one used at the higher tier can still make that recipe without its rank check. Craft something else in it, replace it or restart.
    - **Netherite:** below Tier 5, ancient debris won't smelt and a netherite ingot won't craft. At Tier 5, debris smelts, and melting diamond ore in a Foundry gives molten diamond but no molten debris.
@@ -530,6 +582,22 @@ Still to confirm in game:
 - **Mob clicks:** the `mob` mode relies on KubeJS's `ItemEvents.entityInteracted` giving the player as `event.player`, like the other item events.
 - **The dispenser nuke:** that cancelling the spawn leaves nothing behind. Alex's Caves spawns the bomb, then uses up the stack whether or not the spawn worked.
 
+**The wear and wield locks** (22 November 2026). The mock tests cover: every listed id in a tier; armour taken off at the once-a-second check (and not before), into the inventory or at the player's feet; open pieces and creative players left alone; hits and block breaks cancelled with a sealed item in the main hand, and allowed with an open one, an ordinary weapon or a bare hand; right-clicks refused in the air and on a block; `/bloodpool check`; and the gear working once its tier opens.
+
+**Seen on the test server** (22 November 2026, one player in survival, gear put on and hits dealt from the console with `/item replace` and `/damage … by <player>`):
+- at Tier 5, a resonarium chestplate and warden boots came off into the inventory within a second, with a log line each; gravitite helmet and leggings stayed on. Later, with no console command running, the player put the boots on by hand (22:19 and 22:52) and each time they came off;
+- at Tier 4, the Aether's netherite gloves came off their Curios gloves slot (`aether_gloves`) into the inventory;
+- at Tier 5, hits with the warden sword and the sonorous staff did no damage, and the zanite sword's did;
+- at Tier 7, warden boots stayed on and the warden sword's hits did damage; back at Tier 5 the boots came off again;
+- the script loaded with no warnings (Curios found), and Tier 5 held back 16 more recipes than before.
+
+Still to confirm in game:
+- **Breaking blocks and right-clicks by hand:** a warden pickaxe not breaking stone, and the sonorous staff not firing.
+- **`/bloodpool check` as a player:** its reply goes to the player's chat, not the console, so it wasn't read.
+- **Hits that don't come from the main hand:** a cancelled `EntityEvents.hurt` stops the damage, but anything the item does on its own (the gravitite sword's knock-up, the warden sword's effects) may already have happened, or may run from another hook. The sonorous staff's beam is a use, which is refused.
+- **A piece put straight back on:** a player can re-equip a sealed piece and wear it for up to a second until the next check. Its armour counts for that second.
+- **Block breaking with a sealed tool held in the off hand:** only the main hand is checked, since that's the hand that mines.
+
 **The raygun** in particular. Two things to watch for:
 - **The holder's own screen:** the client starts using the item before the server refuses it. The player holding it sees the active texture and their own beam, and hears it, until they let go. Nothing is hurt or broken: the damage is dealt only in the server's use tick, which never starts.
 - **What others see:** the beam is drawn only for a player the server says is using it, so others see no beam. But while "firing", Alex's Caves sends the gun's data from the client to the server, which takes it as it is (`UpdateItemTagMessage` → `ItemStack.setTag`). So others may see the gun's glow flicker.
@@ -572,7 +640,11 @@ These depend on the real game:
 - **`java.time` in scripts** (the 4 am reset). If KubeJS blocks the class, the script falls back to a fixed offset (09:00 UTC, which is 4 am CDT or 3 am CST).
 - **Recipe filters with `not`:** used only when an item opens before its mod. The current tiers never do that.
 - **Thermal's machine frame, coils and augments:** none of the jars ship a recipe for them. Check in JEI that they exist and disappear while Thermal is sealed.
-- **AlmostUnified:** check its config so no `forge:ingots/*` tag unifies to a sealed mod's item.
+- **AlmostUnified:** checked on the test server (its default config), 25 November 2026. It does: steel, tin, lead, silver, nickel, bronze, electrum, invar and constantan all become Thermal's, so below Tier 5 nothing makes them. See [POTATO_TREE.md](POTATO_TREE.md), "Known: only below Pool Tier 5".
+- **Relic seals** (2026-11-20, mock-tested): a ready Tier 5+ seal waiting on relics, as players see it (the lines, the refused vote and unlock), and the vote opening when the Shrine restores the relic it waited for.
+- **The Transmutation Table** (after the restart and `/reload`):
+  - Feed a table 3 of something not on its lists, transmute a few times, and check that it never comes back as a choice.
+  - Over a few dozen rolls, no diamond, blaze rod, ghast tear, ender pearl, quartz or other removed item should be offered. If one is, the `kubejs/data` lists aren't loading.
 - **The Dragon Heart:** test one dragon kill before Tier 10 matters. The dragon-fight mods may change the drop.
 - **Running `reload` from a script**, and **JsonIO** writing the tier file, as before.
 - **Rebuilt mod recipes** (read from KubeJS 2001.6.5's jar, not seen in game):

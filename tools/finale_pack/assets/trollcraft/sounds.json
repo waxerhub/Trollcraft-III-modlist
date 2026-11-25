@@ -1,0 +1,7 @@
+{
+  "finale_track": {
+    "sounds": [
+      { "name": "trollcraft:finale_track", "stream": true }
+    ]
+  }
+}

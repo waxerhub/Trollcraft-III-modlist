@@ -1,0 +1,114 @@
+# The Deep Records (Part II)
+
+`server_scripts/part2/deep_records.js` puts eight written books, the **Deep Records**, into structure chests. Read in order, they reveal the Ministry's real objective in the new world.
+
+## The secret (admins only: spoiler)
+**The Harvest.**
+- The seals on the new world's progression aren't a prison. They're a **pump**.
+- Only freely given blood feeds the Blood God, so the Ministry sealed everything to make the server pour blood into the Blood Pool to break them.
+- At the twelfth seal it plans to **drain the Pool's essence and seal it in a Chaos Guardian**, the creature Technoblade was infamous for killing: a **puppet god that never dies**, speaking in his name.
+- It needs **the Crown** to make the binding hold.
+- The Blood God's cult is tolerated because "faith fills faster than force". The tithe is "a quota".
+
+This ties together:
+- the Valuable Resource Acquisition Initiative broadcast;
+- Project Chaos (Act IV);
+- the drain, the vessel and the race for the Crown (Act V, the final act).
+
+**The Ministry is still unrevealed.** The books are signed `[REDACTED]`, speak of "the Office", and never say "Ministry". Readers of Part I's Archives will recognise the voice.
+
+## The books
+| # | Title | Blood Pool tier | Where | What it gives away |
+|---|---|---|---|---|
+| 1 | Site Survey: New Holding | 0 | overworld | The new world is "suitable for cultivation"; the crop is left blank. "The subjects arrived on schedule, through the red door." |
+| 2 | Records Security Transfer | 0 | overworld | The Warden replaced the dead dragon as Head of Records Security; the old records are kept in the deep cities |
+| 3 | Seal Maintenance Log | 1 | overworld | "Do NOT reinforce the seals. They are there to be broken, slowly, at the right price." |
+| 4 | Memo: Re: The Blood God | 3 | overworld | The Blood God is real: "Let them believe it is listening. It is." Faith feeds it, and what is fed can be harvested. The Office governed in its name, and wants "whatever answers to it" |
+| 5 | Yield Projections, Q3 | 5 | overworld | Trolls, coins and potatoes as yield; every Drop makes "the thing in the Pool" stronger, at full strength by the twelfth seal |
+| 6 | Requisition: Pumping Station | 9 | **End Cities only** | A blood pump beneath the basin. "Do NOT let them ask why a pool needs a drain, or where a god goes when you drain him." |
+| 7 | Binding Order: Subject B.G. | 10 | **End Cities only** | A god needs a body that won't die. The vessel is a Chaos Guardian from Project Chaos: "He killed so many of them. Let him wear one." The binding needs the Crown: "Secure the Regalia." "The subject will answer to the Office. So will its name." |
+| 8 | Protocol Full Measure | 11 | **End Cities only** | Open the drain at the twelfth seal, seal what comes through in the vessel, crown it ("It will kneel"), and speak in its name: "A god that never dies, and an Office that never dies with it." In the margin: "They will think they won." |
+| 9 | Surveyor's Last Field Notes | — | **given by command only** (`/deeprecords give <player> 9`): the admins placed it in a dragon lair | A dead Office surveyor's notes: "Ask why a pool would need a drain", and where the other books are kept (the deep cities, old strongholds, buried chests, mines and dungeons, the Twilight's library and vaults, and the floating cities beyond the End's gate) |
+
+**Books 4–8 reworded (13 Nov 2026, owner decision):** they were reworded before anyone could find them, since they open from Tier 3 and the server was at Tier 2. They now point at Part II's two threads (see [STORY.md](../../STORY.md)):
+- **The Blood God is real.**
+- **The Ministry wants his power and his name:** a puppet god that never dies, bound into a Chaos Guardian. It needs the Crown to make the binding hold.
+- **Its means:** the Pool's essence, drained at the twelfth seal.
+
+Book 7 was the "Citadel Power Budget"; its id is still `power_budget`.
+
+- **A book can only turn up once the Blood Pool has reached its tier**, so the reveal follows the season.
+- **The biggest plot points (6–8) are only in End City chests** (owner decision). The End opens at Tier 9.
+- **In each place, the least-found unlocked book comes first**, so every book turns up before any repeats.
+
+## Where they're found
+| Site | Loot tables | Chance per unlooted chest | Books |
+|---|---|---|---|
+| Ancient cities | `chests/ancient_city`, `chests/ancient_city_ice_box` | 50% | 1–5 |
+| Strongholds | `chests/stronghold_library`, `stronghold_corridor`, `stronghold_crossing` | 20% | 1–5 |
+| Buried and ruined | `chests/buried_treasure`, `underwater_ruin_small`, `underwater_ruin_big` | 15% | 1–5 |
+| Mineshafts and dungeons | `chests/abandoned_mineshaft` (chest minecarts), `chests/simple_dungeon` | 10% | 1–5 |
+| End Cities | `chests/end_city_treasure` | 50% | 6–8 |
+| Twilight Forest key rooms | `twilightforest:chests/` `tower_library` (Lich Tower library), `labyrinth_vault`, `labyrinth_vault_jackpot`, `stronghold_boss` (Knight Phantom treasure), `darktower_boss` (Ur-Ghast treasure), `aurora_cache` (Aurora Palace) | 50% | 1–5 |
+| Twilight Forest troll caves | `troll_vault`, `troll_vault_with_lamp`, `troll_garden` | 30% | 1–5 |
+| Twilight Forest elsewhere | `tower_room`, `labyrinth_room`, `labyrinth_dead_end`, `stronghold_room`, `stronghold_cache`, `darktower_cache`, `aurora_room`, `hill_1`–`hill_3`, `hedge_maze`, `tree_cache`, `basement`, `foundation_basement`, `graveyard`, `fancy_well`, `well` | 10% | 1–5 |
+| Ice and Fire dragon lairs | `iceandfire:chest/` `fire_`, `ice_` and `lightning_dragon_` `female_cave`, `male_cave` and `roost` | 25% | 1–5 |
+
+The Twilight Forest tables come from `twilightforest-1.20.1-4.3.2508`. Left out on purpose:
+- `darktower_key`: the Dark Tower key chest;
+- `quest_grove_dropper`: a dropper;
+- `useless`: empty filler.
+
+**How a book gets in:**
+- A chest's loot is made when it's first opened. So the chest is noted on the right-click, while it still has its loot table, and the book goes into its first empty slot two ticks later.
+- Chest minecarts (mineshafts) are handled the same way.
+- A full chest gets no book.
+
+**Archaeology (suspicious sand and gravel) isn't covered:** it isn't a chest. Trail and ocean ruins' *chests* are covered.
+
+## Adding modded structures
+Every unlooted container opened with a loot table that isn't in `SITES` is counted. The first time each table appears, the server log gets `[DeepRecords] Unlisted loot table <name>`.
+
+To add some:
+1. Run `/deeprecords tables` to see the tables seen so far (YUNG's, Twilight Forest, Ice and Fire…).
+2. Add a row to `SITES`, e.g. `{ name: 'Twilight Forest', chance: 0.2, books: OVERWORLD_BOOKS, tables: ['twilightforest:…'] }`.
+3. Run `/reload`.
+
+## Commands (op)
+| Command | What it does |
+|---|---|
+| `/deeprecords list` | The current tier, chests rolled per site, and each book: its tier, where it's found, unlocked or sealed, and times found |
+| `/deeprecords give <player> <1-9>` | Hand out one book (to replace a lost one, or to seed the story). #9, the Surveyor's notes, is only ever given this way |
+| `/deeprecords give <player> all` | All nine, to read them through |
+| `/deeprecords tables` | Unlisted loot tables seen, most common first |
+
+## Settings (top of deep_records.js)
+| Setting | Meaning |
+|---|---|
+| `RECORDS` | The books: id, `minTier`, title (32 characters at most) and pages (about 250 characters each) |
+| `OVERWORLD_BOOKS`, `END_BOOKS` | Which books each kind of site can hold |
+| `SITES` | Name, loot tables, chance, books |
+| `AUTHOR`, `LORE` | `[REDACTED]`, and "CLASSIFIED: Deep Record #n" |
+| `DISCOVERY_LOG` | Count and log unlisted loot tables (true) |
+
+**Saved data:** `server.persistentData["deep_records"]` holds the books found, the chests rolled per site and the unlisted tables. Unreadable data is kept under `deep_records_unreadable_<time>`.
+
+**API:** `global.DeepRecords = { records, sites, found() }`.
+
+## Install
+Copy `deep_records.js` to `kubejs/server_scripts/part2/` (next to `blood_pool.js`) and run `/reload`. It works without the Blood Pool too, but then only the tier-0 books appear.
+
+## Test plan
+1. **Commands:** `/deeprecords list` shows tier 0 with books 1 and 2 unlocked. `/deeprecords give <you> all` gives all eight: read them through.
+2. **An ancient city:** open unlooted chests. About half get a book, and the console logs each one.
+3. **A stronghold and a mineshaft:** books turn up less often (20% and 10%), including in the chest minecarts.
+4. **Twilight Forest:** open the Lich Tower library chests. About half get a book, logged as a "Twilight Forest key room" chest.
+5. **A modded structure's chest:** `/deeprecords tables` lists its loot table.
+6. **Later tiers (test server):** `/bloodpool settier 5`, and books 3–5 start appearing.
+7. **End Cities (test server):** `/bloodpool settier 11`, and End City chests give books 6–8; overworld chests never do.
+
+## What couldn't be verified
+- **The chest timing:** that a chest's loot is in place two ticks after the right-click on 1.20.1. The same method works for `events/blood_portal.js`'s End City books in Part I.
+- **Chest minecarts:** that `ItemEvents.entityInteracted` and a minecart's container slots work from KubeJS.
+- **Twilight Forest's boss treasure chests** (`stronghold_boss` after the Knight Phantoms, `darktower_boss` after the Ur-Ghast) are placed when the boss dies. A book only lands if that chest still has its loot table when first opened, as structure chests do.
+- **Lootr** (per-player chests), if it's in the pack: those containers may not be filled this way. `/deeprecords tables` and the log show what's happening.

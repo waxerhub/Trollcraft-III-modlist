@@ -70,6 +70,13 @@ summoned); its cause is unknown.
 dimensions, 4.2 GB with the 276 creatures, of 6 GB. Later checks: about 3 GB is left in use after a garbage collection
 (`LATENCY_DEEP_DIVE.md`), so memory isn't what limits it.
 
+## With players (25 November)
+
+Nine stand-in players apart in one dimension (`LATENCY_DEEP_DIVE.md`, "Update, 25 November 2026"): the Everbright
+took 72 to 76 ms a tick and the Everdawn 60 to 67, against 92 to 113 for the Overworld under the same test. So a
+player in Blue Skies costs less than one in the Overworld. Half of the Everdawn's time went on Minecraft's spawn
+tries, much of it on kinds of creature that never spawn there (`research/spawnskip/`).
+
 ## What it would add
 
 - **Tick time, not memory:** creatures are what cost. Held to 4,096 chunks, the Everbright cost 21.7 ms a tick with its
@@ -85,7 +92,9 @@ dimensions, 4.2 GB with the 276 creatures, of 6 GB. Later checks: about 3 GB is 
 
 - Its bosses and dungeons, with players fighting in them.
 - Players in its dimensions: only the server was measured, not their frame rate.
-- **Portals:** I couldn't confirm what Blue Skies' portals need or where they can be built.
+- **Portals,** in game. *Read from the mod's data on 25 November:* they start in Gatekeeper houses in the Overworld,
+  lit with a Zeal Lighter (8 emeralds from the Gatekeeper), and their frames can later be crafted from stone found in
+  the dimensions (`tools/serverconfig/PREGENERATION.md`).
 - Its progression: its gear, and its own rule that tools and weapons from outside its dimensions work poorly inside them
   ("It seems this tool doesn't work as well here", in its language file), against the Blood Pool's tiers. That would be
   the next read-through, as for the Aether and Deeper and Darker.

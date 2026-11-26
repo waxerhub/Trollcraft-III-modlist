@@ -22,6 +22,9 @@ The ratios are Hypixel's (owner decision, 15 November 2026):
   - **Which:** Quark's and Farmer's Delight's potato crates, and Thermal's potato block, each worth 9 potatoes. Only those whose mod is installed are accepted.
   - **The order:** loose potatoes are used before crates.
   - **The change:** when a crate is worth more than the 160 still needs, what's left over (at most 8 potatoes' worth) is kept in the block as credit and used first for the next one. So 18 crates (162) make 1 and leave 2 in credit. Breaking the block loses its credit.
+- **What may go in** is an item tag, `kubejs:potato_press_input` for the Press and `kubejs:potato_oven_input` for the Oven, in `tools/kubejs/data/kubejs/tags/items/`. The same rule holds for a hand and a hopper.
+  - **Why a tag:** the box's filter is made while blocks are registered, before any mod's items exist. Until 25 November 2026 it was a list of item ids, so it kept only the vanilla potato. The Press refused every crate, by hand and from a hopper, and the Oven refused its Enchanted Potatoes. A tag is read when an item is offered.
+  - Each tag file must list the same items as the script's `inputs` (a test checks). A crate whose mod isn't installed is skipped (`"required": false`).
 - **Players** open it with a right-click, like a chest.
 - **Hoppers, pipes, Create funnels and AE2** put input in through the top and sides, and take output out through the bottom only. So a hopper under a Press takes the Enchanted Potatoes and never the raw potatoes waiting to be pressed. AE2 can autocraft through it with a processing pattern: 160 potatoes in, 1 Enchanted Potato back.
 - **Breaking one** drops it and everything in it.
@@ -34,7 +37,10 @@ The ratios are Hypixel's (owner decision, 15 November 2026):
    mixin.perf.faster_capabilities=false
    ```
    The player's modpack doesn't need it.
-3. Restart the server. The log should say `[PotatoPress] Hoppers and pipes can reach the Potato Press and Oven`.
+3. **The server** needs the two tag files: copy `tools/kubejs/data/kubejs/tags/items/potato_press_input.json` and `potato_oven_input.json` to the server's `kubejs/data/kubejs/tags/items/`. Players don't need them (the server sends its tags).
+4. Restart the server. The log should say `[PotatoPress] Hoppers and pipes can reach the Potato Press and Oven`.
+
+**Updating from the version before 25 November** (the one that refused crates): the server needs the new script and the two tag files, then a restart. The server decides what goes in, so crates work at once. Players should get the new script with the next modpack update: until then, a crate placed by hand may jump back for a moment before the server puts it in.
 
 The recipes are in `part2/blood_pool.js` (`MACHINE_RECIPES`), sealed with the Blood Pool tiers.
 
@@ -55,16 +61,17 @@ The recipes are in `part2/blood_pool.js` (`MACHINE_RECIPES`), sealed with the Bl
 | `RATIO` | 160 | Inputs per output, for both machines |
 | `IN_SLOTS`, `SLOTS` | 18, 27 | The input rows, and the whole box |
 | `MAX_PER_SECOND` | 8 | Outputs one block makes a second at most. A full input makes 7, so it never binds as set |
-| `MACHINES` | the Press and the Oven | Each one's name, inputs and what each is worth (`inputs`), output and textures |
+| `MACHINES` | the Press and the Oven | Each one's name, the tag of what may go in (`filter`), its inputs and what each is worth (`inputs`), output and textures |
 | `CREDIT_KEY` | `credit` | Where a block keeps the worth left over from a crate, in its data |
 
 Changing the items' or blocks' ids, or adding a machine, needs the modpack updated too.
 
 ## Tests
-`tools/tests/suites/potato_press.test.js` (31 checks):
-- the items and blocks it registers, with their inventory, filter, tick and textures;
+`tools/tests/suites/potato_press.test.js` (34 checks):
+- the items and blocks it registers, with their inventory, tick and textures;
+- the filter: a tag, never a list of item ids, and each tag file listing exactly the script's inputs, mods' items optional;
 - the conversion: the leftover, the full input, spread-out stacks, a full output row (nothing used), other items left alone, and the Oven not taking plain potatoes;
-- the crates: worth 9, loose potatoes used first, the credit kept and used next time, and a crate whose mod isn't installed not accepted;
+- the crates: worth 9, loose potatoes used first, the credit kept and used next time, and a crate whose mod isn't installed not counted;
 - errors in a tick logged, not thrown;
 - the capability: bottom face output slots, other faces input slots, only on the two blocks;
 - the ModernFix guard: on, unreadable, not installed, and a player's game.
@@ -81,8 +88,12 @@ Changing the items' or blocks' ids, or adding a machine, needs the modpack updat
   - the Oven made 168 Enchanted Potatoes into 1 Enchanted Baked Potato with 8 left;
   - the recipes followed their tiers.
 
+25 November 2026, after the owner reported that crates weren't accepted:
+- **The bug:** a hopper of Quark and Farmer's Delight crates over a Press moved nothing; loose potatoes in the same hopper went in. A hopper of Enchanted Potatoes over an Oven moved nothing either.
+- **The fix** (the tags), after a restart: the same hoppers pushed both kinds of crate into the Press, which made an Enchanted Potato and kept 4 in credit, and all 10 Enchanted Potatoes into the Oven.
+
 ## What couldn't be verified
-- **The crates** (added 2026-11-19, mock-tested only): a crate from each mod accepted in game, and the credit kept through a restart (it's in the block's saved data).
+- **The credit kept through a restart** (it's in the block's saved data).
 - **A player's view:** the blocks' and items' looks, names and glow, opening the box, and taking items out by hand.
 - **Pipes, Create funnels and AE2.** They use the same Forge capability as hoppers, so they should work, but only hoppers were tried.
 - **A Create contraption moving a press.** Its contents should travel with it, but KubeJS block entities on contraptions weren't tried.

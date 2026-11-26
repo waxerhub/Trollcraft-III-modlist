@@ -67,7 +67,7 @@ There's no `data.snbt` to copy. FTB Quests keeps its own defaults.
   - **The branches:** one chapter each, drawn as trees with dependency lines.
 - **Each node is a quest:**
   - **stage tasks** for its rank (`potato_standing_<n>`) and its Blood Pool tier (`blood_pool_tier_<n>`). These tick by themselves;
-  - **item tasks** that take potatoes and the branch's items. Submit them in the book, or pay the potatoes with `/potatowar pay` (see "Paying for a node"); part payments are saved;
+  - **item tasks** that take potatoes and the branch's items. Submit them in the book, or pay the potatoes with the crate next to the potato or `/potatowar pay` (see "Paying for a node"); part payments are saved;
   - **dependencies** on the nodes below it;
   - **a hidden stage reward** `potato_tree_<node>`. That stage is what the locks check.
   - In the files, the stage tasks and rewards have type `gamestage`, the name FTB Quests 2001.4.22 uses. (An earlier version of these files used `stage`, which FTB Quests ignores: re-upload the chapters.)
@@ -82,7 +82,10 @@ There's no `data.snbt` to copy. FTB Quests keeps its own defaults.
   - After the reveal, a node's description says "The price was never potatoes: 500,000 Enchanted Baked Potatoes (25600 potatoes' worth each, made in the Potato Oven)."
 - **Paying for a node** (owner decision, 25 November 2026, after players reported that crates weren't taken and 25,000 potatoes don't fit in one inventory):
   - **The book's Submit button** takes only the task's own item, a part at a time: loose potatoes up to Tier 5 (2,304 a full inventory), Enchanted Potatoes for Tiers 6–8, Enchanted Baked Potatoes from Tier 9. It ignores everything else without a word. That's how FTB Quests works.
-  - **`/potatowar pay <node>`**, or the gold line to click on the node's page, takes every kind of potato you carry, at its worth: loose 1, crates 9, Enchanted Potatoes 160, Enchanted Baked Potatoes 25,600. What's paid goes into the same task, so the two ways mix. `/potatowar pay <node> <count>` takes at most that many; `/potatowar pay` lists what you can pay toward.
+  - **The crate next to the potato** (a second, optional task; added 25 November 2026, after "clicking submit with 64 potato crates in my inventory it still does not contribute"): clicking it hands in everything you carry, the same as `/potatowar pay <node>`, and tells you in chat what went in. It ticks once the price is paid. Nodes priced in Enchanted Potatoes have one with an Enchanted Baked Potato icon; nodes priced in Enchanted Baked Potatoes have none, since nothing else pays them.
+    - It's an FTB Quests custom task (task 15 of each node, so no other task's saved progress moved). The script gives it its button when FTB Quests loads the book (`FTBQuestsEvents.customTask`).
+    - **Its timer is set to 0.** FTB Quests runs a custom task's check every tick for everyone online by default, which would take every player's potatoes without a click. At 0 it runs only when the button is pressed (read in FTB Quests' code; the timer read 0 on the test server).
+  - **`/potatowar pay <node>`**, or the gold line to click on the node's page, also takes every kind of potato you carry, at its worth: loose 1, crates 9, Enchanted Potatoes 160, Enchanted Baked Potatoes 25,600. What's paid goes into the same task, so the two ways mix. `/potatowar pay <node> <count>` takes at most that many; `/potatowar pay` lists what you can pay toward.
   - **Whole crates and Enchanted Potatoes only, and only while they fit.** The biggest kinds go first. One worth more than what's still needed is refused, no change is given, and loose potatoes fill the rest. 25,000 is 2,777 crates and 7 loose potatoes.
   - **A price in Enchanted Potatoes** takes Enchanted Potatoes, and Enchanted Baked ones at 160 each, but no crates or loose potatoes (they aren't a whole Enchanted Potato). A price in Enchanted Baked Potatoes takes only those.
   - **It asks the book for the price and its item,** so an old chapter file on the server can't make a potato count as an Enchanted one; if the book has no such price, nothing is taken. If the book takes nothing (progress locked, for example), the potatoes come back.
@@ -242,6 +245,7 @@ Moving nodes around in the book's editor is fine. Keep the ids, and re-run the g
     - Carry 600 crates and click again: 473 are taken (24,993) and the rest stay. The chat says the crates are worth more than the 7 still needed.
     - Carry 20 loose potatoes and click: 7 are taken, and `/potatowar` goes up by 25,000.
     - Try Submit with only crates: nothing is taken (that's FTB Quests).
+    - **The crate next to the potato:** carry crates from Quark and from Farmer's Delight and some loose potatoes, and click the crate. All of them go in, the chat says how much, and the potato's progress bar moves. Click it again carrying nothing: the chat says what it takes.
 13. **Part-paid, then free:** hand in some of a node's potatoes, then `/potatotree grant <name> <node>`: they're told the potatoes they'd handed in count, and `/potatowar` goes up by them.
 
 ## Known: only below Pool Tier 5
@@ -259,9 +263,10 @@ No player online: FTB Quests' own code was run from a script against the real qu
 - **A late node:** Alloy Smithing took 100 Enchanted Potatoes and 2 Enchanted Baked ones (420 in all) and left the crates and loose potatoes.
 - **Offline credit:** the price finished with the owner offline and their rank went up by 25,000, under their own name. (FTB Teams says a personal team's owner is an all-zero UUID, so the script uses the team's id.)
 - The book loaded with the new page lines (7 chapters, 63 quests, no errors), and a page's line came through as written.
+- **The crate button** (later the same day), pressed for a stand-in through FTB Quests' own `submitTask`, as the button does: 64 Quark crates, 10 Farmer's Delight crates and 5 loose potatoes paid 671 toward the Foundry, saved in the book. With 10 still needed, 2 crates and 64 loose potatoes paid 1 crate and 1 loose one (25,000), and the crate task ticked. Its timer read 0. The script arms every crate task (29) as FTB Quests loads the book: right after a restart, 23 crates went in for both the Foundry and EnderIO Crafting, and it works again after `/ftbquests reload`.
 
 ## What couldn't be verified for KubeJS 6 on 1.20.1
-**Paying** (25 November 2026): a player clicking the gold line in the book, `/potatowar pay` typed by a player and its Tab list, the progress bar moving while the book is open, and catch-up crediting part-paid potatoes (mock-tested only).
+**Paying** (25 November 2026): a player clicking the crate in the book (the button press was made from a script, the way FTB Quests' button does it), a player clicking the gold line in the book, `/potatowar pay` typed by a player and its Tab list, the progress bar moving while the book is open, and catch-up crediting part-paid potatoes (mock-tested only).
 
 **The price revealed** (16 November 2026): on the test server FTB Quests loaded the regenerated book (63 quests), with the Enchanted tasks, the invisible reveal quest and `hide_details_until_startable`, without errors. Not seen with a player: the late nodes' details staying hidden before the reveal and showing after it, and handing in Enchanted Potatoes. `generated_files.test.js` checks the files (units, the reveal dependency, hidden details, unit-less subtitles), and `potato_tree.test.js` the credit at their worth and Full Measure.
 

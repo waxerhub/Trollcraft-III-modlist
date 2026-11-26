@@ -9,7 +9,7 @@
 	quest_links: [ ]
 	quests: [
 		{
-			description: ["Place and use Create funnels, tunnels, smart chutes and portable storage interfaces.", "", "&6Unlocks&r", "- Place: andesite funnel, brass funnel, andesite tunnel, brass tunnel, smart chute, portable storage interface, andesite belt funnel, brass belt funnel", "- Use (whoever placed it): andesite funnel, brass funnel, andesite tunnel, brass tunnel, smart chute, portable storage interface, andesite belt funnel, brass belt funnel", "", "&7Needs Potato Farmer, Blood Pool Tier 1.", "&7Pay a part at a time: what you hand in is saved, and counts toward your rank once it is all paid. The Submit button takes loose potatoes only. To use crates (9 each) or Enchanted Potatoes (160 each), click below. One worth more than what is still needed is refused, so finish with loose potatoes.", "{\"text\":\"▶ Hand in the potatoes you carry\",\"color\":\"gold\",\"underlined\":true,\"clickEvent\":{\"action\":\"run_command\",\"value\":\"/potatowar pay create_logistics\"},\"hoverEvent\":{\"action\":\"show_text\",\"contents\":\"/potatowar pay create_logistics\"}}", "&7Comes to you for free once the Blood Pool is 2 tiers past Tier 1 (catch-up)."]
+			description: ["Place and use Create funnels, tunnels, smart chutes and portable storage interfaces.", "", "&6Unlocks&r", "- Place: andesite funnel, brass funnel, andesite tunnel, brass tunnel, smart chute, portable storage interface, andesite belt funnel, brass belt funnel", "- Use (whoever placed it): andesite funnel, brass funnel, andesite tunnel, brass tunnel, smart chute, portable storage interface, andesite belt funnel, brass belt funnel", "", "&7Needs Potato Farmer, Blood Pool Tier 1.", "&7Pay a part at a time: what you hand in is saved, and counts toward your rank once it is all paid. The potato's Submit takes loose potatoes only: &6click the crate next to it&7 (or the line below) to hand in everything you carry, loose potatoes, any mod's potato crates (9 each) and Enchanted Potatoes (160 each). One worth more than what is still needed is refused, so finish with loose potatoes.", "{\"text\":\"▶ Hand in the potatoes you carry\",\"color\":\"gold\",\"underlined\":true,\"clickEvent\":{\"action\":\"run_command\",\"value\":\"/potatowar pay create_logistics\"},\"hoverEvent\":{\"action\":\"show_text\",\"contents\":\"/potatowar pay create_logistics\"}}", "&7Comes to you for free once the Blood Pool is 2 tiers past Tier 1 (catch-up)."]
 			icon: "create:brass_funnel"
 			id: "507A70000001000B"
 			rewards: [
@@ -45,6 +45,14 @@
 					type: "item"
 				}
 				{
+					icon: "quark:potato_crate"
+					id: "507A7000000200BF"
+					optional_task: true
+					tags: ["potato_hand_in"]
+					title: "Click to hand in crates (9 each), Enchanted Potatoes (160 each) and loose potatoes"
+					type: "custom"
+				}
+				{
 					consume_items: true
 					count: 16L
 					id: "507A7000000200B3"
@@ -58,7 +66,7 @@
 		}
 		{
 			dependencies: ["507A70000001000B"]
-			description: ["Place and use Deployers and Mechanical Arms (and so Sequenced Assembly).", "", "&6Unlocks&r", "- Place: deployer, mechanical arm", "- Use (whoever placed it): deployer, mechanical arm", "", "&7Needs Potato Private, Blood Pool Tier 4, and Create Logistics.", "&7Pay a part at a time: what you hand in is saved, and counts toward your rank once it is all paid. The Submit button takes loose potatoes only. To use crates (9 each) or Enchanted Potatoes (160 each), click below. One worth more than what is still needed is refused, so finish with loose potatoes.", "{\"text\":\"▶ Hand in the potatoes you carry\",\"color\":\"gold\",\"underlined\":true,\"clickEvent\":{\"action\":\"run_command\",\"value\":\"/potatowar pay create_automation\"},\"hoverEvent\":{\"action\":\"show_text\",\"contents\":\"/potatowar pay create_automation\"}}", "&7Comes to you for free once the Blood Pool is 2 tiers past Tier 4 (catch-up)."]
+			description: ["Place and use Deployers and Mechanical Arms (and so Sequenced Assembly).", "", "&6Unlocks&r", "- Place: deployer, mechanical arm", "- Use (whoever placed it): deployer, mechanical arm", "", "&7Needs Potato Private, Blood Pool Tier 4, and Create Logistics.", "&7Pay a part at a time: what you hand in is saved, and counts toward your rank once it is all paid. The potato's Submit takes loose potatoes only: &6click the crate next to it&7 (or the line below) to hand in everything you carry, loose potatoes, any mod's potato crates (9 each) and Enchanted Potatoes (160 each). One worth more than what is still needed is refused, so finish with loose potatoes.", "{\"text\":\"▶ Hand in the potatoes you carry\",\"color\":\"gold\",\"underlined\":true,\"clickEvent\":{\"action\":\"run_command\",\"value\":\"/potatowar pay create_automation\"},\"hoverEvent\":{\"action\":\"show_text\",\"contents\":\"/potatowar pay create_automation\"}}", "&7Comes to you for free once the Blood Pool is 2 tiers past Tier 4 (catch-up)."]
 			icon: "create:mechanical_arm"
 			id: "507A70000001000C"
 			rewards: [
@@ -94,6 +102,14 @@
 					type: "item"
 				}
 				{
+					icon: "quark:potato_crate"
+					id: "507A7000000200CF"
+					optional_task: true
+					tags: ["potato_hand_in"]
+					title: "Click to hand in crates (9 each), Enchanted Potatoes (160 each) and loose potatoes"
+					type: "custom"
+				}
+				{
 					consume_items: true
 					count: 8L
 					id: "507A7000000200C3"
@@ -113,7 +129,7 @@
 			y: -2.0d
 		}
 		{
-			description: ["Place and use Immersive Engineering conveyors and sorters.", "", "&6Unlocks&r", "- Place: conveyor basic, sorter, fluid sorter", "- Use (whoever placed it): conveyor basic, sorter, fluid sorter", "", "&7Needs Potato Recruit, Blood Pool Tier 3.", "&7Pay a part at a time: what you hand in is saved, and counts toward your rank once it is all paid. The Submit button takes loose potatoes only. To use crates (9 each) or Enchanted Potatoes (160 each), click below. One worth more than what is still needed is refused, so finish with loose potatoes.", "{\"text\":\"▶ Hand in the potatoes you carry\",\"color\":\"gold\",\"underlined\":true,\"clickEvent\":{\"action\":\"run_command\",\"value\":\"/potatowar pay immersive_logistics\"},\"hoverEvent\":{\"action\":\"show_text\",\"contents\":\"/potatowar pay immersive_logistics\"}}", "&7Comes to you for free once the Blood Pool is 2 tiers past Tier 3 (catch-up)."]
+			description: ["Place and use Immersive Engineering conveyors and sorters.", "", "&6Unlocks&r", "- Place: conveyor basic, sorter, fluid sorter", "- Use (whoever placed it): conveyor basic, sorter, fluid sorter", "", "&7Needs Potato Recruit, Blood Pool Tier 3.", "&7Pay a part at a time: what you hand in is saved, and counts toward your rank once it is all paid. The potato's Submit takes loose potatoes only: &6click the crate next to it&7 (or the line below) to hand in everything you carry, loose potatoes, any mod's potato crates (9 each) and Enchanted Potatoes (160 each). One worth more than what is still needed is refused, so finish with loose potatoes.", "{\"text\":\"▶ Hand in the potatoes you carry\",\"color\":\"gold\",\"underlined\":true,\"clickEvent\":{\"action\":\"run_command\",\"value\":\"/potatowar pay immersive_logistics\"},\"hoverEvent\":{\"action\":\"show_text\",\"contents\":\"/potatowar pay immersive_logistics\"}}", "&7Comes to you for free once the Blood Pool is 2 tiers past Tier 3 (catch-up)."]
 			icon: "immersiveengineering:conveyor_basic"
 			id: "507A70000001000D"
 			rewards: [
@@ -149,6 +165,14 @@
 					type: "item"
 				}
 				{
+					icon: "quark:potato_crate"
+					id: "507A7000000200DF"
+					optional_task: true
+					tags: ["potato_hand_in"]
+					title: "Click to hand in crates (9 each), Enchanted Potatoes (160 each) and loose potatoes"
+					type: "custom"
+				}
+				{
 					consume_items: true
 					count: 16L
 					id: "507A7000000200D3"
@@ -161,7 +185,7 @@
 			y: 0.0d
 		}
 		{
-			description: ["Place and use Mekanism logistical transporters, the logistical sorter and QIO importers and exporters.", "", "&6Unlocks&r", "- Place: basic logistical transporter, advanced logistical transporter, elite logistical transporter, ultimate logistical transporter, restrictive transporter, diversion transporter, logistical sorter, qio importer, qio exporter", "- Use (whoever placed it): basic logistical transporter, advanced logistical transporter, elite logistical transporter, ultimate logistical transporter, restrictive transporter, diversion transporter, logistical sorter, qio importer, qio exporter", "", "&7Needs Potato Private, Blood Pool Tier 4.", "&7Pay a part at a time: what you hand in is saved, and counts toward your rank once it is all paid. The Submit button takes loose potatoes only. To use crates (9 each) or Enchanted Potatoes (160 each), click below. One worth more than what is still needed is refused, so finish with loose potatoes.", "{\"text\":\"▶ Hand in the potatoes you carry\",\"color\":\"gold\",\"underlined\":true,\"clickEvent\":{\"action\":\"run_command\",\"value\":\"/potatowar pay logistical_transport\"},\"hoverEvent\":{\"action\":\"show_text\",\"contents\":\"/potatowar pay logistical_transport\"}}", "&7Comes to you for free once the Blood Pool is 2 tiers past Tier 4 (catch-up)."]
+			description: ["Place and use Mekanism logistical transporters, the logistical sorter and QIO importers and exporters.", "", "&6Unlocks&r", "- Place: basic logistical transporter, advanced logistical transporter, elite logistical transporter, ultimate logistical transporter, restrictive transporter, diversion transporter, logistical sorter, qio importer, qio exporter", "- Use (whoever placed it): basic logistical transporter, advanced logistical transporter, elite logistical transporter, ultimate logistical transporter, restrictive transporter, diversion transporter, logistical sorter, qio importer, qio exporter", "", "&7Needs Potato Private, Blood Pool Tier 4.", "&7Pay a part at a time: what you hand in is saved, and counts toward your rank once it is all paid. The potato's Submit takes loose potatoes only: &6click the crate next to it&7 (or the line below) to hand in everything you carry, loose potatoes, any mod's potato crates (9 each) and Enchanted Potatoes (160 each). One worth more than what is still needed is refused, so finish with loose potatoes.", "{\"text\":\"▶ Hand in the potatoes you carry\",\"color\":\"gold\",\"underlined\":true,\"clickEvent\":{\"action\":\"run_command\",\"value\":\"/potatowar pay logistical_transport\"},\"hoverEvent\":{\"action\":\"show_text\",\"contents\":\"/potatowar pay logistical_transport\"}}", "&7Comes to you for free once the Blood Pool is 2 tiers past Tier 4 (catch-up)."]
 			icon: "mekanism:basic_logistical_transporter"
 			id: "507A70000001000E"
 			rewards: [
@@ -197,6 +221,14 @@
 					type: "item"
 				}
 				{
+					icon: "quark:potato_crate"
+					id: "507A7000000200EF"
+					optional_task: true
+					tags: ["potato_hand_in"]
+					title: "Click to hand in crates (9 each), Enchanted Potatoes (160 each) and loose potatoes"
+					type: "custom"
+				}
+				{
 					consume_items: true
 					count: 8L
 					id: "507A7000000200E3"
@@ -209,7 +241,7 @@
 			y: 0.0d
 		}
 		{
-			description: ["Attach Thermal servos and filters to ducts.", "", "&6Unlocks&r", "- Place: servo attachment, turbo servo attachment, filter attachment", "", "&7Needs Potato Soldier, Blood Pool Tier 5.", "&7Pay a part at a time: what you hand in is saved, and counts toward your rank once it is all paid. The Submit button takes loose potatoes only. To use crates (9 each) or Enchanted Potatoes (160 each), click below. One worth more than what is still needed is refused, so finish with loose potatoes.", "{\"text\":\"▶ Hand in the potatoes you carry\",\"color\":\"gold\",\"underlined\":true,\"clickEvent\":{\"action\":\"run_command\",\"value\":\"/potatowar pay thermal_servos\"},\"hoverEvent\":{\"action\":\"show_text\",\"contents\":\"/potatowar pay thermal_servos\"}}", "&7Comes to you for free once the Blood Pool is 2 tiers past Tier 5 (catch-up)."]
+			description: ["Attach Thermal servos and filters to ducts.", "", "&6Unlocks&r", "- Place: servo attachment, turbo servo attachment, filter attachment", "", "&7Needs Potato Soldier, Blood Pool Tier 5.", "&7Pay a part at a time: what you hand in is saved, and counts toward your rank once it is all paid. The potato's Submit takes loose potatoes only: &6click the crate next to it&7 (or the line below) to hand in everything you carry, loose potatoes, any mod's potato crates (9 each) and Enchanted Potatoes (160 each). One worth more than what is still needed is refused, so finish with loose potatoes.", "{\"text\":\"▶ Hand in the potatoes you carry\",\"color\":\"gold\",\"underlined\":true,\"clickEvent\":{\"action\":\"run_command\",\"value\":\"/potatowar pay thermal_servos\"},\"hoverEvent\":{\"action\":\"show_text\",\"contents\":\"/potatowar pay thermal_servos\"}}", "&7Comes to you for free once the Blood Pool is 2 tiers past Tier 5 (catch-up)."]
 			icon: "thermal:servo_attachment"
 			id: "507A70000001000F"
 			rewards: [
@@ -245,6 +277,14 @@
 					type: "item"
 				}
 				{
+					icon: "quark:potato_crate"
+					id: "507A7000000200FF"
+					optional_task: true
+					tags: ["potato_hand_in"]
+					title: "Click to hand in crates (9 each), Enchanted Potatoes (160 each) and loose potatoes"
+					type: "custom"
+				}
+				{
 					consume_items: true
 					count: 8L
 					id: "507A7000000200F3"
@@ -257,7 +297,7 @@
 			y: 0.0d
 		}
 		{
-			description: ["Place Ender IO item conduits, and place and use the Vacuum Chest and XP Vacuum.", "", "&6Unlocks&r", "- Place: item conduit, vacuum chest, xp vacuum", "- Use (whoever placed it): vacuum chest, xp vacuum", "", "&7Needs Potato Soldier, Blood Pool Tier 5.", "&7Pay a part at a time: what you hand in is saved, and counts toward your rank once it is all paid. The Submit button takes loose potatoes only. To use crates (9 each) or Enchanted Potatoes (160 each), click below. One worth more than what is still needed is refused, so finish with loose potatoes.", "{\"text\":\"▶ Hand in the potatoes you carry\",\"color\":\"gold\",\"underlined\":true,\"clickEvent\":{\"action\":\"run_command\",\"value\":\"/potatowar pay item_conduits\"},\"hoverEvent\":{\"action\":\"show_text\",\"contents\":\"/potatowar pay item_conduits\"}}", "&7Comes to you for free once the Blood Pool is 2 tiers past Tier 5 (catch-up)."]
+			description: ["Place Ender IO item conduits, and place and use the Vacuum Chest and XP Vacuum.", "", "&6Unlocks&r", "- Place: item conduit, vacuum chest, xp vacuum", "- Use (whoever placed it): vacuum chest, xp vacuum", "", "&7Needs Potato Soldier, Blood Pool Tier 5.", "&7Pay a part at a time: what you hand in is saved, and counts toward your rank once it is all paid. The potato's Submit takes loose potatoes only: &6click the crate next to it&7 (or the line below) to hand in everything you carry, loose potatoes, any mod's potato crates (9 each) and Enchanted Potatoes (160 each). One worth more than what is still needed is refused, so finish with loose potatoes.", "{\"text\":\"▶ Hand in the potatoes you carry\",\"color\":\"gold\",\"underlined\":true,\"clickEvent\":{\"action\":\"run_command\",\"value\":\"/potatowar pay item_conduits\"},\"hoverEvent\":{\"action\":\"show_text\",\"contents\":\"/potatowar pay item_conduits\"}}", "&7Comes to you for free once the Blood Pool is 2 tiers past Tier 5 (catch-up)."]
 			icon: "enderio:item_conduit"
 			id: "507A700000010010"
 			rewards: [
@@ -291,6 +331,14 @@
 					tags: ["potato_offer"]
 					title: "50,000 potatoes for the war chest"
 					type: "item"
+				}
+				{
+					icon: "quark:potato_crate"
+					id: "507A70000002010F"
+					optional_task: true
+					tags: ["potato_hand_in"]
+					title: "Click to hand in crates (9 each), Enchanted Potatoes (160 each) and loose potatoes"
+					type: "custom"
 				}
 				{
 					consume_items: true
@@ -343,6 +391,14 @@
 					type: "item"
 				}
 				{
+					icon: "kubejs:enchanted_baked_potato"
+					id: "507A70000002011F"
+					optional_task: true
+					tags: ["potato_hand_in"]
+					title: "Click to hand in Enchanted Baked Potatoes (160 Enchanted Potatoes each)"
+					type: "custom"
+				}
+				{
 					consume_items: true
 					count: 16L
 					id: "507A700000020113"
@@ -391,6 +447,14 @@
 					tags: ["potato_offer_ep"]
 					title: "175,000 Enchanted Potatoes for the war chest"
 					type: "item"
+				}
+				{
+					icon: "kubejs:enchanted_baked_potato"
+					id: "507A70000002012F"
+					optional_task: true
+					tags: ["potato_hand_in"]
+					title: "Click to hand in Enchanted Baked Potatoes (160 Enchanted Potatoes each)"
+					type: "custom"
 				}
 				{
 					consume_items: true

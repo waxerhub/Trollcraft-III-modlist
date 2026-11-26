@@ -1,0 +1,9 @@
+{
+  "replace": false,
+  "values": [
+    "minecraft:potato",
+    { "id": "quark:potato_crate", "required": false },
+    { "id": "farmersdelight:potato_crate", "required": false },
+    { "id": "thermal:potato_block", "required": false }
+  ]
+}

@@ -27,11 +27,15 @@ const SLOTS = 27
 const MAX_PER_SECOND = 8        // outputs one block makes per second at most
 // inputs: what each machine takes, and its worth. The Press takes potato crates at 9 (owner decision, 2026-11-19), so
 // a farm that packs its potatoes needs no unpacking; what's left of a crate after a 160 is kept in the block as credit.
+// filter: the item tag that says what may go in, by hand or by hopper (tools/kubejs/data/kubejs/tags/items/). It has
+// to be a tag: the filter is made while blocks are registered, before any mod's items exist, so a list of item ids
+// kept only the vanilla potato (until 2026-11-25 the Press refused every crate and the Oven its Enchanted Potatoes).
+// A tag is read when an item is offered. Keep each tag file the same as `inputs`.
 const MACHINES = {
-  potato_press: { name: 'Potato Press', output: 'kubejs:enchanted_potato',
+  potato_press: { name: 'Potato Press', output: 'kubejs:enchanted_potato', filter: '#kubejs:potato_press_input',
     inputs: { 'minecraft:potato': 1, 'quark:potato_crate': 9, 'farmersdelight:potato_crate': 9, 'thermal:potato_block': 9 },
     textures: { all: 'minecraft:block/barrel_side', up: 'minecraft:block/barrel_top', down: 'minecraft:block/barrel_bottom' } },
-  potato_oven: { name: 'Potato Oven', output: 'kubejs:enchanted_baked_potato',
+  potato_oven: { name: 'Potato Oven', output: 'kubejs:enchanted_baked_potato', filter: '#kubejs:potato_oven_input',
     inputs: { 'kubejs:enchanted_potato': 1 },
     textures: { all: 'minecraft:block/smoker_front_on', up: 'minecraft:block/smoker_top', down: 'minecraft:block/smoker_bottom' } },
 }
@@ -108,7 +112,7 @@ StartupEvents.registry('block', event => {
     event.create(id).displayName(M.name).woodSoundType().hardness(2.5).tagBlock('minecraft:mineable/axe')
       .textureAll(M.textures.all).texture('up', M.textures.up).texture('down', M.textures.down)
       .blockEntity(info => {
-        info.inventory(9, 3, M.accepted)
+        info.inventory(9, 3, M.filter)
         info.rightClickOpensInventory()
         info.serverTick(20, 0, be => { try { work(be, M) } catch (e) { console.error('[PotatoPress] ' + id + ': ' + e) } })
       })

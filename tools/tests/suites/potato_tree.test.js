@@ -277,7 +277,9 @@ function loadOne(src) {
     arguments: { PLAYER: { create: () => 'player', getResult: (ctx, n) => ctx.args[n] }, INTEGER: { create: () => 'int', getResult: (ctx, n) => ctx.args[n] }, BLOCK_POS: { create: () => 'blockpos', getResult: (ctx, n) => ctx.args[n] } },
     register: r => { roots[r.n] = r; return r },
   }
-  const ftbq = W.noFtbq ? undefined : { completed: (tag, cb) => { (handlers['ftbq:' + tag] = handlers['ftbq:' + tag] || []).push(cb) } }
+  const ftbq = W.noFtbq ? undefined : { completed: (tag, cb) => { (handlers['ftbq:' + tag] = handlers['ftbq:' + tag] || []).push(cb) },
+    // FTB XMod Compat posts each custom task as it's made (a server-side quest file loading), keyed by the task itself.
+    customTask: (a, b) => { (handlers['ftbq:customTask'] = handlers['ftbq:customTask'] || []).push(typeof a == 'function' ? a : b) } }
   new Function('PlayerEvents', 'EntityEvents', 'ServerEvents', 'ItemEvents', 'BlockEvents', 'Utils', 'Text', 'Item', 'Ingredient', 'console', 'global', 'Java', 'Date', 'JsonIO', 'FTBQuestsEvents', 'FTBQuests', src)(
     { loggedIn: on('loggedIn'), loggedOut: on('loggedOut'), chestOpened: on('chestOpened'), inventoryChanged: on('inventoryChanged') }, { hurt: on('hurt'), death: on('death'), spawned: on('spawned') },
     { loaded: on('loaded'), tick: on('tick'), commandRegistry: f => f(ev), tags: (reg, f) => f({ add: (t, v) => { (W.addedTags = W.addedTags || {})[reg + ' ' + t] = v } }), recipes: f => { const rev = { replaceInput: (filter, from, to) => W.recipes.push({ filter, from, to }), remove: filt => { (W.removedRecipes = W.removedRecipes || []).push(JSON.parse(JSON.stringify(filt, (k, v) => v instanceof RegExp ? 're:' + v.source : v))) },
@@ -838,6 +840,68 @@ fill(pia, many(CRATE, 5))
 replies.length = 0; cmd('potatowar pay foundry')
 ok('the console can\'t pay', /Players only/.test(flat(lastReply())))
 ok('/potatowar next points at it', (() => { replies.length = 0; cmd('potatowar next', pia); return replies.map(flat).some(r => /Ready in the upgrade tree .*Pay potatoes in the book or with \/potatowar pay\./.test(r) || /Nothing in the upgrade tree is ready/.test(r)) })(), replies.map(flat).join(' | '))
+
+// ----- the crate next to the potato (owner, 2026-11-25: Submit with 64 crates "still does not contribute") -----
+// FTB Quests' own Submit takes only the potato task's item. Each node has a custom task whose button runs the same
+// hand-in. FTB Quests runs a custom task's check every tick for everyone unless its timer is 0: only the button may.
+{
+const cts = handlers['ftbq:customTask'] || []
+const handInEvent = id => {
+  const ev = { getTask: () => ({ getCodeString: () => id }), setMaxProgress(n) { ev.max = n }, setEnableButton(b) { ev.button = b }, setCheckTimer(n) { ev.timer = n }, setCheck(f) { ev.check = f } }
+  cts[cts.length - 1](ev)
+  return ev
+}
+const data = () => ({ v: 0, getProgress() { return this.v }, setProgress(n) { this.v = n } })
+const FD = 'farmersdelight:potato_crate'
+ok('the script answers FTB Quests\' custom tasks', cts.length >= 1)
+const evF = handInEvent(PT().handInTaskId('foundry'))
+ok('... a node\'s crate task gets a button, a check and a maximum of 1', evF.max == 1 && evF.button === true && typeof evF.check == 'function')
+ok('... and its timer is 0, so the check runs only when the button is pressed (the default would run it every tick and take everyone\'s potatoes)', evF.timer === 0)
+const evOther = handInEvent('507A7000000FFFFF')
+ok('... any other custom task is left alone', evOther.max === undefined && evOther.button === undefined && evOther.check === undefined && evOther.timer === undefined)
+const ebpNode = PT().nodes.find(n => Math.max(1, n.tier || 0, n.rank || 0) >= 9 && n.potatoes > 0)
+ok('a node priced in Enchanted Potatoes has one too; one priced in Enchanted Baked Potatoes doesn\'t (nothing else pays it)', !!PT().handInTaskId('alloy_smithing') && !!ebpNode && PT().handInTaskId(ebpNode.id) === null, ebpNode && ebpNode.id)
+ok('... its id is the node\'s task 15, so no other task moved', PT().handInTaskId('foundry') == PT().idPrefix + ('00000000' + (0x20000 + PT().nodes.find(n => n.id == 'foundry').n * 16 + 15).toString(16).toUpperCase()).slice(-8))
+
+setPaid(pia, 'foundry', 0)
+fill(pia, many(CRATE, 64).concat(many(FD, 10), many(LOOSE, 5)))
+pia.inbox.length = 0
+const d1 = data()
+evF.check(d1, pia)
+ok('a click: everything carried goes in, Quark\'s and Farmer\'s Delight\'s crates alike (64 + 10 crates and 5 loose: 671)', paid(pia, 'foundry') == 671 && countOf(pia, CRATE) == 0 && countOf(pia, FD) == 0 && countOf(pia, LOOSE) == 0, paid(pia, 'foundry'))
+ok('... the player is told in chat what went in and what\'s left', /The Foundry: .*handed in\. 671 of 25,000 potatoes paid, 24,329 to go\./.test(text(pia)), text(pia))
+ok('... and the crate task stays unticked while there\'s more to pay', d1.v == 0)
+const before = pot(pia)
+setPaid(pia, 'foundry', 24990)
+fill(pia, many(CRATE, 2).concat(many(LOOSE, 64)))
+evF.check(d1, pia)
+ok('the last of it: one crate and a loose potato make 25,000, the crate task ticks, and the whole price counts toward the rank', paid(pia, 'foundry') == 25000 && countOf(pia, CRATE) == 1 && countOf(pia, LOOSE) == 63 && d1.v == 1 && pot(pia) == before + 25000, paid(pia, 'foundry') + ' ' + d1.v + ' ' + (pot(pia) - before))
+const d3 = data()
+pia.inbox.length = 0
+evF.check(d3, pia)
+ok('a price already paid: a click ticks the crate task, says so, and takes nothing', d3.v == 1 && /The Foundry's potatoes are already paid/.test(text(pia)) && countOf(pia, CRATE) == 1)
+// carrying nothing it takes
+setPaid(pia, 'foundry', 100)
+fill(pia, [['minecraft:baked_potato', 64]])
+pia.inbox.length = 0
+evF.check(data(), pia)
+ok('carrying nothing it takes: told what it takes', /You carry nothing The Foundry takes\. It still needs 24,900 potatoes\. Loose ones, crates \(9 each\) or Enchanted Potatoes \(160 each\)\./.test(text(pia)), text(pia))
+// a node priced in Enchanted Potatoes takes Enchanted Baked ones at 160, never crates
+setPaid(pia, 'alloy_smithing', 0)
+fill(pia, many(EBP, 2).concat(many(CRATE, 64)))
+pia.inbox.length = 0
+const evA = handInEvent(PT().handInTaskId('alloy_smithing'))
+evA.check(data(), pia)
+ok('Alloy Smithing\'s crate task: 2 Enchanted Baked Potatoes go in as 320, the crates stay', paid(pia, 'alloy_smithing') == 320 && countOf(pia, EBP) == 0 && countOf(pia, CRATE) == 64, paid(pia, 'alloy_smithing') + ' ' + text(pia))
+// after /reload the check FTB Quests holds runs the reloaded code
+reload(); advance(5)
+setPaid(pia, 'foundry', 0)
+fill(pia, many(CRATE, 3))
+evF.check(data(), pia)
+ok('after /reload, the check FTB Quests already holds still works (it looks the code up when clicked)', paid(pia, 'foundry') == 27, paid(pia, 'foundry'))
+setPaid(pia, 'foundry', 100); setPaid(pia, 'alloy_smithing', 100000)
+fill(pia, many(CRATE, 5))
+}
 
 // ----- the two rank-credit gaps -----
 // 1. A Task Screen finishes a price while its owner is offline: their own team's owner is credited.

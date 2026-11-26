@@ -563,6 +563,52 @@ function pay(p, id, count) {
   return { ok: true, text: N.name + ': ' + took + ' handed in. ' + fmt(now.paid) + ' of ' + amount(now.max, unit) + ' paid, ' + fmt(now.left) + ' to go.' +
     (refused ? ' Your ' + refused : '') + ' They count toward your rank once it\'s all paid.' }
 }
+// The crate next to a node's potato (owner, 2026-11-25: "after clicking submit with 64 potato crates in my inventory it
+// still does not contribute"). FTB Quests' own Submit only knows the task's item, so each node has a second task, a
+// custom one (tools/ftbquests/generate_quests.js, task 15), whose button runs pay(): everything the player carries goes
+// toward the same price, loose potatoes and any mod's crates first. It's optional, so the quest never waits on it, and
+// it ticks once the price is paid.
+// Only the button may run it: FTB Quests 2001.4.22 never runs a custom task's check at login, but by default runs it
+// every tick for everyone online (checkTimer 1), which would take every player's potatoes on its own. The timer is set
+// to 0, which FTB Quests reads as never (read in its jar, 2026-11-25).
+function handInTaskId(node) { return ID_PREFIX + hex8(0x20000 + node.n * 16 + 15) }
+// Nodes that have one: a price in potatoes or Enchanted Potatoes (one in Enchanted Baked Potatoes takes nothing else).
+const HAND_IN = {}
+NODES.forEach(N => {
+  const t = Math.max(1, N.tier || 0, N.rank || 0)
+  if (N.potatoes > 0 && t < 9) HAND_IN[handInTaskId(N)] = N
+})
+function handIn(p, N, data) {
+  const done = () => { try { if (Number(data.getProgress()) < 1) data.setProgress(1) } catch (e) { } }
+  const q = book(p), price = q ? priceOf(q, N) : null
+  if (has(p, N) || (price && (price.done || price.left <= 0))) {
+    done()
+    tell(p, N.name + '\'s potatoes are already paid. What else it needs is in the book (/potatowar tree).')
+    return
+  }
+  const r = pay(p, N.id, 0)
+  tell(p, r.text)
+  const now = q ? priceOf(q, N) : null
+  if (now && now.done) done()
+}
+if (typeof FTBQuestsEvents != 'undefined') {
+  try {
+    FTBQuestsEvents.customTask(event => {
+      const task = event.getTask(), N = HAND_IN[String(task.getCodeString())]
+      if (!N) return
+      event.setMaxProgress(1)
+      event.setEnableButton(true)
+      event.setCheckTimer(0)                  // never on its own (the default, 1, is every tick for everyone)
+      // Looked up when clicked, so a /reload's new code is what runs.
+      event.setCheck((data, player) => {
+        const api = global.PotatoTree
+        if (!api || !api.handIn) return
+        try { api.handIn(player, N.id, data) } catch (e) { console.error('[PotatoTree] hand-in for ' + N.id + ': ' + e) }
+      })
+    })
+  } catch (e) { console.error('[PotatoTree] FTB Quests custom tasks unavailable (the crate button won\'t work): ' + e) }
+}
+
 // Potatoes handed in toward a node that's about to be completed for free (catch-up, an op's grant). They were really
 // given, so they count toward the rank; a price already paid in full was credited then.
 function creditPartPaid(p, N) {
@@ -684,6 +730,9 @@ global.PotatoTree = {
   potatoTaskId: id => NODE[id] ? potatoTaskId(NODE[id]) : null,
   // /potatowar pay (part2/blood_pool.js): hands in what fits a node's potato price. { ok, text }.
   pay: (p, id, count) => pay(p, id, Number(count) || 0),
+  // The crate task's button (FTB Quests calls it with the task's data): hands in what the player carries.
+  handIn: (p, id, data) => { if (NODE[id]) handIn(p, NODE[id], data) },
+  handInTaskId: id => NODE[id] && HAND_IN[handInTaskId(NODE[id])] ? handInTaskId(NODE[id]) : null,
   payList: p => payList(p),
   payable: p => payableNodes(p).map(x => x.N.id),
   chapterId: key => CHAPTERS[key] ? chapterId(key) : null,

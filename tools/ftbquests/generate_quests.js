@@ -87,6 +87,19 @@ function payLine(N, unit) {
       : 'Hand in the Enchanted Potatoes you carry (a baked one counts as 160)'), color: 'gold', underlined: true,
     clickEvent: { action: 'run_command', value: '/potatowar pay ' + N.id }, hoverEvent: { action: 'show_text', contents: '/potatowar pay ' + N.id } })
 }
+// The crate next to the potato: FTB Quests' Submit takes only the task's own item, so this second task's button
+// (part2/potato_tree.js, FTBQuestsEvents.customTask) hands in everything the player carries toward the same price:
+// loose potatoes, any mod's potato crates (9 each) and Enchanted Potatoes (160 each). Its id is the node's task 15, so
+// adding it moved no other task's id (progress is saved by task id). Optional: the quest never waits on it. None for a
+// price in Enchanted Baked Potatoes, which nothing else pays.
+const HAND_IN_K = 15
+function handInTask(N, unit) {
+  if (!(N.potatoes > 0) || (unit && unit.worth > 160)) return null
+  return { id: taskId(N.n, HAND_IN_K), type: 'custom', optional_task: true, tags: ['potato_hand_in'],
+    icon: unit ? 'kubejs:enchanted_baked_potato' : 'quark:potato_crate',
+    title: unit ? 'Click to hand in Enchanted Baked Potatoes (160 Enchanted Potatoes each)'
+      : 'Click to hand in crates (9 each), Enchanted Potatoes (160 each) and loose potatoes' }
+}
 function nodeQuest(N) {
   const tasks = []
   const tier = Math.max(1, N.tier || 0, N.rank || 0), unit = unitOf(tier)
@@ -97,11 +110,14 @@ function nodeQuest(N) {
     tasks.push({ id: taskId(N.n, k++), type: TASK_ITEM, item: unit ? unit.item : 'minecraft:potato', count: L(N.potatoes), consume_items: true,
       tags: [OFFER_TAG[unit ? unit.worth : 1]], title: fmt(N.potatoes) + ' ' + (unit ? unit.many : 'potatoes') + ' for the war chest' })
   }
+  const handIn = handInTask(N, unit)
+  if (handIn) tasks.push(handIn)
   ;(N.items || []).forEach(it => {
     const t = { id: taskId(N.n, k++), type: TASK_ITEM, item: it[0], consume_items: true }
     if (it[1] > 1) t.count = L(it[1])
     tasks.push(t)
   })
+  if (k > HAND_IN_K) throw new Error(N.id + ' has too many tasks: task ' + HAND_IN_K + ' is the crate\'s')
   const unlocks = []
   if ((N.materials || []).length) unlocks.push('Tinkers materials: ' + N.materials.map(pretty).join(', '))
   if ((N.gear || []).length) unlocks.push('Gear: ' + N.gear.map(pretty).join(', '))
@@ -115,8 +131,9 @@ function nodeQuest(N) {
       (needs.length ? ', and ' + needs.map(x => x.name).join(' and ') : '') + '.',
     unit ? '&5The price was never potatoes: ' + fmt(N.potatoes) + ' ' + unit.many + ' (' + unit.worth + ' potatoes\' worth each, made in the Potato ' +
       (unit.worth > 160 ? 'Oven' : 'Press') + '). They count toward your rank at that worth.&r'
-      : '&7Pay a part at a time: what you hand in is saved, and counts toward your rank once it is all paid. The Submit button takes loose potatoes only. ' +
-        'To use crates (9 each) or Enchanted Potatoes (160 each), click below. One worth more than what is still needed is refused, so finish with loose potatoes.',
+      : '&7Pay a part at a time: what you hand in is saved, and counts toward your rank once it is all paid. The potato\'s Submit takes loose potatoes only: ' +
+        '&6click the crate next to it&7 (or the line below) to hand in everything you carry, loose potatoes, any mod\'s potato crates (9 each) and Enchanted Potatoes (160 each). ' +
+        'One worth more than what is still needed is refused, so finish with loose potatoes.',
     ...(N.potatoes > 0 ? [payLine(N, unit)] : []),
     '&7Comes to you for free ' + catchUpText(tier) + ' (catch-up).'])
   const q = {

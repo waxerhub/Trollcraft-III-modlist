@@ -158,6 +158,19 @@ if (PT) {
   ok('... and its page one line to click, a JSON text FTB Quests reads, that runs /potatowar pay <node>', noLine.length == 0, noLine.map(n => n.id).join(', '))
   const unitLine = PT.nodes.filter(n => n.potatoes > 0).filter(n => { const l = payLines(n)[0] || { text: '' }, t = tierOf(n); return t >= 9 ? !/Enchanted Baked Potatoes/.test(l.text) : t >= 6 ? !/Enchanted Potatoes/.test(l.text) : /Enchanted/.test(l.text) })
   ok('... naming what that node takes', unitLine.length == 0, unitLine.map(n => n.id).join(', '))
+  // The crate next to the potato (owner, 2026-11-25): a custom task, task 15 of its node, that part2/potato_tree.js
+  // gives a button. FTB Quests' own Submit takes only the potato task's item.
+  const handInOf = q => (q.tasks || []).filter(t => t.type == 'custom')
+  const wrongCrate = PT.nodes.filter(n => n.potatoes > 0).filter(n => {
+    const q = quests[PT.questId(n.id)] || {}, c = handInOf(q), t = tierOf(n)
+    if (t >= 9) return c.length != 0
+    const ix = (q.tasks || []).indexOf(c[0]), potato = (q.tasks || []).indexOf(offerTask(q))
+    return c.length != 1 || c[0].id != PT.handInTaskId(n.id) || c[0].optional_task !== true || (c[0].tags || []).join() != 'potato_hand_in' ||
+      ix != potato + 1 || !/^Click to hand in/.test(c[0].title || '') || (t >= 6 ? c[0].icon != 'kubejs:enchanted_baked_potato' : !/potato_crate$/.test(c[0].icon || ''))
+  })
+  ok('every node priced in potatoes or Enchanted Potatoes has the crate task right after its potato, with the id the script answers, optional; none in Enchanted Baked ones', wrongCrate.length == 0, wrongCrate.map(n => n.id).join(', '))
+  const strayCustom = Object.keys(quests).map(k => quests[k]).filter(q => handInOf(q).some(t => !PT.nodes.some(n => PT.handInTaskId(n.id) == t.id)))
+  ok('... and no other custom task anywhere', strayCustom.length == 0, strayCustom.map(q => q.title).join(', '))
   const late = PT.nodes.filter(n => tierOf(n) >= 6), early = PT.nodes.filter(n => tierOf(n) < 6)
   const unveiled = late.filter(n => { const q = quests[PT.questId(n.id)]; return !q || q.hide_details_until_startable !== true || (q.dependencies || []).indexOf(reveal && reveal.id) < 0 })
   ok('Tier 6+ nodes (' + late.length + ') wait for the reveal and hide their details until then', late.length > 0 && unveiled.length == 0, unveiled.map(n => n.id).join(', '))

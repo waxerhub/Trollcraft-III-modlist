@@ -1,0 +1,15 @@
+modLoader="javafml"
+loaderVersion="[47,)"
+license="All rights reserved"
+[[mods]]
+modId="trollcraft_spawnskip"
+version="1.0.0"
+displayName="Trollcraft Spawn Skip"
+displayTest="IGNORE_ALL_VERSION"
+description='''Skips natural spawning tries that can't spawn anything in a dimension. Server only.'''
+[[dependencies.trollcraft_spawnskip]]
+modId="forge"
+mandatory=true
+versionRange="[47,)"
+ordering="NONE"
+side="SERVER"

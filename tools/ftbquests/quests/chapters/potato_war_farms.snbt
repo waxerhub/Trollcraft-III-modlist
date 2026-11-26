@@ -9,7 +9,7 @@
 	quest_links: [ ]
 	quests: [
 		{
-			description: ["Place Mechanical Harvesters and Ploughs.", "", "&6Unlocks&r", "- Place: mechanical harvester, mechanical plough", "- Use (whoever placed it): mechanical harvester, mechanical plough", "", "&7Needs Potato Farmer, Blood Pool Tier 1.", "&7Pay a part at a time: what you hand in is saved, and counts toward your rank once it is all paid. The Submit button takes loose potatoes only. To use crates (9 each) or Enchanted Potatoes (160 each), click below. One worth more than what is still needed is refused, so finish with loose potatoes.", "{\"text\":\"▶ Hand in the potatoes you carry\",\"color\":\"gold\",\"underlined\":true,\"clickEvent\":{\"action\":\"run_command\",\"value\":\"/potatowar pay create_farming\"},\"hoverEvent\":{\"action\":\"show_text\",\"contents\":\"/potatowar pay create_farming\"}}", "&7Comes to you for free once the Blood Pool is 2 tiers past Tier 1 (catch-up)."]
+			description: ["Place Mechanical Harvesters and Ploughs.", "", "&6Unlocks&r", "- Place: mechanical harvester, mechanical plough", "- Use (whoever placed it): mechanical harvester, mechanical plough", "", "&7Needs Potato Farmer, Blood Pool Tier 1.", "&7Pay a part at a time: what you hand in is saved, and counts toward your rank once it is all paid. The potato's Submit takes loose potatoes only: &6click the crate next to it&7 (or the line below) to hand in everything you carry, loose potatoes, any mod's potato crates (9 each) and Enchanted Potatoes (160 each). One worth more than what is still needed is refused, so finish with loose potatoes.", "{\"text\":\"▶ Hand in the potatoes you carry\",\"color\":\"gold\",\"underlined\":true,\"clickEvent\":{\"action\":\"run_command\",\"value\":\"/potatowar pay create_farming\"},\"hoverEvent\":{\"action\":\"show_text\",\"contents\":\"/potatowar pay create_farming\"}}", "&7Comes to you for free once the Blood Pool is 2 tiers past Tier 1 (catch-up)."]
 			icon: "create:mechanical_harvester"
 			id: "507A70000001001F"
 			rewards: [
@@ -45,6 +45,14 @@
 					type: "item"
 				}
 				{
+					icon: "quark:potato_crate"
+					id: "507A7000000201FF"
+					optional_task: true
+					tags: ["potato_hand_in"]
+					title: "Click to hand in crates (9 each), Enchanted Potatoes (160 each) and loose potatoes"
+					type: "custom"
+				}
+				{
 					consume_items: true
 					count: 8L
 					id: "507A7000000201F3"
@@ -57,7 +65,7 @@
 			y: 0.0d
 		}
 		{
-			description: ["Place Mystical Agriculture growth accelerators and the Harvester.", "", "&6Unlocks&r", "- Place: inferium growth accelerator, prudentium growth accelerator, tertium growth accelerator, imperium growth accelerator, supremium growth accelerator, harvester", "- Use (whoever placed it): inferium growth accelerator, prudentium growth accelerator, tertium growth accelerator, imperium growth accelerator, supremium growth accelerator, harvester", "", "&7Needs Potato Peeler, Blood Pool Tier 1.", "&7Pay a part at a time: what you hand in is saved, and counts toward your rank once it is all paid. The Submit button takes loose potatoes only. To use crates (9 each) or Enchanted Potatoes (160 each), click below. One worth more than what is still needed is refused, so finish with loose potatoes.", "{\"text\":\"▶ Hand in the potatoes you carry\",\"color\":\"gold\",\"underlined\":true,\"clickEvent\":{\"action\":\"run_command\",\"value\":\"/potatowar pay growth_acceleration\"},\"hoverEvent\":{\"action\":\"show_text\",\"contents\":\"/potatowar pay growth_acceleration\"}}", "&7Comes to you for free once the Blood Pool is 2 tiers past Tier 2 (catch-up)."]
+			description: ["Place Mystical Agriculture growth accelerators and the Harvester.", "", "&6Unlocks&r", "- Place: inferium growth accelerator, prudentium growth accelerator, tertium growth accelerator, imperium growth accelerator, supremium growth accelerator, harvester", "- Use (whoever placed it): inferium growth accelerator, prudentium growth accelerator, tertium growth accelerator, imperium growth accelerator, supremium growth accelerator, harvester", "", "&7Needs Potato Peeler, Blood Pool Tier 1.", "&7Pay a part at a time: what you hand in is saved, and counts toward your rank once it is all paid. The potato's Submit takes loose potatoes only: &6click the crate next to it&7 (or the line below) to hand in everything you carry, loose potatoes, any mod's potato crates (9 each) and Enchanted Potatoes (160 each). One worth more than what is still needed is refused, so finish with loose potatoes.", "{\"text\":\"▶ Hand in the potatoes you carry\",\"color\":\"gold\",\"underlined\":true,\"clickEvent\":{\"action\":\"run_command\",\"value\":\"/potatowar pay growth_acceleration\"},\"hoverEvent\":{\"action\":\"show_text\",\"contents\":\"/potatowar pay growth_acceleration\"}}", "&7Comes to you for free once the Blood Pool is 2 tiers past Tier 2 (catch-up)."]
 			icon: "mysticalagriculture:inferium_growth_accelerator"
 			id: "507A700000010020"
 			rewards: [
@@ -93,6 +101,14 @@
 					type: "item"
 				}
 				{
+					icon: "quark:potato_crate"
+					id: "507A70000002020F"
+					optional_task: true
+					tags: ["potato_hand_in"]
+					title: "Click to hand in crates (9 each), Enchanted Potatoes (160 each) and loose potatoes"
+					type: "custom"
+				}
+				{
 					consume_items: true
 					count: 16L
 					id: "507A700000020203"
@@ -105,7 +121,7 @@
 			y: 0.0d
 		}
 		{
-			description: ["Place and use the Garden Cloche.", "", "&6Unlocks&r", "- Place: cloche", "- Use (whoever placed it): cloche", "", "&7Needs Potato Recruit, Blood Pool Tier 3.", "&7Pay a part at a time: what you hand in is saved, and counts toward your rank once it is all paid. The Submit button takes loose potatoes only. To use crates (9 each) or Enchanted Potatoes (160 each), click below. One worth more than what is still needed is refused, so finish with loose potatoes.", "{\"text\":\"▶ Hand in the potatoes you carry\",\"color\":\"gold\",\"underlined\":true,\"clickEvent\":{\"action\":\"run_command\",\"value\":\"/potatowar pay garden_cloche\"},\"hoverEvent\":{\"action\":\"show_text\",\"contents\":\"/potatowar pay garden_cloche\"}}", "&7Comes to you for free once the Blood Pool is 2 tiers past Tier 3 (catch-up)."]
+			description: ["Place and use the Garden Cloche.", "", "&6Unlocks&r", "- Place: cloche", "- Use (whoever placed it): cloche", "", "&7Needs Potato Recruit, Blood Pool Tier 3.", "&7Pay a part at a time: what you hand in is saved, and counts toward your rank once it is all paid. The potato's Submit takes loose potatoes only: &6click the crate next to it&7 (or the line below) to hand in everything you carry, loose potatoes, any mod's potato crates (9 each) and Enchanted Potatoes (160 each). One worth more than what is still needed is refused, so finish with loose potatoes.", "{\"text\":\"▶ Hand in the potatoes you carry\",\"color\":\"gold\",\"underlined\":true,\"clickEvent\":{\"action\":\"run_command\",\"value\":\"/potatowar pay garden_cloche\"},\"hoverEvent\":{\"action\":\"show_text\",\"contents\":\"/potatowar pay garden_cloche\"}}", "&7Comes to you for free once the Blood Pool is 2 tiers past Tier 3 (catch-up)."]
 			icon: "immersiveengineering:cloche"
 			id: "507A700000010021"
 			rewards: [
@@ -141,6 +157,14 @@
 					type: "item"
 				}
 				{
+					icon: "quark:potato_crate"
+					id: "507A70000002021F"
+					optional_task: true
+					tags: ["potato_hand_in"]
+					title: "Click to hand in crates (9 each), Enchanted Potatoes (160 each) and loose potatoes"
+					type: "custom"
+				}
+				{
 					consume_items: true
 					count: 8L
 					id: "507A700000020213"
@@ -154,7 +178,7 @@
 		}
 		{
 			dependencies: ["507A700000010021"]
-			description: ["Place and use the Phytogenic Insolator.", "", "&6Unlocks&r", "- Place: machine insolator", "- Use (whoever placed it): machine insolator", "", "&7Needs Potato Soldier, Blood Pool Tier 5, and Garden Cloche.", "&7Pay a part at a time: what you hand in is saved, and counts toward your rank once it is all paid. The Submit button takes loose potatoes only. To use crates (9 each) or Enchanted Potatoes (160 each), click below. One worth more than what is still needed is refused, so finish with loose potatoes.", "{\"text\":\"▶ Hand in the potatoes you carry\",\"color\":\"gold\",\"underlined\":true,\"clickEvent\":{\"action\":\"run_command\",\"value\":\"/potatowar pay insolation\"},\"hoverEvent\":{\"action\":\"show_text\",\"contents\":\"/potatowar pay insolation\"}}", "&7Comes to you for free once the Blood Pool is 2 tiers past Tier 5 (catch-up)."]
+			description: ["Place and use the Phytogenic Insolator.", "", "&6Unlocks&r", "- Place: machine insolator", "- Use (whoever placed it): machine insolator", "", "&7Needs Potato Soldier, Blood Pool Tier 5, and Garden Cloche.", "&7Pay a part at a time: what you hand in is saved, and counts toward your rank once it is all paid. The potato's Submit takes loose potatoes only: &6click the crate next to it&7 (or the line below) to hand in everything you carry, loose potatoes, any mod's potato crates (9 each) and Enchanted Potatoes (160 each). One worth more than what is still needed is refused, so finish with loose potatoes.", "{\"text\":\"▶ Hand in the potatoes you carry\",\"color\":\"gold\",\"underlined\":true,\"clickEvent\":{\"action\":\"run_command\",\"value\":\"/potatowar pay insolation\"},\"hoverEvent\":{\"action\":\"show_text\",\"contents\":\"/potatowar pay insolation\"}}", "&7Comes to you for free once the Blood Pool is 2 tiers past Tier 5 (catch-up)."]
 			icon: "thermal:machine_insolator"
 			id: "507A700000010022"
 			rewards: [
@@ -190,6 +214,14 @@
 					type: "item"
 				}
 				{
+					icon: "quark:potato_crate"
+					id: "507A70000002022F"
+					optional_task: true
+					tags: ["potato_hand_in"]
+					title: "Click to hand in crates (9 each), Enchanted Potatoes (160 each) and loose potatoes"
+					type: "custom"
+				}
+				{
 					consume_items: true
 					count: 4L
 					id: "507A700000020223"
@@ -202,7 +234,7 @@
 			y: -2.0d
 		}
 		{
-			description: ["Place and use powered mob spawners: Ender IO's Powered Spawner, Mystical Agriculture's Soulium Spawner, the RFTools Spawner and Draconic Evolution's Stabilized Spawner.", "", "&6Unlocks&r", "- Place: powered spawner, soulium spawner, spawner, stabilized spawner", "- Use (whoever placed it): powered spawner, soulium spawner, spawner, stabilized spawner", "", "&7Needs Potato Soldier, Blood Pool Tier 5.", "&7Pay a part at a time: what you hand in is saved, and counts toward your rank once it is all paid. The Submit button takes loose potatoes only. To use crates (9 each) or Enchanted Potatoes (160 each), click below. One worth more than what is still needed is refused, so finish with loose potatoes.", "{\"text\":\"▶ Hand in the potatoes you carry\",\"color\":\"gold\",\"underlined\":true,\"clickEvent\":{\"action\":\"run_command\",\"value\":\"/potatowar pay powered_spawning\"},\"hoverEvent\":{\"action\":\"show_text\",\"contents\":\"/potatowar pay powered_spawning\"}}", "&7Comes to you for free once the Blood Pool is 2 tiers past Tier 5 (catch-up)."]
+			description: ["Place and use powered mob spawners: Ender IO's Powered Spawner, Mystical Agriculture's Soulium Spawner, the RFTools Spawner and Draconic Evolution's Stabilized Spawner.", "", "&6Unlocks&r", "- Place: powered spawner, soulium spawner, spawner, stabilized spawner", "- Use (whoever placed it): powered spawner, soulium spawner, spawner, stabilized spawner", "", "&7Needs Potato Soldier, Blood Pool Tier 5.", "&7Pay a part at a time: what you hand in is saved, and counts toward your rank once it is all paid. The potato's Submit takes loose potatoes only: &6click the crate next to it&7 (or the line below) to hand in everything you carry, loose potatoes, any mod's potato crates (9 each) and Enchanted Potatoes (160 each). One worth more than what is still needed is refused, so finish with loose potatoes.", "{\"text\":\"▶ Hand in the potatoes you carry\",\"color\":\"gold\",\"underlined\":true,\"clickEvent\":{\"action\":\"run_command\",\"value\":\"/potatowar pay powered_spawning\"},\"hoverEvent\":{\"action\":\"show_text\",\"contents\":\"/potatowar pay powered_spawning\"}}", "&7Comes to you for free once the Blood Pool is 2 tiers past Tier 5 (catch-up)."]
 			icon: "enderio:powered_spawner"
 			id: "507A700000010023"
 			rewards: [
@@ -236,6 +268,14 @@
 					tags: ["potato_offer"]
 					title: "50,000 potatoes for the war chest"
 					type: "item"
+				}
+				{
+					icon: "quark:potato_crate"
+					id: "507A70000002023F"
+					optional_task: true
+					tags: ["potato_hand_in"]
+					title: "Click to hand in crates (9 each), Enchanted Potatoes (160 each) and loose potatoes"
+					type: "custom"
 				}
 				{
 					consume_items: true

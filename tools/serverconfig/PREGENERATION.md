@@ -1,6 +1,8 @@
-# Pregenerating the Aether and the Otherside (live server)
+# Pregenerating the new dimensions (live server)
 
-Generating new terrain is the costliest thing these two mods add. On the test server, a full 20 TPS held while
+The Aether, the Otherside and Blue Skies' two dimensions. Generating new terrain causes the lag spikes these mods add
+while players explore. Their steady cost is creatures and spawning (`research/LATENCY_DEEP_DIVE.md`, "Update, 25
+November 2026"). On the test server, a full 20 TPS held while
 generating, but a few players flying into fresh Otherside ground at once can still cause short lag spikes. Generating
 the ground players will reach first, while nobody is on, takes that cost away. Plan written 22 November 2026, from the
 test server's stress test. Nothing here has been run on the live server.
@@ -94,13 +96,36 @@ Repeat `chunky center` and `chunky start` for each city.
 - Players can still go beyond the generated square: those chunks are made as they arrive, as before. This isn't a
   border.
 
-## If Blue Skies is added
+## Blue Skies (the Everbright and the Everdawn)
 
-Not in the pack (22 November 2026); tried on the test server only (`research/BLUE_SKIES.md`). Its two dimensions,
-`blue_skies:everbright` and `blue_skies:everdawn`, also use the Overworld's x and z. Where players can build their
-portals wasn't confirmed, so plan around spawn and the bases, as for the Aether. They generate at 115 to 119 chunks a
-second on the test PC over a 1,000-block square (85 to 103 over a smaller one) and take about 10 KB a chunk: that
-square is 16,129 chunks each, about 2.5 minutes (10 if Bisect is 4 times slower), and about 155 MB each.
+Being added with the Aether and Deeper and Darker (owner, 25 November 2026; checklist in `ADDING_THE_NEW_DIMENSIONS.md`).
+Its two dimensions, `blue_skies:everbright` and `blue_skies:everdawn`, also use the Overworld's x and z.
+
+**Where players arrive** (read from the mod's data, 25 November):
+- **At first, at a Gatekeeper's house in the Overworld.** Each house has both portals built in. They're lit with a
+  Zeal Lighter, which the Gatekeeper sells for 8 emeralds. Houses stand in plains and savanna, snowy and taiga, and
+  mountain biomes, roughly every 500 to 1,100 blocks.
+- **Houses only generate in new ground.** In an existing world, the nearest ones are in parts of the Overworld nobody
+  has visited yet. To find them, from the console:
+  `execute positioned <base x> 70 <base z> run locate structure #blue_skies:gatekeeper_houses`. It only names houses
+  that exist or can still generate. (On the test server the nearest were 601 and 1,017 blocks from the points tried.)
+- **Later, anywhere:** the frames are Turquoise Stonebrick (the Everbright) and Lunar Stonebrick (the Everdawn), which
+  are crafted from stone found in those dimensions.
+
+**The plan:** pregenerate both dimensions in a 1,000-block square around the two or three houses nearest the bases.
+Pregenerate the Overworld in a 200-block square around each house too, so the first trip there isn't through fresh
+ground. Add the bases later, once players start building their own portals. Rates on the test PC: 115 to 119
+chunks a second over a 1,000-block square (85 to 103 over a smaller one), about 10 KB a chunk. That square is
+16,129 chunks each: about 2.5 minutes (10 if Bisect is 4 times slower) and about 155 MB.
+
+```
+chunky world blue_skies:everbright
+chunky shape square
+chunky center <house x> <house z>
+chunky radius 1000
+chunky start
+```
+Then the same with `chunky world blue_skies:everdawn`.
 
 ## What couldn't be checked
 

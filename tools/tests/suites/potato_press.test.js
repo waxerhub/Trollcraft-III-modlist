@@ -4,6 +4,7 @@
 // faster capabilities is off (it crashed the test server otherwise), never on a player's game.
 // Run with: node tools/tests/run_all.js press   (or node tools/tests/suites/potato_press.test.js)
 const fs = require('fs')
+const path = require('path')
 const paths = require('../lib/paths')
 const src = fs.readFileSync(paths.kubejs('startup_scripts/potato_press.js'), 'utf8')
 let fails = 0
@@ -83,13 +84,23 @@ ok('two items: Enchanted Potato and Enchanted Baked Potato, glowing, on the vani
   ep.set.texture == 'minecraft:item/potato' && ebp.set.texture == 'minecraft:item/baked_potato')
 const press = S.blocks.potato_press, oven = S.blocks.potato_oven
 ok('two blocks: the Potato Press and the Potato Oven', press && oven && press.set.displayName == 'Potato Press' && oven.set.displayName == 'Potato Oven')
-ok('... each a 27-slot box (9 x 3) that only takes its input (the Press: potatoes and the three potato crates), opened with a right-click, working every second',
-  press.info.inv.w == 9 && press.info.inv.h == 3 &&
-  JSON.stringify(press.info.inv.filter) == JSON.stringify(['minecraft:potato', 'quark:potato_crate', 'farmersdelight:potato_crate', 'thermal:potato_block']) &&
-  JSON.stringify(oven.info.inv.filter) == JSON.stringify(['kubejs:enchanted_potato']) &&
+ok('... each a 27-slot box (9 x 3) opened with a right-click, working every second', press.info.inv.w == 9 && press.info.inv.h == 3 &&
   press.info.opens && oven.info.opens && press.info.tick.interval == 20 && oven.info.tick.interval == 20)
-ok('... a crate from a mod that isn\'t installed isn\'t accepted (here Quark and Thermal are missing)',
-  JSON.stringify(load({ modernfix: false, missing: ['quark', 'thermal'] }).blocks.potato_press.info.inv.filter) == JSON.stringify(['minecraft:potato', 'farmersdelight:potato_crate']))
+// What goes in is an item tag, never a list of item ids: the filter is made while blocks are registered, before any
+// mod's items exist, so a list kept only the vanilla potato (on the test server, 2026-11-25: the Press refused both
+// kinds of crate from a hopper and the Oven its Enchanted Potatoes). A tag is read when an item is offered.
+ok('... what may go in is a tag, read when an item is offered: the Press #kubejs:potato_press_input, the Oven #kubejs:potato_oven_input',
+  press.info.inv.filter === '#kubejs:potato_press_input' && oven.info.inv.filter === '#kubejs:potato_oven_input', JSON.stringify([press.info.inv.filter, oven.info.inv.filter]))
+const tagFile = name => { try { return JSON.parse(fs.readFileSync(path.join(paths.kubejs('data'), 'kubejs', 'tags', 'items', name + '.json'), 'utf8')) } catch (e) { return null } }
+const tagIds = t => (t && t.values || []).map(v => typeof v == 'string' ? v : v.id)
+const pressTag = tagFile('potato_press_input'), ovenTag = tagFile('potato_oven_input')
+const inputsOf = name => { const m = src.match(new RegExp(name + ": \\{[^\\n]*\\n\\s*inputs: (\\{[^}]*\\})")); return m ? Object.keys(JSON.parse(m[1].replace(/'/g, '"'))) : null }
+ok('... each tag file (tools/kubejs/data/kubejs/tags/items/) lists exactly the script\'s inputs', !!pressTag && !!ovenTag &&
+  JSON.stringify(tagIds(pressTag).sort()) == JSON.stringify((inputsOf('potato_press') || []).sort()) && JSON.stringify(tagIds(ovenTag)) == JSON.stringify(inputsOf('potato_oven')),
+  JSON.stringify([tagIds(pressTag), inputsOf('potato_press'), tagIds(ovenTag), inputsOf('potato_oven')]))
+ok('... a crate from a mod that isn\'t installed is skipped, not an error (each mod\'s entry is "required": false); the tags add to others, never replace',
+  !!pressTag && pressTag.replace === false && ovenTag.replace === false &&
+  pressTag.values.every(v => typeof v == 'string' ? /^(minecraft|kubejs):/.test(v) : v.required === false))
 ok('... mined with an axe, with barrel and smoker textures', press.set.tagBlock == 'minecraft:mineable/axe' && press.set.textureAll == 'minecraft:block/barrel_side' &&
   press.textures.up == 'minecraft:block/barrel_top' && oven.textures.up == 'minecraft:block/smoker_top')
 

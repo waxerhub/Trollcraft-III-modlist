@@ -9,7 +9,7 @@
 	quest_links: [ ]
 	quests: [
 		{
-			description: ["Build your own smeltery.", "", "&6Unlocks&r", "- Place: smeltery controller", "- Use (whoever placed it): smeltery controller", "", "&7Needs Potato Farmer.", "&7Pay a part at a time: what you hand in is saved, and counts toward your rank once it is all paid. The Submit button takes loose potatoes only. To use crates (9 each) or Enchanted Potatoes (160 each), click below. One worth more than what is still needed is refused, so finish with loose potatoes.", "{\"text\":\"▶ Hand in the potatoes you carry\",\"color\":\"gold\",\"underlined\":true,\"clickEvent\":{\"action\":\"run_command\",\"value\":\"/potatowar pay seared_smeltery\"},\"hoverEvent\":{\"action\":\"show_text\",\"contents\":\"/potatowar pay seared_smeltery\"}}", "&7Comes to you for free once the Blood Pool is 2 tiers past Tier 1 (catch-up)."]
+			description: ["Build your own smeltery.", "", "&6Unlocks&r", "- Place: smeltery controller", "- Use (whoever placed it): smeltery controller", "", "&7Needs Potato Farmer.", "&7Pay a part at a time: what you hand in is saved, and counts toward your rank once it is all paid. The potato's Submit takes loose potatoes only: &6click the crate next to it&7 (or the line below) to hand in everything you carry, loose potatoes, any mod's potato crates (9 each) and Enchanted Potatoes (160 each). One worth more than what is still needed is refused, so finish with loose potatoes.", "{\"text\":\"▶ Hand in the potatoes you carry\",\"color\":\"gold\",\"underlined\":true,\"clickEvent\":{\"action\":\"run_command\",\"value\":\"/potatowar pay seared_smeltery\"},\"hoverEvent\":{\"action\":\"show_text\",\"contents\":\"/potatowar pay seared_smeltery\"}}", "&7Comes to you for free once the Blood Pool is 2 tiers past Tier 1 (catch-up)."]
 			icon: "tconstruct:smeltery_controller"
 			id: "507A700000010001"
 			rewards: [
@@ -39,6 +39,14 @@
 					type: "item"
 				}
 				{
+					icon: "quark:potato_crate"
+					id: "507A70000002001F"
+					optional_task: true
+					tags: ["potato_hand_in"]
+					title: "Click to hand in crates (9 each), Enchanted Potatoes (160 each) and loose potatoes"
+					type: "custom"
+				}
+				{
 					consume_items: true
 					count: 16L
 					id: "507A700000020012"
@@ -52,7 +60,7 @@
 		}
 		{
 			dependencies: ["507A700000010001"]
-			description: ["Use Tinkers tools made with steel.", "", "&6Unlocks&r", "- Tinkers materials: steel", "", "&7Needs Potato Recruit, Blood Pool Tier 3, and Seared Smeltery.", "&7Pay a part at a time: what you hand in is saved, and counts toward your rank once it is all paid. The Submit button takes loose potatoes only. To use crates (9 each) or Enchanted Potatoes (160 each), click below. One worth more than what is still needed is refused, so finish with loose potatoes.", "{\"text\":\"▶ Hand in the potatoes you carry\",\"color\":\"gold\",\"underlined\":true,\"clickEvent\":{\"action\":\"run_command\",\"value\":\"/potatowar pay steel_smithing\"},\"hoverEvent\":{\"action\":\"show_text\",\"contents\":\"/potatowar pay steel_smithing\"}}", "&7Comes to you for free once the Blood Pool is 2 tiers past Tier 3 (catch-up)."]
+			description: ["Use Tinkers tools made with steel.", "", "&6Unlocks&r", "- Tinkers materials: steel", "", "&7Needs Potato Recruit, Blood Pool Tier 3, and Seared Smeltery.", "&7Pay a part at a time: what you hand in is saved, and counts toward your rank once it is all paid. The potato's Submit takes loose potatoes only: &6click the crate next to it&7 (or the line below) to hand in everything you carry, loose potatoes, any mod's potato crates (9 each) and Enchanted Potatoes (160 each). One worth more than what is still needed is refused, so finish with loose potatoes.", "{\"text\":\"▶ Hand in the potatoes you carry\",\"color\":\"gold\",\"underlined\":true,\"clickEvent\":{\"action\":\"run_command\",\"value\":\"/potatowar pay steel_smithing\"},\"hoverEvent\":{\"action\":\"show_text\",\"contents\":\"/potatowar pay steel_smithing\"}}", "&7Comes to you for free once the Blood Pool is 2 tiers past Tier 3 (catch-up)."]
 			icon: "tconstruct:steel_ingot"
 			id: "507A700000010002"
 			rewards: [
@@ -88,6 +96,14 @@
 					type: "item"
 				}
 				{
+					icon: "quark:potato_crate"
+					id: "507A70000002002F"
+					optional_task: true
+					tags: ["potato_hand_in"]
+					title: "Click to hand in crates (9 each), Enchanted Potatoes (160 each) and loose potatoes"
+					type: "custom"
+				}
+				{
 					consume_items: true
 					count: 32L
 					id: "507A700000020023"
@@ -101,7 +117,7 @@
 		}
 		{
 			dependencies: ["507A700000010002"]
-			description: ["Use osmium and steeleaf Tinkers tools, and Twilight Forest steeleaf gear.", "", "&6Unlocks&r", "- Tinkers materials: osmium, steeleaf", "- Gear: steeleaf helmet, steeleaf chestplate, steeleaf leggings, steeleaf boots, steeleaf sword, steeleaf pickaxe, steeleaf axe, steeleaf shovel, steeleaf hoe", "", "&7Needs Potato Private, Blood Pool Tier 4, and Steel Smithing.", "&7Pay a part at a time: what you hand in is saved, and counts toward your rank once it is all paid. The Submit button takes loose potatoes only. To use crates (9 each) or Enchanted Potatoes (160 each), click below. One worth more than what is still needed is refused, so finish with loose potatoes.", "{\"text\":\"▶ Hand in the potatoes you carry\",\"color\":\"gold\",\"underlined\":true,\"clickEvent\":{\"action\":\"run_command\",\"value\":\"/potatowar pay osmium_steeleaf\"},\"hoverEvent\":{\"action\":\"show_text\",\"contents\":\"/potatowar pay osmium_steeleaf\"}}", "&7Comes to you for free once the Blood Pool is 2 tiers past Tier 4 (catch-up)."]
+			description: ["Use osmium and steeleaf Tinkers tools, and Twilight Forest steeleaf gear.", "", "&6Unlocks&r", "- Tinkers materials: osmium, steeleaf", "- Gear: steeleaf helmet, steeleaf chestplate, steeleaf leggings, steeleaf boots, steeleaf sword, steeleaf pickaxe, steeleaf axe, steeleaf shovel, steeleaf hoe", "", "&7Needs Potato Private, Blood Pool Tier 4, and Steel Smithing.", "&7Pay a part at a time: what you hand in is saved, and counts toward your rank once it is all paid. The potato's Submit takes loose potatoes only: &6click the crate next to it&7 (or the line below) to hand in everything you carry, loose potatoes, any mod's potato crates (9 each) and Enchanted Potatoes (160 each). One worth more than what is still needed is refused, so finish with loose potatoes.", "{\"text\":\"▶ Hand in the potatoes you carry\",\"color\":\"gold\",\"underlined\":true,\"clickEvent\":{\"action\":\"run_command\",\"value\":\"/potatowar pay osmium_steeleaf\"},\"hoverEvent\":{\"action\":\"show_text\",\"contents\":\"/potatowar pay osmium_steeleaf\"}}", "&7Comes to you for free once the Blood Pool is 2 tiers past Tier 4 (catch-up)."]
 			icon: "twilightforest:steeleaf_ingot"
 			id: "507A700000010003"
 			rewards: [
@@ -137,6 +153,14 @@
 					type: "item"
 				}
 				{
+					icon: "quark:potato_crate"
+					id: "507A70000002003F"
+					optional_task: true
+					tags: ["potato_hand_in"]
+					title: "Click to hand in crates (9 each), Enchanted Potatoes (160 each) and loose potatoes"
+					type: "custom"
+				}
+				{
 					consume_items: true
 					count: 16L
 					id: "507A700000020033"
@@ -157,7 +181,7 @@
 		}
 		{
 			dependencies: ["507A700000010001"]
-			description: ["Build your own foundry and alloyer.", "", "&6Unlocks&r", "- Place: foundry controller, scorched alloyer", "- Use (whoever placed it): foundry controller, scorched alloyer", "", "&7Needs Potato Soldier, Blood Pool Tier 5, and Seared Smeltery.", "&7Pay a part at a time: what you hand in is saved, and counts toward your rank once it is all paid. The Submit button takes loose potatoes only. To use crates (9 each) or Enchanted Potatoes (160 each), click below. One worth more than what is still needed is refused, so finish with loose potatoes.", "{\"text\":\"▶ Hand in the potatoes you carry\",\"color\":\"gold\",\"underlined\":true,\"clickEvent\":{\"action\":\"run_command\",\"value\":\"/potatowar pay foundry\"},\"hoverEvent\":{\"action\":\"show_text\",\"contents\":\"/potatowar pay foundry\"}}", "&7Comes to you for free once the Blood Pool is 2 tiers past Tier 5 (catch-up)."]
+			description: ["Build your own foundry and alloyer.", "", "&6Unlocks&r", "- Place: foundry controller, scorched alloyer", "- Use (whoever placed it): foundry controller, scorched alloyer", "", "&7Needs Potato Soldier, Blood Pool Tier 5, and Seared Smeltery.", "&7Pay a part at a time: what you hand in is saved, and counts toward your rank once it is all paid. The potato's Submit takes loose potatoes only: &6click the crate next to it&7 (or the line below) to hand in everything you carry, loose potatoes, any mod's potato crates (9 each) and Enchanted Potatoes (160 each). One worth more than what is still needed is refused, so finish with loose potatoes.", "{\"text\":\"▶ Hand in the potatoes you carry\",\"color\":\"gold\",\"underlined\":true,\"clickEvent\":{\"action\":\"run_command\",\"value\":\"/potatowar pay foundry\"},\"hoverEvent\":{\"action\":\"show_text\",\"contents\":\"/potatowar pay foundry\"}}", "&7Comes to you for free once the Blood Pool is 2 tiers past Tier 5 (catch-up)."]
 			icon: "tconstruct:foundry_controller"
 			id: "507A700000010004"
 			rewards: [
@@ -193,6 +217,14 @@
 					type: "item"
 				}
 				{
+					icon: "quark:potato_crate"
+					id: "507A70000002004F"
+					optional_task: true
+					tags: ["potato_hand_in"]
+					title: "Click to hand in crates (9 each), Enchanted Potatoes (160 each) and loose potatoes"
+					type: "custom"
+				}
+				{
 					consume_items: true
 					count: 64L
 					id: "507A700000020043"
@@ -206,7 +238,7 @@
 		}
 		{
 			dependencies: ["507A700000010003"]
-			description: ["Use cobalt, knightmetal (and knightly) and scorched stone Tinkers tools, and Twilight Forest knightmetal gear.", "", "&6Unlocks&r", "- Tinkers materials: cobalt, knightmetal, knightly, scorched stone", "- Gear: knightmetal helmet, knightmetal chestplate, knightmetal leggings, knightmetal boots, knightmetal sword, knightmetal axe, knightmetal pickaxe, knightmetal ring, knightmetal shield, block and chain", "", "&7Needs Potato Soldier, Blood Pool Tier 5, and Osmium & Steeleaf.", "&7Pay a part at a time: what you hand in is saved, and counts toward your rank once it is all paid. The Submit button takes loose potatoes only. To use crates (9 each) or Enchanted Potatoes (160 each), click below. One worth more than what is still needed is refused, so finish with loose potatoes.", "{\"text\":\"▶ Hand in the potatoes you carry\",\"color\":\"gold\",\"underlined\":true,\"clickEvent\":{\"action\":\"run_command\",\"value\":\"/potatowar pay cobalt_smithing\"},\"hoverEvent\":{\"action\":\"show_text\",\"contents\":\"/potatowar pay cobalt_smithing\"}}", "&7Comes to you for free once the Blood Pool is 2 tiers past Tier 5 (catch-up)."]
+			description: ["Use cobalt, knightmetal (and knightly) and scorched stone Tinkers tools, and Twilight Forest knightmetal gear.", "", "&6Unlocks&r", "- Tinkers materials: cobalt, knightmetal, knightly, scorched stone", "- Gear: knightmetal helmet, knightmetal chestplate, knightmetal leggings, knightmetal boots, knightmetal sword, knightmetal axe, knightmetal pickaxe, knightmetal ring, knightmetal shield, block and chain", "", "&7Needs Potato Soldier, Blood Pool Tier 5, and Osmium & Steeleaf.", "&7Pay a part at a time: what you hand in is saved, and counts toward your rank once it is all paid. The potato's Submit takes loose potatoes only: &6click the crate next to it&7 (or the line below) to hand in everything you carry, loose potatoes, any mod's potato crates (9 each) and Enchanted Potatoes (160 each). One worth more than what is still needed is refused, so finish with loose potatoes.", "{\"text\":\"▶ Hand in the potatoes you carry\",\"color\":\"gold\",\"underlined\":true,\"clickEvent\":{\"action\":\"run_command\",\"value\":\"/potatowar pay cobalt_smithing\"},\"hoverEvent\":{\"action\":\"show_text\",\"contents\":\"/potatowar pay cobalt_smithing\"}}", "&7Comes to you for free once the Blood Pool is 2 tiers past Tier 5 (catch-up)."]
 			icon: "tconstruct:cobalt_ingot"
 			id: "507A700000010005"
 			rewards: [
@@ -240,6 +272,14 @@
 					tags: ["potato_offer"]
 					title: "50,000 potatoes for the war chest"
 					type: "item"
+				}
+				{
+					icon: "quark:potato_crate"
+					id: "507A70000002005F"
+					optional_task: true
+					tags: ["potato_hand_in"]
+					title: "Click to hand in crates (9 each), Enchanted Potatoes (160 each) and loose potatoes"
+					type: "custom"
 				}
 				{
 					consume_items: true
@@ -299,6 +339,14 @@
 					type: "item"
 				}
 				{
+					icon: "kubejs:enchanted_baked_potato"
+					id: "507A70000002006F"
+					optional_task: true
+					tags: ["potato_hand_in"]
+					title: "Click to hand in Enchanted Baked Potatoes (160 Enchanted Potatoes each)"
+					type: "custom"
+				}
+				{
 					consume_items: true
 					count: 16L
 					id: "507A700000020063"
@@ -354,6 +402,14 @@
 					tags: ["potato_offer_ep"]
 					title: "300,000 Enchanted Potatoes for the war chest"
 					type: "item"
+				}
+				{
+					icon: "kubejs:enchanted_baked_potato"
+					id: "507A70000002007F"
+					optional_task: true
+					tags: ["potato_hand_in"]
+					title: "Click to hand in Enchanted Baked Potatoes (160 Enchanted Potatoes each)"
+					type: "custom"
 				}
 				{
 					consume_items: true

@@ -1,0 +1,344 @@
+# Armour sets (full set; damage taken from a hit of 10 / 20 / 40)
+tier	set	pieces	armour	toughness	knockback	10	20	40
+0	minecraft:elytra	1	0	0	0.00	10.00	20.00	40.00
+0	tconstruct:plate	4	0	0	0.00	10.00	20.00	40.00
+0	tconstruct:travelers	4	0	0	0.00	10.00	20.00	40.00
+0	tconstruct:slime	4	0	0	0.00	10.00	20.00	40.00
+0	aether:sentry	1	2	0	0.00	9.84	19.68	39.36
+0	minecraft:turtle	1	2	0	0.00	9.84	19.68	39.36
+0	deeperdarker:soul_elytra	1	3	0	0.00	9.76	19.52	39.04
+0	hexerei:mushroom_witch	1	3	1	0.00	9.76	19.52	39.04
+0	minecraft:leather	4	7	0	0.00	9.20	18.88	37.76
+0	minecraft:golden	4	11	0	0.00	7.60	18.24	36.48
+0	blue_skies:pyrope	4	12	0	0.00	7.20	18.08	36.16
+0	blue_skies:horizonite	4	12	0	0.00	7.20	18.08	36.16
+0	minecraft:chainmail	4	12	0	0.00	7.20	18.08	36.16
+0	twilightforest:naga	2	13	1	0.00	6.58	16.71	35.84
+0	twilightforest:phantom	2	11	5	0.00	6.83	16.12	36.48
+0	blue_skies:aquite	4	15	0	0.00	6.00	16.00	35.20
+0	aether:zanite	4	15	0	0.00	6.00	16.00	35.20
+0	minecraft:iron	4	15	0	0.00	6.00	16.00	35.20
+0	twilightforest:ironwood	4	16	0	0.00	5.60	15.20	34.88
+0	hexerei:witch	3	14	3	0.00	5.85	14.62	35.52
+0	aether:neptune	4	15	4	0.00	5.33	13.33	35.20
+0	hexerei:druid	4	19	4	0.00	3.73	10.13	30.93
+0	blue_skies:diopside	4	16	18	0.00	4.22	9.66	24.25
+0	blue_skies:charoite	4	20	8	0.00	3.00	8.00	24.00
+0	aether:valkyrie	4	20	8	0.00	3.00	8.00	24.00
+0	aether:phoenix	4	20	8	0.00	3.00	8.00	24.00
+0	minecraft:diamond	4	20	8	0.00	3.00	8.00	24.00
+0	aether:obsidian	4	20	12	0.00	2.80	7.20	20.80
+1	create:copper_diving	2	3	0	0.00	9.76	19.52	39.04
+1	create:copper_backtank	1	4	0	0.00	9.68	19.36	38.72
+2	botania:manaweave	4	7	0	0.00	9.20	18.88	37.76
+2	ars_nouveau:sorcerer	4	11	0	0.00	7.60	18.24	36.48
+2	botania:manasteel	4	15	0	0.00	6.00	16.00	35.20
+2	botania:elementium	4	15	0	0.00	6.00	16.00	35.20
+2	ars_nouveau:arcanist	4	15	0	0.00	6.00	16.00	35.20
+2	ars_nouveau:battlemage	4	20	8	0.00	3.00	8.00	24.00
+2	botania:terrasteel	4	20	12	1.00	2.80	7.20	20.80
+3	immersiveengineering:armor_faraday	4	7	0	0.00	9.20	18.88	37.76
+3	immersiveengineering:armor_steel	4	17	4	0.00	4.53	11.73	34.13
+4	mekanism:jetpack	1	0	0	0.00	10.00	20.00	40.00
+4	mekanism:free_runners	1	0	0	0.00	10.00	20.00	40.00
+4	mekanism:scuba	1	0	0	0.00	10.00	20.00	40.00
+4	mekanism:scuba_tank	1	0	0	0.00	10.00	20.00	40.00
+4	mekanism:hazmat	3	0	0	0.00	10.00	20.00	40.00
+4	mekanism:hazmat_gown	1	0	0	0.00	10.00	20.00	40.00
+4	mekanism:hdpe_elytra	1	0	0	0.00	10.00	20.00	40.00
+4	mekanism:free_runners_armored	1	3	2	0.00	9.76	19.52	39.04
+4	mekanism:jetpack_armored	1	8	2	0.00	8.40	18.72	37.44
+4	mekanism:mekasuit	3	12	9	0.30	6.14	14.16	35.86
+4	twilightforest:steeleaf	4	20	0	0.00	4.00	12.00	33.60
+4	aether:gravitite	4	20	8	0.00	3.00	8.00	24.00
+5	create:netherite_diving	4	12	12	0.40	6.00	13.60	33.60
+5	create:netherite_backtank	2	16	6	0.20	4.74	11.77	32.69
+5	twilightforest:knightmetal	4	20	4	0.00	3.33	9.33	29.33
+5	minecraft:netherite	4	20	12	0.40	2.80	7.20	20.80
+6	iceandfire:blindfold	1	1	0	0.00	9.92	19.84	39.68
+6	iceandfire:earplugs	1	1	0	0.00	9.92	19.84	39.68
+6	alexscaves:hood_of_darkness	1	1	0.5	0.00	9.92	19.84	39.68
+6	alexscaves:cloak_of_darkness	1	1	0.5	0.00	9.92	19.84	39.68
+6	alexscaves:rainbounce	1	2	0	0.00	9.84	19.68	39.36
+6	iceandfire:sheep	4	7	0	0.00	9.20	18.88	37.76
+6	alexscaves:primordial	3	9	0	0.00	8.40	18.56	37.12
+6	iceandfire:armor_copper_metal	4	10	0	0.00	8.00	18.40	36.80
+6	iceandfire:armor_silver_metal	4	12	0	0.00	7.20	18.08	36.16
+6	alexscaves:gingerbread	4	13	0	0.00	6.80	17.60	35.84
+6	alexscaves:hazmat	4	13	2	0.00	6.40	16.00	35.84
+6	alexscaves:diving	4	15	0	0.00	6.00	16.00	35.20
+6	iceandfire:myrmex_desert	4	20	0	0.00	4.00	12.00	33.60
+6	iceandfire:myrmex_jungle	4	20	0	0.00	4.00	12.00	33.60
+6	iceandfire:mountain_troll_leather	4	17	4	0.00	4.53	11.73	34.13
+6	iceandfire:forest_troll_leather	4	17	4	0.00	4.53	11.73	34.13
+6	iceandfire:frost_troll_leather	4	17	4	0.00	4.53	11.73	34.13
+6	iceandfire:deathworm_yellow	4	17	6	0.00	4.34	10.97	31.09
+6	iceandfire:deathworm_white	4	17	6	0.00	4.34	10.97	31.09
+6	iceandfire:deathworm_red	4	17	6	0.00	4.34	10.97	31.09
+6	deeperdarker:resonarium	4	18	4	0.00	4.13	10.93	32.53
+6	twilightforest:yeti	4	20	12	0.00	2.80	7.20	20.80
+6	twilightforest:fiery	4	24	6	0.00	2.00	5.37	19.89
+6	iceandfire:tide_blue	4	23	10	0.00	2.00	5.16	17.42
+6	iceandfire:tide_bronze	4	23	10	0.00	2.00	5.16	17.42
+6	iceandfire:tide_deepblue	4	23	10	0.00	2.00	5.16	17.42
+6	iceandfire:tide_green	4	23	10	0.00	2.00	5.16	17.42
+6	iceandfire:tide_purple	4	23	10	0.00	2.00	5.16	17.42
+6	iceandfire:tide_red	4	23	10	0.00	2.00	5.16	17.42
+6	iceandfire:tide_teal	4	23	10	0.00	2.00	5.16	17.42
+6	iceandfire:armor_red	4	26	8	0.00	2.00	4.00	14.40
+6	iceandfire:armor_bronze	4	26	8	0.00	2.00	4.00	14.40
+6	iceandfire:armor_green	4	26	8	0.00	2.00	4.00	14.40
+6	iceandfire:armor_gray	4	26	8	0.00	2.00	4.00	14.40
+6	iceandfire:armor_blue	4	26	8	0.00	2.00	4.00	14.40
+6	iceandfire:armor_white	4	26	8	0.00	2.00	4.00	14.40
+6	iceandfire:armor_sapphire	4	26	8	0.00	2.00	4.00	14.40
+6	iceandfire:armor_silver	4	26	8	0.00	2.00	4.00	14.40
+6	iceandfire:armor_electric	4	26	8	0.00	2.00	4.00	14.40
+6	iceandfire:armor_amythest	4	26	8	0.00	2.00	4.00	14.40
+6	iceandfire:armor_copper	4	26	8	0.00	2.00	4.00	14.40
+6	iceandfire:armor_black	4	26	8	0.00	2.00	4.00	14.40
+6	iceandfire:dragonsteel_fire	4	34	24	0.00	2.00	4.00	8.00
+6	iceandfire:dragonsteel_ice	4	34	24	0.00	2.00	4.00	8.00
+6	iceandfire:dragonsteel_lightning	4	34	24	0.00	2.00	4.00	8.00
+7	redstone_arsenal:flux_elytra	1	0	1	0.00	10.00	20.00	40.00
+7	powersuits:powerarmor_head	1	0	0	0.00	10.00	20.00	40.00
+7	powersuits:powerarmor_torso	1	0	0	0.00	10.00	20.00	40.00
+7	powersuits:powerarmor_legs	1	0	0	0.00	10.00	20.00	40.00
+7	powersuits:powerarmor_feet	1	0	0	0.00	10.00	20.00	40.00
+7	twilightforest:arctic	4	16	8	0.00	4.60	11.20	30.40
+7	redstone_arsenal:flux	4	20	4	0.00	3.33	9.33	29.33
+7	deeperdarker:warden	4	24	16	0.40	2.00	4.00	12.27
+8	alexsmobs:tarantula_hawk_elytra	1	3	0	0.00	9.76	19.52	39.04
+8	mekanismtools:lapis_lazuli	4	9	0	0.00	8.40	18.56	37.12
+8	mekanismtools:refined_glowstone	4	20	0	0.00	4.00	12.00	33.60
+8	mekanismtools:bronze	4	18	4	0.00	4.13	10.93	32.53
+8	mekanismtools:steel	4	20	8	0.00	3.00	8.00	24.00
+8	mekanismtools:osmium	4	21	12	0.40	2.40	6.40	19.20
+8	mekanismtools:refined_obsidian	4	31	20	0.80	2.00	4.00	8.00
+10	mekanism:mekasuit_bodyarmor	1	8	3	0.10	8.25	18.72	37.44
+
+# Weapons (damage a hit; a second at the shown speed)
+tier	item	damage	speed	per_second	ability
+0	twilightforest:glass_sword	40	1.6	64.0	one hit then breaks (takes max durability + 1); cannot be repaired
+0	blue_skies:diopside_axe	12	0.5	6.0	none (enchantability 14); falsite coating absorbs durability first: max(30, floor(maxDamag
+0	blue_skies:crushing_hammer	12	0.7	8.4	hold at least 20 ticks and release: 6 damage as blue_skies:slam (bypasses armour and shiel
+0	blue_skies:different_sword	11	1.6	17.6	Every hit gives the TARGET Regeneration IV for 2 s (a drawback); enchantability 0 (no tabl
+0	twilightforest:diamond_minotaur_axe	10	1	10.0	+7 damage while sprinting (17 total)
+0	blue_skies:charoite_axe	9	1	9.0	none (enchantability 10); falsite coating absorbs durability first: max(30, floor(maxDamag
+0	blue_skies:diopside_sword	9	1.2	10.8	none (enchantability 14); falsite coating absorbs durability first: max(30, floor(maxDamag
+0	blue_skies:aquite_axe	9	0.9	8.1	none (enchantability 32); falsite coating absorbs durability first: max(30, floor(maxDamag
+0	blue_skies:horizonite_axe	9	1	9.0	sets the target on fire for 3 s (hurtEnemy, and on AttackEntityEvent before the hit lands)
+0	aether:holystone_axe	9	0.8	7.2	chance of ambrosium shards when mining (HolystoneTool via BreakEvent; rate not read)
+0	aether:zanite_axe	9	0.9	8.1	mining speed x(2d/max + 0.5): x0.5 new, x1 at 25% worn, up to x2.5 nearly broken
+0	aether:valkyrie_axe	9	0.7	6.3	+3.5 block reach and attack range in the main hand
+0	minecraft:stone_axe	9	0.8	7.2	disables shields (vanilla axe)
+0	minecraft:iron_axe	9	0.9	8.1	disables shields (vanilla axe)
+0	minecraft:diamond_axe	9	1	9.0	disables shields (vanilla axe)
+0	minecraft:trident	9	1.1	9.9	thrown 8 damage (Loyalty/Riptide/Channeling enchantable)
+0	twilightforest:ironwood_axe	9	0.9	8.1	crafted with Fortune I
+0	blue_skies:pyrope_axe	8.5	1	8.5	none (enchantability 10); falsite coating absorbs durability first: max(30, floor(maxDamag
+0	twilightforest:ice_sword	7.5	1.6	12.0	Frosty (slows) 10 s, amplifier 2 on hit
+0	blue_skies:charoite_sword	7	1.6	11.2	none (enchantability 10); falsite coating absorbs durability first: max(30, floor(maxDamag
+0	blue_skies:diopside_pickaxe	7	1.2	8.4	none (enchantability 14); falsite coating absorbs durability first: max(30, floor(maxDamag
+0	aether:skyroot_axe	7	0.8	5.6	double drops from some blocks (SkyrootTool; not read)
+0	aether:valkyrie_lance	7	1.3	9.1	+3.5 block reach and +3.5 attack range in the main hand (6.5 attack reach)
+0	aether:flaming_sword	7	1.6	11.2	full-strength hits set the target on fire for 30 s + 4 s per Fire Aspect level
+0	aether:lightning_sword	7	1.6	11.2	full-strength hits call a lightning bolt on the target (the wielder is spared)
+0	aether:holy_sword	7	1.6	11.2	+8.25 damage (+2.5 per Smite level) against undead at full strength; 10 extra durability p
+0	aether:vampire_blade	7	1.6	11.2	full-strength hits heal the wielder 1 HP (when hurt)
+0	minecraft:diamond_sword	7	1.6	11.2	sweep (vanilla)
+0	minecraft:wooden_axe	7	0.8	5.6	disables shields (vanilla axe)
+0	minecraft:golden_axe	7	1	7.0	disables shields (vanilla axe)
+0	twilightforest:gold_minotaur_axe	7	1.2	8.4	+7 damage while sprinting (direct player/mob melee)
+0	blue_skies:aquite_sword	6	1.6	9.6	none (enchantability 32); falsite coating absorbs durability first: max(30, floor(maxDamag
+0	blue_skies:horizonite_sword	6	1.6	9.6	sets the target on fire for 3 s (hurtEnemy, and on AttackEntityEvent before the hit lands)
+0	aether:pig_slayer	6	1.6	9.6	+16 damage against #aether:pigs = pig, phyg, piglin, piglin brute, zombified piglin, hogli
+0	aether:hammer_of_kingbdogz	6	1.6	9.6	right-click throws a hammer projectile that launches what it hits (constant 7.0 in launchT
+0	minecraft:iron_sword	6	1.6	9.6	sweep (vanilla)
+0	twilightforest:ironwood_sword	6	1.6	9.6	crafted with Knockback I
+0	blue_skies:pyrope_sword	5.5	2	11.0	none (enchantability 10); falsite coating absorbs durability first: max(30, floor(maxDamag
+0	blue_skies:charoite_pickaxe	5	1.2	6.0	none (enchantability 10); falsite coating absorbs durability first: max(30, floor(maxDamag
+0	aether:holystone_sword	5	1.6	8.0	none
+0	aether:valkyrie_pickaxe	5	0.9	4.5	+3.5 block reach and attack range in the main hand
+0	minecraft:stone_sword	5	1.6	8.0	sweep (vanilla)
+0	twilightforest:mazebreaker_pickaxe	5	1.2	6.0	16x speed on maze stone (costs 16 durability per maze/castle block); no repair
+0	blue_skies:aquite_pickaxe	4	1.2	4.8	none (enchantability 32); falsite coating absorbs durability first: max(30, floor(maxDamag
+0	blue_skies:horizonite_pickaxe	4	1.2	4.8	sets the target on fire for 3 s (hurtEnemy, and on AttackEntityEvent before the hit lands)
+0	aether:skyroot_sword	4	1.6	6.4	none
+0	aether:zanite_pickaxe	4	1.2	4.8	mining speed x(2d/max + 0.5): x0.5 new, x1 at 25% worn, up to x2.5 nearly broken
+0	aether:candy_cane_sword	4	1.6	6.4	50% chance a hit drops a candy cane
+0	blue_skies:bluebright_spear	4	1.1	4.4	thrown: 8 damage (8 x its wood's projectile modifier 1); a Blue Skies projectile, so not c
+0	blue_skies:starlit_spear	4	1.1	4.4	thrown: 8.8 damage (8 x its wood's projectile modifier 1.1); a Blue Skies projectile, so n
+0	blue_skies:frostbright_spear	4	1.1	4.4	thrown: 7.2 damage (8 x its wood's projectile modifier 0.9); a Blue Skies projectile, so n
+0	blue_skies:lunar_spear	4	1.1	4.4	thrown: 8 damage (8 x its wood's projectile modifier 1); a Blue Skies projectile, so not c
+0	blue_skies:dusk_spear	4	1.1	4.4	thrown: 8.8 damage (8 x its wood's projectile modifier 1.1); a Blue Skies projectile, so n
+0	blue_skies:maple_spear	4	1.1	4.4	thrown: 7.2 damage (8 x its wood's projectile modifier 0.9); a Blue Skies projectile, so n
+0	blue_skies:comet_spear	4	1.1	4.4	thrown: 7.2 damage (8 x its wood's projectile modifier 0.9); a Blue Skies projectile, so n
+0	blue_skies:soulbound_spear	4	1.1	4.4	thrown: 8 damage (lunar stick, x1.0); returns to the thrower (not re-read)
+0	minecraft:wooden_sword	4	1.6	6.4	sweep (vanilla)
+0	minecraft:golden_sword	4	1.6	6.4	sweep (vanilla)
+0	twilightforest:ironwood_pickaxe	4	1.2	4.8	crafted with Efficiency I
+0	blue_skies:pyrope_pickaxe	3.5	1.2	4.2	none (enchantability 10); falsite coating absorbs durability first: max(30, floor(maxDamag
+0	aether:holystone_pickaxe	3	1.2	3.6	chance of ambrosium shards when mining (HolystoneTool via BreakEvent; rate not read)
+0	aether:skyroot_pickaxe	2	1.2	2.4	double drops from some blocks (SkyrootTool; not read)
+2	botania:terra_axe	10	1	10.0	fells whole trees (Terra Truncator)
+2	botania:manasteel_axe	9	0.9	8.1	repairs with mana
+2	botania:elementium_axe	9	0.9	8.1	beheading: mobs drop heads (loot condition botania:elementium_axe_beheading)
+2	botania:thunder_sword	8	2.5	20.0	on hit chains to 4 mobs within 8 blocks (10 in a thunderstorm) for 5, 4, 3, 2 damage (11..
+2	botania:star_sword	8	1.6	12.8	swinging calls falling stars at the target spot (5 damage, 25% chance 10); 12-tick interva
+2	ars_nouveau:enchanters_sword	8	1.6	12.8	casts its inscribed spell on each hit; mana discount
+2	botania:manasteel_sword	6	1.6	9.6	repairs with mana
+2	botania:elementium_sword	6	1.6	9.6	repairs with mana; boosts pixies (I)
+2	botania:ender_dagger	6	2.75	16.5	+20 damage hit to endermen (Soulscribe)
+2	evilcraft:spikey_claws	6	1.6	9.6	digs dirt-like blocks fast
+2	botania:elementium_pickaxe	4	1.2	4.8	voids junk blocks (I)
+2	evilcraft:vein_sword	4	1.6	6.4	extra blood from kills (x2.0)
+3	immersiveengineering:axe_steel	9.5	0.9	8.6	
+3	immersiveengineering:sword_steel	7	1.6	11.2	
+3	immersiveengineering:pickaxe_steel	5	1.2	6.0	
+4	twilightforest:steeleaf_axe	10	1	10.0	crafted with Efficiency II
+4	mekanism:flamethrower	10			stream of flames: each flame entity deals 10 and sets fire (lifespan 80 ticks); smelts or 
+4	aether:gravitite_axe	9	1	9.0	Right-click a block it is right for (not sneaking, air above): the block lifts off as a fl
+4	deeperdarker:resonarium_axe	9	1	9.0	none: a plain vanilla AxeItem; enchantability 15
+4	aether:gravitite_sword	7	1.6	11.2	At full attack strength each hit pushes the target up (+1.0 velocity) if it is on the grou
+4	deeperdarker:resonarium_sword	7	1.6	11.2	none: a plain vanilla SwordItem; enchantability 15
+4	twilightforest:steeleaf_sword	7	1.6	11.2	crafted with Looting II
+4	aether:gravitite_pickaxe	5	1.2	6.0	Right-click a block it is right for (not sneaking, air above): the block lifts off as a fl
+4	deeperdarker:resonarium_pickaxe	5	1.2	6.0	none: a plain vanilla PickaxeItem; enchantability 15
+4	twilightforest:steeleaf_pickaxe	5	1.2	6.0	crafted with Fortune II
+4	mekanism:atomic_disassembler	5	1.6	8.0	hits for 21 at sword speed; mines anything at up to 128 speed
+4	tinker_rapier:estoc_tic	2.5	1.8	4.5	trait piercing (bonus damage through armour); right-click lunge
+4	tinker_rapier:rapier_tic	1.5	2.75	4.1	sting: on hitting a living target without a chestplate, an extra 0.8 x (0.75 x A x (0.2 + 
+5	minecraft:netherite_axe	10	1	10.0	disables shields (vanilla axe)
+5	twilightforest:knightmetal_axe	10	1	10.0	+2 damage to unarmoured targets (armour value 0)
+5	minecraft:netherite_sword	8	1.6	12.8	sweep (vanilla)
+5	twilightforest:knightmetal_sword	7	1.6	11.2	+2 damage to armoured targets (x armour cover fraction, rounded down; +2 if armour value b
+5	enderio:dark_steel_sword	7	1.6	11.2	"The Ender": 7% chance of a mob head on kill; empowered upgrade (energy shields durability
+5	aether:zanite_sword	6	1.6	9.6	Damage rises as it wears: tooltip = 6 + max(0, round(d/25 - 2.5)), d = durability used (0-
+5	twilightforest:knightmetal_pickaxe	5	1.2	6.0	+2 damage to armoured targets (as sword)
+6	iceandfire:dragonsteel_fire_axe	30	1	30.0	sets target alight 15 s + knockback 1; disables shields
+6	iceandfire:dragonsteel_ice_axe	30	1	30.0	freezes target 15 s + Slowness III 15 s + knockback 1; disables shields
+6	iceandfire:dragonsteel_lightning_axe	30	1	30.0	lightning bolt on target (not at <=20% swing charge) + knockback 1; disables shields
+6	iceandfire:dragonsteel_fire_pickaxe	26	1.2	31.2	sets target alight 15 s + knockback 1
+6	iceandfire:dragonsteel_ice_pickaxe	26	1.2	31.2	freezes target 15 s + Slowness III 15 s + knockback 1
+6	iceandfire:dragonsteel_lightning_pickaxe	26	1.2	31.2	lightning bolt on target (not at <=20% swing charge) + knockback 1
+6	iceandfire:dragonsteel_fire_sword	25	1.6	40.0	sets target alight 15 s + knockback 1
+6	iceandfire:dragonsteel_ice_sword	25	1.6	40.0	freezes target 15 s + Slowness III 15 s + knockback 1
+6	iceandfire:dragonsteel_lightning_sword	25	1.6	40.0	lightning bolt on target (not at <=20% swing charge) + knockback 1
+6	iceandfire:dread_queen_sword	25	1.6	40.0	dragonsteel stats; no survival source found (no recipe, no loot table in the index)
+6	iceandfire:troll_weapon_axe	17	0.5	8.5	swing only lands at >= 95% charge
+6	iceandfire:troll_weapon_column	17	0.5	8.5	swing only lands at >= 95% charge
+6	iceandfire:troll_weapon_column_forest	17	0.5	8.5	swing only lands at >= 95% charge
+6	iceandfire:troll_weapon_column_frost	17	0.5	8.5	swing only lands at >= 95% charge
+6	iceandfire:troll_weapon_hammer	17	0.5	8.5	swing only lands at >= 95% charge
+6	iceandfire:troll_weapon_trunk	17	0.5	8.5	swing only lands at >= 95% charge
+6	iceandfire:troll_weapon_trunk_frost	17	0.5	8.5	swing only lands at >= 95% charge
+6	iceandfire:dread_knight_sword	17	1.6	27.2	none beyond stats (17 per hit at sword speed)
+6	iceandfire:tide_trident	13	1.1	14.3	thrown: 12 damage (vanilla trident 8)
+6	iceandfire:ghost_sword	11	3	33.0	each swing also fires a spectral sword (base damage = attack modifiers x 0.5 = 5)
+6	iceandfire:dragonbone_axe	10	1	10.0	disables shields
+6	iceandfire:dragonbone_sword_fire	9.5	1.6	15.2	vs ice dragons +13.5 (inFire); sets target alight 5 s; knockback 1
+6	iceandfire:dragonbone_sword_ice	9.5	1.6	15.2	vs fire dragons +13.5 (drown); frozen + Slowness III and Mining Fatigue III 5 s; knockback
+6	iceandfire:dragonbone_sword_lightning	9.5	1.6	15.2	lightning bolt on target (not at <=20% swing charge); vs fire/ice dragons +9.5; knockback 
+6	alexscaves:primitive_club	9	0.25	2.3	Stunned 7.5 s on hit (chance; 4 s on players I)
+6	twilightforest:fiery_sword	8	1.6	12.8	sets target alight 15 s (not fire-immune targets); no Fire Aspect; fire-resistant item
+6	iceandfire:dragonbone_sword	8	1.6	12.8	
+6	iceandfire:silver_axe	7	1	7.0	extra magic hit of (sword stat + 3) against undead (I: hurt cooldown leaves only the exces
+6	iceandfire:myrmex_desert_axe	7	1	7.0	extra generic hit of (stat + 5) on non-arthropods and death worms (I: excess over first hi
+6	iceandfire:myrmex_jungle_axe	7	1	7.0	extra generic hit of (stat + 5) on non-arthropods and death worms (I: excess over first hi
+6	reliquary:mercy_cross	7	1.6	11.2	against undead the damage modifier is 12 (13 total)
+6	iceandfire:hippogryph_sword	6.5	1.6	10.4	every player hit also sweeps all mobs within 3 blocks of the target (1 + sweeping ratio x 
+6	twilightforest:fiery_pickaxe	6	1.2	7.2	auto-smelts drops; sets target alight 15 s
+6	iceandfire:copper_axe	6	1	6.0	disables shields
+6	iceandfire:dragonbone_pickaxe	6	1.2	7.2	
+6	iceandfire:stymphalian_bird_dagger	6	3	18.0	fast dagger
+6	alexscaves:frostmint_spear	6	1	6.0	throwable; freezing effect (I)
+6	alexscaves:ortholance	6	1.6	9.6	charged thrust releases water waves (WaveEntity) that damage and push
+6	iceandfire:silver_sword	5	1.6	8.0	extra magic hit of (sword stat + 3) against undead (I: hurt cooldown leaves only the exces
+6	iceandfire:myrmex_desert_sword	5	1.6	8.0	extra generic hit of (stat + 5) on non-arthropods and death worms (I: excess over first hi
+6	iceandfire:myrmex_jungle_sword	5	1.6	8.0	extra generic hit of (stat + 5) on non-arthropods and death worms (I: excess over first hi
+6	iceandfire:myrmex_desert_sword_venom	5	1.6	8.0	as myrmex sword; venom effect not found in the classes read (I)
+6	iceandfire:myrmex_jungle_sword_venom	5	1.6	8.0	as myrmex sword; venom effect not found in the classes read (I)
+6	iceandfire:amphithere_macuahuitl	5	1.6	8.0	strong knockback/launch on hit; disables shields
+6	iceandfire:dread_sword	5	1.6	8.0	
+6	iceandfire:copper_sword	4	1.6	6.4	
+6	alexscaves:limestone_spear	4	1	4.0	throwable spear
+6	alexscaves:sharpened_candy_cane	4	8	32.0	very fast stabs
+6	reliquary:magicbane	4	1.6	6.4	on hit random harmful effects (Weakness/Slowness/Poison, 5 s, level up to III)
+6	iceandfire:silver_pickaxe	3	1.2	3.6	extra magic hit of (sword stat + 3) against undead (I: hurt cooldown leaves only the exces
+6	iceandfire:myrmex_desert_pickaxe	3	1.2	3.6	extra generic hit of (stat + 5) on non-arthropods and death worms (I: excess over first hi
+6	iceandfire:myrmex_jungle_pickaxe	3	1.2	3.6	extra generic hit of (stat + 5) on non-arthropods and death worms (I: excess over first hi
+6	iceandfire:copper_pickaxe	2	1.2	2.4	
+6	iceandfire:hippocampus_slapper	2	1.6	3.2	Slowness III + Nausea III 5 s, knockback 3
+7	extrautilitiesreborn:kikoku	14	3.2	44.8	14 damage at 3.2 swings/s, never wears out
+7	deeperdarker:warden_axe	11	1	11.0	none: a plain vanilla AxeItem; fire-resistant item; enchantability 18; level 5 is not in F
+7	redstone_arsenal:flux_trident	10.5	1.1	11.6	+2 reach; throwable; plunge attack on landing (fall damage x0.4 while plunging)
+7	redstone_arsenal:flux_axe	10	1	10.0	
+7	redstone_arsenal:flux_hammer	9.5	0.6	5.7	area mining; empowered shockwave (FluxHammerShockwave)
+7	deeperdarker:warden_sword	9	1.6	14.4	none: a plain vanilla SwordItem; fire-resistant item; enchantability 18; level 5 is not in
+7	extrautilitiesreborn:etheric_sword	9	19	171.0	no swing cooldown (19 swings/s; i-frames still limit one target to about 2 hits/s)
+7	extrautilitiesreborn:fire_axe	9	1	9.0	fells connected wood
+7	redstone_arsenal:flux_sword	7.5	1.6	12.0	empowered: every swing launches a Flux Slash (2 + Sharpness level damage) at 2,000 RF
+7	deeperdarker:warden_pickaxe	7	1.2	8.4	none: a plain vanilla PickaxeItem; fire-resistant item; enchantability 18; level 5 is not 
+7	redstone_arsenal:flux_pickaxe	5.5	1.2	6.6	
+7	redstone_arsenal:flux_wrench	5	2	10.0	battle wrench, can be thrown (ThrownFluxWrench)
+7	extrautilitiesreborn:healing_axe	5	6	30.0	hitting changes the target's health by up to 4 (heals the living, XU2 style); heals its ho
+7	extrautilitiesreborn:destruction_pickaxe	5	1	5.0	
+7	powersuits:powerfist	2	4	8.0	tool modules (pickaxe, axe, shovel, hoe, shears, AOE, vein miner); weapon modules: plasma 
+8	mekanismtools:refined_obsidian_paxel	17	1.6	27.2	pickaxe+axe+shovel in one; axe-level damage at sword speed
+8	mekanismtools:refined_obsidian_axe	16	1.1	17.6	
+8	mekanism_weaponry:railgun	16	1	16.0	steel-rod projectile, 5 rods per load (reload 55 ticks); second mode scales stats x2; scop
+8	mekanismtools:osmium_paxel	14	1.6	22.4	pickaxe+axe+shovel in one; axe-level damage at sword speed
+8	mekanismtools:osmium_axe	13	0.7	9.1	
+8	twilightforest:giant_sword	12	0.5	6.0	+2.5 block reach and +2.5 entity reach (main hand)
+8	mekanismtools:refined_obsidian_sword	12	1.6	19.2	
+8	mekanismtools:steel_paxel	12	1.6	19.2	pickaxe+axe+shovel in one; axe-level damage at sword speed
+8	mekanismtools:bronze_paxel	11	1.6	17.6	pickaxe+axe+shovel in one; axe-level damage at sword speed
+8	mekanismtools:steel_axe	11	1	11.0	
+8	mekanismtools:netherite_paxel	11	1.6	17.6	pickaxe+axe+shovel in one
+8	twilightforest:giant_pickaxe	10	0.5	5.0	+2.5 block and entity reach; 64x speed on giant blocks, breaks them whole
+8	mekanismtools:bronze_axe	10	1	10.0	
+8	mekanismtools:refined_glowstone_paxel	10	1.6	16.0	pickaxe+axe+shovel in one; axe-level damage at sword speed
+8	mekanismtools:refined_obsidian_pickaxe	10	1.2	12.0	
+8	mekanismtools:stone_paxel	10	1.6	16.0	pickaxe+axe+shovel in one
+8	mekanismtools:iron_paxel	10	1.6	16.0	pickaxe+axe+shovel in one
+8	mekanismtools:diamond_paxel	10	1.6	16.0	pickaxe+axe+shovel in one
+8	mekanismtools:refined_glowstone_axe	9	1.1	9.9	
+8	mekanismtools:osmium_sword	8	1.6	12.8	
+8	mekanismtools:wood_paxel	8	1.6	12.8	pickaxe+axe+shovel in one
+8	mekanismtools:gold_paxel	8	1.6	12.8	pickaxe+axe+shovel in one
+8	mekanism_weaponry:plasma_rifle	8	3.3	26.4	plasma projectile; 26.7 damage per second sustained until heat (20 per shot) forces a relo
+8	mekanismtools:lapis_lazuli_paxel	7	1.6	11.2	pickaxe+axe+shovel in one; axe-level damage at sword speed
+8	mekanismtools:steel_sword	7	1.6	11.2	
+8	mekanismtools:bronze_sword	6	1.6	9.6	
+8	mekanismtools:lapis_lazuli_axe	6	1.1	6.6	
+8	mekanismtools:osmium_pickaxe	6	1.2	7.2	
+8	mekanismtools:refined_glowstone_sword	6	1.6	9.6	
+8	mekanism_weaponry:gauntlet	6	1	6.0	launches the target (0.55 knockback)
+8	mekanismtools:lapis_lazuli_sword	5	1.6	8.0	
+8	mekanismtools:steel_pickaxe	5	1.2	6.0	
+8	mekanismtools:bronze_pickaxe	4	1.2	4.8	
+8	mekanismtools:refined_glowstone_pickaxe	4	1.2	4.8	
+8	create_sabers:brass_saber	4	1.6	6.4	Brass Nausea 10 s on hit (jerks the target's movement); claymore: 2.75 reach, x0.75 150-de
+8	create_sabers:brass_saber_galaxy	4	1.6	6.4	Brass Nausea 10 s on hit; claymore preset; held lit: Better Combat two-handed; blocking wi
+8	create_sabers:copper_saber	4	1.6	6.4	no on-hit effect; claymore preset; held lit: Better Combat two-handed; blocking with a lit
+8	create_sabers:zinc_saber	4	1.8	7.2	Scattered Zinc 10 s on hit (turns the target's view); claymore preset; held lit: Better Co
+8	create_sabers:double_brass_saber	4	1.6	6.4	Brass Nausea 10 s on hit; twin_blade: 2.5 reach, two 150-degree sweeps x1.0; held lit: Bet
+8	create_sabers:double_copper_saber	4	1.6	6.4	no on-hit effect; twin_blade preset; held lit: Better Combat two-handed; blocking with a l
+8	create_sabers:double_zinc_saber	4	1.8	7.2	Scattered Zinc 10 s on hit; twin_blade preset; held lit: Better Combat two-handed; blockin
+8	mekanismtools:lapis_lazuli_pickaxe	3	1.2	3.6	
+8	mekanism_weaponry:tesla_minigun	2.5	5	12.5	electric bolts: 12.5 damage per second; heat 5 per shot; a Fire Rate Chip 4 takes the cool
+9	draconicevolution:chaotic_axe	22.5	2	45.0	AOE attack module (sweeps 1.5x range); modules: damage, speed, AOE, energy, tree harvest; 
+9	draconicevolution:chaotic_staff	22.5	1	22.5	pickaxe+axe+shovel+hoe+sword; AOE; elemental damage modules (fire/ice/lightning)
+9	draconicevolution:chaotic_sword	17.5	3.2	56.0	AOE attack module (sweeps 1.5x range); modules: damage, speed, AOE, energy, fire-immune it
+9	draconicevolution:draconic_axe	15.75	1.5	23.6	AOE attack module (sweeps 1.5x range); modules: damage, speed, AOE, energy, tree harvest; 
+9	draconicevolution:draconic_staff	15.75	0.75	11.8	pickaxe+axe+shovel+hoe+sword; AOE; elemental damage modules (fire/ice/lightning)
+9	draconicevolution:chaotic_pickaxe	12.5	2.4	30.0	modules: damage, speed, AOE, energy, fire-immune item; energy-powered (no durability)
+9	draconicevolution:draconic_sword	12.25	2.4	29.4	AOE attack module (sweeps 1.5x range); modules: damage, speed, AOE, energy, fire-immune it
+9	draconicevolution:wyvern_axe	11.25	1.25	14.1	AOE attack module (sweeps 1.5x range); modules: damage, speed, AOE, energy, tree harvest; 
+9	alexscaves:extinction_spear	9	1	9.0	thrown (velocity 3.5); summons dinosaur spirits that attack nearby enemies (damage not rea
+9	draconicevolution:wyvern_sword	8.75	2	17.5	AOE attack module (sweeps 1.5x range); modules: damage, speed, AOE, energy, fire-immune it
+9	draconicevolution:draconic_pickaxe	8.75	1.8	15.8	modules: damage, speed, AOE, energy, fire-immune item; energy-powered (no durability)
+9	botania:terra_sword	8	1.6	12.8	full-charge swing fires a beam: 8 damage (4 + tier 4) to each living entity it passes, up 
+9	draconicevolution:wyvern_pickaxe	6.25	1.5	9.4	modules: damage, speed, AOE, energy, fire-immune item; energy-powered (no durability)
+10	mekanism:meka_tool	5	1.6	8.0	attack amplification x4 (+4/8/16/24/32; 2,000 J per 4 bonus damage = 16 kJ/hit at +32); te

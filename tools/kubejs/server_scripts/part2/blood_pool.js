@@ -53,6 +53,16 @@ const TINKERS_CASTING = list => new RegExp('^tconstruct:smeltery/casting/metal/(
 const TINKERS_MELTING = list => new RegExp('^tconstruct:smeltery/melting/(metal/)?(' + list.join('|') + ')/')
 const MA_ESSENCE = (dir, list) => new RegExp('^mysticalagriculture:essence/' + dir + '/(' + list.join('|') + ')$')
 const MA_SEEDS = list => new RegExp('^mysticalagriculture:seed/(infusion|crafting)/(' + list.join('|') + ')$')
+// Item families, for TIERS and the locks below: SETS(ns, names) is each name's helmet, chestplate, leggings and boots;
+// EACH(ns, names) the names as ids; TOOLS(ns, names, kinds) each name with each kind.
+const PIECES = ['helmet', 'chestplate', 'leggings', 'boots']
+const SETS = (ns, names) => { const out = []; names.forEach(n => PIECES.forEach(p => out.push(ns + ':' + n + '_' + p))); return out }
+const EACH = (ns, names) => names.map(n => ns + ':' + n)
+const TOOLS = (ns, names, kinds) => { const out = []; names.forEach(n => kinds.forEach(k => out.push(ns + ':' + n + '_' + k))); return out }
+const DRAGON_SCALES = ['amythest', 'black', 'blue', 'bronze', 'copper', 'electric', 'gray', 'green', 'red', 'sapphire',
+  'silver', 'white'].map(c => 'armor_' + c)                      // Ice and Fire's dragon scale armour, by colour
+const SEA_SERPENTS = ['blue', 'bronze', 'deepblue', 'green', 'purple', 'red', 'teal'].map(c => 'tide_' + c)
+const DRAGONSTEEL = ['fire', 'ice', 'lightning'].map(e => 'dragonsteel_' + e)
 // A compat recipe in one mod that makes ANOTHER mod's sealed item (Ender IO's SAG mill and alloy smelter,
 // Thermal's machines, Botania's elven trade). Their results are tags or secondary outputs, so KubeJS cannot
 // see them (kubejsSeesIt: false) and an item lock misses them. Found in game by /bloodpool audit at Tier 5.
@@ -179,7 +189,8 @@ const TIERS = [
         MA_SEEDS(['steel', 'aluminum', 'hop_graphite'])] } },
 
   { tier: 4, name: 'A Font', drops: 200000, unlocks: {
-      mods: ['mekanism', 'mekanismgenerators', 'tinker_rapier'],
+      // Tinker's Rapier moved to Tier 8 (owner decision 2026-11-26, research/GEAR_BALANCE.md)
+      mods: ['mekanism', 'mekanismgenerators'],
       items: [
         // The Aether's gravitite (diamond, with set powers) and Deeper and Darker's resonarium tools, with Twilight's steeleaf
         // (owner decisions 2026-11-22, research/AETHER_DEEPERDARKER.md). Looted copies are held by WEAR_LOCKS and WIELD_LOCKS.
@@ -235,9 +246,17 @@ const TIERS = [
         'create:netherite_backtank', 'create:netherite_diving_helmet', 'create:netherite_diving_boots',
         'farmersdelight:netherite_knife', 'supplementaries:netherite_door', 'supplementaries:netherite_trapdoor',
         // The Potato Press (startup_scripts/potato_press.js): the Blood God's gift at the reveal (REVEAL_TIER)
-        'kubejs:potato_press'],
+        'kubejs:potato_press',
+        // Gear check, owner decisions 2026-11-26 (research/GEAR_BALANCE.md): Ars Nouveau's enchanter's sword has
+        // netherite's numbers (was Tier 2); Twilight's giant sword and pickaxe (6 a second, was 8) and arctic armour
+        // (16 / 8, below yeti and fiery, was 7) fit here.
+        'ars_nouveau:enchanters_sword', 'twilightforest:giant_sword', 'twilightforest:giant_pickaxe',
+        'twilightforest:arctic_fur', 'twilightforest:arctic_helmet', 'twilightforest:arctic_chestplate',
+        'twilightforest:arctic_leggings', 'twilightforest:arctic_boots'],
       tags: [],
       recipes: [
+        // Tinkers' nahuatl (the best handle, +25%; an all-nahuatl sword equals netherite), owner decision 2026-11-26
+        TINKERS_MATERIALS(['nahuatl']), /^tconstruct:tables\/recycling\/twilightforest\/arctic_/,
         // Netherite's other routes: results that are tags or secondary outputs, or that make ancient debris itself
         TINKERS_CASTING(['netherite']), TINKERS_MELTING(['netherite', 'molten_debris']), /^tconstruct:smeltery\/alloys\/molten_netherite$/,
         /^tconstruct:tools\/modifiers\/(salvage\/)?upgrade\/netherite$/,
@@ -264,10 +283,8 @@ const TIERS = [
       mods: ['ae2', 'ae2additions', 'ae2wtlib', 'ae2insertexportcard', 'appliedcooking', 'appbot',
              'appmek', 'createappliedkinetics', 'bigreactors', 'reliquary', 'alexscaves', 'iceandfire'],
       items: [
-        // Deeper and Darker's resonarium armour: a full set cancels every armour-bypassing hit (falls, wither, poison, the
-        // void), with dragon scale and terrasteel (owner decisions 2026-11-22).
-        'deeperdarker:resonarium_helmet', 'deeperdarker:resonarium_chestplate', 'deeperdarker:resonarium_leggings',
-        'deeperdarker:resonarium_boots',
+        // Botania's terra blade (8 plus an 8 beam, was 9) with terrasteel (owner decision 2026-11-26)
+        'botania:terra_sword',
         'botania:terra_plate', 'botania:terrasteel_ingot', 'botania:alfheim_portal',
         'botania:natura_pylon', 'botania:mana_pylon', 'botania:dreamwood_log',
         'botania:elementium_ingot', 'botania:pixie_dust', 'botania:dragonstone',
@@ -301,6 +318,10 @@ const TIERS = [
         'deeperdarker:warden_helmet', 'deeperdarker:warden_chestplate', 'deeperdarker:warden_leggings', 'deeperdarker:warden_boots',
         'deeperdarker:warden_sword', 'deeperdarker:warden_pickaxe', 'deeperdarker:warden_axe', 'deeperdarker:warden_shovel',
         'deeperdarker:warden_hoe', 'deeperdarker:reinforced_echo_shard', 'deeperdarker:warden_upgrade_smithing_template',
+        // Deeper and Darker's resonarium armour (was 6): a full set takes no damage from ordinary hits while its durability
+        // lasts. Ice and Fire's sea serpent armour (was 6): Strength IV in rain or water. Owner decisions 2026-11-26.
+        'deeperdarker:resonarium_helmet', 'deeperdarker:resonarium_chestplate', 'deeperdarker:resonarium_leggings',
+        'deeperdarker:resonarium_boots'].concat(SETS('iceandfire', SEA_SERPENTS), [
         'create:sturdy_sheet', 'create:railway_casing', 'create:track', 'create:track_station',
         'create:controls', 'create:packager', 'create:stock_ticker', 'create:package_frogport',
         'create:item_vault', 'create:mechanical_roller',
@@ -311,13 +332,12 @@ const TIERS = [
         'bigreactors:reinforced_reactorcasing', 'bigreactors:reinforced_turbinecasing',
         'twilightforest:carminite', 'twilightforest:carminite_block', 'twilightforest:carminite_reactor',
         'twilightforest:carminite_builder',
-        'twilightforest:arctic_fur', 'twilightforest:arctic_helmet', 'twilightforest:arctic_chestplate',
-        'twilightforest:arctic_leggings', 'twilightforest:arctic_boots', 'twilightforest:charm_of_keeping_3',
+        // (Twilight's arctic armour moved to Tier 5, 2026-11-26)
+        'twilightforest:charm_of_keeping_3',
         'twilightforest:twilight_scepter', 'twilightforest:zombie_scepter',
-        'twilightforest:lifedrain_scepter', 'twilightforest:fortification_scepter'],
+        'twilightforest:lifedrain_scepter', 'twilightforest:fortification_scepter']),
       tags: [],
       recipes: [
-        /^tconstruct:tables\/recycling\/twilightforest\/arctic_/,
         TINKERS_MELTING(['refined_obsidian']),
         TINKERS_CASTING(['refined_obsidian']), 'tconstruct:compat/refined_obsidian_ingot', 'tconstruct:smeltery/alloys/molten_refined_obsidian',
         /^mysticalagriculture:essence\/redstone_arsenal\//, MA_ESSENCE('mekanism', ['refined_obsidian_ingot']),
@@ -325,16 +345,21 @@ const TIERS = [
         COMPAT(7)] } },
 
   { tier: 8, name: 'A Flood', drops: 1000000, unlocks: {
+      // Tinker's Rapier (was 4): two full heads and two full handles, so far above a sword of the same materials
+      // (owner decision 2026-11-26)
       mods: ['taiga', 'tcintegrations', 'createbigcannons', 'mekanismtools', 'mekanism_weaponry',
-             'advanced_ae', 'create_sabers'],
+             'advanced_ae', 'create_sabers', 'tinker_rapier'],
       items: [
+        // Ice and Fire (Tier 6 by namespace): the dread knight sword (17 a hit, dungeon loot), the dread queen's, the ghost
+        // sword (22 a second plus spectral swords) and dragonbone arrows (30 a shot), owner decisions 2026-11-26
+        'iceandfire:dread_knight_sword', 'iceandfire:dread_queen_sword', 'iceandfire:ghost_sword', 'iceandfire:dragonbone_arrow',
         'tconstruct:manyullyn_ingot', 'tconstruct:manyullyn_block', 'tconstruct:manyullyn_nugget',
         'tconstruct:hepatizon_ingot', 'tconstruct:hepatizon_block', 'tconstruct:hepatizon_nugget',
         'tconstruct:queens_slime_ingot', 'tconstruct:queens_slime_block', 'tconstruct:queens_slime_nugget',
         'tconstruct:cinderslime_ingot', 'tconstruct:cinderslime_block', 'tconstruct:cinderslime_nugget',
         'hexerei:mahogany_broom', 'hexerei:broom_netherite_tip',
         'alexsmobs:tarantula_hawk_elytra',
-        'twilightforest:giant_sword', 'twilightforest:giant_pickaxe',
+        // (Twilight's giant sword and pickaxe moved to Tier 5, 2026-11-26)
         'kubejs:potato_oven'],   // Enchanted Baked Potatoes, for Tiers 9-12 (startup_scripts/potato_press.js)
       tags: [],
       recipes: [
@@ -352,11 +377,15 @@ const TIERS = [
   { tier: 9, name: 'A Tide', drops: 1400000, unlocks: {
       mods: ['draconicevolution'],
       items: [
-        // Deeper and Darker's sonorous staff: up to 50 armour-ignoring damage along an 18-block beam, with dragonsteel
+        // Deeper and Darker's sonorous staff: up to 50 armour-ignoring damage after a 6-second charge, with dragonsteel
         // (owner decisions 2026-11-22).
         'deeperdarker:sonorous_staff',
+        // Extra Utilities' Kikoku (14 at 3.2 a second, unbreakable) and Etheric Sword (no swing cooldown), from the
+        // mod's Tier 7 (owner decisions 2026-11-26)
+        'extrautilitiesreborn:kikoku', 'extrautilitiesreborn:etheric_sword',
         'minecraft:ender_eye',
-        'botania:gaia_pylon', 'botania:gaia_ingot', 'botania:flight_tiara', 'botania:terra_sword',
+        // (Botania's terra blade moved to Tier 6, 2026-11-26)
+        'botania:gaia_pylon', 'botania:gaia_ingot', 'botania:flight_tiara',
         'enderio:octadic_capacitor', 'enderio:soul_binder', 'enderio:powered_spawner', 'enderio:end_steel_ingot',
         'iceandfire:dragonforge_fire_core_disabled', 'iceandfire:dragonforge_ice_core_disabled',
         'iceandfire:dragonforge_lightning_core_disabled',
@@ -368,7 +397,9 @@ const TIERS = [
         TINKERS_MATERIALS(['dragon_scale']),
         /^tcintegrations:tools\/materials\/((casting|melting|composite)\/)?dragonsteel_(fire|ice|lightning)(\/|$)/,
         /^tcintegrations:smeltery\/(melting|casting)\/metal\/dragonsteel_(fire|ice|lightning)\//,
-        /^taiga:alloy\/(1[4-9]|2[0-7])_/,
+        // TAIGA's alloys 14-27, and (2026-11-26) those that need an End ore (03 fractum, 04 violium, 05 proxii, 08
+        // imperomite, 13 astrium: abyssum, aurorium, palladium) or a Tier 9 alloy (09 solarium, 10 adamant, 11 nihilite)
+        /^taiga:alloy\/(0[34589]|1[013]|1[4-9]|2[0-7])_/,
         'iceandfire:dragonforge/dragonsteel_fire_ingot', 'iceandfire:dragonforge/dragonsteel_ice_ingot',
         'iceandfire:dragonforge/dragonsteel_lightning_ingot',
         /^mysticalagriculture:essence\/draconicevolution\//, MA_ESSENCE('enderio', ['end_steel_ingot']),
@@ -580,6 +611,17 @@ const USE_LOCKS = {
   'botania:dirt_rod': 'block', 'botania:skydirt_rod': 'block', 'botania:terraform_rod': 'use',
   'botania:exchange_rod': 'block',                                                            // Tier 2
   'ae2:entropy_manipulator': 'block', 'alexscaves:totem_of_possession': 'mob',                // Tier 6
+  // Added with the rest of the sealed gear (25 November 2026; see WEAR_LOCKS below)
+  'iceandfire:gorgon_head': 'use', 'iceandfire:cockatrice_scepter': 'use', 'iceandfire:lich_staff': 'use',
+  'iceandfire:siren_flute': 'use', 'alexscaves:sea_staff': 'use', 'alexscaves:sugar_staff': 'use',
+  'hexerei:willow_broom': 'use', 'hexerei:witch_hazel_broom': 'use', 'reliquary:rod_of_lyssa': 'use',       // Tier 6
+  'twilightforest:twilight_scepter': 'use', 'twilightforest:lifedrain_scepter': 'use',
+  'twilightforest:zombie_scepter': 'use', 'twilightforest:fortification_scepter': 'use',
+  'rftoolsutility:charged_porter': 'use', 'rftoolsutility:advanced_charged_porter': 'use',
+  'redstone_arsenal:flux_crossbow': 'use', 'redstone_arsenal:flux_controller': 'use',                         // Tier 7
+  'hexerei:mahogany_broom': 'use', 'mekanism_weaponry:plasma_rifle': 'use',                                  // Tier 8
+  'botania:missile_rod': 'use', 'botania:king_key': 'use', 'botania:flugel_eye': 'use',
+  'draconicevolution:advanced_dislocator': 'use', 'draconicevolution:player_dislocator': 'use',               // Tier 9
 }
 // PLACE_LOCKS: blocks that can't be placed until their tier opens, by a player, a fake player (a Deployer) or any
 // other entity.
@@ -590,21 +632,55 @@ const PLACE_LOCKS = ['alexscaves:nuclear_bomb', 'alexscaves:tremorzilla_egg', 'e
 const SPAWN_LOCKS = { 'alexscaves:nuclear_bomb': 'alexscaves:nuclear_bomb' }
 // Wear and wield locks (owner decision 2026-11-22, for the Aether and Deeper and Darker, whose dungeons hand some
 // sealed gear out as loot that crafting locks can't touch; research/AETHER_DEEPERDARKER.md). For gear that's worn or
-// swung, where USE_LOCKS only covers right-clicks. As there, each item's tier is its own in TIERS and it works again the
-// moment that tier opens; creative players are exempt, ops in survival are not.
+// swung, where USE_LOCKS only covers right-clicks. Each item works again the moment its tier opens: its own in TIERS,
+// or a later one in LOCK_TIERS. Creative players are exempt, ops in survival are not, and kit items handed out by the
+// Gladiator Arena, the Purge and the Shrine's night (KIT_MARKS) are never held.
+// Since 25 November 2026 (owner decision: "lock all sealed gear") they cover every sealed item with a real power, from
+// the gear check in research/GEAR_BALANCE.md: Part I inventories, loot, drops and trades put these in hands before their
+// tier. Weak gear (no better than netherite and no ability) is left alone. Families are built with SETS, EACH and TOOLS
+// (top of the settings).
 // WEAR_LOCKS: armour and worn accessories (Curios slots too). A sealed piece found worn is taken off into the inventory,
-// or dropped at the player's feet if it's full, checked every WEAR_CHECK_TICKS.
+// or dropped at the player's feet if it's full, checked every WEAR_CHECK_TICKS and at once when it's put on.
 const WEAR_LOCKS = [
   'aether:gravitite_helmet', 'aether:gravitite_chestplate', 'aether:gravitite_leggings', 'aether:gravitite_boots',
   'aether:gravitite_gloves',                                                                  // Tier 4
   'aether:netherite_gloves',                                                                  // Tier 5
   'deeperdarker:resonarium_helmet', 'deeperdarker:resonarium_chestplate', 'deeperdarker:resonarium_leggings',
-  'deeperdarker:resonarium_boots',                                                            // Tier 6
+  'deeperdarker:resonarium_boots',                                                            // Tier 7 (6 until 2026-11-26)
   'deeperdarker:warden_helmet', 'deeperdarker:warden_chestplate', 'deeperdarker:warden_leggings',
   'deeperdarker:warden_boots',                                                                // Tier 7
-]
-// WIELD_LOCKS: weapons and tools. With one in the main hand a hit does nothing and no block can be broken; right-clicking
-// with it (a gravitite tool floating a block, the sonorous staff's beam) is refused, in either hand.
+].concat(
+  // Tier 6: dragon scale (26 armour, 8 toughness, breath x0.3), troll leather (arrows x0.3), fiery (burns attackers)
+  // and yeti (chills attackers), terrasteel (20 / 12, knockback immune), the cloak and hood of darkness (flight),
+  // rainbounce boots (no fall damage), the Ring of Far Reach.
+  SETS('iceandfire', DRAGON_SCALES),
+  SETS('iceandfire', ['forest_troll_leather', 'frost_troll_leather', 'mountain_troll_leather']),
+  SETS('twilightforest', ['fiery', 'yeti']), SETS('botania', ['terrasteel']),
+  EACH('alexscaves', ['cloak_of_darkness', 'hood_of_darkness', 'rainbounce_boots']), EACH('botania', ['reach_ring']),
+  // Tier 7: sea serpent armour (23 / 10, Strength IV in rain or water); Redstone Arsenal's flux armour (each piece
+  // cancels a whole hit every 30 s) and elytra; Powersuits' armour.
+  SETS('iceandfire', SEA_SERPENTS),
+  EACH('redstone_arsenal', ['flux_helmet', 'flux_chestplate', 'flux_leggings', 'flux_boots', 'flux_elytra']),
+  EACH('powersuits', ['powerarmor_head', 'powerarmor_torso', 'powerarmor_legs', 'powerarmor_feet']),
+  // Tier 8: refined obsidian armour (31 / 20 / 0.8), the tarantula hawk elytra.
+  SETS('mekanismtools', ['refined_obsidian']), ['alexsmobs:tarantula_hawk_elytra'],
+  // Tier 9: dragonsteel armour (30 / 20, capped), the flight tiara, Botania's cloaks, pendants, belt and Ring of Odin.
+  SETS('iceandfire', DRAGONSTEEL),
+  EACH('botania', ['flight_tiara', 'holy_cloak', 'unholy_cloak', 'balance_cloak', 'super_cloud_pendant', 'super_lava_pendant',
+    'super_travel_belt', 'odin_ring']),
+  // Tiers 10 and 11: the MekaSuit (100% of most damage absorbed), Draconic chestpieces (shields, flight; also worn in
+  // the Curios body slot).
+  EACH('mekanism', ['mekasuit_helmet', 'mekasuit_bodyarmor', 'mekasuit_pants', 'mekasuit_boots']),
+  EACH('draconicevolution', ['wyvern_chestpiece', 'draconic_chestpiece', 'chaotic_chestpiece']))
+// Worn pieces whose power also works from main inventory slot 3 (the 4th hotbar slot), worn or not: Deeper and
+// Darker's warden armour clears Blindness and Darkness in inventoryTick when its slot index is 3, and Forge counts that
+// index within each part of the inventory, so the worn helmet and that hotbar slot both match (WardenArmorItem,
+// read with javap). A sealed one is moved out of that slot, and pieces taken off are never put back there.
+const SLOT_3_LOCKS = ['deeperdarker:warden_helmet', 'deeperdarker:warden_chestplate', 'deeperdarker:warden_leggings',
+  'deeperdarker:warden_boots']
+// WIELD_LOCKS: weapons and tools. With one in either hand a hit does nothing, with one in the main hand no block can be
+// broken, and right-clicking with it (a gravitite tool floating a block, the sonorous staff's beam, throwing a spear,
+// raising a shield) is refused, in either hand.
 const WIELD_LOCKS = [
   'aether:gravitite_sword', 'aether:gravitite_pickaxe', 'aether:gravitite_axe', 'aether:gravitite_shovel',
   'aether:gravitite_hoe', 'deeperdarker:resonarium_sword', 'deeperdarker:resonarium_pickaxe',
@@ -613,7 +689,76 @@ const WIELD_LOCKS = [
   'deeperdarker:warden_sword', 'deeperdarker:warden_pickaxe', 'deeperdarker:warden_axe', 'deeperdarker:warden_shovel',
   'deeperdarker:warden_hoe',                                                                  // Tier 7
   'deeperdarker:sonorous_staff',                                                              // Tier 9
+].concat(
+  // Tier 5: Ars Nouveau's enchanter's sword (netherite's numbers), Twilight's giant sword and pickaxe (+2.5 reach).
+  ['ars_nouveau:enchanters_sword'], EACH('twilightforest', ['giant_sword', 'giant_pickaxe']),
+  // Tier 6: Ice and Fire's troll weapons (17 a hit), elemental dragonbone swords, tide trident (13), and the
+  // shield-breaking and sweeping weapons; Twilight's fiery sword and pickaxe; the Terra Blade, Thundercaller and
+  // Starcaller, the Terra Shatterer and Terra Truncator; Alex's Caves' weapons; Reliquary's two swords.
+  EACH('iceandfire', ['tide_trident', 'amphithere_macuahuitl', 'hippocampus_slapper', 'hippogryph_sword',
+    'dragonbone_sword_fire', 'dragonbone_sword_ice', 'dragonbone_sword_lightning', 'troll_weapon_axe', 'troll_weapon_column',
+    'troll_weapon_column_forest', 'troll_weapon_column_frost', 'troll_weapon_hammer', 'troll_weapon_trunk', 'troll_weapon_trunk_frost']),
+  EACH('twilightforest', ['fiery_sword', 'fiery_pickaxe']),
+  EACH('botania', ['terra_sword', 'thunder_sword', 'star_sword', 'terra_pick', 'terra_axe']),
+  EACH('alexscaves', ['desolate_dagger', 'ortholance', 'primitive_club', 'frostmint_spear', 'limestone_spear',
+    'sharpened_candy_cane', 'resistor_shield']),
+  EACH('reliquary', ['magicbane', 'mercy_cross']),
+  // Tier 7: the Healing Axe; Redstone Arsenal's flux weapons, tools and shield; the power fist; the Atomic Disassembler
+  // (21 a hit, mines anything).
+  ['extrautilitiesreborn:healing_axe'],
+  EACH('redstone_arsenal', ['flux_sword', 'flux_axe', 'flux_pickaxe', 'flux_shovel', 'flux_sickle', 'flux_hammer',
+    'flux_excavator', 'flux_wrench', 'flux_shield']),
+  ['powersuits:powerfist', 'mekanism:atomic_disassembler'],
+  // Tier 8: Ice and Fire's dread knight sword (17 a hit), the dread queen's and the ghost sword (22 a second plus
+  // spectral swords); Tinker's Rapier and estoc; Create's sabers (parry); the gauntlet; Mekanism Tools' refined obsidian
+  // gear and its paxels (axe damage at sword speed).
+  EACH('iceandfire', ['dread_knight_sword', 'dread_queen_sword', 'ghost_sword']),
+  EACH('tinker_rapier', ['rapier_tic', 'estoc_tic']),
+  EACH('create_sabers', ['copper_saber', 'brass_saber', 'zinc_saber', 'brass_saber_galaxy', 'double_copper_saber',
+    'double_brass_saber', 'double_zinc_saber']),
+  ['mekanism_weaponry:gauntlet'],
+  TOOLS('mekanismtools', ['refined_obsidian'], ['sword', 'axe', 'pickaxe', 'shovel', 'hoe', 'paxel']),
+  TOOLS('mekanismtools', ['osmium', 'steel', 'bronze'], ['axe', 'paxel']),
+  TOOLS('mekanismtools', ['netherite', 'diamond', 'iron', 'stone'], ['paxel']),
+  // Tier 9: dragonsteel weapons and tools (25 to 30 a hit), Kikoku (14 at 3.2 a second, unbreakable), the Etheric
+  // Sword (no swing cooldown), the extinction spear.
+  TOOLS('iceandfire', DRAGONSTEEL, ['sword', 'axe', 'pickaxe', 'shovel', 'hoe']),
+  EACH('extrautilitiesreborn', ['kikoku', 'etheric_sword']), ['alexscaves:extinction_spear'],
+  // Tiers 10 and 11: the Meka-Tool, Draconic tools, weapons and staffs (damage modules: see tools/serverconfig/ModuleStats.cfg).
+  ['mekanism:meka_tool'],
+  TOOLS('draconicevolution', ['wyvern', 'draconic', 'chaotic'], ['sword', 'axe', 'pickaxe', 'shovel', 'hoe']),
+  EACH('draconicevolution', ['draconic_staff', 'chaotic_staff']))
+// CARRY_LOCKS: items that work from the inventory or a Curios slot, without being worn or held: death prevention, fall
+// and fire immunity, keeping the inventory on death. Nothing stops them but taking them out, so a sealed one found on a
+// player goes into their ender chest (or is dropped at their feet if that's full), checked with the wear lock.
+const CARRY_LOCKS = [
+  'reliquary:phoenix_down', 'reliquary:angelheart_vial', 'reliquary:angelic_feather', 'reliquary:infernal_claws',
+  'reliquary:kraken_shell', 'reliquary:twilight_cloak', 'reliquary:witherless_rose',                       // Tier 6
+  'extrautilitiesreborn:advanced_chicken_wing_ring', 'twilightforest:charm_of_keeping_3',                    // Tier 7
+  'reliquary:salamander_eye',                                                                                // Tier 9
 ]
+// PROJECTILE_LOCKS: projectile entity -> its item. Its hit does nothing while the item is sealed (a sealed arrow fired
+// from an open bow): Ice and Fire's dragonbone arrow (30 a shot from any bow, Tier 8) and hydra arrow (15, Tier 6).
+const PROJECTILE_LOCKS = { 'iceandfire:dragon_arrow': 'iceandfire:dragonbone_arrow', 'iceandfire:hydra_arrow': 'iceandfire:hydra_arrow' }
+// LOCK_TIERS: items whose locks wait for a later tier than their own in TIERS. A whole mod sealed by namespace gives
+// its gear the namespace's tier, but some of that gear needs a later tier's materials: dragonsteel (Ice and Fire, 6) its
+// Tier 9 ingots, Botania's (2) terrasteel or Gaia spirits, the MekaSuit's other pieces (Mekanism, 4) polonium,
+// Draconic's (9) wyvern and awakened cores. Crafting is held by those materials already; this only times the locks.
+const LOCK_TIERS = {}
+const lockAt = (tier, ids) => ids.forEach(id => { LOCK_TIERS[id] = tier })
+lockAt(6, SETS('botania', ['terrasteel']).concat(EACH('botania', ['terra_pick', 'terra_axe', 'reach_ring', 'thunder_sword',
+  'star_sword'])))
+lockAt(7, ['mekanism:atomic_disassembler'])
+lockAt(9, SETS('iceandfire', DRAGONSTEEL).concat(TOOLS('iceandfire', DRAGONSTEEL, ['sword', 'axe', 'pickaxe', 'shovel', 'hoe']),
+  EACH('botania', ['holy_cloak', 'unholy_cloak', 'balance_cloak', 'super_cloud_pendant', 'super_lava_pendant',
+    'super_travel_belt', 'odin_ring', 'missile_rod', 'king_key', 'flugel_eye']),
+  ['reliquary:salamander_eye']))
+lockAt(10, EACH('mekanism', ['mekasuit_helmet', 'mekasuit_pants', 'mekasuit_boots']).concat(
+  EACH('draconicevolution', ['wyvern_chestpiece', 'wyvern_bow']), TOOLS('draconicevolution', ['wyvern'], ['sword', 'axe', 'pickaxe', 'shovel', 'hoe'])))
+lockAt(11, EACH('draconicevolution', ['draconic_chestpiece', 'chaotic_chestpiece', 'draconic_bow', 'chaotic_bow',
+  'draconic_staff', 'chaotic_staff']).concat(TOOLS('draconicevolution', ['draconic', 'chaotic'], ['sword', 'axe', 'pickaxe', 'shovel', 'hoe'])))
+// Kit items the events hand out for a match and take back after (their NBT marks): never held by these locks.
+const KIT_MARKS = ['GladiatorKit', 'PurgeKit', 'ShrineKit']
 const WEAR_CHECK_TICKS = 20
 const RANKUP_PUBLIC = true               // announce rank-ups to everyone (and Discord, with TO_DISCORD)
 // Catch-up: when the Pool opens Tier T, every player can craft Tiers 1..T-CATCH_UP_GAP whatever their rank (their
@@ -1667,33 +1812,59 @@ BlockEvents.placed(event => {
 const own = (o, k) => Object.prototype.hasOwnProperty.call(o, k)
 const PLACE_LOCKED = {}
 PLACE_LOCKS.forEach(id => { PLACE_LOCKED[String(id)] = true })
+// The tier a use, wear, wield, carry or projectile lock waits for: the item's own (tierOf), or a later one in
+// LOCK_TIERS.
+function lockTierOf(id, s) {
+  const t = tierOf(id, s)
+  return own(LOCK_TIERS, id) && LOCK_TIERS[id] > t ? LOCK_TIERS[id] : t
+}
+function lockedNow(id, s) { return lockTierOf(id, s) > db().tier }
+// A kit item the Gladiator Arena, the Purge or the Shrine's night handed out for a match (KIT_MARKS): never held.
+function eventKit(s) {
+  let t = null
+  try { t = s.nbt } catch (e) { }
+  if (t == null) return false
+  try { return KIT_MARKS.some(k => !!t.contains(k)) } catch (e) { }
+  const str = String(t)
+  return KIT_MARKS.some(k => str.indexOf(k + ':1b') >= 0)
+}
 Object.keys(USE_LOCKS).forEach(id => {
   if (['use', 'block', 'mob'].indexOf(USE_LOCKS[id]) < 0) console.warn('[BloodPool] USE_LOCKS: ' + id + ': "' + USE_LOCKS[id] + '" should be use, block or mob')
-  if (!tierOf(id, null)) console.warn('[BloodPool] USE_LOCKS: ' + id + ' is in no tier, so it is never locked')
+  if (!lockTierOf(id, null)) console.warn('[BloodPool] USE_LOCKS: ' + id + ' is in no tier, so it is never locked')
 })
 PLACE_LOCKS.forEach(id => { if (!tierOf(id, null)) console.warn('[BloodPool] PLACE_LOCKS: ' + id + ' is in no tier, so it is never locked') })
 Object.keys(SPAWN_LOCKS).forEach(t => { if (!tierOf(SPAWN_LOCKS[t], null)) console.warn('[BloodPool] SPAWN_LOCKS: ' + SPAWN_LOCKS[t] + ' is in no tier, so ' + t + ' is never stopped') })
-const WEAR_LOCKED = {}, WIELD_LOCKED = {}
-WEAR_LOCKS.forEach(id => {
-  WEAR_LOCKED[String(id)] = true
-  if (!tierOf(id, null)) console.warn('[BloodPool] WEAR_LOCKS: ' + id + ' is in no tier, so it is never locked')
-})
-WIELD_LOCKS.forEach(id => {
-  WIELD_LOCKED[String(id)] = true
-  if (!tierOf(id, null)) console.warn('[BloodPool] WIELD_LOCKS: ' + id + ' is in no tier, so it is never locked')
-})
-function wearLocked(s) { if (!s || s.isEmpty()) return false; const id = String(s.id); return own(WEAR_LOCKED, id) && isLocked(id, s) }
-function wieldLocked(s) { if (!s || s.isEmpty()) return false; const id = String(s.id); return own(WIELD_LOCKED, id) && isLocked(id, s) }
+Object.keys(PROJECTILE_LOCKS).forEach(t => { if (!lockTierOf(PROJECTILE_LOCKS[t], null)) console.warn('[BloodPool] PROJECTILE_LOCKS: ' + PROJECTILE_LOCKS[t] + ' is in no tier, so ' + t + ' is never stopped') })
+const WEAR_LOCKED = {}, WIELD_LOCKED = {}, CARRY_LOCKED = {}
+function listLocks(list, name, into) {
+  list.forEach(id => {
+    into[String(id)] = true
+    if (!lockTierOf(id, null)) console.warn('[BloodPool] ' + name + ': ' + id + ' is in no tier, so it is never locked')
+  })
+}
+listLocks(WEAR_LOCKS, 'WEAR_LOCKS', WEAR_LOCKED)
+listLocks(WIELD_LOCKS, 'WIELD_LOCKS', WIELD_LOCKED)
+listLocks(CARRY_LOCKS, 'CARRY_LOCKS', CARRY_LOCKED)
+function heldBy(locked, s) {
+  if (!s || s.isEmpty()) return false
+  const id = String(s.id)
+  return own(locked, id) && lockedNow(id, s) && !eventKit(s)
+}
+function wearLocked(s) { return heldBy(WEAR_LOCKED, s) }
+function wieldLocked(s) { return heldBy(WIELD_LOCKED, s) }
+function carryLocked(s) { return heldBy(CARRY_LOCKED, s) }
 // The click modes an item is refused in: 'use' everywhere it's used; 'block' or 'mob' also when clicked on one. A
-// wield-locked item is refused in the air and on blocks.
+// wield-locked item is refused in the air and on blocks. A wear-locked one is refused in the air, where a right-click
+// puts armour (or Curios gloves) on.
 function useLockOf(s, where) {
   if (!s || s.isEmpty()) return ''
   const id = String(s.id)
-  if (own(WIELD_LOCKED, id)) return (where == 'use' || where == 'block') && isLocked(id, s) ? 'block' : ''
+  if (own(WIELD_LOCKED, id)) return (where == 'use' || where == 'block') && wieldLocked(s) ? 'block' : ''
+  if (own(WEAR_LOCKED, id)) return where == 'use' && wearLocked(s) ? 'use' : ''
   if (!own(USE_LOCKS, id)) return ''
   const mode = USE_LOCKS[id]
   if (where != 'use' && mode != where) return ''
-  return isLocked(id, s) ? mode : ''
+  return lockedNow(id, s) && !eventKit(s) ? mode : ''
 }
 function exemptFromSeals(p) {
   try { return !!(p.isCreative() || p.isSpectator()) } catch (e) { return false }
@@ -1704,11 +1875,12 @@ function itemKey(s) {
   try { key = String(s.getDescriptionId()) } catch (e) { }
   return key || 'item.' + String(s.id).replace(':', '.')
 }
-// "The <name> is sealed until the Blood Pool opens Tier n (name)." on the action bar (chat if that fails).
-function tellSealed(p, key, n) {
+// "The <name> is sealed until the Blood Pool opens Tier n (name)." on the action bar (chat if that fails), with any
+// extra words after it.
+function tellSealed(p, key, n, extra) {
   const T = tierDef(n)
   const parts = [{ text: 'The ', color: 'red' }, { translate: key, color: 'red' },
-    { text: ' is sealed until the Blood Pool opens Tier ' + n + (T ? ' (' + T.name + ')' : '') + '.', color: 'red' }]
+    { text: ' is sealed until the Blood Pool opens Tier ' + n + (T ? ' (' + T.name + ')' : '') + '.' + (extra || ''), color: 'red' }]
   let shown = false
   try { p.setStatusMessage(comp(parts)); shown = true } catch (e) { }
   if (!shown) { try { p.tell(comp(parts)) } catch (e) { } }
@@ -1717,7 +1889,7 @@ function tellSealed(p, key, n) {
 function refuseUse(event, where) {
   const p = event.player, s = event.item
   if (!p || !useLockOf(s, where) || exemptFromSeals(p)) return
-  tellSealed(p, itemKey(s), tierOf(String(s.id), s))
+  tellSealed(p, itemKey(s), lockTierOf(String(s.id), s))
   event.cancel()
 }
 ItemEvents.rightClicked(event => refuseUse(event, 'use'))
@@ -1735,7 +1907,11 @@ function entityType(e) {
   try { let t = e.getEncodeId(); if (t != null) return String(t) } catch (err) { }
   try { return String(e.type) } catch (err) { return '' }
 }
-// Wield locks (WIELD_LOCKS): a hit with a sealed weapon in the main hand does nothing, and no block breaks under one.
+// Wield locks (WIELD_LOCKS): a hit with a sealed weapon in either hand does nothing, and no block breaks under one.
+// Either hand, because Better Combat (in the pack) lets two one-handed weapons take turns: its off-hand swing swaps the
+// off-hand weapon's damage in, and only Minecraft's own attack code sees that item as the main hand
+// (PlayerEntityMixin.getMainHandStack_Redirect, read with javap), so the main hand alone would let a sealed sword
+// strike from the off hand.
 function attackerOf(source) {
   if (!source) return null
   let p = null
@@ -1744,15 +1920,27 @@ function attackerOf(source) {
   try { let a = source.actual; if (a && a.isPlayer()) return a } catch (e) { }
   return null
 }
+// A sealed projectile (PROJECTILE_LOCKS) fired by a player does nothing either: the hit's direct entity is the arrow.
+function sealedShot(source) {
+  let d = null
+  try { d = source.directEntity } catch (e) { }
+  if (!d) return ''
+  const t = entityType(d)
+  return own(PROJECTILE_LOCKS, t) && lockedNow(PROJECTILE_LOCKS[t], null) ? PROJECTILE_LOCKS[t] : ''
+}
 EntityEvents.hurt(event => {
   let source = null
   try { source = event.source } catch (e) { return }
   const p = attackerOf(source)
   if (!p || exemptFromSeals(p)) return
-  let s = null
+  let s = null, o = null
   try { s = p.mainHandItem } catch (e) { return }
-  if (!wieldLocked(s)) return
-  tellSealed(p, itemKey(s), tierOf(String(s.id), s))
+  try { o = p.offHandItem } catch (e) { }
+  const shot = sealedShot(source)
+  const held = shot ? null : wieldLocked(s) ? s : wieldLocked(o) ? o : null
+  if (!shot && !held) return
+  if (shot) tellSealed(p, 'item.' + shot.replace(':', '.'), lockTierOf(shot, null))
+  else tellSealed(p, itemKey(held), lockTierOf(String(held.id), held))
   event.cancel()
 })
 BlockEvents.broken(event => {
@@ -1761,7 +1949,7 @@ BlockEvents.broken(event => {
   let s = null
   try { s = p.mainHandItem } catch (e) { return }
   if (!wieldLocked(s)) return
-  tellSealed(p, itemKey(s), tierOf(String(s.id), s))
+  tellSealed(p, itemKey(s), lockTierOf(String(s.id), s))
   event.cancel()
 })
 // Wear locks (WEAR_LOCKS): every WEAR_CHECK_TICKS, a sealed piece found in an armour or Curios slot is taken off into
@@ -1779,38 +1967,99 @@ function curiosOf(p) {
   return null
 }
 function noItem() { try { return Item.empty } catch (e) { return Item.of('minecraft:air') } }
-function takeOffSealed(p) {
+const SLOT_3_LOCKED = {}
+SLOT_3_LOCKS.forEach(id => { SLOT_3_LOCKED[String(id)] = true })
+// A piece taken off goes back into the main inventory, but never into slot 3 (see SLOT_3_LOCKS); with no room it's
+// dropped at the player's feet.
+function putBack(p, s) {
+  const inv = p.inventory
+  for (let i = 9; i < 36; i++) { if (inv.getItem(i).isEmpty()) { inv.setItem(i, s); return } }
+  for (let i = 0; i < 9; i++) { if (i != 3 && inv.getItem(i).isEmpty()) { inv.setItem(i, s); return } }
+  let dropped = false
+  try { p.drop(s, false); dropped = true } catch (e) { }
+  if (!dropped) p.give(s)
+}
+// A sealed item that works by being carried (CARRY_LOCKS) goes into the player's ender chest; with no room there it's
+// dropped at their feet. Returns where it went.
+function stash(p, s) {
+  let ec = null
+  try { ec = p.enderChestInventory } catch (e) { }
+  let size = 0
+  try { if (ec) size = Number(ec.getContainerSize()) } catch (e) { }
+  for (let i = 0; i < size; i++) {
+    let cur = null
+    try { cur = ec.getItem(i) } catch (e) { }
+    if (cur && cur.isEmpty()) { ec.setItem(i, s); return 'ender' }
+  }
+  let dropped = false
+  try { p.drop(s, false); dropped = true } catch (e) { }
+  if (!dropped) p.give(s)
+  return 'feet'
+}
+// The wear and carry locks: sealed armour comes off (armour slots, Curios, and main slot 3 for SLOT_3_LOCKS) back
+// into the inventory, and sealed carried items (main inventory, off hand, Curios) go to the ender chest.
+function enforceSeals(p) {
   if (exemptFromSeals(p)) return 0
-  const off = []
+  const off = [], carried = []
+  const inv = p.inventory
   for (let i = 36; i <= 39; i++) {
-    let s = p.inventory.getItem(i)
+    let s = inv.getItem(i)
     if (!wearLocked(s)) continue
-    p.inventory.setItem(i, noItem())
+    inv.setItem(i, noItem())
     off.push(s)
+  }
+  const s3 = inv.getItem(3)
+  if (wearLocked(s3) && own(SLOT_3_LOCKED, String(s3.id))) {
+    inv.setItem(3, noItem())
+    off.push(s3)
+  }
+  for (let i = 0; i <= 40; i++) {
+    if (i >= 36 && i <= 39) continue
+    let s = inv.getItem(i)
+    if (!carryLocked(s)) continue
+    inv.setItem(i, noItem())
+    carried.push(s)
   }
   const cur = curiosOf(p)
   if (cur) {
     for (let i = 0; i < Number(cur.getSlots()); i++) {
       let s = cur.getStackInSlot(i)
-      if (!wearLocked(s)) continue
+      let worn = wearLocked(s)
+      if (!worn && !carryLocked(s)) continue
       cur.setStackInSlot(i, noItem())
-      off.push(s)
+      if (worn) off.push(s)
+      else carried.push(s)
     }
   }
-  off.forEach(s => p.give(s))
+  off.forEach(s => putBack(p, s))
+  let where = ''
+  carried.forEach(s => { where = stash(p, s) })
   if (off.length) {
-    tellSealed(p, itemKey(off[0]), tierOf(String(off[0].id), off[0]))
+    tellSealed(p, itemKey(off[0]), lockTierOf(String(off[0].id), off[0]))
     console.info('[BloodPool] Took sealed gear off ' + nameOf(p) + ': ' + off.map(s => String(s.id)).join(', '))
   }
-  return off.length
+  if (carried.length) {
+    tellSealed(p, itemKey(carried[0]), lockTierOf(String(carried[0].id), carried[0]),
+      where == 'ender' ? ' It\'s in your ender chest.' : ' It was dropped at your feet.')
+    console.info('[BloodPool] Put sealed carried items of ' + nameOf(p) + ' away (' + where + '): ' + carried.map(s => String(s.id)).join(', '))
+  }
+  return off.length + carried.length
 }
+// Sealed armour put on from the inventory screen or by a dispenser comes off at once, not at the next check: a piece's
+// powers (a resonarium set's damage cut, warden leggings' speed) must not work for the second in between. A sealed
+// carried item goes away as soon as it's picked up. The event hands over a copy of the changed item, so the real slots
+// are checked. Curios slots aren't part of the player's inventory, so they wait for the check every WEAR_CHECK_TICKS.
+PlayerEvents.inventoryChanged(event => {
+  if (!wearLocked(event.item) && !carryLocked(event.item)) return
+  try { enforceSeals(event.player) } catch (e) { console.error('[BloodPool] Wear lock: ' + e) }
+})
 let wearTicks = 0
 ServerEvents.tick(event => {
   wearTicks++
   if (wearTicks % WEAR_CHECK_TICKS) return
   const server = event.server || Utils.server
   if (!server) return
-  onlinePlayers(server).forEach(p => { try { takeOffSealed(p) } catch (e) { console.error('[BloodPool] Wear lock: ' + e) } })
+  onlinePlayers(server).forEach(p => { try { enforceSeals(p) } catch (e) { console.error('[BloodPool] Wear lock: ' + e) } })
 })
 EntityEvents.spawned(event => {
   const t = entityType(event.entity)
@@ -1830,6 +2079,8 @@ global.BloodPool = {
   addDrops: (n, source, uuid, name) => addDrops(Number(n) * (source == 'troll' ? DROPS_PER_TROLL_POINT : 1), source || 'other', uuid ? String(uuid) : '', name ? String(name) : ''),
   isLocked: (id, obj) => isLocked(id, obj),          // true = can't be crafted yet
   tierOf: (id, obj) => tierOf(id, obj),
+  lockTierOf: (id, obj) => lockTierOf(id, obj),       // the tier a use, wear, wield or carry lock on it waits for
+  lockTiers: JSON.parse(JSON.stringify(LOCK_TIERS)),  // id -> a lock's later tier (for the tooltip generator)
   tierCount: TIERS.length,
   relicsNeeded: n => relicsNeeded(tierDef(Number(n))),  // relics a seal needs (RELIC_SEALS): part2/shrine.js's messages
   relicsChanged: server => relicsChanged(server || Utils.server),
@@ -2044,11 +2295,17 @@ ServerEvents.commandRegistry(event => {
         if (node) rank += ' Placing it needs ' + node + ' (/potatowar tree).'
         else if (place && !(PT && PT.handlesPlacing)) rank += ' Placing it needs ' + rankName(place) + '.'
       }
-      return reply(ctx, String(s.id) + ' can be crafted from Tier ' + n + (T ? ' (' + T.name + ')' : '') + ': ' +
-        (n <= db().tier ? 'open now.' : own(USE_LOCKS, String(s.id)) || own(WIELD_LOCKED, String(s.id)) ? 'sealed for now, and so is using one, however it was got.' :
-          own(WEAR_LOCKED, String(s.id)) ? 'sealed for now, and so is wearing one, however it was got.' :
-          own(PLACE_LOCKED, String(s.id)) ? 'sealed for now, and so is placing one, however it was got.' :
-          'sealed for now (found ones still work).') + rank)
+      const id = String(s.id)
+      const how = own(USE_LOCKS, id) || own(WIELD_LOCKED, id) ? 'using' : own(WEAR_LOCKED, id) ? 'wearing' :
+        own(CARRY_LOCKED, id) ? 'carrying' : own(PLACE_LOCKED, id) ? 'placing' : ''
+      // A lock that waits for a later tier than the recipe (LOCK_TIERS) says so.
+      const lt = how && how != 'placing' ? lockTierOf(id, s) : n
+      const LT = tierDef(lt)
+      const later = lt > n ? ' ' + how.charAt(0).toUpperCase() + how.slice(1) + ' one waits for Tier ' + lt + (LT ? ' (' + LT.name + ')' : '') +
+        (lt <= db().tier ? ', open now.' : ', however it was got.') : ''
+      return reply(ctx, id + ' can be crafted from Tier ' + n + (T ? ' (' + T.name + ')' : '') + ': ' +
+        (n <= db().tier ? 'open now.' : how && lt == n ? 'sealed for now, and so is ' + how + ' one, however it was got.' :
+          'sealed for now' + (how ? '.' : ' (found ones still work).')) + later + rank)
     })))
     .then(Commands.literal('audit').requires(op).executes(safe(ctx => {
       try { JsonIO.write(AUDIT_FLAG_FILE, { requested: 'true' }) } catch (e) { return reply(ctx, 'Could not write ' + AUDIT_FLAG_FILE + ': ' + e, true) }

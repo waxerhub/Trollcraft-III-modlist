@@ -62,15 +62,34 @@ Copy them, restart once (for the startup scripts), then `/reload` after any late
 | 1 | A Trickle | 20,000 | First Sparks | Create, Mystical Agriculture |
 | 2 | A Puddle | 60,000 | The Green Art | Botania, Ars Nouveau, EvilCraft, Hexerei's cauldron; Extra Utilities' spikes and compressed cobblestone, ahead of the rest of the mod at Tier 7 (owner decision, 10 November 2026) |
 | 3 | A Basin | 120,000 | Iron and Oil | Immersive Engineering, steel, Create brass; **the Nether** |
-| 4 | A Font | 200,000 | The First Circuit | Mekanism (2×), Tinkers' Rapier, Create mechanical crafting, TF steeleaf, the Aether's gravitite, resonarium tools |
-| 5 | A Spring | 320,000 | The Nether Forge | Thermal, Ender IO, the Tinkers foundry and cobalt, netherite, Mekanism 3×, the Infusion Altar, TF knightmetal, the zanite sword; **the price revealed**, and the Potato Press |
-| 6 | A Stream | 480,000 | Terrasteel and Storage | AE2 and addons, Extreme Reactors, Reliquary, Alex's Caves, Ice and Fire, Terrasteel, Mekanism 4×, TF fiery and yeti, resonarium armour |
-| 7 | A River | 700,000 | Power and Rails | RFTools, Modular Powersuits, Redstone Arsenal, Blue Power, Extra Utilities, Create trains, Mekanism 5×, TF carminite and arctic, Deeper and Darker's warden gear |
-| 8 | A Flood | 1,000,000 | The Deep Forge | TAIGA, TC Integrations, Create Big Cannons, Mekanism Tools and Weaponry, Advanced AE, the Tinkers end-game alloys, the Potato Oven |
-| 9 | A Tide | 1,400,000 | Wither and Star | Draconic Evolution, Gaia, the End tier of Ender IO, dragonsteel, the sonorous staff; **the End** |
+| 4 | A Font | 200,000 | The First Circuit | Mekanism (2×), Create mechanical crafting, TF steeleaf, the Aether's gravitite, resonarium tools |
+| 5 | A Spring | 320,000 | The Nether Forge | Thermal, Ender IO, the Tinkers foundry and cobalt, netherite, Mekanism 3×, the Infusion Altar, TF knightmetal, the zanite sword; Tinkers' nahuatl, TF's giant sword and pickaxe and arctic armour, Ars Nouveau's enchanter's sword (gear check, 26 November 2026); **the price revealed**, and the Potato Press |
+| 6 | A Stream | 480,000 | Terrasteel and Storage | AE2 and addons, Extreme Reactors, Reliquary, Alex's Caves, Ice and Fire, Terrasteel and the terra blade, Mekanism 4×, TF fiery and yeti |
+| 7 | A River | 700,000 | Power and Rails | RFTools, Modular Powersuits, Redstone Arsenal, Blue Power, Extra Utilities, Create trains, Mekanism 5×, TF carminite, Deeper and Darker's warden gear and resonarium armour, Ice and Fire's sea serpent armour |
+| 8 | A Flood | 1,000,000 | The Deep Forge | TAIGA, TC Integrations, Create Big Cannons, Mekanism Tools and Weaponry, Advanced AE, the Tinkers end-game alloys, Tinker's Rapier, Ice and Fire's dread knight and ghost swords and dragonbone arrows, the Potato Oven |
+| 9 | A Tide | 1,400,000 | Wither and Star | Draconic Evolution, Gaia, the End tier of Ender IO, dragonsteel, the sonorous staff, Kikoku and the Etheric Sword, TAIGA's alloys that need End ores; **the End** |
 | 10 | A Sea | 1,900,000 | Fission and Wyvern | RFTools Dimensions, fission, the MekaSuit, Draconic Wyvern, AE2 quantum and spatial |
 | 11 | An Ocean | 2,400,000 | Awakened | Mekanism SPS and antimatter, Draconic Awakened and Chaotic, Advanced AE quantum, Awakened Supremium, the Ender Quarry, the nuke |
 | 12 | Full Measure | 4,400,000 | | No recipes of its own: the last seal, which begins the final act (STORY.md, Act V). Renamed from "The Siege" and raised from 3,000,000 (owner decisions, 13 November 2026). The Blood God's power is full: every tier's crafting and every upgrade-tree node open for everyone (`OPEN_ALL_TIER`, owner decision, 15 November 2026) |
+
+**The gear check's moves** (owner decision, 26 November 2026; the numbers are in [research/GEAR_BALANCE.md](../../research/GEAR_BALANCE.md)):
+
+| Item | Tier |
+|---|---|
+| Deeper and Darker's resonarium armour | 6 → 7 |
+| Ice and Fire's sea serpent armour | 6 → 7 |
+| Extra Utilities' Kikoku and Etheric Sword | 7 → 9 |
+| Ice and Fire's dread knight sword, dread queen's sword, ghost sword and dragonbone arrows | 6 → 8 |
+| Tinker's Rapier (the mod) | 4 → 8 |
+| TAIGA's alloys that need an End ore or a Tier 9 alloy (03 fractum, 04 violium, 05 proxii, 08 imperomite, 09 solarium, 10 adamant, 11 nihilite, 13 astrium) | 8 → 9 |
+| Tinkers' nahuatl (the best handle in the pack) | 0 → 5 |
+| Ars Nouveau's enchanter's sword (netherite's numbers) | 2 → 5 |
+| Botania's terra blade (Thundercaller and Starcaller follow it) | 9 → 6 |
+| Twilight's giant sword and pickaxe, and arctic armour | 8 and 7 → 5 |
+
+- **Draconic's damage modules** give a quarter of their defaults: draconium 0.5, wyvern 1, draconic 2, chaotic 4 a module, instead of 2, 4, 8 and 16. They stack without a limit. A sword filled with them reached about 69 (wyvern), 236 (draconic) and 770 (chaotic); now about 24 (dragonsteel's level), 68 and 206, energy permitting. This is a config file, not a script: `tools/serverconfig/ModuleStats.cfg` goes to the server's `config/brandon3055/ModuleStats.cfg` (a restart is needed). Players' tooltips may show the defaults unless the modpack gets the same file.
+- **Mekanism Tools' paxels** stay at Tier 8 as they are (accepted).
+- **The item tooltips** (`client_scripts/potato_tooltips.js`, generated) show the new tiers, and a "Use: Blood Pool Tier n" line where a lock waits longer than the recipe. They go in the modpack.
 
 **Unlocking a tier:** the players break the seal by vote (owner decision, 10 November 2026).
 1. **When the Pool reaches a tier,** everyone sees "[BLOOD GOD] The Blood Pool overflows. Tier 3 (A Basin) waits for the Ministry's seal to break." (it goes to Discord too). Nothing opens yet.
@@ -161,7 +180,7 @@ A sealed mod, item, tag or recipe **can't be crafted** until its tier opens. Its
 **The exception: what Part I players brought (`USE_LOCKS`, `PLACE_LOCKS`, `SPAWN_LOCKS`).** Players kept their whole Part I inventory, and everything was craftable in Part I, so a sealed item made then would work from day one. These items can't be used or placed until their tier opens, however a player got one. Each item's tier is its own in `TIERS`, so it works again the moment that tier opens. The player is told why on the action bar ("The Raygun is sealed until the Blood Pool opens Tier 6 (A Stream).").
 
 - **History:** owner requests, 9 November 2026. First the Raygun, after one carried over from Part I still fired. Then the right-click items and Tier 11 blocks from the carry-over list. A Part I player file from 20 October had a Nuclear Bomb, among other things.
-- **Use locks (`USE_LOCKS`):** 39 items that work by being used. Each has a mode:
+- **Use locks (`USE_LOCKS`):** 63 items that work by being used (39 from 9 November, 24 more on 25 November with the rest of the sealed gear, below). Each has a mode:
   - `use`: right-clicking with it is refused, in the air or on a block or mob that doesn't take the click.
   - `block`: that, and right-clicking a block with it, for tools that act on the block they're used on. A gun is only `use`, so holding one doesn't stop a player opening a chest.
   - `mob`: that, and right-clicking a mob with it.
@@ -176,18 +195,52 @@ A sealed mod, item, tag or recipe **can't be crafted** until its tier opens. Its
 - **Spawn locks (`SPAWN_LOCKS`):** a dispenser fires a Nuclear Bomb as a primed bomb, with no block placed. That's Alex's Caves' own dispenser behaviour (`ACItemRegistry$7`, read with `javap`), so the place lock can't catch it. So a `alexscaves:nuclear_bomb` entity is stopped from spawning until Tier 11, and the log says so. The dispenser still uses up the bomb. It also stops `/summon` of a primed bomb.
 - **How a refused use stops an item:** the click is refused before the item's own use starts, so nothing happens on the server. The raygun only fires while it's being used, and its damage is dealt only on the server (`RaygunItem.onUseTick` in Alex's Caves 2.0.2, read with `javap`). The other items weren't read one by one; see "What couldn't be verified".
 - **Who:** ops in survival are refused too, so an op can test it. Creative players are exempt.
-- **Not covered yet:** Part I's weapons that hit, tools that mine (the Draconic staffs, the Meka-Tool, the Atomic Disassembler), armour and Curios (jetpacks, the Flight Tiara, Draconic chestpieces). The wear and wield locks below can now hold them, but listing them is the owner's call. Two gaps in `TIERS` matter if they are:
-  - the MekaSuit helmet, pants and boots fall back to Mekanism's Tier 4, since only the body armour is listed at Tier 10;
-  - Draconic's chaotic gear opens with Draconic at Tier 9, though its parts are Tier 11.
+- **Covered since 25 November 2026:** Part I's weapons that hit, tools that mine (the Draconic staffs, the Meka-Tool, the Atomic Disassembler), armour and Curios (the Flight Tiara, Draconic chestpieces). The owner decided to lock all sealed gear with a real power, which the wear, wield and carry locks below now do. `LOCK_TIERS` closes the two gaps in `TIERS`:
+  - the MekaSuit helmet, pants and boots (Mekanism's Tier 4) are held until Tier 10, with the body armour;
+  - Draconic's wyvern gear is held until 10 and its draconic and chaotic gear until 11, though the mod is Tier 9.
 - **Adding an item:** put its id in `USE_LOCKS` with its mode, a block in `PLACE_LOCKS`, or gear in `WEAR_LOCKS` or `WIELD_LOCKS`. The script warns at load if an id is in no tier (it would never be locked) or a mode is misspelt.
 
-**Wear and wield locks (`WEAR_LOCKS`, `WIELD_LOCKS`):** the Aether's dungeons hand out the zanite sword (bronze and silver dungeons) and gravitite gear (silver and gold), which crafting locks can't touch, and Deeper and Darker's gear could be traded or brought. So the sealed gear of both mods can't be worn or fought with until its tier opens, however it was got (owner decision, 22 November 2026). As with the use locks, each item's tier is its own in `TIERS`, the player is told why on the action bar, ops in survival are held too and creative players are exempt.
-- **Wear (`WEAR_LOCKS`, 14 pieces):** gravitite armour and gloves (Tier 4), the Aether's netherite gloves (5), resonarium armour (6) and warden armour (7). Every second (`WEAR_CHECK_TICKS`) each player's armour slots and Curios slots (where the Aether's gloves go) are checked. A sealed piece is taken off into the inventory, or dropped at the player's feet if it's full, and the log says whose and what.
-- **Wield (`WIELD_LOCKS`, 17 items):** gravitite and resonarium tools (Tier 4), the zanite sword (5), warden tools (7) and the sonorous staff (9). With one in the main hand:
-  - a hit does nothing (the damage is cancelled);
-  - no block can be broken;
-  - right-clicking with it is refused, in the air or on a block, in either hand (the use locks' `block` mode): a gravitite tool can't float a block, and the staff can't fire.
-- **Loot that stays open:** the dungeons' Valkyrie, Neptune and Phoenix gear, the dungeon swords, life shards and the sculk transmitter are boss rewards, like Twilight Forest's, and have no tier.
+**Wear, wield and carry locks (`WEAR_LOCKS`, `WIELD_LOCKS`, `CARRY_LOCKS`, `PROJECTILE_LOCKS`):**
+- **History:**
+  - **22 November 2026 (owner decision):** the Aether's dungeons hand out the zanite sword and gravitite gear, which crafting locks can't touch, and Deeper and Darker's gear could be traded or brought. So both mods' sealed gear can't be worn or fought with until its tier opens.
+  - **25 November 2026 (owner decision):** "lock all sealed gear". Every sealed item with a real power is held now, however it was got (a Part I inventory, loot, a drop, a trade). The gear check behind the lists is [research/GEAR_BALANCE.md](../../research/GEAR_BALANCE.md).
+- **Who:** the player is told why on the action bar, ops in survival are held too, and creative players are exempt.
+- **Kit items** handed out by the Gladiator Arena, the Purge or the Shrine's night (marked `GladiatorKit`, `PurgeKit` or `ShrineKit`, `KIT_MARKS`) are never held. The arena's Troll Smasher and Terra Knight kits carry sealed gear.
+- **Which tier:** each lock opens at the item's own tier in `TIERS`, or at a later one in `LOCK_TIERS`.
+  - **Why `LOCK_TIERS`:** a mod sealed by namespace gives all its gear the namespace's tier, though some of it needs later materials. 74 items wait longer: dragonsteel until 9 (Ice and Fire is 6), terrasteel until 6 and Botania's Gaia gear until 9 (Botania is 2), the MekaSuit until 10 (Mekanism is 4), Draconic's wyvern gear until 10 and draconic and chaotic until 11 (the mod is 9), the Atomic Disassembler until 7.
+  - **Crafting and ranks don't change:** those items' recipes are held by their materials already.
+- **Wear (`WEAR_LOCKS`, 159 pieces):**
+  - **The first 14:** gravitite armour and gloves (Tier 4), the Aether's netherite gloves (5), resonarium armour (7; 6 until 26 November) and warden armour (7).
+  - **The rest:**
+    - **Tier 6:** dragon scale, troll leather, fiery and yeti armour, terrasteel, the cloak and hood of darkness, rainbounce boots and the Ring of Far Reach.
+    - **Tier 7:** sea serpent armour, Redstone Arsenal's flux armour and elytra, and Powersuits.
+    - **Tier 8:** refined obsidian armour and the tarantula hawk elytra.
+    - **Tier 9:** dragonsteel armour, the flight tiara, Botania's cloaks, pendants, belt and Ring of Odin.
+    - **Tiers 10 and 11:** the MekaSuit and Draconic chestpieces.
+  - **When they're checked:** every second (`WEAR_CHECK_TICKS`), each player's armour slots and Curios slots are checked, and a piece put on from the inventory screen or by a dispenser comes off at once (`PlayerEvents.inventoryChanged`). A sealed piece is taken off into the inventory, or dropped at the player's feet if it's full, and the log says whose and what.
+  - **Right-clicking one to put it on is refused** (armour, and Curios' right-click equip).
+  - **Warden armour in main slot 3** (the 4th hotbar slot) clears Blindness and Darkness worn or not (`SLOT_3_LOCKS`). So a sealed piece there is moved out, and pieces taken off are never put back there.
+- **Wield (`WIELD_LOCKS`, 127 items):**
+  - **The first 17:** gravitite and resonarium tools (Tier 4), the zanite sword (5), warden tools (7) and the sonorous staff (9).
+  - **The rest:**
+    - **Tier 5:** Ars Nouveau's enchanter's sword, and Twilight's giant sword and pickaxe.
+    - **Tier 6:** Ice and Fire's troll weapons, elemental dragonbone swords, tide trident and others; Twilight's fiery sword and pickaxe; the Terra Blade, Thundercaller, Starcaller, Terra Shatterer and Terra Truncator; Alex's Caves' weapons; Reliquary's swords.
+    - **Tier 7:** the Healing Axe, Redstone Arsenal's flux tools, the power fist and the Atomic Disassembler.
+    - **Tier 8:** Ice and Fire's dread knight and ghost swords, Tinker's Rapier and estoc, Create's sabers, the gauntlet, refined obsidian gear and Mekanism Tools' paxels.
+    - **Tier 9:** dragonsteel tools, Kikoku, the Etheric Sword and the extinction spear.
+    - **Tiers 10 and 11:** the Meka-Tool and Draconic's tools, swords and staffs.
+  - **With one in either hand, a hit does nothing** (the damage is cancelled). Either hand, because Better Combat (in the pack) lets two one-handed weapons take turns: its off-hand swing uses the off-hand weapon, while scripts still see the main-hand item.
+  - **With one in the main hand, no block can be broken.**
+  - **Right-clicking with it is refused,** in the air or on a block, in either hand (the use locks' `block` mode): a gravitite tool can't float a block, the staff can't fire, a spear can't be thrown and a saber or shield can't block.
+- **Carry (`CARRY_LOCKS`, 10 items):** items that work from the inventory or a Curios slot without being worn or held. A sealed one found on a player (main inventory, off hand, Curios) goes into their ender chest, or is dropped at their feet if that's full, checked with the wear lock:
+  - **Tier 6:** Reliquary's phoenix down, angelheart vial, angelic feather, infernal claws, kraken shell, twilight cloak and witherless rose;
+  - **Tier 7:** Extra Utilities' advanced chicken wing ring and Twilight's charm of keeping III;
+  - **Tier 9:** the salamander eye.
+- **Projectiles (`PROJECTILE_LOCKS`):** a sealed arrow fired by a player hits for nothing: Ice and Fire's dragonbone arrow (30 a shot from any bow, Tier 8) and hydra arrow (Tier 6).
+- **Left alone on purpose:**
+  - **weak sealed gear** (no better than netherite and no ability): lapis and bronze tools, Ice and Fire's silver, copper, myrmex and deathworm gear, Botania's elementium, Twilight's arctic armour (Tier 5 since 26 November);
+  - **gear already open on the live server;**
+  - **the Aether's dungeon loot:** the Valkyrie, Neptune and Phoenix gear, the dungeon swords, life shards and the sculk transmitter are boss rewards, like Twilight Forest's, and have no tier.
 
 **Routes the cohesion audit found and sealed** ([PROGRESSION_AUDIT.md](../../PROGRESSION_AUDIT.md)). Their results are tags or secondary outputs, neither of which an item lock can see, so they're locked by recipe id:
 - **Tier 1:** Create Aquatic Ambitions' three prismarine and nautilus crushing recipes, whose **secondary** outputs are Create experience and copper nuggets. Found in game by `/bloodpool audit` at Tier 0, not by the offline audit: that mod is one of the "not on hand" mods it can't read.
@@ -463,12 +516,17 @@ floor        5x5 chiseled nether bricks
 | `STANDING_CRAFTING` | true | Rank gates crafting-table recipes for players and placing autocrafters. false = it only gates the black market |
 | `AUTOCRAFTERS` | 11 blocks (see "Autocrafters only make") | Autocrafters that need their tier's rank to place. `{ name }`, or `{ name, rank }` for a fixed rank |
 | `BANNED_CRAFTERS` | Fancy Crafters, Wixie Cauldron, Wixie Charm | Autocrafters no check can reach: recipes removed, placing and using refused. Take an id out to allow it again, which breaks the autocrafter rule for that block |
-| `USE_LOCKS` | 39 items, each `use`, `block` or `mob` | Items that can't be used until their tier opens, however they were got (see "The exception: what Part I players brought"). Creative players are exempt; ops in survival aren't |
+| `USE_LOCKS` | 63 items, each `use`, `block` or `mob` | Items that can't be used until their tier opens, however they were got (see "The exception: what Part I players brought"). Creative players are exempt; ops in survival aren't |
 | `PLACE_LOCKS` | Nuclear Bomb, Tremorzilla Egg, Ender Quarry | Blocks that can't be placed until their tier opens, by anyone but a creative player |
 | `SPAWN_LOCKS` | `alexscaves:nuclear_bomb` (the primed bomb) | Entities stopped from spawning while the item named for them is sealed |
-| `WEAR_LOCKS` | 14 Aether and Deeper and Darker armour pieces and gloves | Gear that's taken off (armour and Curios slots) while sealed, however it was got. Creative players are exempt |
-| `WIELD_LOCKS` | 17 Aether and Deeper and Darker weapons and tools | Gear that can't hit, break blocks or be right-clicked while sealed. Creative players are exempt |
-| `WEAR_CHECK_TICKS` | 20 | How often worn gear is checked (every second) |
+| `WEAR_LOCKS` | 159 armour pieces and worn accessories (built from family lists: `SETS`, `EACH`) | Gear that's taken off (armour and Curios slots) while sealed, however it was got, and can't be put on with a right-click. Creative players are exempt |
+| `SLOT_3_LOCKS` | the four warden armour pieces | Worn pieces that also work from main inventory slot 3: moved out of it while sealed |
+| `WIELD_LOCKS` | 127 weapons and tools | Gear that can't hit (in either hand), break blocks or be right-clicked while sealed. Creative players are exempt |
+| `CARRY_LOCKS` | 10 items | Items that work by being carried: moved to the ender chest (or dropped) while sealed |
+| `PROJECTILE_LOCKS` | `iceandfire:dragon_arrow`, `iceandfire:hydra_arrow` (entity → item) | Projectiles whose hits do nothing while their item is sealed |
+| `LOCK_TIERS` | 74 items | Items whose use, wear, wield or carry lock waits for a later tier than their own in `TIERS` (dragonsteel 9, terrasteel 6, Botania's Gaia gear 9, the MekaSuit 10, Draconic 10 and 11, the Atomic Disassembler 7). Crafting and ranks don't change |
+| `KIT_MARKS` | `GladiatorKit`, `PurgeKit`, `ShrineKit` | NBT marks of event kit items, which no lock holds |
+| `WEAR_CHECK_TICKS` | 20 | How often worn and carried gear is checked (every second); a piece put on is checked at once too |
 | `STAGE_PREFIX` | `potato_standing_` | The KubeJS stage name for rank n |
 | `RANKUP_PUBLIC` | true | Announce rank-ups to everyone |
 | `CATCH_UP_GAP` | 2 | Catch-up: at Pool Tier T, everyone can craft Tiers 1..T−2 (and gets the tree's nodes up to there), and machines can make those tiers' recipes; 0 = off |
@@ -530,6 +588,15 @@ floor        5x5 chiseled nether bricks
    - **The rest of the list, at Tier 5:** an AE2 Matter Cannon and a Rending Gale do nothing, and say why. An Entropy Manipulator does nothing on a block. A Totem of Possession does nothing on a mob. Holding the raygun, a chest still opens.
    - **The Nuclear Bomb:** placing one is refused. Put one in a dispenser and power it: the bomb is used up, nothing explodes, and the log says `Stopped alexscaves:nuclear_bomb from spawning`. Test this away from anything you care about, in case the spawn lock fails. At `/bloodpool settier 11` the bomb places (don't light it).
    - **Wear and wield locks, at Tier 5** (in survival): put on a resonarium chestplate (Tier 6) and a gravitite helmet (Tier 4). Within a second the chestplate comes off into the inventory, the action bar says it's sealed until Tier 6 (A Stream), and the helmet stays on. With a full inventory, warden boots drop at your feet. Put the Aether's netherite gloves (Tier 5) in the gloves slot: they stay on; at `settier 4` they come off. Hit a mob with a warden sword (Tier 7): no damage, and the action bar says why. Mine stone with a warden pickaxe: it doesn't break. The zanite sword (Tier 5) and a gravitite pickaxe (Tier 4) work. Right-click with the sonorous staff (Tier 9): nothing fires. In creative all of it works. After `settier 7` the warden gear works and stays on.
+   - **The rest of the sealed gear, at Tier 5** (in survival):
+     - Right-click a warden helmet: it doesn't go on. Shift-click it into the helmet slot: it comes off at once.
+     - Put a warden piece in the 4th hotbar slot: it moves.
+     - Put a MekaSuit helmet on: it comes off, and the action bar says Tier 10.
+     - With Better Combat, hold a diamond sword and a Kikoku in the off hand and attack: no damage.
+     - Pick up a phoenix down: it goes to the ender chest. With the ender chest full, it drops at your feet.
+     - Shoot a dragonbone arrow from a plain bow: no damage.
+     - Use the gorgon head: refused.
+     - In a Gladiator Arena match with the Troll Smasher kit, the troll hammer and troll armour work.
 9. **The Potato War** (a non-op player in survival; an op runs the commands):
    - **After lowering the tier to retest:** two things stay behind. Caught-up tree nodes stay until `/potatotree revoke` (`/potatowar set` only changes potatoes). A Tinkers Crafting Station keeps its last recipe through a reload, so one used at the higher tier can still make that recipe without its rank check. Craft something else in it, replace it or restart.
    - **Netherite:** below Tier 5, ancient debris won't smelt and a netherite ingot won't craft. At Tier 5, debris smelts, and melting diamond ore in a Foundry gives molten diamond but no molten debris.
@@ -584,6 +651,23 @@ Still to confirm in game:
 
 **The wear and wield locks** (22 November 2026). The mock tests cover: every listed id in a tier; armour taken off at the once-a-second check (and not before), into the inventory or at the player's feet; open pieces and creative players left alone; hits and block breaks cancelled with a sealed item in the main hand, and allowed with an open one, an ordinary weapon or a bare hand; right-clicks refused in the air and on a block; `/bloodpool check`; and the gear working once its tier opens.
 
+**All sealed gear** (25 November 2026). Added to the mock tests:
+- **Load and tiers:**
+  - every lock list's ids in a tier;
+  - `LOCK_TIERS` (the MekaSuit helmet 10, dragonsteel 9, terrasteel 6, the Ring of Odin 9, Draconic 10 and 11);
+  - `/bloodpool check` naming a lock's later tier;
+  - at Tier 6, dragon scale armour, the gorgon head and dragonbone arrows open, while dragonsteel and Kikoku stay held.
+- **The worn lock:**
+  - armour put on between checks coming off at once (the inventory event);
+  - a right-click refused for sealed armour and allowed for open armour, while clicking a block isn't refused;
+  - warden armour moved out of hotbar slot 4, and never put back there or into it when it's the only free slot.
+- **The hit lock:** a sealed sword in the off hand stopping hits.
+- **Kits:** arena, Purge and Shrine kit items not held.
+- **Carried items:** going to the ender chest (from the main inventory, the off hand and Curios), or dropped when it's full.
+- **Projectiles:** a dragonbone arrow's hit cancelled.
+
+12 deliberate breaks of the lock code were each caught. The new script loaded on the test server (25 November) with 0 errors and 0 warnings; nothing was tried with a player.
+
 **Seen on the test server** (22 November 2026, one player in survival, gear put on and hits dealt from the console with `/item replace` and `/damage … by <player>`):
 - at Tier 5, a resonarium chestplate and warden boots came off into the inventory within a second, with a log line each; gravitite helmet and leggings stayed on. Later, with no console command running, the player put the boots on by hand (22:19 and 22:52) and each time they came off;
 - at Tier 4, the Aether's netherite gloves came off their Curios gloves slot (`aether_gloves`) into the inventory;
@@ -594,8 +678,10 @@ Still to confirm in game:
 Still to confirm in game:
 - **Breaking blocks and right-clicks by hand:** a warden pickaxe not breaking stone, and the sonorous staff not firing.
 - **`/bloodpool check` as a player:** its reply goes to the player's chat, not the console, so it wasn't read.
-- **Hits that don't come from the main hand:** a cancelled `EntityEvents.hurt` stops the damage, but anything the item does on its own (the gravitite sword's knock-up, the warden sword's effects) may already have happened, or may run from another hook. The sonorous staff's beam is a use, which is refused.
-- **A piece put straight back on:** a player can re-equip a sealed piece and wear it for up to a second until the next check. Its armour counts for that second.
+- **Better Combat's off-hand swings** (25 November): they're stopped by checking both hands, read from Better Combat's code (`PlayerEntityMixin`), not tried with a player.
+- **Carried items going to the ender chest,** a dragonbone arrow's hit (the lock reads the hit's direct entity, `source.directEntity`), Curios' right-click equip being refused, and arena kit gear in a real match: offline tests only.
+- **What a cancelled hit stops** (read on 25 November, not tried in game): KubeJS posts `EntityEvents.hurt` from Forge's `LivingAttackEvent` at priority HIGH, the first thing a hit does, so the item's own on-hit effects (the gravitite sword's launch, a dragonbone sword's fire) never run. None of the sealed items acts earlier, on `AttackEntityEvent` (research/gear/DIMENSION_GEAR.md). The sonorous staff's beam is a use, which is refused.
+- **A piece put straight back on:** fixed on 25 November. A right-click can't put a sealed piece on, and one put on from the inventory screen comes off at once. Gloves put on from the Curios screen still wait for the next check (up to a second, +1 damage at most).
 - **Block breaking with a sealed tool held in the off hand:** only the main hand is checked, since that's the hand that mines.
 
 **The raygun** in particular. Two things to watch for:

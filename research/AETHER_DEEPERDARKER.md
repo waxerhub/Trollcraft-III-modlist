@@ -10,6 +10,18 @@ and checked with the Blood Pool's own `tierOf` (loaded through `tools/ftbquests/
 locks (`WEAR_LOCKS`, `WIELD_LOCKS`; see `tools/kubejs/BLOOD_POOL.md`). The two sections that follow describe the mods
 as they were before that.
 
+**Gear check (25 November 2026):** every number below was read again from the jars ([GEAR_BALANCE.md](GEAR_BALANCE.md),
+[gear/DIMENSION_GEAR.md](gear/DIMENSION_GEAR.md)). Most were right. Corrected in place:
+- **resonarium armour** had its power backwards;
+- **the sonorous staff** (charge, range, and resonarium not stopping it);
+- **the dungeon swords** (the pig slayer is 6, the candy cane sword 4).
+
+Resonarium armour moved from Tier 6 to 7 on 26 November (owner decision), for its real power.
+
+Also found:
+- **Warden armour** clears Blindness and Darkness from the 4th hotbar slot too, worn or not. The wear lock now moves it out.
+- **Flight** comes before Tier 7: Mekanism's jetpack (4), brooms and Ars Nouveau's Glide (2). Powersuits' own jetpack needs a Tier 11 part.
+
 ## Where things stood before (nothing gated)
 
 - **Both dimensions are open from day one.** `part2/dimension_gates.js` only knows the Nether and the End.
@@ -81,15 +93,15 @@ its ingredients', whichever is later).
 | Aether Neptune (loot) | 15 / 4 / 0 | | faster swimming | iron (Tier 0) |
 | Aether Valkyrie (loot) | 20 / 8 / 0 | lance 7, reach 6.5; tools +3.5 reach | set: 2.5 s lift recharged on landing, no fall damage | diamond (Tier 0) |
 | Aether Phoenix (loot) → obsidian | 20 / 8 → 20 / 12 / 0 | phoenix bow: 20 s of fire | set: immune to fire and lava; turns into obsidian armour (netherite) after ~15 s wet | netherite (Tier 5) |
-| Aether dungeon swords (loot) | | 7 each: 30 s of fire, lightning, +8.25 against undead, 1 HP per hit, +16 against pigs | | diamond (Tier 0), fiery 8 and fire (Tier 6) |
+| Aether dungeon swords (loot) | | 7 each (the pig slayer 6, the candy cane sword 4): 30 s of fire, lightning, +8.25 against undead, 1 HP per hit, +16 against pigs, piglins, hoglins and zoglins | | diamond (Tier 0), fiery 8 and fire (Tier 6) |
 | Aether gloves | none | +0.25 (leather) to +1.0 (netherite, Valkyrie, Phoenix) damage | needed for set bonuses | |
 | Aether life shards (loot) | | | +2 max health each, 10 at most (+20) | heart canisters (Tier 0) |
 | Aether regeneration stone / invisibility cloak / shield of repulsion (loot) | | | 0.4 HP/s (stacks) / mobs can't target you / reflects projectiles while standing still | Reliquary's angelic feather and phoenix down (Tier 6) |
 | Aether zanite ring and pendant | | | mining ×1.4 to ×1.73 each, multiplying | |
 | Resonarium tools | | 7 (diamond); 1193 durability | mines anything (its tier isn't registered; nothing in this pack needs more than diamond) | diamond (Tier 0), steeleaf (Tier 4) |
-| **Resonarium armour** | 18 / 4 / 0 | | **a full set cancels every armour-bypassing hit** (falls, poison, wither, magic, drowning, starving, the void, sonic booms), paid in durability | dragon scale 26/8 and terrasteel 20/12 with abilities (Tier 6) |
+| **Resonarium armour** | 18 / 4 / 0 | | **each piece takes a quarter off every hit that doesn't bypass armour, so a full set takes nothing from melee, arrows, explosions, fire or lava**, paid in durability (each blocked hit costs every piece its damage); armour-bypassing damage (falls, poison, wither, the void, sonic booms) is untouched. *Corrected 25 November: this row first said the opposite* | dragon scale 26/8 and terrasteel 20/12 with abilities (Tier 6) |
 | **Warden gear** | **24 / 16 / 0.4**, leggings +50% walking speed, no blindness or darkness | 9; tools 2519 durability, level 5 | boots silence your vibrations | fiery 24/6 and 8 (Tier 6); osmium 21/12 and refined obsidian 31/20/0.8 and 12 (Tier 8) |
-| **Sonorous staff** | | **up to 50 damage to everything along an 18-block beam, ignoring armour and Protection**; ×1.5 on Hard; 1 shot a second; 320 durability | a full resonarium set cancels it | dragonsteel sword 25 (effective Tier 9), refined obsidian 12 (Tier 8) |
+| **Sonorous staff** | | **up to 50 damage along the beam after a 6-second charge (14 blocks; longer with longer charges, about two-thirds at the far end), ignoring armour and Protection**; ×1.5 against players on Hard; a 20-tick cooldown after each shot; 320 durability | a resonarium set does *not* stop it (sonic booms bypass armour). *Corrected 25 November* | dragonsteel sword 25 (effective Tier 9), refined obsidian 12 (Tier 8) |
 | Soul elytra | 3 / 0 / 0 | | elytra with a rocket-like boost every 30 s; 956 durability | needs an elytra, from the End (Tier 9) |
 | Sculk transmitter (loot) | | | opens one linked vanilla container from any distance in the same dimension | AE2 wireless terminals (Tier 6) |
 
@@ -107,7 +119,7 @@ Aether's own ladder, and opening the dimension early doesn't hand anyone a short
 | **Zanite sword** | **5** | reaches 11 to 13 damage as it wears, beyond netherite (8, Tier 5); cheap to make and wear down |
 | Gravitite armour, tools and gloves, enchanted gravitite | 4 | diamond with modest set powers, like steeleaf (Tier 4) |
 | Resonarium tools | 4 | diamond-equivalent, like steeleaf |
-| **Resonarium armour** | **6** | its damage cancelling (falls, wither, poison, void) is a Tier 6 ability, like dragon scale and terrasteel |
+| **Resonarium armour** | **7** (6 until 26 November) | first decided at 6 as a damage-cancelling ability like dragon scale and terrasteel. Its real power is stronger (a full set takes nothing from ordinary hits while its durability lasts), so it moved to 7 with warden gear and Redstone Arsenal's flux armour (owner decision 26 November, research/GEAR_BALANCE.md) |
 | Aether netherite gloves | 5 | the netherite list |
 | **Warden gear**, reinforced echo shard, template copying | **7** | between fiery (Tier 6) and refined obsidian (Tier 8) on every number |
 | **Sonorous staff** | **9** | 50 armour-ignoring damage outclasses everything but dragonsteel (Tier 9) |
@@ -118,8 +130,8 @@ Aether's own ladder, and opening the dimension early doesn't hand anyone a short
 and Curios slots); sealed weapons and tools in the main hand deal no damage and break no blocks, and right-clicking
 with them is refused. Creative players are exempt. `WEAR_LOCKS` and `WIELD_LOCKS` in `blood_pool.js`.
 
-**For the Purge and the Gladiator Arena:** in "own gear" matches the sonorous staff ignores armour, and a resonarium
-set cancels it. Worth keeping out of own-gear fights, or relying on the kits. (Still open: the owner's call.)
+**For the Purge and the Gladiator Arena:** in "own gear" matches the sonorous staff ignores armour (a resonarium set
+doesn't stop it, as this first said), and a full resonarium set shrugs off ordinary hits. Worth keeping out of own-gear fights, or relying on the kits. (Still open: the owner's call.)
 
 ## Options as first laid out (before the stat review)
 

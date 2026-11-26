@@ -1018,7 +1018,8 @@ ok('Tier 5: a raygun can\'t be used, in either hand', !useItem(bo, gun()) && !us
 ok('... and the action bar says until when, with the item\'s own (translated) name', bo.status.length == 2 &&
   bo.status[0] == 'The <item.alexscaves.raygun> is sealed until the Blood Pool opens Tier 6 (A Stream).', bo.status.join(' | '))
 ok('... the refusal sends the inventory again (the client may have spent ammo on its own screen)', syncCount(bo, () => useItem(bo, gun())).join() == '0,1')
-ok('... sealed items not on the list (the Sea Staff, found as loot) and ordinary items are left alone', useItem(bo, stack('alexscaves:sea_staff', 1)) && useItem(bo, stack('minecraft:bow', 1)) && useItem(bo, EMPTY()))
+ok('... sealed items not on the list (Ice and Fire\'s dragonbone bow, weak gear) and ordinary items are left alone', useItem(bo, stack('iceandfire:dragonbone_bow', 1)) && useItem(bo, stack('minecraft:bow', 1)) && useItem(bo, EMPTY()))
+ok('... while the Sea Staff, found as loot, is held now (all sealed gear with a power, 25 Nov)', !useItem(bo, stack('alexscaves:sea_staff', 1)))
 watchBar(admin)
 ok('ops in survival are refused too (so an op can test it); creative players aren\'t', !useItem(admin, gun()) && admin.status.length == 1 && useItem(cy, gun()))
 setReal(bo, bo.selected, gun())
@@ -1031,24 +1032,44 @@ const breakWith = p => { const ev = { player: p, block: { x: 9000, y: 64, z: 900
 const clickBlockWith = (p, s) => { const ev = { player: p, item: s, hand: 'MAIN_HAND', block: { x: 9000, y: 64, z: 9000, level: levels[OW], getDimension: () => OW, id: 'minecraft:stone' }, cancel() { throw new Exit() } }; fire('blockRightClicked', ev); return !ev.cancelled }
 const heldSave = bo.inventory.getItem(bo.selected)
 ok('every wear and wield lock is in a tier (nothing logged at load)', !W.logs.some(l => /(WEAR|WIELD)_LOCKS/.test(l)), W.logs.filter(l => /(WEAR|WIELD)_LOCKS/.test(l)).join(' | '))
-ok('their tiers: gravitite 4, zanite sword 5, resonarium tools 4 and armour 6, warden gear 7, the sonorous staff 9',
+ok('their tiers: gravitite 4, zanite sword 5, resonarium tools 4 and armour 7 (6 until 26 Nov), warden gear 7, the sonorous staff 9',
   glob.BloodPool.tierOf('aether:gravitite_chestplate') == 4 && glob.BloodPool.tierOf('aether:zanite_sword') == 5 && glob.BloodPool.tierOf('deeperdarker:resonarium_sword') == 4 &&
-  glob.BloodPool.tierOf('deeperdarker:resonarium_chestplate') == 6 && glob.BloodPool.tierOf('deeperdarker:warden_sword') == 7 && glob.BloodPool.tierOf('deeperdarker:sonorous_staff') == 9 &&
+  glob.BloodPool.tierOf('deeperdarker:resonarium_chestplate') == 7 && glob.BloodPool.tierOf('deeperdarker:warden_sword') == 7 && glob.BloodPool.tierOf('deeperdarker:sonorous_staff') == 9 &&
   glob.BloodPool.tierOf('aether:zanite_chestplate') == 0)
 bo.status = []
 setReal(bo, 38, stack('deeperdarker:resonarium_chestplate', 1)); setReal(bo, 39, stack('aether:gravitite_helmet', 1))
 ticks(19)
-ok('a sealed chestplate worn (resonarium, Tier 6, at Tier 5) stays on until the next check (every second)', bo.inventory.getItem(38).id == 'deeperdarker:resonarium_chestplate')
+ok('a sealed chestplate worn (resonarium, Tier 7, at Tier 5) stays on until the next check (every second)', bo.inventory.getItem(38).id == 'deeperdarker:resonarium_chestplate')
 ticks(1)
 ok('... then it\'s taken off into the inventory, and the action bar says until when', bo.inventory.getItem(38).count <= 0 &&
   bo.inventory.slots.slice(0, 36).some(s => s.id == 'deeperdarker:resonarium_chestplate' && s.count == 1) &&
-  bo.status.some(l => l == 'The <item.deeperdarker.resonarium_chestplate> is sealed until the Blood Pool opens Tier 6 (A Stream).'), bo.status.join(' | '))
+  bo.status.some(l => l == 'The <item.deeperdarker.resonarium_chestplate> is sealed until the Blood Pool opens Tier 7 (A River).'), bo.status.join(' | '))
 ok('... an open piece (gravitite, Tier 4) stays on', bo.inventory.getItem(39).id == 'aether:gravitite_helmet')
 const mainSave = bo.inventory.slots.slice(0, 36).map(s => s)
 for (let i = 0; i < 36; i++) setReal(bo, i, stack('minecraft:cobblestone', 64))
 setReal(bo, 36, stack('deeperdarker:warden_boots', 1)); bo.ground = []
+const dropsBefore = W.drops.length
 ticks(20)
-ok('... with no room in the inventory, the sealed piece is dropped at the player\'s feet', bo.inventory.getItem(36).count <= 0 && bo.ground.some(s => s.id == 'deeperdarker:warden_boots'))
+ok('... with no room in the inventory, the sealed piece is dropped at the player\'s feet', bo.inventory.getItem(36).count <= 0 &&
+  W.drops.slice(dropsBefore).some(d => d.item == 'deeperdarker:warden_boots' && d.by == 'drop:' + bo.name))
+// Warden armour clears Blindness and Darkness from main slot 3 too (the 4th hotbar slot), worn or not.
+setReal(bo, 3, EMPTY())
+setReal(bo, 36, stack('deeperdarker:warden_boots', 1))
+ticks(20)
+ok('... and with only slot 3 free (the 4th hotbar slot, where warden armour works unworn), it\'s dropped rather than put there',
+  bo.inventory.getItem(3).count <= 0 && W.drops.slice(dropsBefore).filter(d => d.item == 'deeperdarker:warden_boots').length == 2)
+for (let i = 0; i < 36; i++) setReal(bo, i, mainSave[i])
+setReal(bo, 3, stack('deeperdarker:warden_leggings', 1)); bo.status = []
+ticks(20)
+ok('a sealed warden piece kept in hotbar slot 4 (main slot 3) is moved out of it, and the action bar says why',
+  bo.inventory.getItem(3).count <= 0 && bo.inventory.slots.slice(0, 36).some((s, i) => i != 3 && s.id == 'deeperdarker:warden_leggings') &&
+  bo.status.some(l => /warden_leggings> is sealed until the Blood Pool opens Tier 7/.test(l)), bo.status.join(' | '))
+setReal(bo, 3, stack('deeperdarker:warden_helmet', 1))
+fire('inventoryChanged', { player: bo, item: stack('deeperdarker:warden_helmet', 1) })
+ok('... at once when it\'s put there (the inventory event)', bo.inventory.getItem(3).count <= 0)
+setReal(bo, 3, stack('deeperdarker:resonarium_chestplate', 1))
+ticks(20)
+ok('... while other sealed armour may sit there (it does nothing unworn)', bo.inventory.getItem(3).id == 'deeperdarker:resonarium_chestplate')
 for (let i = 0; i < 36; i++) setReal(bo, i, mainSave[i])
 // The Aether's gloves sit in a Curios slot. The test takes any sealed piece there: at Tier 5 the gloves are all open.
 const curioSlots = [stack('aether:netherite_gloves', 1), stack('deeperdarker:resonarium_leggings', 1)]
@@ -1059,6 +1080,19 @@ ok('a sealed piece in a Curios slot is taken off too; open gloves (netherite, Ti
 ok('... and the log says whose and what', W.logs.some(l => /Took sealed gear off .*deeperdarker:resonarium_leggings/.test(l)), W.logs.slice(-3).join(' | '))
 ok('Curios loaded without a warning', !W.logs.some(l => /Curios not found/.test(l)))
 delete bo.curios
+// Put on between two checks (the inventory screen, a dispenser): it comes off at once, so its powers never work.
+setReal(bo, 38, stack('deeperdarker:resonarium_chestplate', 1)); bo.status = []
+fire('inventoryChanged', { player: bo, item: stack('deeperdarker:resonarium_chestplate', 1) })
+ok('sealed armour put on between checks comes off at once (the inventory event), not up to a second later',
+  bo.inventory.getItem(38).count <= 0 && bo.inventory.slots.slice(0, 36).some(s => s.id == 'deeperdarker:resonarium_chestplate') &&
+  bo.status.some(l => /resonarium_chestplate> is sealed until the Blood Pool opens Tier 7/.test(l)), bo.status.join(' | '))
+setReal(bo, 38, stack('aether:gravitite_chestplate', 1))
+fire('inventoryChanged', { player: bo, item: stack('aether:gravitite_chestplate', 1) })
+ok('... an open piece put on stays on (gravitite, Tier 4)', bo.inventory.getItem(38).id == 'aether:gravitite_chestplate')
+setReal(bo, 38, EMPTY())
+ok('right-clicking sealed armour to put it on is refused (warden, Tier 7); open armour still goes on',
+  !useItem(bo, stack('deeperdarker:warden_helmet', 1)) && useItem(bo, stack('aether:gravitite_helmet', 1)))
+ok('... but clicking a block while holding it isn\'t refused (a chest still opens)', clickBlockWith(bo, stack('deeperdarker:warden_helmet', 1)))
 cy.online = true
 setReal(cy, 38, stack('deeperdarker:warden_chestplate', 1))
 ticks(20)
@@ -1067,6 +1101,13 @@ cy.online = false
 setReal(bo, bo.selected, stack('deeperdarker:warden_sword', 1)); bo.status = []
 ok('a hit with a sealed sword (warden, Tier 7) does nothing, and says why', !hit(bo) && bo.status.some(l => /warden_sword> is sealed until the Blood Pool opens Tier 7 \(A River\)/.test(l)), bo.status.join(' | '))
 ok('... nor can it break a block', !breakWith(bo))
+// Better Combat's dual wielding swings the off-hand weapon while the main hand still reads as the other one.
+setReal(bo, bo.selected, stack('minecraft:diamond_sword', 1)); setReal(bo, 40, stack('deeperdarker:warden_sword', 1)); bo.status = []
+ok('a sealed sword in the off hand (Better Combat dual wielding) stops hits too, and says why',
+  !hit(bo) && bo.status.some(l => /warden_sword> is sealed until the Blood Pool opens Tier 7/.test(l)), bo.status.join(' | '))
+setReal(bo, 40, stack('aether:zanite_sword', 1))
+ok('... an open one there (zanite, Tier 5) doesn\'t', hit(bo))
+setReal(bo, 40, EMPTY())
 setReal(bo, bo.selected, stack('aether:zanite_sword', 1))
 ok('the zanite sword (Tier 5) works at Tier 5; so do ordinary weapons and bare hands', hit(bo) && (setReal(bo, bo.selected, stack('minecraft:diamond_sword', 1)), hit(bo)) && (setReal(bo, bo.selected, EMPTY()), hit(bo)))
 setReal(bo, bo.selected, stack('deeperdarker:warden_pickaxe', 1))
@@ -1084,8 +1125,84 @@ ok('/bloodpool check says wearing one is sealed too', /deeperdarker:warden_chest
 setReal(bo, bo.selected, stack('deeperdarker:sonorous_staff', 1))
 cmd('bloodpool check', bo)
 ok('... and using a wield-locked one', /deeperdarker:sonorous_staff can be crafted from Tier 9 \(A Tide\): sealed for now, and so is using one/.test(flat(lastReply())), flat(lastReply()))
+// ----- All sealed gear with a power (owner decision 2026-11-25): per-item lock tiers, kits, carried items, arrows -----
+const BPg = glob.BloodPool
+ok('every lock list is in a tier (nothing logged at load: use, wear, wield, carry, projectile)',
+  !W.logs.some(l => /(USE|WEAR|WIELD|CARRY|PROJECTILE)_LOCKS/.test(l)), W.logs.filter(l => /_LOCKS/.test(l)).join(' | '))
+ok('locks wait for an item\'s true tier where its namespace says less: MekaSuit helmet 10 (Mekanism 4), dragonsteel 9 (Ice and Fire 6), terrasteel 6 and the Ring of Odin 9 (Botania 2), Draconic 10-11 (9)',
+  BPg.lockTierOf('mekanism:mekasuit_helmet') == 10 && BPg.tierOf('mekanism:mekasuit_helmet') == 4 &&
+  BPg.lockTierOf('iceandfire:dragonsteel_fire_sword') == 9 && BPg.tierOf('iceandfire:dragonsteel_fire_sword') == 6 &&
+  BPg.lockTierOf('botania:terrasteel_helmet') == 6 && BPg.lockTierOf('botania:odin_ring') == 9 &&
+  BPg.lockTierOf('draconicevolution:wyvern_sword') == 10 && BPg.lockTierOf('draconicevolution:chaotic_chestpiece') == 11 &&
+  BPg.lockTierOf('draconicevolution:wyvern_bow') == 10 && BPg.lockTierOf('iceandfire:armor_red_chestplate') == 6)
+setReal(bo, 39, stack('mekanism:mekasuit_helmet', 1)); bo.status = []
+ticks(20)
+ok('a MekaSuit helmet (crafting Tier 4, open) is taken off until Tier 10, and the action bar names Tier 10',
+  bo.inventory.getItem(39).count <= 0 && bo.status.some(l => /mekasuit_helmet> is sealed until the Blood Pool opens Tier 10/.test(l)), bo.status.join(' | '))
+setReal(bo, bo.selected, stack('iceandfire:dragonsteel_ice_sword', 1)); bo.status = []
+ok('a dragonsteel sword (Ice and Fire, Tier 6) can\'t hit until Tier 9', !hit(bo) && bo.status.some(l => /dragonsteel_ice_sword> is sealed until the Blood Pool opens Tier 9/.test(l)), bo.status.join(' | '))
+cmd('bloodpool check', bo)
+ok('/bloodpool check says the lock waits for a later tier than the recipe',
+  /iceandfire:dragonsteel_ice_sword can be crafted from Tier 6 \(A Stream\): sealed for now\. Using one waits for Tier 9 \(A Tide\), however it was got\./.test(flat(lastReply())), flat(lastReply()))
+ok('Kikoku, troll weapons and Create\'s sabers can\'t hit; the gorgon head, scepters, brooms and dislocators can\'t be used',
+  ['extrautilitiesreborn:kikoku', 'iceandfire:troll_weapon_hammer', 'create_sabers:brass_saber', 'mekanism:meka_tool'].every(id => (setReal(bo, bo.selected, stack(id, 1)), !hit(bo))) &&
+  ['iceandfire:gorgon_head', 'twilightforest:fortification_scepter', 'hexerei:willow_broom', 'draconicevolution:player_dislocator'].every(id => !useItem(bo, stack(id, 1))))
+ok('the gear check\'s tier moves (26 Nov): resonarium armour 7, sea serpent 7, Kikoku and the Etheric Sword 9, the dread knight and ghost swords 8, dragonbone arrows 8, Tinker\'s Rapier 8, the terra blade, Thundercaller and Starcaller 6, the giant sword 5, arctic armour 5, the enchanter\'s sword 5',
+  BPg.tierOf('deeperdarker:resonarium_boots') == 7 && BPg.tierOf('iceandfire:tide_red_chestplate') == 7 &&
+  BPg.tierOf('extrautilitiesreborn:kikoku') == 9 && BPg.tierOf('extrautilitiesreborn:etheric_sword') == 9 &&
+  BPg.tierOf('iceandfire:dread_knight_sword') == 8 && BPg.tierOf('iceandfire:ghost_sword') == 8 && BPg.tierOf('iceandfire:dragonbone_arrow') == 8 &&
+  BPg.tierOf('tinker_rapier:rapier_tic') == 8 && BPg.tierOf('botania:terra_sword') == 6 && BPg.lockTierOf('botania:thunder_sword') == 6 &&
+  BPg.lockTierOf('botania:star_sword') == 6 && BPg.tierOf('twilightforest:giant_sword') == 5 && BPg.tierOf('twilightforest:arctic_helmet') == 5 &&
+  BPg.tierOf('ars_nouveau:enchanters_sword') == 5 && BPg.tierOf('extrautilitiesreborn:healing_axe') == 7)
+// Kit items from the arena, the Purge and the Shrine are never held (the arena's troll and Terra Knight kits are sealed gear).
+setReal(bo, bo.selected, stack('iceandfire:troll_weapon_hammer', 1, '{GladiatorKit:1b}'))
+ok('a Gladiator Arena kit\'s troll hammer still hits (kit items are never held)', hit(bo))
+setReal(bo, 38, stack('botania:terrasteel_chestplate', 1, '{PurgeKit:1b}')); setReal(bo, 39, stack('iceandfire:armor_red_helmet', 1, '{ShrineKit:1b}'))
+ticks(20)
+ok('... nor are Purge or Shrine kit pieces taken off', bo.inventory.getItem(38).id == 'botania:terrasteel_chestplate' && bo.inventory.getItem(39).id == 'iceandfire:armor_red_helmet')
+setReal(bo, 38, EMPTY()); setReal(bo, 39, EMPTY())
+// Carried items (CARRY_LOCKS) go to the ender chest.
+const ender = []
+for (let i = 0; i < 27; i++) ender.push(EMPTY())
+bo.enderChestInventory = { getContainerSize: () => 27, getItem: i => ender[i], setItem: (i, s) => { ender[i] = s } }
+setReal(bo, 5, stack('reliquary:phoenix_down', 1)); bo.status = []
+fire('inventoryChanged', { player: bo, item: stack('reliquary:phoenix_down', 1) })
+ok('a sealed phoenix down (Reliquary, Tier 6) carried goes into the ender chest at once, and the action bar says so',
+  bo.inventory.getItem(5).count <= 0 && ender.some(s => s.id == 'reliquary:phoenix_down') &&
+  bo.status.some(l => /phoenix_down> is sealed until the Blood Pool opens Tier 6 \(A Stream\)\. It's in your ender chest\./.test(l)), bo.status.join(' | '))
+setReal(bo, 40, stack('reliquary:angelic_feather', 1))
+ticks(20)
+ok('... from the off hand too, at the check', bo.inventory.getItem(40).count <= 0 && ender.some(s => s.id == 'reliquary:angelic_feather'))
+const curioCarry = [stack('twilightforest:charm_of_keeping_3', 1)]
+bo.curios = { getSlots: () => 1, getStackInSlot: i => curioCarry[i], setStackInSlot: (i, s) => { curioCarry[i] = s } }
+ticks(20)
+ok('... and from a Curios slot (a charm of keeping III, Twilight, Tier 7)', curioCarry[0].count <= 0 && ender.some(s => s.id == 'twilightforest:charm_of_keeping_3'))
+delete bo.curios
+for (let i = 0; i < 27; i++) ender[i] = stack('minecraft:dirt', 64)
+setReal(bo, 6, stack('reliquary:angelheart_vial', 1))
+const dropsCarry = W.drops.length
+ticks(20)
+ok('... with a full ender chest it\'s dropped at the player\'s feet', bo.inventory.getItem(6).count <= 0 &&
+  W.drops.slice(dropsCarry).some(d => d.item == 'reliquary:angelheart_vial'))
+setReal(bo, 7, stack('reliquary:mob_charm', 1))
+ticks(20)
+ok('... unlisted items stay put', bo.inventory.getItem(7).id == 'reliquary:mob_charm')
+setReal(bo, 7, EMPTY()); delete bo.enderChestInventory
+// Sealed arrows: the hit of a dragonbone arrow fired from any bow does nothing.
+const shoot = (p, type) => { const ev = { entity: entity('minecraft:zombie', OW, 0, 64, 0, []), source: { player: p, actual: p, directEntity: entity(type, OW, 0, 64, 0, []), getMsgId: () => 'arrow' }, cancel() { throw new Exit() } }; fire('hurt', ev); return !ev.cancelled }
+setReal(bo, bo.selected, stack('minecraft:bow', 1)); bo.status = []
+ok('a dragonbone arrow (Ice and Fire, Tier 8 since 26 Nov) shot from an open bow hits for nothing, and says why',
+  !shoot(bo, 'iceandfire:dragon_arrow') && bo.status.some(l => /item\.iceandfire\.dragonbone_arrow> is sealed until the Blood Pool opens Tier 8/.test(l)), bo.status.join(' | '))
+ok('... an ordinary arrow hits', shoot(bo, 'minecraft:arrow'))
 setReal(bo, bo.selected, heldSave)
 cmd('bloodpool settier 6', admin); advance(25)
+ok('at Tier 6, dragon scale armour, the gorgon head and the terra blade open; dragonbone arrows (8), dragonsteel (9) and Kikoku (9) stay held',
+  (setReal(bo, 39, stack('iceandfire:armor_red_helmet', 1)), ticks(20), bo.inventory.getItem(39).id == 'iceandfire:armor_red_helmet') &&
+  useItem(bo, stack('iceandfire:gorgon_head', 1)) && !shoot(bo, 'iceandfire:dragon_arrow') &&
+  (setReal(bo, bo.selected, stack('botania:terra_sword', 1)), hit(bo)) &&
+  (setReal(bo, bo.selected, stack('iceandfire:dragonsteel_fire_sword', 1)), !hit(bo)) &&
+  (setReal(bo, bo.selected, stack('extrautilitiesreborn:kikoku', 1)), !hit(bo)))
+setReal(bo, 39, EMPTY()); setReal(bo, bo.selected, heldSave)
 ok('Tier 6 open: the raygun works for everyone', useItem(bo, gun()) && useItem(admin, gun()))
 cmd('bloodpool settier 5', admin); advance(25); reload()
 ok('... and it\'s refused again back at Tier 5 (after a reload too)', !useItem(bo, gun()))

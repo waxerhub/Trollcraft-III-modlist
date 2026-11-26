@@ -4,7 +4,7 @@ This folder brings the Part II server and the modpack up to date for 25 November
 - **Blue Skies** (the Everbright and the Everdawn), joining the Aether and Deeper and Darker;
 - **Lag:** the Aether's spawn fix (it halves the Aether's cost), the adaptive simulation distance, and the ban on every way of keeping chunks loaded;
 - **The crate button:** each upgrade-tree node has a potato crate next to its potato. One click hands in everything you carry: loose potatoes, any mod's potato crates (9 each) and Enchanted Potatoes (160 each);
-- **The Potato Press and Oven fix:** the Press now takes potato crates and the Oven Enchanted Potatoes, by hand and from hoppers. Until now both refused everything but plain potatoes.
+- **The Potato Press and Oven fix:** the Press now takes potato crates and the Oven Enchanted Potatoes, by hand and from hoppers. Until now both refused everything but plain potatoes. Hoppers and pipes can take only what they make out of them, never the potatoes or crates waiting inside.
 
 It's built from the repo by `tools/make_release.sh`; `FILES.txt` lists every file. It builds on the last update (the Enchanted Potatoes, the Shrine night, the Aether and Deeper and Darker). That update's other files haven't changed.
 
@@ -53,7 +53,7 @@ Players need the update before they join.
 - `/simdistance` says "On", with the normal distance from `server.properties`.
 - `/loaderban` says the chunk hook is loaded. If it lists chunks "from before this was installed", wait until no event is on, run `/reload`, then `/loaderban release`.
 - **The crate button:** in the book, open a node you haven't paid for. Next to the potato there's a potato crate ("Click to hand in crates (9 each), Enchanted Potatoes (160 each) and loose potatoes"). Click it with crates on you: the potato's number goes up, and chat says what went in.
-- **The Press:** put potato crates in a Potato Press by hand. Every second, 18 crates (162 potatoes) make 1 Enchanted Potato.
+- **The Press:** put potato crates in a Potato Press by hand. Every second, 18 crates (162 potatoes) make 1 Enchanted Potato. A hopper under it takes the Enchanted Potatoes and leaves the crates.
 - The quest book shows the crates. If it still shows the old chapters, run `/ftbquests reload` from the **server console**.
 
 ## 4. Pregenerate (while nobody is on)

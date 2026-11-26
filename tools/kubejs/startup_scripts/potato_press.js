@@ -5,8 +5,8 @@
 //   Potato Press: 160 potatoes        -> 1 Enchanted Potato         (craftable from Tier 5; potato crates count as 9)
 //   Potato Oven:  160 Enchanted Potatoes -> 1 Enchanted Baked Potato (craftable from Tier 8)
 // Each is a 27-slot block: the top two rows take its input, the bottom row holds what it made. Every second, each
-// 160 inputs become one output. Hoppers, pipes, Create funnels and AE2 put input in from the top and sides and take
-// output from the bottom; players open it with a right-click. Breaking one drops everything in it.
+// 160 inputs become one output. Hoppers, pipes, Create funnels and AE2 can reach it from any face: only its input goes
+// in, and only what it made comes out. Players open it with a right-click. Breaking one drops everything in it.
 //
 // Goes in the MODPACK (every player's kubejs/startup_scripts/) AND on the server (kubejs/startup_scripts/): both sides
 // must have the same items and blocks, or players can't join. A restart is needed after adding or changing it.
@@ -64,12 +64,14 @@ function creditOf(be) { try { return Number(be.data.getInt(CREDIT_KEY)) || 0 } c
 function setCredit(be, n) { try { be.data.putInt(CREDIT_KEY, n) } catch (e) { } }
 // Turns each RATIO of input worth into one output, up to MAX_PER_SECOND, while the output slots have room. The
 // block's credit is used first, then the smallest inputs; what's left of the last one taken becomes the credit.
+// Input found in the output row (a stack shift-clicked in can spill there) is pressed too, so none sits there to be
+// pulled out by a hopper.
 function work(be, M) {
   const inv = be.inventory
   if (!inv) return 0
   const credit0 = creditOf(be)
   let have = credit0, bank = credit0
-  for (let i = 0; i < IN_SLOTS; i++) {
+  for (let i = 0; i < SLOTS; i++) {
     let s = inv.getStackInSlot(i), w = M.inputs[String(s.id)]
     if (w) have += w * s.count
   }
@@ -87,7 +89,7 @@ function work(be, M) {
     need -= fromBank
     for (let k = 0; k < M.worths.length && need > 0; k++) {
       let w = M.worths[k]
-      for (let i = 0; i < IN_SLOTS && need > 0; i++) {
+      for (let i = 0; i < SLOTS && need > 0; i++) {
         let s = inv.getStackInSlot(i)
         if (M.inputs[String(s.id)] != w) continue
         let take = Math.min(s.count, Math.ceil(need / w))
@@ -122,8 +124,11 @@ StartupEvents.registry('block', event => {
 // ===================== HOPPERS AND PIPES =====================
 
 // Hoppers, pipes, Create funnels and AE2 see a block's items through Forge's item capability, which KubeJS's block
-// entity doesn't offer, so it's attached here: the bottom face gives the output slots, every other face the input
-// slots (only the machine's input goes in). Server only: players' games don't need it.
+// entity doesn't offer, so it's attached here. Every face follows the same rules (machineHandler): only the machine's
+// input goes in, into the top two rows, and only what it made comes out. Until 2026-11-25 each face showed one part of
+// the box (the bottom the output row, the others the input rows), so a funnel or pipe on a side could pull the crates
+// back out (owner: "only enchanted potatoes should be able to be funneled out"). Server only: players' games don't
+// need it.
 // true = ModernFix's faster capabilities is on (attaching would crash the server), false = off, null = can't tell.
 function fasterCapsOn() {
   if (!Platform.isLoaded('modernfix')) return false
@@ -137,6 +142,25 @@ function fasterCapsOn() {
   }
 }
 
+// What automation sees: all 27 slots, but it may put only the machine's input into the top two rows, and take out only
+// the machine's output, wherever it sits. A crate left in the output row can't be pulled out (the next tick presses
+// it). The rules are a script object; Rhino makes it a Java item handler when it's passed to RangedWrapper.
+function machineHandler(inv, M, J) {
+  const whole = new J.InvWrapper(inv)
+  const isInput = st => !st.isEmpty() && !!M.inputs[String(st.id)]
+  const isOutput = st => !st.isEmpty() && String(st.id) == M.output
+  const rules = {
+    getSlots: () => SLOTS,
+    getStackInSlot: slot => whole.getStackInSlot(slot),
+    getSlotLimit: slot => whole.getSlotLimit(slot),
+    isItemValid: (slot, st) => slot < IN_SLOTS && isInput(st),
+    insertItem: (slot, st, simulate) => (slot < IN_SLOTS && isInput(st) ? whole.insertItem(slot, st, simulate) : st),
+    extractItem: (slot, amount, simulate) => (isOutput(whole.getStackInSlot(slot)) ? whole.extractItem(slot, amount, simulate) : J.EMPTY),
+    setStackInSlot: (slot, st) => { if (st.isEmpty() || (slot < IN_SLOTS ? isInput(st) : isOutput(st))) whole.setStackInSlot(slot, st) },
+  }
+  return new J.RangedWrapper(rules, 0, SLOTS)
+}
+
 function attachCapabilities() {
   const caps = fasterCapsOn()
   if (caps !== false) {
@@ -147,26 +171,41 @@ function attachCapabilities() {
       'They still work by hand.')
     return false
   }
-  const ForgeCaps = Java.loadClass('net.minecraftforge.common.capabilities.ForgeCapabilities')
-  const LazyOptional = Java.loadClass('net.minecraftforge.common.util.LazyOptional')
-  const InvWrapper = Java.loadClass('net.minecraftforge.items.wrapper.InvWrapper')
-  const RangedWrapper = Java.loadClass('net.minecraftforge.items.wrapper.RangedWrapper')
-  const ResourceLocation = Java.loadClass('net.minecraft.resources.ResourceLocation')
-  const Direction = Java.loadClass('net.minecraft.core.Direction')
-  const CAP_ID = new ResourceLocation('kubejs', 'potato_machine_items')
+  let ForgeCaps = null, LazyOptional = null, J = null, CAP_ID = null
+  try {
+    ForgeCaps = Java.loadClass('net.minecraftforge.common.capabilities.ForgeCapabilities')
+    LazyOptional = Java.loadClass('net.minecraftforge.common.util.LazyOptional')
+    J = {
+      InvWrapper: Java.loadClass('net.minecraftforge.items.wrapper.InvWrapper'),
+      RangedWrapper: Java.loadClass('net.minecraftforge.items.wrapper.RangedWrapper'),
+      EMPTY: Java.loadClass('net.minecraft.world.item.ItemStack').EMPTY,
+    }
+    CAP_ID = new (Java.loadClass('net.minecraft.resources.ResourceLocation'))('kubejs', 'potato_machine_items')
+  } catch (e) {
+    // A warning, never an error (an error would stop the server starting): the machines still work by hand.
+    console.warn('[PotatoPress] Hoppers and pipes can\'t reach the Potato Press and Oven: ' + e)
+    return false
+  }
   ForgeEvents.onGenericEvent('net.minecraftforge.event.AttachCapabilitiesEvent', 'net.minecraft.world.level.block.entity.BlockEntity', event => {
     const be = event.getObject()
     let id = ''
     try { id = String(be.getBlockState().getBlock().id) } catch (e) { return }
     if (id.indexOf('kubejs:') != 0 || !MACHINES[id.substring(7)]) return
+    const M = MACHINES[id.substring(7)]
+    // One handler per block, made when first asked for (the inventory doesn't exist yet when this event fires), the
+    // same from every face, and let go of when the block is removed.
+    let lazy = null
     event.addCapability(CAP_ID, (cap, side) => {
       if (!ForgeCaps.ITEM_HANDLER.equals(cap)) return LazyOptional.empty()
-      const inv = be.inventory
-      if (!inv) return LazyOptional.empty()
-      const whole = new InvWrapper(inv)
-      const part = side != null && Direction.DOWN.equals(side) ? new RangedWrapper(whole, IN_SLOTS, SLOTS) : new RangedWrapper(whole, 0, IN_SLOTS)
-      return LazyOptional.of(() => part)
+      if (!lazy) {
+        let inv = be.inventory
+        if (!inv) return LazyOptional.empty()
+        let handler = machineHandler(inv, M, J)
+        lazy = LazyOptional.of(() => handler)
+      }
+      return lazy
     })
+    event.addListener(() => { if (lazy) lazy.invalidate() })
   })
   console.info('[PotatoPress] Hoppers and pipes can reach the Potato Press and Oven')
   return true

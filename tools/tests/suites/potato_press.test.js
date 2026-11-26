@@ -1,6 +1,6 @@
 // startup_scripts/potato_press.js: Enchanted Potatoes, Enchanted Baked Potatoes, the Potato Press and the Potato Oven.
-// Checks what it registers, that 160 inputs make one output (and nothing else), and the hopper/pipe capability: the
-// bottom face gives the output slots, the others the input slots; it's attached only on a server where ModernFix's
+// Checks what it registers, that 160 inputs make one output (and nothing else), and the hopper/pipe capability: every
+// face puts only the input in and lets only the output out; it's attached only on a server where ModernFix's
 // faster capabilities is off (it crashed the test server otherwise), never on a player's game.
 // Run with: node tools/tests/run_all.js press   (or node tools/tests/suites/potato_press.test.js)
 const fs = require('fs')
@@ -12,12 +12,13 @@ const ok = (l, c, e) => { console.log((c ? 'ok   ' : 'FAIL ') + l + (!c && e !==
 
 const stack = (id, count) => ({ id: id || 'minecraft:air', count: id ? count : 0, isEmpty() { return !id || this.count <= 0 } })
 const EMPTY = () => stack(null, 0)
-// A block's 27-slot inventory, as KubeJS's InventoryKJS (the methods the script uses).
-function inventory() {
+// A block's 27-slot inventory, as KubeJS's InventoryKJS (the methods the script uses). `allowed` is the box's own
+// filter (the machine's tag), which KubeJS applies to every slot alike.
+function inventory(allowed) {
   const slots = []
   for (let i = 0; i < 27; i++) slots.push(EMPTY())
   return {
-    slots, changed: 0,
+    slots, changed: 0, allowed: allowed || (() => true),
     getStackInSlot: i => slots[i],
     setStackInSlot: (i, s) => { slots[i] = s },
     extractItem(i, n, sim) { const s = slots[i]; const k = Math.min(n, s.count); if (!sim) { s.count -= k; if (s.count <= 0) slots[i] = EMPTY() } return stack(s.id, k) },
@@ -53,14 +54,32 @@ function load(opts) {
   const Platform = { isClientEnvironment: () => !!opts.client, isLoaded: id => id == 'modernfix' ? opts.modernfix != null : (opts.missing || []).indexOf(id) < 0 }
   const ITEM_HANDLER = { name: 'item_handler', equals(x) { return x === ITEM_HANDLER } }
   const DOWN = { name: 'down', equals(x) { return x === DOWN } }, UP = { name: 'up', equals(x) { return x === UP } }
-  class InvWrapper { constructor(inv) { this.inv = inv } }
+  // Forge's InvWrapper over the block's container: puts items in (stacking to 64, honouring the box's own filter, here
+  // the machine's tag) and takes them out, with no rules of its own about which slot is which.
+  class InvWrapper {
+    constructor(inv) { this.inv = inv }
+    getStackInSlot(i) { return this.inv.getStackInSlot(i) }
+    getSlotLimit() { return 64 }
+    setStackInSlot(i, s) { this.inv.setStackInSlot(i, s) }
+    insertItem(i, s, sim) {
+      const cur = this.inv.getStackInSlot(i)
+      if (!this.inv.allowed(s)) return s
+      if (!cur.isEmpty() && cur.id != s.id) return s
+      const k = Math.min(64 - (cur.isEmpty() ? 0 : cur.count), s.count)
+      if (k <= 0) return s
+      if (!sim) this.inv.setStackInSlot(i, stack(s.id, (cur.isEmpty() ? 0 : cur.count) + k))
+      return s.count - k > 0 ? stack(s.id, s.count - k) : EMPTY()
+    }
+    extractItem(i, n, sim) { return this.inv.extractItem(i, n, sim) }
+  }
   class RangedWrapper { constructor(inner, from, to) { this.inner = inner; this.from = from; this.to = to } }
   class ResourceLocation { constructor(ns, path) { this.s = ns + ':' + path } }
   const classes = {
     'net.minecraftforge.common.capabilities.ForgeCapabilities': { ITEM_HANDLER },
-    'net.minecraftforge.common.util.LazyOptional': { empty: () => ({ empty: true }), of: s => ({ empty: false, get: s }) },
+    'net.minecraftforge.common.util.LazyOptional': { empty: () => ({ empty: true }), of: s => ({ empty: false, get: s, invalid: false, invalidate() { this.invalid = true } }) },
     'net.minecraftforge.items.wrapper.InvWrapper': InvWrapper,
     'net.minecraftforge.items.wrapper.RangedWrapper': RangedWrapper,
+    'net.minecraft.world.item.ItemStack': { EMPTY: EMPTY() },
     'net.minecraft.resources.ResourceLocation': ResourceLocation,
     'net.minecraft.core.Direction': { DOWN, UP },
     'org.embeddedt.modernfix.core.ModernFixMixinPlugin': { get instance() {
@@ -172,18 +191,55 @@ ok('on the server with faster capabilities off: the capability is attached to bl
   S.logs.some(l => /^I \[PotatoPress\] Hoppers and pipes can reach the Potato Press and Oven/.test(l)))
 const attach = (blockId, be) => {
   const added = []
-  S.generic[0].fn({ getObject: () => Object.assign({ getBlockState: () => ({ getBlock: () => ({ id: blockId }) }) }, be || {}), addCapability: (id, p) => added.push({ id, p }) })
+  S.generic[0].fn({ getObject: () => Object.assign({ getBlockState: () => ({ getBlock: () => ({ id: blockId }) }) }, be || {}),
+    addCapability: (id, p) => added.push({ id, p }), addListener: f => { added.listeners = (added.listeners || []).concat([f]) } })
   return added
 }
 ok('... only to the Press and the Oven', attach('kubejs:potato_press').length == 1 && attach('kubejs:potato_oven').length == 1 &&
   attach('minecraft:chest').length == 0 && attach('kubejs:something_else').length == 0)
-const theInv = inventory()
-const cap = attach('kubejs:potato_press', { inventory: theInv })[0]
+const PRESS_IN = ['minecraft:potato', 'quark:potato_crate', 'farmersdelight:potato_crate', 'thermal:potato_block']
+const theInv = inventory(s => PRESS_IN.indexOf(s.id) >= 0)
+const att = attach('kubejs:potato_press', { inventory: theInv }), cap = att[0]
 const down = cap.p(S.ITEM_HANDLER, S.DOWN), up = cap.p(S.ITEM_HANDLER, S.UP), none = cap.p(S.ITEM_HANDLER, null)
-ok('the bottom face gives the output slots (18-26)', !down.empty && down.get().from == 18 && down.get().to == 27 && down.get().inner.inv === theInv)
-ok('every other face (and no face) gives the input slots (0-17)', up.get().from == 0 && up.get().to == 18 && none.get().from == 0 && none.get().to == 18)
+ok('every face (and none) gets the same handler, over all 27 slots', !down.empty && up === down && none === down && down.get().from == 0 && down.get().to == 27)
 ok('other capabilities: none', cap.p({ equals: () => false }, S.DOWN).empty === true)
 ok('a block entity whose inventory isn\'t made yet offers nothing (asked again later)', attach('kubejs:potato_press', { inventory: null })[0].p(S.ITEM_HANDLER, S.UP).empty === true)
+const H = down.get().inner     // the rules, as a hopper, pipe or funnel meets them
+ok('... 27 slots, 64 to a slot', H.getSlots() == 27 && H.getSlotLimit(5) == 64)
+// putting in
+let rest = H.insertItem(0, stack('quark:potato_crate', 40), false)
+ok('crates go into the top two rows', rest.isEmpty() && theInv.slots[0].id == 'quark:potato_crate' && theInv.slots[0].count == 40)
+ok('... so do loose potatoes and the other mods\' crates', H.insertItem(1, stack('minecraft:potato', 64), false).isEmpty() && H.insertItem(2, stack('farmersdelight:potato_crate', 5), false).isEmpty())
+rest = H.insertItem(20, stack('quark:potato_crate', 10), false)
+ok('... but never into the bottom row', rest.count == 10 && theInv.slots[20].isEmpty())
+ok('... and nothing else goes in: dirt, or Enchanted Potatoes into a Press', H.insertItem(3, stack('minecraft:dirt', 5), false).count == 5 && H.insertItem(3, stack('kubejs:enchanted_potato', 5), false).count == 5 && theInv.slots[3].isEmpty())
+ok('... and it says so when asked (isItemValid)', H.isItemValid(0, stack('quark:potato_crate', 1)) === true && H.isItemValid(20, stack('quark:potato_crate', 1)) === false && H.isItemValid(0, stack('minecraft:dirt', 1)) === false)
+ok('... a pretend insert changes nothing', H.insertItem(4, stack('minecraft:potato', 3), true).isEmpty() && theInv.slots[4].isEmpty())
+// taking out
+theInv.slots[18] = stack('kubejs:enchanted_potato', 5)
+ok('nothing comes out of the top two rows: crates and potatoes stay (the owner\'s report, 2026-11-25)', H.extractItem(0, 64, false).isEmpty() && H.extractItem(1, 64, false).isEmpty() &&
+  theInv.slots[0].count == 40 && theInv.slots[1].count == 64)
+let got = H.extractItem(18, 3, false)
+ok('Enchanted Potatoes come out of the bottom row', got.id == 'kubejs:enchanted_potato' && got.count == 3 && theInv.slots[18].count == 2)
+theInv.slots[19] = stack('quark:potato_crate', 7)
+ok('a crate left in the bottom row (a shift-click can spill one there) doesn\'t come out either', H.extractItem(19, 7, false).isEmpty() && theInv.slots[19].count == 7)
+H.setStackInSlot(21, stack('quark:potato_crate', 9)); H.setStackInSlot(5, stack('minecraft:dirt', 9)); H.setStackInSlot(6, stack('minecraft:potato', 9))
+ok('setting a slot follows the same rules', theInv.slots[21].isEmpty() && theInv.slots[5].isEmpty() && theInv.slots[6].id == 'minecraft:potato')
+ok('the handler is let go of when the block is removed', (att.listeners || []).length == 1 && (att.listeners[0](), down.invalid === true))
+// the Oven: Enchanted Potatoes are its input, so they go in and never come out
+const ovenInv = inventory(s => s.id == 'kubejs:enchanted_potato')
+const OH = attach('kubejs:potato_oven', { inventory: ovenInv })[0].p(S.ITEM_HANDLER, S.UP).get().inner
+ok('the Oven: Enchanted Potatoes go in and never come out; Enchanted Baked Potatoes come out',
+  OH.insertItem(0, stack('kubejs:enchanted_potato', 10), false).isEmpty() && OH.extractItem(0, 10, false).isEmpty() && ovenInv.slots[0].count == 10 &&
+  (ovenInv.slots[18] = stack('kubejs:enchanted_baked_potato', 1), OH.extractItem(18, 1, false).id == 'kubejs:enchanted_baked_potato') &&
+  OH.insertItem(1, stack('quark:potato_crate', 1), false).count == 1)
+// what spilled into the bottom row is pressed
+const spill = inventory()
+for (let i = 18; i < 27; i++) spill.slots[i] = stack('quark:potato_crate', 64)
+spill.slots[26] = EMPTY()
+press.info.tick.cb({ inventory: spill, data: data() })
+ok('crates sitting in the bottom row are pressed too, so none wait there to be pulled out', total(spill, 'kubejs:enchanted_potato') >= 1 && total(spill, 'quark:potato_crate') < 8 * 64,
+  total(spill, 'kubejs:enchanted_potato') + ' ' + total(spill, 'quark:potato_crate'))
 
 const on = load({ modernfix: true })
 ok('faster capabilities on: nothing attached (it would crash the server), and a warning says what to change', on.generic.length == 0 &&
